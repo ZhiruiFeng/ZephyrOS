@@ -1,0 +1,23 @@
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "apps/zflow/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    },
+    "apps/zmemory/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/zflow/(.*)",
+      "destination": "/apps/zflow/$1"
+    },
+    {
+      "source": "/zmemory/(.*)",
+      "destination": "/apps/zmemory/$1"
+    }
+  ]
+} 
