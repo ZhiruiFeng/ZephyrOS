@@ -90,7 +90,10 @@ export default function ZMemoryPage() {
                   </p>
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-xs text-gray-500">
-                      {new Date(memory.created_at).toLocaleDateString('zh-CN')}
+                      {typeof window !== 'undefined' 
+                        ? new Date(memory.created_at).toLocaleDateString('zh-CN')
+                        : memory.created_at.split('T')[0]
+                      }
                     </span>
                     {memory.tags && memory.tags.length > 0 && (
                       <div className="flex gap-1">
