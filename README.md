@@ -1,8 +1,8 @@
 # ZephyrOS
 
-一个现代化的任务管理和记忆系统，采用前后端分离架构。
+A modern task management and memory system with frontend-backend separation architecture.
 
-## 架构概览
+## Architecture Overview
 
 ```
 ┌─────────────┐    HTTP API     ┌──────────────┐    Database     ┌──────────────┐
@@ -13,112 +13,112 @@
 └─────────────┘    JSON         └──────────────┘    Results      └──────────────┘
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 ZephyrOS/
 ├── apps/
-│   ├── zflow/           # 前端任务管理应用 (端口: 3000)
-│   └── zmemory/         # 后端 API 服务 (端口: 3001)
+│   ├── zflow/           # Frontend task management app (Port: 3000)
+│   └── zmemory/         # Backend API service (Port: 3001)
 ├── packages/
-│   ├── backend/         # 共享后端工具
-│   ├── shared/          # 共享类型和工具
-│   └── ui/              # 共享 UI 组件
-└── supabase/            # 数据库 schema
+│   └── shared/          # Shared types and utilities
+├── supabase/            # Database schema
+├── guidance/            # Development and deployment guides
+└── scripts/             # Setup and utility scripts
 ```
 
-## 应用说明
+## Application Overview
 
-### ZFlow (前端)
-- **端口**: 3000
-- **技术栈**: Next.js, React, TypeScript, Tailwind CSS
-- **职责**: 任务管理界面，用户交互，状态管理
-- **特点**: 纯前端应用，通过 HTTP API 与后端通信
+### ZFlow (Frontend)
+- **Port**: 3000
+- **Tech Stack**: Next.js, React, TypeScript, Tailwind CSS
+- **Responsibilities**: Task management interface, user interaction, state management
+- **Features**: Pure frontend application, communicates with backend via HTTP API
 
-### ZMemory API (后端)
-- **端口**: 3001
-- **技术栈**: Next.js API Routes, TypeScript, Supabase
-- **职责**: 数据持久化，业务逻辑，API 接口
-- **特点**: 纯后端服务，提供 RESTful API
+### ZMemory API (Backend)
+- **Port**: 3001
+- **Tech Stack**: Next.js API Routes, TypeScript, Supabase
+- **Responsibilities**: Data persistence, business logic, API endpoints
+- **Features**: Pure backend service, provides RESTful API
 
-## 快速开始
+## Quick Start
 
-### 1. 环境设置
+### 1. Environment Setup
 
-复制环境变量文件：
+Copy environment variables file:
 ```bash
 cp env.example .env.local
 ```
 
-配置环境变量：
+Configure environment variables:
 ```env
-# Supabase 配置
+# Supabase configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# API 配置
+# API configuration
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-### 2. 安装依赖
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. 启动开发服务器
+### 3. Start Development Server
 
 ```bash
-# 启动所有应用
+# Start all applications
 npm run dev
 
-# 或分别启动
+# Or start individually
 npm run dev --filter=@zephyros/zflow
 npm run dev --filter=@zephyros/zmemory-api
 ```
 
-### 4. 访问应用
+### 4. Access Applications
 
-- **ZFlow (前端)**: http://localhost:3000
-- **ZMemory API (后端)**: http://localhost:3001
+- **ZFlow (Frontend)**: http://localhost:3000
+- **ZMemory API (Backend)**: http://localhost:3001
 
-## API 文档
+## API Documentation
 
-### 健康检查
+### Health Check
 ```bash
 curl http://localhost:3001/api/health
 ```
 
-### 任务管理
+### Task Management
 ```bash
-# 获取任务列表
+# Get task list
 curl http://localhost:3001/api/memories?type=task
 
-# 创建任务
+# Create task
 curl -X POST http://localhost:3001/api/memories \
   -H "Content-Type: application/json" \
   -d '{
     "type": "task",
     "content": {
-      "title": "完成项目文档",
-      "description": "编写技术文档",
+      "title": "Complete project documentation",
+      "description": "Write technical documentation",
       "priority": "high"
     },
     "tags": ["zflow", "documentation"]
   }'
 ```
 
-## 开发指南
+## Development Guide
 
-### 添加新功能
+### Adding New Features
 
-1. **后端 API**: 在 `apps/zmemory/app/api/` 中添加新的路由
-2. **前端界面**: 在 `apps/zflow/` 中添加新的组件和页面
-3. **类型定义**: 在 `packages/shared/` 中定义共享类型
+1. **Backend API**: Add new routes in `apps/zmemory/app/api/`
+2. **Frontend Interface**: Add new components and pages in `apps/zflow/`
+3. **Type Definitions**: Define shared types in `packages/shared/`
 
-### 数据库 Schema
+### Database Schema
 
-主要表结构：
+Main table structure:
 ```sql
 CREATE TABLE memories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -131,41 +131,41 @@ CREATE TABLE memories (
 );
 ```
 
-## 部署
+## Deployment
 
-### Vercel 部署
+### Vercel Deployment
 
-1. 连接 GitHub 仓库到 Vercel
-2. 配置环境变量
-3. 部署 ZMemory API 到 Vercel
-4. 更新 ZFlow 的 API URL 配置
+1. Connect GitHub repository to Vercel
+2. Configure environment variables
+3. Deploy ZMemory API to Vercel
+4. Update ZFlow API URL configuration
 
-### 本地部署
+### Local Deployment
 
 ```bash
-# 构建生产版本
+# Build production version
 npm run build
 
-# 启动生产服务器
+# Start production server
 npm start
 ```
 
-## 技术栈
+## Tech Stack
 
-- **前端**: Next.js 15, React 18, TypeScript, Tailwind CSS, SWR
-- **后端**: Next.js API Routes, TypeScript, Zod (验证)
-- **数据库**: Supabase (PostgreSQL)
-- **部署**: Vercel
-- **构建工具**: Turbo
+- **Frontend**: Next.js 15, React 18, TypeScript, Tailwind CSS, SWR
+- **Backend**: Next.js API Routes, TypeScript, Zod (validation)
+- **Database**: Supabase (PostgreSQL)
+- **Deployment**: Vercel
+- **Build Tool**: Turbo
 
-## 贡献
+## Contributing
 
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 推送到分支
-5. 创建 Pull Request
+1. Fork the project
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
 
-## 许可证
+## License
 
 MIT License

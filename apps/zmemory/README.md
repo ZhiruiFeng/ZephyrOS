@@ -1,82 +1,82 @@
 # ZMemory API
 
-ZMemory API 是一个后端服务，为 ZFlow 前端应用提供记忆/任务数据的 RESTful API 接口。
+ZMemory API is a backend service that provides RESTful API endpoints for memory/task data to the ZFlow frontend application.
 
-## 架构
+## Architecture
 
 ```
 ZFlow (Frontend) ──HTTP API──► ZMemory API ──Database──► Supabase (PostgreSQL)
 ```
 
-## 环境变量
+## Environment Variables
 
-确保设置以下环境变量：
+Ensure the following environment variables are set:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
-## API 端点
+## API Endpoints
 
-### 健康检查
-- `GET /api/health` - 检查 API 服务状态
+### Health Check
+- `GET /api/health` - Check API service status
 
-### 记忆管理
-- `GET /api/memories` - 获取记忆列表
-- `POST /api/memories` - 创建新记忆
-- `GET /api/memories/[id]` - 获取单个记忆
-- `PUT /api/memories/[id]` - 更新记忆
-- `DELETE /api/memories/[id]` - 删除记忆
+### Memory Management
+- `GET /api/memories` - Get memory list
+- `POST /api/memories` - Create new memory
+- `GET /api/memories/[id]` - Get single memory
+- `PUT /api/memories/[id]` - Update memory
+- `DELETE /api/memories/[id]` - Delete memory
 
-## 查询参数
+## Query Parameters
 
 ### GET /api/memories
-- `type` (可选) - 按类型筛选
-- `limit` (可选) - 限制返回数量，默认 50
-- `offset` (可选) - 分页偏移量，默认 0
+- `type` (optional) - Filter by type
+- `limit` (optional) - Limit number of results, default 50
+- `offset` (optional) - Pagination offset, default 0
 
-## 请求示例
+## Request Examples
 
-### 创建任务
+### Create Task
 ```bash
 curl -X POST http://localhost:3001/api/memories \
   -H "Content-Type: application/json" \
   -d '{
     "type": "task",
     "content": {
-      "title": "完成项目文档",
-      "description": "编写项目技术文档",
+      "title": "Complete project documentation",
+      "description": "Write project technical documentation",
       "priority": "high"
     },
     "tags": ["zflow", "documentation"]
   }'
 ```
 
-### 获取任务列表
+### Get Task List
 ```bash
 curl "http://localhost:3001/api/memories?type=task&limit=10"
 ```
 
-## 开发
+## Development
 
 ```bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动开发服务器
+# Start development server
 npm run dev
 
-# 构建生产版本
+# Build production version
 npm run build
 
-# 启动生产服务器
+# Start production server
 npm start
 ```
 
-## 数据模型
+## Data Model
 
-### Memory 表结构
+### Memory Table Structure
 ```sql
 CREATE TABLE memories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -89,19 +89,19 @@ CREATE TABLE memories (
 );
 ```
 
-## 错误处理
+## Error Handling
 
-API 返回标准 HTTP 状态码：
-- `200` - 成功
-- `201` - 创建成功
-- `400` - 请求数据无效
-- `404` - 资源未找到
-- `500` - 服务器内部错误
+API returns standard HTTP status codes:
+- `200` - Success
+- `201` - Created successfully
+- `400` - Invalid request data
+- `404` - Resource not found
+- `500` - Internal server error
 
-错误响应格式：
+Error response format:
 ```json
 {
-  "error": "错误描述",
-  "details": "详细错误信息（可选）"
+  "error": "Error description",
+  "details": "Detailed error information (optional)"
 }
 ``` 

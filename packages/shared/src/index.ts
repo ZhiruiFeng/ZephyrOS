@@ -1,46 +1,54 @@
-// 数据库类型定义
-export interface Task {
+// Database type definitions
+export interface Memory {
   id: string;
+  type: string;
+  content: any;
+  tags?: string[];
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMemoryRequest {
+  type: string;
+  content: any;
+  tags?: string[];
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateMemoryRequest {
+  type?: string;
+  content?: any;
+  tags?: string[];
+  metadata?: Record<string, any>;
+}
+
+// Task interface (content within Memory)
+export interface TaskContent {
   title: string;
   description?: string;
   status: 'pending' | 'in_progress' | 'completed';
   priority: 'low' | 'medium' | 'high';
-  created_at: string;
-  updated_at: string;
   due_date?: string;
-  tags?: string[];
 }
 
-export interface Memory {
-  id: string;
-  title: string;
-  content: string;
-  type: 'note' | 'link' | 'file' | 'thought';
-  tags?: string[];
-  created_at: string;
-  updated_at: string;
-  metadata?: Record<string, any>;
-}
-
-// 数据库表名
+// Database table names
 export const TABLES = {
-  TASKS: 'tasks',
   MEMORIES: 'memories',
-  TAGS: 'tags'
 } as const;
 
-// API响应类型
+// API response types
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// 通用工具函数
+// Common utility functions
 export const formatDate = (date: string | Date): string => {
-  return new Date(date).toLocaleDateString('zh-CN');
+  return new Date(date).toLocaleDateString('en-US');
 };
 
 export const formatDateTime = (date: string | Date): string => {
-  return new Date(date).toLocaleString('zh-CN');
+  return new Date(date).toLocaleString('en-US');
 }; 

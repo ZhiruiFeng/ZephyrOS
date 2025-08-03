@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-// GET /api/health - 健康检查端点
+// GET /api/health - Health check endpoint
 export async function GET() {
   return NextResponse.json({
     status: 'healthy',

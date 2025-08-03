@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 数据库表类型定义
+// Database table type definitions
 export interface Memory {
   id: string;
   type: string;

@@ -1,410 +1,660 @@
-# ZephyrOS 开发指南
+# ZephyrOS Development Guide
 
-## 快速开始
+A comprehensive guide for developing ZephyrOS, your personal AI agent efficiency operating system.
 
-### 1. 环境要求
+## Quick Start
 
-- Node.js 18+ 
-- npm 或 yarn
-- Git
+### Prerequisites
 
-### 2. 项目设置
+- **Node.js 18+** (LTS recommended)
+- **npm 9+** (comes with Node.js)
+- **Git** for version control
+- **Supabase Account** (free tier available)
+
+### Initial Setup
 
 ```bash
-# 克隆项目
-git clone <your-repo>
+# Clone the repository
+git clone <your-repo-url>
 cd ZephyrOS
 
-# 运行设置脚本
-./scripts/setup.sh
-
-# 或手动设置
+# Install dependencies for all workspaces
 npm install
+
+# Copy environment configuration
 cp env.example .env.local
-# 编辑 .env.local 文件
+
+# Edit environment variables (see Environment Setup below)
 ```
 
-### 3. 配置环境变量
+### Environment Setup
 
-编辑 `.env.local` 文件：
+Edit `.env.local` with your Supabase credentials:
 
 ```env
-# Supabase 配置（必需）
+# Supabase Configuration (Required)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# 应用配置
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-### 4. 启动开发服务器
+### Development Servers
 
 ```bash
-# 启动所有应用
+# Start all applications (recommended)
 npm run dev
 
-# 单独启动应用
-npm run dev --workspace=@zephyros/zflow
-npm run dev --workspace=@zephyros/zmemory
+# Or start individually
+npm run dev --filter=zflow        # Frontend on :3000
+npm run dev --filter=zmemory      # Backend API on :3001
 ```
 
-## 项目结构
+**Access Points:**
+- **ZFlow (Frontend)**: http://localhost:3000
+- **ZMemory API (Backend)**: http://localhost:3001/api/health
+
+## Project Architecture
+
+### Current Structure
 
 ```
 ZephyrOS/
-├── apps/                    # 前端应用
-│   ├── zflow/              # 任务管理系统
-│   └── zmemory/            # 数据中枢
-├── packages/                # 共享包
-│   ├── backend/            # 后端API
-│   ├── shared/             # 共享类型和工具
-│   └── ui/                 # 共享UI组件
-├── scripts/                 # 脚本文件
-├── supabase/               # 数据库配置
-└── docs/                   # 文档
+├── apps/
+│   ├── zflow/              # Frontend task management
+│   │   ├── app/            # Next.js App Router
+│   │   ├── hooks/          # React hooks
+│   │   └── lib/            # Client utilities
+│   └── zmemory/            # Backend API service
+│       ├── app/api/        # API routes
+│       ├── lib/            # Server utilities
+│       └── types/          # Type definitions
+├── packages/
+│   └── shared/             # Shared types and utilities
+├── supabase/               # Database schema
+├── guidance/               # Documentation
+└── scripts/                # Utility scripts
 ```
 
-## 开发工作流
+### Data Architecture
 
-### 1. 添加新功能
+**Core Concept**: Everything is a `Memory` with flexible content types.
+
+```typescript
+interface Memory {
+  id: string;
+  type: string;           // 'task', 'note', 'bookmark', etc.
+  content: any;           // Flexible JSON content
+  tags?: string[];        // Categorization
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+**Task Example**:
+```typescript
+{
+  id: "uuid",
+  type: "task",
+  content: {
+    title: "Complete project",
+    description: "Finish the ZephyrOS development",
+    status: "pending",
+    priority: "high",
+    due_date: "2024-08-10"
+  },
+  tags: ["zflow", "development"]
+}
+```
+
+## Development Workflow
+
+### 1. Feature Development
 
 ```bash
-# 1. 创建功能分支
+# Create feature branch
 git checkout -b feature/new-feature
 
-# 2. 开发功能
-# 在相应的应用或包中开发
+# Make your changes
+# ... development work ...
 
-# 3. 测试
-npm run test
-npm run type-check
+# Run quality checks
+npm run type-check        # TypeScript validation
+npm run lint             # Code quality (when configured)
+npm run build            # Build verification
 
-# 4. 提交代码
+# Commit changes
 git add .
-git commit -m "feat: add new feature"
+git commit -m "feat: add new feature description"
 
-# 5. 推送分支
+# Push and create PR
 git push origin feature/new-feature
 ```
 
-### 2. 添加新应用
+### 2. Adding New Memory Types
 
-1. 在 `apps/` 目录下创建新应用
-2. 复制现有应用的配置文件
-3. 更新 `package.json` 的 workspaces
-4. 添加应用到 `turbo.json`
-
-### 3. 添加共享包
-
-1. 在 `packages/` 目录下创建新包
-2. 配置 `package.json` 和 `tsconfig.json`
-3. 在应用中使用 `workspace:*` 依赖
-
-## 代码规范
-
-### TypeScript 配置
-
-- 使用严格模式
-- 启用所有类型检查
-- 使用 ESLint 和 Prettier
-
-### 组件开发
-
-```tsx
-// 组件示例
-import React from 'react'
-import { Task } from '@zephyros/shared'
-
-interface TaskItemProps {
-  task: Task
-  onToggle: (id: string) => void
-}
-
-export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle }) => {
-  return (
-    <div className="card">
-      {/* 组件内容 */}
-    </div>
-  )
+1. **Define the content interface** in `packages/shared/src/index.ts`:
+```typescript
+export interface BookmarkContent {
+  title: string;
+  url: string;
+  description?: string;
+  favicon?: string;
 }
 ```
 
-### API 开发
+2. **Create API validation** in ZMemory backend:
+```typescript
+const BookmarkContentSchema = z.object({
+  title: z.string(),
+  url: z.string().url(),
+  description: z.string().optional(),
+  favicon: z.string().optional(),
+});
+```
 
-```tsx
-// API 路由示例
-import { NextRequest, NextResponse } from 'next/server'
-import { DatabaseService } from '@zephyros/backend'
+3. **Add frontend components** in ZFlow:
+```typescript
+const BookmarkItem = ({ memory }: { memory: Memory }) => {
+  const content = memory.content as BookmarkContent;
+  // Component implementation
+};
+```
 
-export async function GET() {
+### 3. API Development
+
+#### Creating New Endpoints
+
+Example: Add a search endpoint
+
+```typescript
+// apps/zmemory/app/api/memories/search/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '../../lib/supabase';
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q');
+  
+  if (!query) {
+    return NextResponse.json(
+      { error: 'Query parameter required' }, 
+      { status: 400 }
+    );
+  }
+
   try {
-    const { data, error } = await DatabaseService.getTasks()
-    
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-    
-    return NextResponse.json({ data })
+    const { data, error } = await supabase
+      .from('memories')
+      .select('*')
+      .textSearch('content', query)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Search failed' }, 
+      { status: 500 }
+    );
   }
 }
 ```
 
-## 数据库操作
+#### API Client Updates
 
-### 使用 Supabase
+```typescript
+// apps/zflow/lib/api.ts
+class ApiClient {
+  // ... existing methods ...
 
-```tsx
-import { supabase } from '@zephyros/backend'
+  async searchMemories(query: string): Promise<Memory[]> {
+    return this.request<Memory[]>(`/api/memories/search?q=${encodeURIComponent(query)}`);
+  }
+}
+```
 
-// 查询数据
+### 4. Frontend Development
+
+#### Component Structure
+
+```typescript
+// apps/zflow/components/TaskList.tsx
+'use client';
+
+import React from 'react';
+import { useTasks } from '../hooks/useMemories';
+import { TaskItem } from './TaskItem';
+
+export function TaskList() {
+  const { memories: tasks, isLoading, error } = useTasks();
+
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+
+  return (
+    <div className="space-y-4">
+      {tasks.map(task => (
+        <TaskItem key={task.id} task={task} />
+      ))}
+    </div>
+  );
+}
+```
+
+#### Custom Hooks
+
+```typescript
+// apps/zflow/hooks/useSearch.ts
+import { useState, useCallback } from 'react';
+import { apiClient } from '../lib/api';
+import type { Memory } from '@zephyros/shared';
+
+export function useSearch() {
+  const [results, setResults] = useState<Memory[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const search = useCallback(async (query: string) => {
+    setIsLoading(true);
+    try {
+      const data = await apiClient.searchMemories(query);
+      setResults(data);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { results, isLoading, search };
+}
+```
+
+## Database Operations
+
+### Direct Supabase Usage
+
+```typescript
+import { supabase } from '../lib/supabase';
+
+// Create memory
 const { data, error } = await supabase
-  .from('tasks')
+  .from('memories')
+  .insert({
+    type: 'task',
+    content: { title: 'New task', status: 'pending' },
+    tags: ['work']
+  })
+  .select()
+  .single();
+
+// Query with filters
+const { data, error } = await supabase
+  .from('memories')
   .select('*')
+  .eq('type', 'task')
+  .contains('tags', ['urgent'])
   .order('created_at', { ascending: false })
+  .limit(10);
 
-// 插入数据
+// Full-text search (requires RLS policies)
 const { data, error } = await supabase
-  .from('tasks')
-  .insert([{ title: '新任务', status: 'pending' }])
-  .select()
-
-// 更新数据
-const { data, error } = await supabase
-  .from('tasks')
-  .update({ status: 'completed' })
-  .eq('id', taskId)
-  .select()
-
-// 删除数据
-const { error } = await supabase
-  .from('tasks')
-  .delete()
-  .eq('id', taskId)
+  .from('memories')
+  .select('*')
+  .textSearch('content', 'search terms');
 ```
 
-### 使用 DatabaseService
+### Recommended Patterns
 
-```tsx
-import { DatabaseService } from '@zephyros/backend'
+1. **Always use transactions for related operations**
+2. **Implement proper error handling**
+3. **Use RLS (Row Level Security) for user data**
+4. **Add database indexes for common queries**
 
-// 获取所有任务
-const { data, error } = await DatabaseService.getTasks()
+## Testing Strategy
 
-// 创建任务
-const { data, error } = await DatabaseService.createTask({
-  title: '新任务',
-  status: 'pending',
-  priority: 'medium'
-})
-
-// 更新任务
-const { data, error } = await DatabaseService.updateTask(taskId, {
-  status: 'completed'
-})
-```
-
-## 测试
-
-### 单元测试
+### Unit Testing Setup
 
 ```bash
-# 运行所有测试
-npm run test
+# Install testing dependencies
+npm install --save-dev jest @testing-library/react @testing-library/jest-dom
 
-# 运行特定包的测试
-npm run test --workspace=@zephyros/zflow
-
-# 运行测试并生成覆盖率报告
-npm run test:coverage
+# Run tests
+npm test                 # All packages
+npm test --filter=zflow  # Specific package
 ```
 
-### 类型检查
+### Example Test
 
-```bash
-# 检查所有包的 TypeScript 类型
-npm run type-check
+```typescript
+// apps/zflow/__tests__/TaskItem.test.tsx
+import { render, screen } from '@testing-library/react';
+import { TaskItem } from '../components/TaskItem';
 
-# 检查特定包的类型
-npm run type-check --workspace=@zephyros/shared
+const mockTask = {
+  id: '1',
+  type: 'task',
+  content: {
+    title: 'Test task',
+    status: 'pending',
+    priority: 'medium'
+  },
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z'
+};
+
+test('renders task title', () => {
+  render(<TaskItem task={mockTask} />);
+  expect(screen.getByText('Test task')).toBeInTheDocument();
+});
 ```
 
-### 代码质量
+## Code Quality
 
-```bash
-# 运行 ESLint
-npm run lint
+### TypeScript Configuration
 
-# 运行 Prettier
-npm run format
-
-# 自动修复
-npm run lint:fix
+```json
+// tsconfig.json (in each app/package)
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "es6"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@zephyros/shared": ["../../packages/shared/src"]
+    }
+  }
+}
 ```
 
-## 调试
+### ESLint Configuration (Recommended)
 
-### 前端调试
+```json
+// .eslintrc.json
+{
+  "extends": [
+    "next/core-web-vitals",
+    "@typescript-eslint/recommended"
+  ],
+  "rules": {
+    "prefer-const": "error",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-explicit-any": "warn"
+  }
+}
+```
 
-1. 使用浏览器开发者工具
-2. 使用 React Developer Tools
-3. 使用 Next.js 调试模式
+## Performance Optimization
 
+### Frontend Optimizations
+
+1. **Code Splitting**:
+```typescript
+import dynamic from 'next/dynamic';
+
+const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+  loading: () => <LoadingSpinner />
+});
+```
+
+2. **API Response Caching**:
+```typescript
+// apps/zflow/lib/api.ts
+class ApiClient {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    
+    // Add cache headers for GET requests
+    if (!options.method || options.method === 'GET') {
+      options.headers = {
+        ...options.headers,
+        'Cache-Control': 'max-age=60'
+      };
+    }
+    
+    const response = await fetch(url, options);
+    return response.json();
+  }
+}
+```
+
+3. **SWR Configuration**:
+```typescript
+// apps/zflow/hooks/useMemories.ts
+export function useMemories(params?: MemoryParams) {
+  return useSWR(
+    `memories-${JSON.stringify(params)}`,
+    () => apiClient.getMemories(params),
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000, // 5 seconds
+    }
+  );
+}
+```
+
+### Backend Optimizations
+
+1. **Database Indexes**:
+```sql
+-- Add to supabase/schema.sql
+CREATE INDEX idx_memories_type ON memories(type);
+CREATE INDEX idx_memories_created_at ON memories(created_at DESC);
+CREATE INDEX idx_memories_tags ON memories USING GIN(tags);
+```
+
+2. **API Response Optimization**:
+```typescript
+// apps/zmemory/app/api/memories/route.ts
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
+  
+  // Use pagination and limits
+  const { data, error } = await supabase
+    .from('memories')
+    .select('id, type, content, tags, created_at') // Only select needed fields
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'public, max-age=60, s-maxage=60'
+    }
+  });
+}
+```
+
+## Debugging
+
+### Frontend Debugging
+
+1. **Browser DevTools**:
+   - Use React Developer Tools extension
+   - Network tab for API call monitoring
+   - Console for error tracking
+
+2. **Next.js Debugging**:
 ```bash
-# 启动调试模式
+# Enable debug mode
 npm run dev -- --inspect
+
+# View in Chrome DevTools
+# Go to chrome://inspect
 ```
 
-### 后端调试
+### Backend Debugging
 
-1. 使用 Vercel 函数日志
-2. 使用 Supabase 日志
-3. 本地调试 API 路由
+1. **API Logging**:
+```typescript
+// apps/zmemory/app/api/memories/route.ts
+export async function POST(request: NextRequest) {
+  console.log(`[${new Date().toISOString()}] POST /api/memories`);
+  
+  try {
+    const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
+    // ... processing ...
+    
+    console.log('Response data:', JSON.stringify(data, null, 2));
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
 
-### 数据库调试
+2. **Supabase Debugging**:
+   - Use Supabase Dashboard logs
+   - Enable RLS policy logging
+   - Monitor real-time queries
 
-1. 使用 Supabase Dashboard
-2. 使用 SQL Editor
-3. 查看实时日志
+## Deployment Preparation
 
-## 性能优化
-
-### 前端优化
-
-1. **代码分割**
-   ```tsx
-   import dynamic from 'next/dynamic'
-   
-   const DynamicComponent = dynamic(() => import('./Component'))
-   ```
-
-2. **图片优化**
-   ```tsx
-   import Image from 'next/image'
-   
-   <Image
-     src="/image.jpg"
-     alt="Description"
-     width={500}
-     height={300}
-     priority
-   />
-   ```
-
-3. **缓存策略**
-   ```tsx
-   export async function GET() {
-     return new Response(data, {
-       headers: {
-         'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59',
-       },
-     })
-   }
-   ```
-
-### 数据库优化
-
-1. **索引优化**
-   ```sql
-   CREATE INDEX idx_tasks_user_id ON tasks(user_id);
-   CREATE INDEX idx_tasks_status ON tasks(status);
-   ```
-
-2. **查询优化**
-   ```sql
-   -- 使用 LIMIT 限制结果
-   SELECT * FROM tasks WHERE user_id = $1 LIMIT 50;
-   
-   -- 使用索引字段排序
-   SELECT * FROM tasks ORDER BY created_at DESC;
-   ```
-
-## 部署
-
-### 本地测试
+### Build Verification
 
 ```bash
-# 构建所有应用
+# Verify all builds work
 npm run build
 
-# 启动生产服务器
-npm run start --workspace=@zephyros/zflow
-npm run start --workspace=@zephyros/zmemory
+# Check TypeScript compilation
+npm run type-check
+
+# Test production build locally
+npm run start --filter=zflow
+npm run start --filter=zmemory
 ```
 
-### Vercel 部署
+### Environment Variables for Production
 
-```bash
-# 安装 Vercel CLI
-npm i -g vercel
-
-# 登录 Vercel
-vercel login
-
-# 部署项目
-vercel --prod
+```env
+# Production .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-production-service-key
+NEXT_PUBLIC_API_URL=https://your-api-domain.vercel.app
 ```
 
-## 常见问题
+## Troubleshooting
 
-### 1. 依赖问题
+### Common Issues
 
+1. **Port Conflicts**:
 ```bash
-# 清理依赖
-rm -rf node_modules
-rm -rf packages/*/node_modules
-rm -rf apps/*/node_modules
+# Find and kill processes using ports
+lsof -ti:3000 | xargs kill -9
+lsof -ti:3001 | xargs kill -9
+```
 
-# 重新安装
+2. **Dependency Issues**:
+```bash
+# Clean install
+rm -rf node_modules apps/*/node_modules packages/*/node_modules
 npm install
 ```
 
-### 2. 类型错误
-
+3. **TypeScript Errors**:
 ```bash
-# 重新构建共享包
-npm run build --workspace=@zephyros/shared
-
-# 检查类型
+# Rebuild shared package
+npm run build --filter=shared
 npm run type-check
 ```
 
-### 3. 端口冲突
+4. **Supabase Connection Issues**:
+   - Verify environment variables
+   - Check Supabase project status
+   - Validate API keys and URLs
 
+### Performance Issues
+
+1. **Slow API Responses**:
+   - Check database query performance
+   - Add appropriate indexes
+   - Implement response caching
+
+2. **Frontend Bundle Size**:
 ```bash
-# 检查端口占用
-lsof -i :3001
-lsof -i :3002
+# Analyze bundle size
+npm install --save-dev @next/bundle-analyzer
 
-# 杀死进程
-kill -9 <PID>
+# Add to next.config.js
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+module.exports = withBundleAnalyzer({
+  // ... your config
+});
+
+# Run analysis
+ANALYZE=true npm run build
 ```
 
-### 4. 环境变量问题
+## Contributing Guidelines
+
+### Code Standards
+
+1. **TypeScript**: Use strict mode, avoid `any` types
+2. **Components**: Use functional components with hooks
+3. **Styling**: Use Tailwind CSS utility classes
+4. **Naming**: Use descriptive, consistent naming conventions
+5. **Comments**: Add JSDoc comments for complex functions
+
+### Git Workflow
 
 ```bash
-# 检查环境变量
-echo $NEXT_PUBLIC_SUPABASE_URL
+# Feature development
+git checkout -b feature/feature-name
+git commit -m "feat: description"
 
-# 重新加载环境变量
-source .env.local
+# Bug fixes
+git checkout -b fix/bug-description
+git commit -m "fix: description"
+
+# Documentation
+git checkout -b docs/update-description
+git commit -m "docs: description"
 ```
 
-## 贡献指南
+### Pull Request Process
 
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 推送到分支
-5. 创建 Pull Request
+1. Ensure all tests pass
+2. Update documentation if needed
+3. Add meaningful commit messages
+4. Request review from maintainers
 
-## 资源链接
+## Resources
 
-- [Next.js 文档](https://nextjs.org/docs)
-- [React 文档](https://react.dev)
-- [TypeScript 文档](https://www.typescriptlang.org/docs)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [Supabase 文档](https://supabase.com/docs)
-- [Vercel 文档](https://vercel.com/docs) 
+- **Next.js**: https://nextjs.org/docs
+- **React**: https://react.dev/learn
+- **TypeScript**: https://www.typescriptlang.org/docs
+- **Tailwind CSS**: https://tailwindcss.com/docs
+- **Supabase**: https://supabase.com/docs
+- **SWR**: https://swr.vercel.app/docs
+- **Vercel**: https://vercel.com/docs
+
+---
+
+**Last Updated**: August 2024  
+**Version**: 2.0.0

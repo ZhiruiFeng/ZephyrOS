@@ -55,7 +55,7 @@ export default function ZFlowPage() {
       setShowAddForm(false)
     } catch (error) {
       console.error('Failed to create task:', error)
-      alert('创建任务失败，请重试')
+      alert('Failed to create task, please try again')
     }
   }
 
@@ -71,18 +71,18 @@ export default function ZFlowPage() {
       })
     } catch (error) {
       console.error('Failed to update task:', error)
-      alert('更新任务失败，请重试')
+      alert('Failed to update task, please try again')
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('确定要删除这个任务吗？')) return
+    if (!confirm('Are you sure you want to delete this task?')) return
 
     try {
       await deleteMemory(taskId)
     } catch (error) {
       console.error('Failed to delete task:', error)
-      alert('删除任务失败，请重试')
+      alert('Failed to delete task, please try again')
     }
   }
 
@@ -112,12 +112,12 @@ export default function ZFlowPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-          <p className="text-red-600">加载任务失败</p>
+          <p className="text-red-600">Failed to load tasks</p>
           <button 
             onClick={() => refetch()}
             className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg"
           >
-            重试
+            Retry
           </button>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function ZFlowPage() {
     <div className="py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">ZFlow</h1>
-        <p className="text-gray-600">管理你的日常任务</p>
+        <p className="text-gray-600">Manage your daily tasks</p>
       </div>
 
       {/* 添加任务 */}
@@ -139,7 +139,7 @@ export default function ZFlowPage() {
             className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            添加新任务
+            Add New Task
           </button>
         ) : (
           <div className="space-y-4">
@@ -149,7 +149,7 @@ export default function ZFlowPage() {
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                placeholder="任务标题..."
+                placeholder="Task title..."
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <select
@@ -157,15 +157,15 @@ export default function ZFlowPage() {
                 onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="low">低优先级</option>
-                <option value="medium">中优先级</option>
-                <option value="high">高优先级</option>
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
               </select>
             </div>
             <textarea
               value={newTaskDescription}
               onChange={(e) => setNewTaskDescription(e.target.value)}
-              placeholder="任务描述（可选）..."
+              placeholder="Task description (optional)..."
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
@@ -175,13 +175,13 @@ export default function ZFlowPage() {
                 disabled={!newTask.trim()}
                 className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50"
               >
-                创建任务
+                Create Task
               </button>
               <button
                 onClick={() => setShowAddForm(false)}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors duration-200"
               >
-                取消
+                Cancel
               </button>
             </div>
           </div>
@@ -193,7 +193,7 @@ export default function ZFlowPage() {
         {tasks.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
             <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>还没有任务，开始添加你的第一个任务吧！</p>
+            <p>No tasks yet, start by adding your first task!</p>
           </div>
         ) : (
           tasks.map((task) => {
@@ -219,14 +219,14 @@ export default function ZFlowPage() {
                       <p className="text-sm text-gray-600 mt-1">{taskContent.description}</p>
                     )}
                     <p className="text-xs text-gray-400 mt-2">
-                      创建于 {new Date(task.created_at).toLocaleDateString('zh-CN')}
+                      Created on {new Date(task.created_at).toLocaleDateString('en-US')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {getPriorityIcon(taskContent.priority)}
                     {taskContent.due_date && (
                       <span className="text-xs text-gray-500">
-                        {new Date(taskContent.due_date).toLocaleDateString('zh-CN')}
+                        {new Date(taskContent.due_date).toLocaleDateString('en-US')}
                       </span>
                     )}
                     <button

@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-// 创建 Supabase 客户端
+// Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// 检查环境变量
+// Check environment variables
 if (!supabaseUrl || !supabaseKey) {
   console.warn('Missing Supabase environment variables. API will return mock data.');
 }
@@ -15,7 +15,7 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
-// 数据验证模式
+// Data validation schema
 const MemorySchema = z.object({
   type: z.string(),
   content: z.any(),
@@ -25,18 +25,18 @@ const MemorySchema = z.object({
 
 const MemoryUpdateSchema = MemorySchema.partial();
 
-// GET /api/memories - 获取记忆列表
+// GET /api/memories - Get memories list
 export async function GET(request: NextRequest) {
   try {
-    // 如果没有配置 Supabase，返回模拟数据
+    // If Supabase is not configured, return mock data
     if (!supabase) {
       return NextResponse.json([
         {
           id: '1',
           type: 'task',
           content: {
-            title: '示例任务',
-            description: '这是一个示例任务',
+            title: 'Sample Task',
+            description: 'This is a sample task',
             status: 'pending',
             priority: 'medium'
           },
@@ -82,12 +82,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/memories - 创建新记忆
+// POST /api/memories - Create new memory
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // 如果没有配置 Supabase，返回模拟响应
+    // If Supabase is not configured, return mock response
     if (!supabase) {
       const mockMemory = {
         id: Date.now().toString(),
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// OPTIONS - 处理 CORS 预检请求
+// OPTIONS - Handle CORS preflight requests
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
