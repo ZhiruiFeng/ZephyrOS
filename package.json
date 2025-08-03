@@ -22,7 +22,9 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "next": "^15.4.5",
+    "next-swagger-doc": "^0.4.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "swagger-jsdoc": "^6.2.8"
   }
 }

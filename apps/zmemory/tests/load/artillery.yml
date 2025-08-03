@@ -1,0 +1,124 @@
+# Artillery.io load testing configuration for ZMemory API
+config:
+  target: "http://localhost:3001"
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 10
+      name: "Ramp up load"
+    - duration: 300
+      arrivalRate: 20
+      name: "Sustained load"
+  processor: "./artillery-processor.js"
+  
+scenarios:
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/health"
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+          expect:
+            - statusCode: 200
+            - hasProperty: "status"
+
+  - name: "Browse Memories"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/memories"
+          qs:
+            limit: 10
+          expect:
+            - statusCode: 200
+            - contentType: json
+      - think: 2
+      - get:
+          url: "/api/memories"
+          qs:
+            type: "task"
+            limit: 5
+          expect:
+            - statusCode: 200
+
+  - name: "Create and Manage Memory"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/memories"
+          json:
+            type: "task"
+            content:
+              title: "Load test task {{ $randomString() }}"
+              status: "pending"
+              priority: "{{ $randomChoice(['low', 'medium', 'high']) }}"
+            tags:
+              - "load-test"
+              - "performance"
+          capture:
+            - json: "$.id"
+              as: "memoryId"
+          expect:
+            - statusCode: 201
+            - hasProperty: "id"
+      
+      - think: 1
+      
+      - get:
+          url: "/api/memories/{{ memoryId }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "id"
+      
+      - think: 2
+      
+      - put:
+          url: "/api/memories/{{ memoryId }}"
+          json:
+            content:
+              status: "completed"
+          expect:
+            - statusCode: 200
+      
+      - think: 1
+      
+      - delete:
+          url: "/api/memories/{{ memoryId }}"
+          expect:
+            - statusCode: 200
+
+  - name: "Error Scenarios"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/memories/00000000-0000-0000-0000-000000000000"
+          expect:
+            - statusCode: 404
+      
+      - post:
+          url: "/api/memories"
+          json:
+            content:
+              title: "Missing type field"
+          expect:
+            - statusCode: 400
+
+  - name: "High Frequency Reads"
+    weight: 10
+    flow:
+      - loop:
+          - get:
+              url: "/api/health"
+              expect:
+                - statusCode: 200
+          - get:
+              url: "/api/memories"
+              qs:
+                limit: 5
+              expect:
+                - statusCode: 200
+        count: 10
