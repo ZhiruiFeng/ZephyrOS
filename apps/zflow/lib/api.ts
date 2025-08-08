@@ -1,5 +1,15 @@
 // API 基础配置
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const normalizeBaseUrl = (url: string): string => {
+  if (!url) return '';
+  let normalized = url.trim();
+  // 去掉末尾的斜杠
+  normalized = normalized.replace(/\/+$/, '');
+  // 若以 /api 结尾，则移除，避免与 endpoint 的 /api 重复
+  normalized = normalized.replace(/\/api$/, '');
+  return normalized;
+};
+
+const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
 // 类型定义
 export interface TaskContent {
@@ -54,7 +64,7 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
@@ -65,7 +75,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+      throw new Error(error.error || `HTTP error ${response.status} for ${url}`);
     }
 
     return response.json();
