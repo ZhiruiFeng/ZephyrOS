@@ -1,10 +1,31 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
 import { TaskContent, TaskMemory } from '../../lib/api'
-import { ListTodo, KanbanSquare, ChevronLeft, Clock, AlertCircle, Circle } from 'lucide-react'
+import dynamicIconImports from 'lucide-react/dynamicIconImports'
+const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+  <Suspense fallback={null}>
+    <Comp {...props} />
+  </Suspense>
+)
+const ListTodo = Lazy(React.lazy(dynamicIconImports['list-todo'] as any))
+const KanbanSquare = Lazy(React.lazy(dynamicIconImports['kanban-square'] as any))
+const ChevronLeft = Lazy(React.lazy(dynamicIconImports['chevron-left'] as any))
+const Clock = Lazy(React.lazy(dynamicIconImports['clock'] as any))
+const AlertCircle = Lazy(React.lazy(dynamicIconImports['alert-circle'] as any))
+const Circle = Lazy(React.lazy(dynamicIconImports['circle'] as any))
+const Tag = Lazy(React.lazy(dynamicIconImports['tag'] as any))
+const Calendar = Lazy(React.lazy(dynamicIconImports['calendar'] as any))
+const Pencil = Lazy(React.lazy(dynamicIconImports['pencil'] as any))
+import TaskEditor from '../components/TaskEditor'
+import { getPriorityIcon } from '../components/TaskIcons'
+import { 
+  isOverdue, 
+  formatDate,
+  formatTagsString
+} from '../utils/taskUtils'
 
 type StatusKey = TaskContent['status']
 
@@ -13,6 +34,7 @@ const COLUMNS: Array<{ key: StatusKey; title: string; hint?: string }> = [
   { key: 'in_progress', title: 'In Progress' },
   { key: 'on_hold', title: 'On Hold' },
   { key: 'completed', title: 'Done' },
+  { key: 'cancelled', title: 'Cancelled' },
 ]
 
 export default function KanbanPage() {
@@ -22,6 +44,8 @@ export default function KanbanPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterPriority, setFilterPriority] = useState<'all' | TaskContent['priority']>('all')
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [selected, setSelected] = useState<TaskMemory | null>(null)
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
@@ -78,17 +102,18 @@ export default function KanbanPage() {
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const priorityIcon = (p: TaskContent['priority']) => {
-    switch (p) {
-      case 'urgent':
-        return <AlertCircle className="w-4 h-4 text-red-600" />
-      case 'high':
-        return <AlertCircle className="w-4 h-4 text-red-500" />
-      case 'medium':
-        return <Clock className="w-4 h-4 text-yellow-500" />
-      default:
-        return <Circle className="w-4 h-4 text-gray-400" />
-    }
+  const openEditor = (task: TaskMemory) => {
+    setSelected(task)
+    setEditorOpen(true)
+  }
+
+  const closeEditor = () => {
+    setEditorOpen(false)
+    setSelected(null)
+  }
+
+  const handleSaveTask = async (taskId: string, data: any) => {
+    await updateTask(taskId, data)
   }
 
   if (isLoading) {
@@ -170,20 +195,47 @@ export default function KanbanPage() {
                     className="card mb-2 cursor-grab active:cursor-grabbing select-none"
                   >
                     <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-medium text-gray-900">{c.title}</div>
+                      <div className="pr-2">
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                          {c.title}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">{c.status}</span>
+                        </div>
                         {c.description && (
                           <div className="text-sm text-gray-600 mt-1 line-clamp-2">{c.description}</div>
                         )}
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          {task.tags?.slice(0, 4).map((tg) => (
+                            <span key={tg} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                              <Tag className="w-3 h-3" /> {tg}
+                            </span>
+                          ))}
+                          {task.tags && task.tags.length > 4 && (
+                            <span className="text-[10px] text-gray-500">+{task.tags.length - 4}</span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-400 mt-2">
-                          创建于 {new Date(task.created_at).toLocaleDateString('zh-CN')}
+                          创建于 {formatDate(task.created_at)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {priorityIcon(c.priority)}
-                        {c.due_date && (
-                          <span className="text-xs text-gray-500">{new Date(c.due_date).toLocaleDateString('zh-CN')}</span>
-                        )}
+                      <div className="flex flex-col items-end gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditor(task)
+                          }}
+                          className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> 编辑
+                        </button>
+                        <div className="flex items-center gap-2">
+                          {getPriorityIcon(c.priority)}
+                          {c.due_date && (
+                            <span className={`text-xs inline-flex items-center gap-1 ${isOverdue(c.due_date) ? 'text-red-600' : 'text-gray-500'}`}>
+                              <Calendar className="w-3.5 h-3.5" />
+                              {formatDate(c.due_date)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -193,6 +245,15 @@ export default function KanbanPage() {
           </div>
         ))}
       </div>
+
+      {/* 使用共享的TaskEditor组件 */}
+      <TaskEditor
+        isOpen={editorOpen}
+        onClose={closeEditor}
+        task={selected}
+        onSave={handleSaveTask}
+        title="编辑任务"
+      />
     </div>
   )
 }
