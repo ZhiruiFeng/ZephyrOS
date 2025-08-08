@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    async function callOpenAI(model: string): Promise<Response> {
+    const callOpenAI = async (model: string): Promise<Response> => {
       const upstream = new FormData();
       upstream.append("file", file as File, (file as File).name || "audio.webm");
       upstream.append("model", model);

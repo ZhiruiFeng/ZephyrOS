@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import { Plus, CheckCircle, Circle, Clock, AlertCircle, Trash2, ChevronDown, Filter, BarChart3, Calendar, User, ListTodo } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, CheckCircle, Circle, Clock, AlertCircle, Trash2, ChevronDown, Filter, BarChart3, Calendar, User, ListTodo, KanbanSquare } from 'lucide-react'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
 
 // 任务类型定义
@@ -149,6 +150,9 @@ export default function ZFlowPage() {
             <p className="text-gray-600">现代化任务管理（看板/筛选/统计）</p>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/kanban" className="btn btn-primary flex items-center gap-2">
+              <KanbanSquare className="w-4 h-4" /> 看板视图
+            </Link>
             <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="text-sm outline-none">
