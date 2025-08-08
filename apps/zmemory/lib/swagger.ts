@@ -78,7 +78,8 @@ export const getApiDocs = async () => {
             properties: {
               title: {
                 type: 'string',
-                description: 'Task title'
+                description: 'Task title',
+                maxLength: 200
               },
               description: {
                 type: 'string',
@@ -86,18 +87,145 @@ export const getApiDocs = async () => {
               },
               status: {
                 type: 'string',
-                enum: ['pending', 'in_progress', 'completed'],
+                enum: ['pending', 'in_progress', 'completed', 'cancelled', 'on_hold'],
                 description: 'Current status of the task'
               },
               priority: {
                 type: 'string',
-                enum: ['low', 'medium', 'high'],
+                enum: ['low', 'medium', 'high', 'urgent'],
                 description: 'Priority level of the task'
+              },
+              category: {
+                type: 'string',
+                enum: ['work', 'personal', 'project', 'meeting', 'learning', 'maintenance', 'other'],
+                description: 'Task category'
               },
               due_date: {
                 type: 'string',
                 format: 'date-time',
                 description: 'Optional due date for the task'
+              },
+              estimated_duration: {
+                type: 'number',
+                minimum: 1,
+                description: 'Estimated duration in minutes'
+              },
+              progress: {
+                type: 'number',
+                minimum: 0,
+                maximum: 100,
+                default: 0,
+                description: 'Task completion progress (0-100%)'
+              },
+              assignee: {
+                type: 'string',
+                description: 'Person assigned to the task'
+              },
+              dependencies: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Array of task IDs this task depends on'
+              },
+              subtasks: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Array of subtask IDs'
+              },
+              notes: {
+                type: 'string',
+                description: 'Additional notes about the task'
+              },
+              completion_date: {
+                type: 'string',
+                format: 'date-time',
+                description: 'Date when the task was completed'
+              }
+            }
+          },
+          TaskMemory: {
+            allOf: [
+              { $ref: '#/components/schemas/Memory' },
+              {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: ['task']
+                  },
+                  content: {
+                    $ref: '#/components/schemas/TaskContent'
+                  }
+                }
+              }
+            ]
+          },
+          CreateTaskRequest: {
+            type: 'object',
+            required: ['type', 'content'],
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['task'],
+                description: 'Must be "task" for task creation'
+              },
+              content: {
+                $ref: '#/components/schemas/TaskContent'
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Optional tags for categorization'
+              },
+              metadata: {
+                type: 'object',
+                description: 'Optional metadata'
+              }
+            }
+          },
+          UpdateTaskRequest: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['task'],
+                description: 'Task type (optional for updates)'
+              },
+              content: {
+                type: 'object',
+                description: 'Partial task content to update',
+                properties: {
+                  title: { type: 'string', maxLength: 200 },
+                  description: { type: 'string' },
+                  status: {
+                    type: 'string',
+                    enum: ['pending', 'in_progress', 'completed', 'cancelled', 'on_hold']
+                  },
+                  priority: {
+                    type: 'string',
+                    enum: ['low', 'medium', 'high', 'urgent']
+                  },
+                  category: {
+                    type: 'string',
+                    enum: ['work', 'personal', 'project', 'meeting', 'learning', 'maintenance', 'other']
+                  },
+                  due_date: { type: 'string', format: 'date-time' },
+                  estimated_duration: { type: 'number', minimum: 1 },
+                  progress: { type: 'number', minimum: 0, maximum: 100 },
+                  assignee: { type: 'string' },
+                  dependencies: { type: 'array', items: { type: 'string' } },
+                  subtasks: { type: 'array', items: { type: 'string' } },
+                  notes: { type: 'string' },
+                  completion_date: { type: 'string', format: 'date-time' }
+                }
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Update tags'
+              },
+              metadata: {
+                type: 'object',
+                description: 'Update metadata'
               }
             }
           },
@@ -238,6 +366,10 @@ export const getApiDocs = async () => {
         {
           name: 'Memories',
           description: 'Memory management operations'
+        },
+        {
+          name: 'Tasks',
+          description: 'Task management operations and statistics'
         }
       ]
     }

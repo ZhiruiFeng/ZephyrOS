@@ -72,6 +72,16 @@ export class APIMonitoring {
     const startTime = Date.now();
     
     try {
+      // Check if Supabase is configured
+      if (!supabase) {
+        return {
+          status: 'degraded',
+          message: 'Database not configured - using mock data',
+          responseTime: Date.now() - startTime,
+          details: { mode: 'mock_data' },
+        };
+      }
+
       // Simple database connectivity test
       const { error } = await supabase
         .from('memories')

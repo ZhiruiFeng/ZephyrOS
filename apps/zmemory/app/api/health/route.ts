@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { APIMonitoring } from '../../../lib/monitoring';
+import { checkEnvironment } from '../../../lib/env-check';
 
 /**
  * @swagger
@@ -50,10 +51,22 @@ export async function GET() {
   try {
     const monitoring = APIMonitoring.getInstance();
     const healthResult = await monitoring.performHealthCheck();
+    const envStatus = checkEnvironment();
+    
+    // Add environment information to health result
+    const enhancedResult = {
+      ...healthResult,
+      environment: {
+        mode: envStatus.mode,
+        configured: envStatus.isConfigured,
+        missing_vars: envStatus.missing,
+        recommendations: envStatus.isConfigured ? [] : envStatus.recommendations
+      }
+    };
     
     const statusCode = healthResult.status === 'unhealthy' ? 503 : 200;
     
-    return NextResponse.json(healthResult, {
+    return NextResponse.json(enhancedResult, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -63,6 +76,8 @@ export async function GET() {
     });
   } catch (error) {
     // Fallback health check if monitoring fails
+    const envStatus = checkEnvironment();
+    
     return NextResponse.json({
       service: 'zmemory-api',
       status: 'unhealthy',
@@ -70,6 +85,12 @@ export async function GET() {
       version: '1.0.0',
       error: 'Health check failed',
       details: error instanceof Error ? error.message : 'Unknown error',
+      environment: {
+        mode: envStatus.mode,
+        configured: envStatus.isConfigured,
+        missing_vars: envStatus.missing,
+        recommendations: envStatus.recommendations
+      }
     }, {
       status: 503,
       headers: {
