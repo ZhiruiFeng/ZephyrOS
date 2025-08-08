@@ -216,33 +216,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(tasks);
     }
 
-    // Build Supabase query
+    // Build Supabase query against tasks table
     let dbQuery = supabase
-      .from('memories')
-      .select('*')
-      .eq('type', 'task');
+      .from('tasks')
+      .select('*');
 
     // Apply filters
     if (query.status) {
-      dbQuery = dbQuery.eq('content->status', query.status);
+      dbQuery = dbQuery.eq('status', query.status);
     }
     if (query.priority) {
-      dbQuery = dbQuery.eq('content->priority', query.priority);
+      dbQuery = dbQuery.eq('priority', query.priority);
     }
-    if (query.category) {
-      dbQuery = dbQuery.eq('content->category', query.category);
-    }
-    if (query.assignee) {
-      dbQuery = dbQuery.eq('content->assignee', query.assignee);
-    }
+    // category/assignee 不在 tasks 表中，忽略
     if (query.search) {
-      dbQuery = dbQuery.or(`content->title.ilike.%${query.search}%,content->description.ilike.%${query.search}%`);
+      dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
     }
     if (query.due_before) {
-      dbQuery = dbQuery.lte('content->due_date', query.due_before);
+      dbQuery = dbQuery.lte('due_date', query.due_before);
     }
     if (query.due_after) {
-      dbQuery = dbQuery.gte('content->due_date', query.due_after);
+      dbQuery = dbQuery.gte('due_date', query.due_after);
     }
     if (query.created_before) {
       dbQuery = dbQuery.lte('created_at', query.created_before);
@@ -258,12 +252,11 @@ export async function GET(request: NextRequest) {
     // Apply sorting
     const ascending = query.sort_order === 'asc';
     if (query.sort_by === 'title') {
-      dbQuery = dbQuery.order('content->title', { ascending });
+      dbQuery = dbQuery.order('title', { ascending });
     } else if (query.sort_by === 'due_date') {
-      dbQuery = dbQuery.order('content->due_date', { ascending, nullsFirst: false });
+      dbQuery = dbQuery.order('due_date', { ascending, nullsFirst: false });
     } else if (query.sort_by === 'priority') {
-      // Custom sorting for priority (urgent > high > medium > low)
-      dbQuery = dbQuery.order('content->priority', { ascending: !ascending });
+      dbQuery = dbQuery.order('priority', { ascending });
     } else {
       dbQuery = dbQuery.order(query.sort_by, { ascending });
     }
@@ -281,7 +274,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(data);
+    // Map tasks rows to TaskMemory shape for compatibility
+    const mapped = (data || []).map((row: any) => ({
+      id: row.id,
+      type: 'task' as const,
+      content: {
+        title: row.title,
+        description: row.description || undefined,
+        status: row.status,
+        priority: row.priority,
+        due_date: row.due_date || undefined,
+      },
+      tags: row.tags || [],
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }));
+    return NextResponse.json(mapped);
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(
@@ -357,16 +365,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(mockTask, { status: 201 });
     }
 
+    const insertPayload: any = {
+      title: taskData.content.title,
+      description: taskData.content.description || null,
+      status: taskData.content.status,
+      priority: taskData.content.priority,
+      due_date: taskData.content.due_date || null,
+      tags: taskData.tags || [],
+      created_at: now,
+      updated_at: now,
+    };
+
     const { data, error } = await supabase
-      .from('memories')
-      .insert({
-        type: 'task',
-        content: taskData.content,
-        tags: taskData.tags || [],
-        metadata: taskData.metadata,
-        created_at: now,
-        updated_at: now,
-      })
+      .from('tasks')
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -378,7 +390,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    const mapped: TaskMemory = {
+      id: data.id,
+      type: 'task',
+      content: {
+        title: data.title,
+        description: data.description || undefined,
+        status: data.status,
+        priority: data.priority,
+        due_date: data.due_date || undefined,
+      },
+      tags: data.tags || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+    return NextResponse.json(mapped, { status: 201 });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(

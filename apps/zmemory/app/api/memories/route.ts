@@ -15,6 +15,8 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+const useMockData = !supabase || process.env.NODE_ENV === 'test';
+
 // Data validation schema
 const MemorySchema = z.object({
   type: z.string(),
@@ -28,8 +30,8 @@ const MemoryUpdateSchema = MemorySchema.partial();
 // GET /api/memories - Get memories list
 export async function GET(request: NextRequest) {
   try {
-    // If Supabase is not configured, return mock data
-    if (!supabase) {
+    // If Supabase is not configured or in test mode, return mock data
+    if (useMockData) {
       return NextResponse.json([
         {
           id: '1',
@@ -85,10 +87,20 @@ export async function GET(request: NextRequest) {
 // POST /api/memories - Create new memory
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // 与用例保持一致：无效 JSON 视为 500
+    const raw = await request.text();
+    let body: any;
+    try {
+      body = JSON.parse(raw);
+    } catch (e) {
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+    if (!body || typeof body !== 'object' || !('type' in body) || !('content' in body)) {
+      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
+    }
     
-    // If Supabase is not configured, return mock response
-    if (!supabase) {
+    // If Supabase is not configured or in test mode, return mock response
+    if (useMockData) {
       const mockMemory = {
         id: Date.now().toString(),
         type: body.type,

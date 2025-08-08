@@ -38,10 +38,10 @@ const supabase = supabaseUrl && supabaseKey
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // If Supabase is not configured, return mock data
     if (!supabase) {
@@ -73,10 +73,9 @@ export async function GET(
     }
 
     const { data, error } = await supabase
-      .from('memories')
+      .from('tasks')
       .select('*')
       .eq('id', id)
-      .eq('type', 'task')
       .single();
 
     if (error) {
@@ -93,7 +92,20 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      id: data.id,
+      type: 'task',
+      content: {
+        title: data.title,
+        description: data.description || undefined,
+        status: data.status,
+        priority: data.priority,
+        due_date: data.due_date || undefined,
+      },
+      tags: data.tags || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(
@@ -145,10 +157,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     
     // Validate request body
@@ -196,10 +208,9 @@ export async function PUT(
 
     // First, get the existing task
     const { data: existingTask, error: fetchError } = await supabase
-      .from('memories')
+      .from('tasks')
       .select('*')
       .eq('id', id)
-      .eq('type', 'task')
       .single();
 
     if (fetchError) {
@@ -217,36 +228,23 @@ export async function PUT(
     }
 
     // Merge the existing content with updates
-    const updatedContent = updateData.content 
-      ? { ...existingTask.content, ...updateData.content }
-      : existingTask.content;
-
-    // Auto-set completion_date when status changes to completed
-    if (updateData.content?.status === 'completed' && !updateData.content?.completion_date) {
-      updatedContent.completion_date = now;
-      updatedContent.progress = 100;
-    }
-
-    // Prepare update object
-    const updateObject: any = {
-      updated_at: now
-    };
-
+    // Prepare update object mapped to tasks columns
+    const updateObject: any = { updated_at: now };
     if (updateData.content) {
-      updateObject.content = updatedContent;
+      if (updateData.content.title !== undefined) updateObject.title = updateData.content.title;
+      if (updateData.content.description !== undefined) updateObject.description = updateData.content.description;
+      if (updateData.content.status !== undefined) updateObject.status = updateData.content.status;
+      if (updateData.content.priority !== undefined) updateObject.priority = updateData.content.priority;
+      if (updateData.content.due_date !== undefined) updateObject.due_date = updateData.content.due_date;
     }
     if (updateData.tags !== undefined) {
       updateObject.tags = updateData.tags;
     }
-    if (updateData.metadata !== undefined) {
-      updateObject.metadata = updateData.metadata;
-    }
 
     const { data, error } = await supabase
-      .from('memories')
+      .from('tasks')
       .update(updateObject)
       .eq('id', id)
-      .eq('type', 'task')
       .select()
       .single();
 
@@ -258,7 +256,20 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      id: data.id,
+      type: 'task',
+      content: {
+        title: data.title,
+        description: data.description || undefined,
+        status: data.status,
+        priority: data.priority,
+        due_date: data.due_date || undefined,
+      },
+      tags: data.tags || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(
@@ -303,10 +314,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // If Supabase is not configured, return mock response
     if (!supabase) {
@@ -324,10 +335,9 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('memories')
+      .from('tasks')
       .delete()
-      .eq('id', id)
-      .eq('type', 'task');
+      .eq('id', id);
 
     if (error) {
       console.error('Database error:', error);

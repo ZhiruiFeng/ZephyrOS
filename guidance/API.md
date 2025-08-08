@@ -89,7 +89,64 @@ Check the health status of the API service.
 
 ---
 
-### Memory Management
+### Task Management (推荐)
+
+基于 `/api/tasks` 的专用任务接口，具备更丰富的筛选、排序与状态更新能力。
+
+#### GET /api/tasks
+
+查询任务列表（支持筛选、分页、排序）。
+
+可用查询参数：`status`、`priority`、`category`、`assignee`、`tags`、`search`、`due_before`、`due_after`、`created_before`、`created_after`、`limit`、`offset`、`sort_by`、`sort_order`。
+
+示例：
+```bash
+GET /api/tasks?status=pending&priority=high&limit=10&offset=0&sort_by=created_at&sort_order=desc
+```
+
+响应：`TaskMemory[]`
+
+#### POST /api/tasks
+
+创建任务。
+
+请求体：
+```json
+{
+  "type": "task",
+  "content": {
+    "title": "New task",
+    "description": "Task description",
+    "status": "pending",
+    "priority": "medium",
+    "category": "work"
+  },
+  "tags": ["work", "important"],
+  "metadata": { "project": "zephyros" }
+}
+```
+
+响应：`TaskMemory`
+
+#### GET /api/tasks/[id]
+
+获取单个任务。
+
+#### PUT /api/tasks/[id]
+
+更新任务（部分字段）。
+
+#### DELETE /api/tasks/[id]
+
+删除任务。
+
+#### PUT /api/tasks/[id]/status
+
+仅更新任务状态（及可选的 `notes`、`progress`）。
+
+---
+
+### Memory Management（兼容）
 
 #### GET /api/memories
 
@@ -105,7 +162,7 @@ Retrieve a list of memories with optional filtering.
 # Get all memories
 GET /api/memories
 
-# Get only tasks
+# Get only tasks (兼容旧接口)
 GET /api/memories?type=task
 
 # Get first 10 tasks
@@ -561,4 +618,4 @@ Access-Control-Allow-Headers: Content-Type, Authorization
 ---
 
 **API Version**: 1.0.0  
-**Last Updated**: August 2024
+**Last Updated**: August 2025

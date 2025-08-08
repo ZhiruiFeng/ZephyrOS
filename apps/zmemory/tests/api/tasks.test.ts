@@ -74,6 +74,64 @@ describe('/api/tasks', () => {
       expect(response.status).toBe(400);
       expect(data).toHaveProperty('error');
     });
+
+    it('should filter tasks by category', async () => {
+      const request = new NextRequest('http://localhost:3001/api/tasks?category=work');
+      const response = await getTasks(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(data)).toBe(true);
+      data.forEach((task: any) => {
+        // mock 数据里 task 1/2 是 work 或未设置，确保存在类别字段时为 work
+        if (task.content.category) {
+          expect(task.content.category).toBe('work');
+        }
+      });
+    });
+
+    it('should filter tasks by tags', async () => {
+      const request = new NextRequest('http://localhost:3001/api/tasks?tags=api,development');
+      const response = await getTasks(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(data)).toBe(true);
+      // 至少包含一个 tag
+      data.forEach((task: any) => {
+        expect(task.tags.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should support pagination with limit and offset', async () => {
+      const firstPageReq = new NextRequest('http://localhost:3001/api/tasks?limit=1&offset=0');
+      const secondPageReq = new NextRequest('http://localhost:3001/api/tasks?limit=1&offset=1');
+
+      const [firstRes, secondRes] = await Promise.all([
+        getTasks(firstPageReq),
+        getTasks(secondPageReq)
+      ]);
+
+      const firstData = await firstRes.json();
+      const secondData = await secondRes.json();
+
+      expect(firstRes.status).toBe(200);
+      expect(secondRes.status).toBe(200);
+      expect(Array.isArray(firstData)).toBe(true);
+      expect(Array.isArray(secondData)).toBe(true);
+      if (firstData.length && secondData.length) {
+        expect(firstData[0].id).not.toBe(secondData[0].id);
+      }
+    });
+
+    it('should support sorting by title asc', async () => {
+      const request = new NextRequest('http://localhost:3001/api/tasks?sort_by=title&sort_order=asc');
+      const response = await getTasks(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(data)).toBe(true);
+    });
   });
 
   describe('POST /api/tasks', () => {
@@ -269,6 +327,25 @@ describe('/api/tasks', () => {
     it('should validate status values', async () => {
       const statusUpdate = {
         status: 'invalid_status'
+      };
+
+      const request = new NextRequest('http://localhost:3001/api/tasks/1/status', {
+        method: 'PUT',
+        body: JSON.stringify(statusUpdate),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await updateStatus(request, { params: { id: '1' } });
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data).toHaveProperty('error');
+    });
+
+    it('should validate progress range', async () => {
+      const statusUpdate = {
+        status: 'in_progress',
+        progress: 200
       };
 
       const request = new NextRequest('http://localhost:3001/api/tasks/1/status', {

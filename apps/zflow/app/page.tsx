@@ -1,16 +1,16 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Plus, CheckCircle, Circle, Clock, AlertCircle, Trash2 } from 'lucide-react'
-import { useTasks, useCreateMemory, useUpdateMemory, useDeleteMemory } from '../hooks/useMemories'
+import React, { useMemo, useState } from 'react'
+import { Plus, CheckCircle, Circle, Clock, AlertCircle, Trash2, ChevronDown, Filter, BarChart3, Calendar, User, ListTodo } from 'lucide-react'
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
 
 // 任务类型定义
-interface Task {
+  interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
+    status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold';
+    priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   updated_at: string;
   due_date?: string;
@@ -20,14 +20,18 @@ interface Task {
 export default function ZFlowPage() {
   const [newTask, setNewTask] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
-  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
+  const [newTaskDueDate, setNewTaskDueDate] = useState<string>('')
   const [showAddForm, setShowAddForm] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'>('all')
+  const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high' | 'urgent'>('all')
+  const [search, setSearch] = useState('')
 
   // 使用 API hooks
-  const { memories: tasks, isLoading, error, refetch } = useTasks()
-  const { createMemory } = useCreateMemory()
-  const { updateMemory } = useUpdateMemory()
-  const { deleteMemory } = useDeleteMemory()
+  const { tasks, isLoading, error, refetch } = useTasks({})
+  const { createTask } = useCreateTask()
+  const { updateTask } = useUpdateTask()
+  const { deleteTask } = useDeleteTask()
 
   const addTask = async () => {
     if (!newTask.trim()) return
@@ -38,11 +42,10 @@ export default function ZFlowPage() {
         description: newTaskDescription,
         status: 'pending' as const,
         priority: newTaskPriority,
-        due_date: null,
-        tags: ['zflow', 'task']
+        due_date: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
       }
 
-      await createMemory({
+      await createTask({
         type: 'task',
         content: taskData,
         tags: ['zflow', 'task']
@@ -52,6 +55,7 @@ export default function ZFlowPage() {
       setNewTask('')
       setNewTaskDescription('')
       setNewTaskPriority('medium')
+      setNewTaskDueDate('')
       setShowAddForm(false)
     } catch (error) {
       console.error('Failed to create task:', error)
@@ -63,7 +67,7 @@ export default function ZFlowPage() {
     try {
       const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
       
-      await updateMemory(taskId, {
+      await updateTask(taskId, {
         content: {
           ...tasks.find(t => t.id === taskId)?.content,
           status: newStatus
@@ -79,7 +83,7 @@ export default function ZFlowPage() {
     if (!confirm('Are you sure you want to delete this task?')) return
 
     try {
-      await deleteMemory(taskId)
+      await deleteTask(taskId)
     } catch (error) {
       console.error('Failed to delete task:', error)
       alert('Failed to delete task, please try again')
@@ -90,6 +94,8 @@ export default function ZFlowPage() {
     switch (priority) {
       case 'high':
         return <AlertCircle className="w-4 h-4 text-red-500" />
+      case 'urgent':
+        return <AlertCircle className="w-4 h-4 text-red-600" />
       case 'medium':
         return <Clock className="w-4 h-4 text-yellow-500" />
       case 'low':
@@ -98,6 +104,16 @@ export default function ZFlowPage() {
         return <Clock className="w-4 h-4 text-yellow-500" />
     }
   }
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      const c = t.content as Task
+      const matchStatus = filterStatus === 'all' || c.status === filterStatus
+      const matchPriority = filterPriority === 'all' || c.priority === filterPriority
+      const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
+      return matchStatus && matchPriority && matchSearch
+    })
+  }, [tasks, filterStatus, filterPriority, search])
 
   if (isLoading) {
     return (
@@ -127,8 +143,40 @@ export default function ZFlowPage() {
   return (
     <div className="py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">ZFlow</h1>
-        <p className="text-gray-600">Manage your daily tasks</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2"><ListTodo className="w-7 h-7" /> ZFlow</h1>
+            <p className="text-gray-600">现代化任务管理（看板/筛选/统计）</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="text-sm outline-none">
+                <option value="all">全部状态</option>
+                <option value="pending">待办</option>
+                <option value="in_progress">进行中</option>
+                <option value="completed">已完成</option>
+                <option value="on_hold">搁置</option>
+                <option value="cancelled">取消</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            </div>
+            <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as any)} className="text-sm outline-none">
+                <option value="all">全部优先级</option>
+                <option value="urgent">紧急</option>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            </div>
+            <div className="hidden md:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索标题或描述..." className="text-sm outline-none" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 添加任务 */}
@@ -154,12 +202,13 @@ export default function ZFlowPage() {
               />
               <select
                 value={newTaskPriority}
-                onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
+                onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="low">Low Priority</option>
                 <option value="medium">Medium Priority</option>
                 <option value="high">High Priority</option>
+                <option value="urgent">Urgent</option>
               </select>
             </div>
             <textarea
@@ -169,6 +218,17 @@ export default function ZFlowPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <input
+                  type="date"
+                  value={newTaskDueDate}
+                  onChange={(e) => setNewTaskDueDate(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={addTask}
@@ -188,15 +248,15 @@ export default function ZFlowPage() {
         )}
       </div>
 
-      {/* 任务列表 */}
+      {/* 任务列表（列表视图 + 基础看板风格分组可扩展） */}
       <div className="space-y-4">
-        {tasks.length === 0 ? (
+        {filteredTasks.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
             <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>No tasks yet, start by adding your first task!</p>
           </div>
         ) : (
-          tasks.map((task) => {
+          filteredTasks.map((task) => {
             const taskContent = task.content as Task
             return (
               <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

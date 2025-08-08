@@ -17,8 +17,6 @@ const StatusUpdateSchema = z.object({
     TaskStatus.PENDING,
     TaskStatus.IN_PROGRESS,
     TaskStatus.COMPLETED,
-    TaskStatus.CANCELLED,
-    TaskStatus.ON_HOLD
   ]),
   notes: z.string().optional(),
   progress: z.number().min(0).max(100).optional()
@@ -78,10 +76,10 @@ const StatusUpdateSchema = z.object({
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     
     // Validate request body
@@ -128,10 +126,9 @@ export async function PUT(
 
     // First, get the existing task
     const { data: existingTask, error: fetchError } = await supabase
-      .from('memories')
+      .from('tasks')
       .select('*')
       .eq('id', id)
-      .eq('type', 'task')
       .single();
 
     if (fetchError) {
@@ -149,44 +146,14 @@ export async function PUT(
     }
 
     // Prepare updated content
-    const updatedContent = {
-      ...existingTask.content,
-      status: status,
-      updated_at: now
-    };
-
-    // Add notes if provided
-    if (notes) {
-      updatedContent.notes = notes;
-    }
-
-    // Update progress if provided, or auto-set based on status
-    if (progress !== undefined) {
-      updatedContent.progress = progress;
-    } else if (status === TaskStatus.COMPLETED) {
-      updatedContent.progress = 100;
-    } else if (status === TaskStatus.PENDING) {
-      updatedContent.progress = 0;
-    }
-
-    // Auto-set completion_date when status changes to completed
-    if (status === TaskStatus.COMPLETED && !updatedContent.completion_date) {
-      updatedContent.completion_date = now;
-    }
-
-    // Remove completion_date if status changes from completed to something else
-    if (status !== TaskStatus.COMPLETED && updatedContent.completion_date) {
-      delete updatedContent.completion_date;
-    }
+    const updateObject: any = { status, updated_at: now };
+    if (progress !== undefined) updateObject.progress = progress;
+    if (notes !== undefined) updateObject.description = existingTask.description ? `${existingTask.description}\n${notes}` : notes;
 
     const { data, error } = await supabase
-      .from('memories')
-      .update({
-        content: updatedContent,
-        updated_at: now
-      })
+      .from('tasks')
+      .update(updateObject)
       .eq('id', id)
-      .eq('type', 'task')
       .select()
       .single();
 
@@ -198,7 +165,20 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      id: data.id,
+      type: 'task',
+      content: {
+        title: data.title,
+        description: data.description || undefined,
+        status: data.status,
+        priority: data.priority,
+        due_date: data.due_date || undefined,
+      },
+      tags: data.tags || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(

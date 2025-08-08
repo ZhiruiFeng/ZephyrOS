@@ -1,17 +1,13 @@
 import useSWR, { mutate } from 'swr';
-import { apiClient, Memory, CreateMemoryRequest, UpdateMemoryRequest } from '../lib/api';
+import { apiClient, TaskMemory, CreateTaskRequest, UpdateTaskRequest } from '../lib/api';
 
 // 获取记忆列表的 hook
-export function useMemories(params?: {
-  type?: string;
-  limit?: number;
-  offset?: number;
-}) {
-  const key = params ? `memories-${JSON.stringify(params)}` : 'memories';
-  
+export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0]) {
+  const key = params ? `tasks-${JSON.stringify(params)}` : 'tasks';
+
   const { data, error, isLoading, mutate: refetch } = useSWR(
     key,
-    () => apiClient.getMemories(params),
+    () => apiClient.getTasks(params),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -19,7 +15,7 @@ export function useMemories(params?: {
   );
 
   return {
-    memories: data || [],
+    tasks: (data as TaskMemory[]) || [],
     isLoading,
     error,
     refetch,
@@ -27,10 +23,10 @@ export function useMemories(params?: {
 }
 
 // 获取单个记忆的 hook
-export function useMemory(id: string) {
+export function useTask(id: string) {
   const { data, error, isLoading, mutate: refetch } = useSWR(
-    id ? `memory-${id}` : null,
-    () => apiClient.getMemory(id),
+    id ? `task-${id}` : null,
+    () => apiClient.getTask(id),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -38,7 +34,7 @@ export function useMemory(id: string) {
   );
 
   return {
-    memory: data,
+    task: data as TaskMemory | undefined,
     isLoading,
     error,
     refetch,
@@ -46,69 +42,51 @@ export function useMemory(id: string) {
 }
 
 // 创建记忆的 hook
-export function useCreateMemory() {
-  const createMemory = async (data: CreateMemoryRequest) => {
+export function useCreateTask() {
+  const createTask = async (data: CreateTaskRequest) => {
     try {
-      const newMemory = await apiClient.createMemory(data);
-      
-      // 更新缓存
-      await mutate('memories');
-      
-      return newMemory;
+      const newTask = await apiClient.createTask(data);
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));
+      return newTask;
     } catch (error) {
-      console.error('Failed to create memory:', error);
+      console.error('Failed to create task:', error);
       throw error;
     }
   };
 
-  return { createMemory };
+  return { createTask };
 }
 
 // 更新记忆的 hook
-export function useUpdateMemory() {
-  const updateMemory = async (id: string, data: UpdateMemoryRequest) => {
+export function useUpdateTask() {
+  const updateTask = async (id: string, data: UpdateTaskRequest) => {
     try {
-      const updatedMemory = await apiClient.updateMemory(id, data);
-      
-      // 更新缓存
-      await mutate(`memory-${id}`, updatedMemory, false);
-      await mutate('memories');
-      
-      return updatedMemory;
+      const updatedTask = await apiClient.updateTask(id, data);
+      await mutate(`task-${id}`, updatedTask, false);
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));
+      return updatedTask;
     } catch (error) {
-      console.error('Failed to update memory:', error);
+      console.error('Failed to update task:', error);
       throw error;
     }
   };
 
-  return { updateMemory };
+  return { updateTask };
 }
 
 // 删除记忆的 hook
-export function useDeleteMemory() {
-  const deleteMemory = async (id: string) => {
+export function useDeleteTask() {
+  const deleteTask = async (id: string) => {
     try {
-      await apiClient.deleteMemory(id);
-      
-      // 更新缓存
-      await mutate('memories');
-      
+      await apiClient.deleteTask(id);
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));
       return { success: true };
     } catch (error) {
-      console.error('Failed to delete memory:', error);
+      console.error('Failed to delete task:', error);
       throw error;
     }
   };
 
-  return { deleteMemory };
+  return { deleteTask };
 }
-
-// 获取任务列表的 hook（便捷方法）
-export function useTasks() {
-  return useMemories({ type: 'task' });
-}
-
-// 获取笔记列表的 hook（便捷方法）
-export function useNotes() {
-  return useMemories({ type: 'note' });
-} 
+// 兼容导出：若有旧代码引用 useTasks，此实现即为任务数据源

@@ -2,26 +2,42 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // 类型定义
-export interface Memory {
+export interface TaskContent {
+  title: string;
+  description?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  category?: 'work' | 'personal' | 'project' | 'meeting' | 'learning' | 'maintenance' | 'other';
+  due_date?: string;
+  estimated_duration?: number;
+  progress?: number;
+  assignee?: string;
+  dependencies?: string[];
+  subtasks?: string[];
+  notes?: string;
+  completion_date?: string;
+}
+
+export interface TaskMemory {
   id: string;
-  type: string;
-  content: any;
-  tags?: string[];
+  type: 'task';
+  content: TaskContent;
+  tags: string[];
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
 
-export interface CreateMemoryRequest {
-  type: string;
-  content: any;
+export interface CreateTaskRequest {
+  type: 'task';
+  content: TaskContent;
   tags?: string[];
   metadata?: Record<string, any>;
 }
 
-export interface UpdateMemoryRequest {
-  type?: string;
-  content?: any;
+export interface UpdateTaskRequest {
+  type?: 'task';
+  content?: Partial<TaskContent>;
   tags?: string[];
   metadata?: Record<string, any>;
 }
@@ -55,49 +71,91 @@ class ApiClient {
     return response.json();
   }
 
-  // 获取记忆列表
-  async getMemories(params?: {
-    type?: string;
+  // 获取任务列表（支持丰富筛选）
+  async getTasks(params?: {
+    status?: TaskContent['status'];
+    priority?: TaskContent['priority'];
+    category?: TaskContent['category'];
+    assignee?: string;
+    tags?: string; // comma separated
+    search?: string;
+    due_before?: string;
+    due_after?: string;
+    created_before?: string;
+    created_after?: string;
     limit?: number;
     offset?: number;
-  }): Promise<Memory[]> {
+    sort_by?: 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'title';
+    sort_order?: 'asc' | 'desc';
+  }): Promise<TaskMemory[]> {
     const searchParams = new URLSearchParams();
-    if (params?.type) searchParams.append('type', params.type);
-    if (params?.limit) searchParams.append('limit', params.limit.toString());
-    if (params?.offset) searchParams.append('offset', params.offset.toString());
-
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) searchParams.append(k, String(v));
+      });
+    }
     const queryString = searchParams.toString();
-    const endpoint = `/api/memories${queryString ? `?${queryString}` : ''}`;
-    
-    return this.request<Memory[]>(endpoint);
+    const endpoint = `/api/tasks${queryString ? `?${queryString}` : ''}`;
+    return this.request<TaskMemory[]>(endpoint);
   }
 
-  // 获取单个记忆
-  async getMemory(id: string): Promise<Memory> {
-    return this.request<Memory>(`/api/memories/${id}`);
+  // 获取单个任务
+  async getTask(id: string): Promise<TaskMemory> {
+    return this.request<TaskMemory>(`/api/tasks/${id}`);
   }
 
-  // 创建记忆
-  async createMemory(data: CreateMemoryRequest): Promise<Memory> {
-    return this.request<Memory>('/api/memories', {
+  // 创建任务
+  async createTask(data: CreateTaskRequest): Promise<TaskMemory> {
+    return this.request<TaskMemory>('/api/tasks', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  // 更新记忆
-  async updateMemory(id: string, data: UpdateMemoryRequest): Promise<Memory> {
-    return this.request<Memory>(`/api/memories/${id}`, {
+  // 更新任务
+  async updateTask(id: string, data: UpdateTaskRequest): Promise<TaskMemory> {
+    return this.request<TaskMemory>(`/api/tasks/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  // 删除记忆
-  async deleteMemory(id: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>(`/api/memories/${id}`, {
+  // 更新任务状态（便捷）
+  async updateTaskStatus(id: string, payload: { status: TaskContent['status']; notes?: string; progress?: number; }): Promise<TaskMemory> {
+    return this.request<TaskMemory>(`/api/tasks/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // 删除任务
+  async deleteTask(id: string): Promise<{ message: string; id: string }> {
+    return this.request<{ message: string; id: string }>(`/api/tasks/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // 任务统计
+  async getTaskStats(params?: { from_date?: string; to_date?: string; assignee?: string; }): Promise<{
+    total: number;
+    by_status: Record<string, number>;
+    by_priority: Record<string, number>;
+    by_category: Record<string, number>;
+    overdue: number;
+    due_today: number;
+    due_this_week: number;
+    completion_rate: number;
+    average_completion_time: number;
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) searchParams.append(k, String(v));
+      });
+    }
+    const queryString = searchParams.toString();
+    const endpoint = `/api/tasks/stats${queryString ? `?${queryString}` : ''}`;
+    return this.request(endpoint);
   }
 
   // 健康检查

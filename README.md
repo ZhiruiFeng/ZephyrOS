@@ -91,21 +91,44 @@ curl http://localhost:3001/api/health
 
 ### Task Management
 ```bash
-# Get task list
-curl http://localhost:3001/api/memories?type=task
+# Get tasks
+curl "http://localhost:3001/api/tasks?status=pending&priority=high&limit=10&offset=0&sort_by=created_at&sort_order=desc"
 
 # Create task
-curl -X POST http://localhost:3001/api/memories \
+curl -X POST http://localhost:3001/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "type": "task",
     "content": {
       "title": "Complete project documentation",
       "description": "Write technical documentation",
-      "priority": "high"
+      "status": "pending",
+      "priority": "high",
+      "category": "work"
     },
     "tags": ["zflow", "documentation"]
   }'
+
+# Get single task
+curl http://localhost:3001/api/tasks/1
+
+# Update task
+curl -X PUT http://localhost:3001/api/tasks/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": { "status": "completed", "progress": 100 }
+  }'
+
+# Update task status (shortcut)
+curl -X PUT http://localhost:3001/api/tasks/1/status \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "completed", "notes": "done", "progress": 100 }'
+
+# Delete task
+curl -X DELETE http://localhost:3001/api/tasks/1
+
+# Task statistics
+curl http://localhost:3001/api/tasks/stats
 ```
 
 ## Development Guide

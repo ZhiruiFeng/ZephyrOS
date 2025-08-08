@@ -175,9 +175,8 @@ export async function GET(request: NextRequest) {
 
     // Build base query
     let query = supabase
-      .from('memories')
-      .select('*')
-      .eq('type', 'task');
+      .from('tasks')
+      .select('*');
 
     // Apply date filters
     if (fromDate) {
@@ -186,9 +185,7 @@ export async function GET(request: NextRequest) {
     if (toDate) {
       query = query.lte('created_at', toDate);
     }
-    if (assignee) {
-      query = query.eq('content->assignee', assignee);
-    }
+    // tasks 表目前未包含 assignee，忽略该过滤
 
     const { data: tasks, error } = await query;
 
@@ -244,28 +241,22 @@ export async function GET(request: NextRequest) {
     let completedTasksWithTime = 0;
 
     tasks.forEach((task: any) => {
-      const content = task.content;
-      
       // Count by status
-      if (content.status && stats.by_status.hasOwnProperty(content.status)) {
-        stats.by_status[content.status as TaskStatus]++;
+      if (task.status && stats.by_status.hasOwnProperty(task.status)) {
+        stats.by_status[task.status as TaskStatus]++;
       }
 
       // Count by priority
-      if (content.priority && stats.by_priority.hasOwnProperty(content.priority)) {
-        stats.by_priority[content.priority as TaskPriority]++;
+      if (task.priority && stats.by_priority.hasOwnProperty(task.priority)) {
+        stats.by_priority[task.priority as TaskPriority]++;
       }
 
-      // Count by category
-      if (content.category && stats.by_category.hasOwnProperty(content.category)) {
-        stats.by_category[content.category as TaskCategory]++;
-      } else if (!content.category) {
-        stats.by_category[TaskCategory.OTHER]++;
-      }
+      // tasks 表没有 category，计入 OTHER
+      stats.by_category[TaskCategory.OTHER]++;
 
       // Check due dates
-      if (content.due_date) {
-        const dueDate = new Date(content.due_date);
+      if (task.due_date) {
+        const dueDate = new Date(task.due_date);
         
         if (dueDate < now && content.status !== TaskStatus.COMPLETED) {
           stats.overdue++;
@@ -281,9 +272,9 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate completion time for completed tasks
-      if (content.status === TaskStatus.COMPLETED && content.completion_date) {
+      if (task.status === TaskStatus.COMPLETED && task.updated_at) {
         const createdDate = new Date(task.created_at);
-        const completedDate = new Date(content.completion_date);
+        const completedDate = new Date(task.updated_at);
         const completionTime = (completedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
         totalCompletionTime += completionTime;
         completedTasksWithTime++;
