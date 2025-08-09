@@ -180,10 +180,15 @@ export default function ZFlowPage() {
       const finalCategoryId = newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined);
       console.log('finalCategoryId:', finalCategoryId);
 
+      const joinAttention = (() => {
+        try { return localStorage.getItem('zflow:quickCapture:joinAttention') === '1' || (window as any).__zflowJoinAttention === true } catch { return false }
+      })()
+
+      const newStatus: 'pending' | 'on_hold' = joinAttention ? 'pending' : 'on_hold'
       const taskData = {
         title: newTask,
         description: newTaskDescription,
-        status: 'pending' as const,
+        status: newStatus,
         priority: newTaskPriority,
         category_id: finalCategoryId,
         due_date: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
@@ -273,7 +278,17 @@ export default function ZFlowPage() {
         : selectedCategory === 'uncategorized'
           ? !catId
           : catId === selectedCategory
-      const matchStatus = filterStatus === 'all' || c.status === filterStatus
+      // Home: default attention cleanliness
+      // - If filterStatus === 'all', exclude on_hold and cancelled by default
+      // - Completed: if included, only show within 24h window
+      const now = Date.now()
+      const windowMs = 24 * 60 * 60 * 1000
+      const isCompletedWithinWindow = c.status === 'completed' && c.completion_date ? (now - new Date(c.completion_date).getTime()) <= windowMs : false
+      const baseStatusInclude = filterStatus === 'all'
+        ? (c.status === 'pending' || c.status === 'in_progress' || isCompletedWithinWindow)
+        : (filterStatus === 'completed' ? isCompletedWithinWindow : c.status === filterStatus)
+
+      const matchStatus = baseStatusInclude
       const matchPriority = filterPriority === 'all' || c.priority === filterPriority
       const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
       const matchCompletedHide = !(shouldHideCompleted && c.status === 'completed')
@@ -481,7 +496,7 @@ export default function ZFlowPage() {
         </div>
       </div>
 
-      {/* Add task */}
+      {/* Add task (Quick Capture: default on_hold, optional join attention pool) */}
       <div className="card glass card-hover rounded-2xl mb-6">
         {!showAddForm ? (
           <button
@@ -559,7 +574,7 @@ export default function ZFlowPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={addTask}
                 disabled={!newTask.trim()}
@@ -567,6 +582,21 @@ export default function ZFlowPage() {
               >
                 创建任务
               </button>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <label className="inline-flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    onChange={(e) => {
+                      // When checked, default new tasks to pending; otherwise on_hold
+                      setNewTaskPriority((p) => p)
+                      // store choice in localStorage for persistence
+                      try { localStorage.setItem('zflow:quickCapture:joinAttention', e.target.checked ? '1' : '0') } catch {}
+                      ;(window as any).__zflowJoinAttention = e.target.checked
+                    }}
+                  />
+                  <span>创建后加入注意力池（Pending）</span>
+                </label>
+              </div>
               <button
                 onClick={() => {
                   setShowAddForm(false)

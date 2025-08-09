@@ -76,6 +76,16 @@ export default function NavBar() {
                   <Mic className="w-4 h-4" /> Speech
                 </span>
               </NavLink>
+              <NavLink href="/backlog">
+                <span className="inline-flex items-center gap-1">
+                  <KanbanSquare className="w-4 h-4" /> Backlog
+                </span>
+              </NavLink>
+              <NavLink href="/archive">
+                <span className="inline-flex items-center gap-1">
+                  <ListTodo className="w-4 h-4" /> Archive
+                </span>
+              </NavLink>
             </div>
           </div>
 

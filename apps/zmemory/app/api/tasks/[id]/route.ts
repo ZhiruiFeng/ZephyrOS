@@ -290,6 +290,14 @@ export async function PUT(
       if (updateData.content.progress !== undefined) updateObject.progress = updateData.content.progress;
       if (updateData.content.assignee !== undefined) updateObject.assignee = updateData.content.assignee;
       if (updateData.content.completion_date !== undefined) updateObject.completion_date = updateData.content.completion_date;
+      // Auto set/clear completion_date based on status transition
+      if (updateData.content.status === 'completed' && updateObject.completion_date === undefined) {
+        updateObject.completion_date = now;
+        if (updateObject.progress === undefined) updateObject.progress = 100;
+      }
+      if (updateData.content.status && updateData.content.status !== 'completed') {
+        updateObject.completion_date = null;
+      }
       if (updateData.content.notes !== undefined) updateObject.notes = updateData.content.notes;
     }
     if (updateData.tags !== undefined) {

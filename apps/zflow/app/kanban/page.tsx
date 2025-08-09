@@ -32,12 +32,11 @@ import {
 
 type StatusKey = TaskContent['status']
 
+// Focused attention pool: only show pending, in_progress, completed (within 24h)
 const COLUMNS: Array<{ key: StatusKey; title: string; hint?: string }> = [
   { key: 'pending', title: 'Todo' },
   { key: 'in_progress', title: 'In Progress' },
-  { key: 'on_hold', title: 'On Hold' },
-  { key: 'completed', title: 'Done' },
-  { key: 'cancelled', title: 'Cancelled' },
+  { key: 'completed', title: 'Done (24h)' },
 ]
 
 export default function KanbanPage() {
@@ -82,9 +81,20 @@ export default function KanbanPage() {
       cancelled: [] as TaskMemory[],
       on_hold: [] as TaskMemory[],
     }
+    const now = Date.now()
+    const windowMs = 24 * 60 * 60 * 1000
     for (const t of filtered) {
       const s = (t.content as TaskContent).status
-      map[s]?.push(t)
+      if (s === 'completed') {
+        const completion = (t.content as TaskContent).completion_date
+        const completedAt = completion ? new Date(completion).getTime() : 0
+        if (completedAt && now - completedAt <= windowMs) {
+          map.completed.push(t)
+        }
+        // else: older completed tasks are hidden from Kanban; visible in Archive page
+      } else if (s === 'pending' || s === 'in_progress') {
+        map[s].push(t)
+      }
     }
     // sort inside each column
     const priorityOrder: Record<TaskContent['priority'], number> = { urgent: 0, high: 1, medium: 2, low: 3 }
@@ -244,6 +254,18 @@ export default function KanbanPage() {
           </div>
         </div>
       </div>
+
+      {/* Soft WIP limit hints */}
+      {byStatus.in_progress.length > 3 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-2">
+          当前进行中的任务已超过 3 个，建议收敛以保持专注。
+        </div>
+      )}
+      {byStatus.pending.length > 10 && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-4 py-2">
+          待办池已超过 10 个，考虑精简以提升清晰度。
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {COLUMNS.map((col) => (

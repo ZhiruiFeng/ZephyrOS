@@ -11,12 +11,14 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
-// Status update schema
+// Status update schema (allow all status)
 const StatusUpdateSchema = z.object({
   status: z.enum([
     TaskStatus.PENDING,
     TaskStatus.IN_PROGRESS,
     TaskStatus.COMPLETED,
+    TaskStatus.CANCELLED,
+    TaskStatus.ON_HOLD,
   ]),
   notes: z.string().optional(),
   progress: z.number().min(0).max(100).optional()
@@ -148,6 +150,10 @@ export async function PUT(
 
     // Prepare updated content
     const updateObject: any = { status, updated_at: now };
+    if (status === TaskStatus.COMPLETED) {
+      updateObject.completion_date = now;
+      if (updateObject.progress === undefined) updateObject.progress = 100;
+    }
     if (progress !== undefined) updateObject.progress = progress;
     if (notes !== undefined) updateObject.description = existingTask.description ? `${existingTask.description}\n${notes}` : notes;
 

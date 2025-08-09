@@ -52,7 +52,7 @@ export interface CreateTaskRequest {
 
 export interface UpdateTaskRequest {
   type?: 'task'
-  content?: Partial<CreateTaskRequest['content']>
+  content?: Partial<TaskContent>
   tags?: string[]
   metadata?: Record<string, any>
 }

@@ -438,6 +438,11 @@ export async function POST(request: NextRequest) {
       user_id: userId,
     };
 
+    // If creating with completed status and no explicit completion_date, set it to now
+    if (insertPayload.status === 'completed' && !taskData.content.completion_date) {
+      insertPayload.completion_date = now;
+    }
+
     console.log('Creating task with payload:', JSON.stringify(insertPayload, null, 2));
 
     const { data, error } = await client
