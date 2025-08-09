@@ -1,194 +1,163 @@
-# ZFlow 组件模块化结构
+# ZFlow 组件库
 
 ## 概述
 
-本项目采用了模块化的架构设计，将任务编辑功能提取为可复用的组件，提高了代码的复用率和维护性。
+ZFlow 是一个现代化的任务管理系统，支持任务分类、层级关系和网状关联。
 
-## 文件结构
+## 数据库设计
 
+### 核心表结构
+
+#### 1. Categories (分类表)
+```sql
+CREATE TABLE categories (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  color TEXT DEFAULT '#6B7280',
+  icon TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  user_id UUID DEFAULT auth.uid(),
+  UNIQUE(name, user_id)
+);
 ```
-apps/zflow/app/
-├── components/
-│   ├── TaskEditor.tsx          # 任务编辑组件
-│   ├── TaskIcons.tsx           # 任务图标组件
-│   └── README.md               # 组件说明文档
-├── utils/
-│   └── taskUtils.ts            # 任务相关工具函数
-├── types/
-│   └── task.ts                 # 任务类型定义
-├── page.tsx                    # 主页面（列表/网格视图）
-└── kanban/
-    └── page.tsx                # 看板页面
+
+#### 2. Tasks (任务表)
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'pending',
+  priority TEXT DEFAULT 'medium',
+  category_id UUID REFERENCES categories(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  due_date TIMESTAMP WITH TIME ZONE,
+  estimated_duration INTEGER, -- 分钟
+  progress INTEGER DEFAULT 0,
+  assignee TEXT,
+  completion_date TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  tags TEXT[] DEFAULT '{}',
+  user_id UUID DEFAULT auth.uid()
+);
 ```
+
+#### 3. Task Relations (任务关系表)
+```sql
+CREATE TABLE task_relations (
+  id UUID PRIMARY KEY,
+  parent_task_id UUID NOT NULL REFERENCES tasks(id),
+  child_task_id UUID NOT NULL REFERENCES tasks(id),
+  relation_type TEXT NOT NULL CHECK (relation_type IN ('subtask', 'related', 'dependency', 'blocked_by')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  user_id UUID DEFAULT auth.uid(),
+  UNIQUE(parent_task_id, child_task_id, relation_type)
+);
+```
+
+### 关系类型
+
+- **subtask**: 子任务关系 - 表示任务分解
+- **related**: 相关任务 - 表示任务间的关联
+- **dependency**: 依赖关系 - 表示前置条件
+- **blocked_by**: 阻塞关系 - 表示被阻塞的任务
 
 ## 组件说明
 
-### TaskEditor 组件
+### CategorySelector
+分类选择器组件，支持：
+- 分类搜索
+- 颜色标识
+- 清除选择
+- 下拉选择
 
-**位置**: `components/TaskEditor.tsx`
+### TaskRelationManager
+任务关系管理器，支持：
+- 添加/删除任务关系
+- 按关系类型分组显示
+- 关系状态可视化
+- 批量操作
 
-**功能**: 
-- 提供统一的任务编辑界面
-- 支持编辑任务的所有属性（标题、描述、状态、优先级、截止时间、标签）
-- 可复用于主页面和看板页面
+### TaskEditor (增强版)
+任务编辑器，新增字段：
+- 分类选择
+- 预计时长
+- 进度跟踪
+- 负责人
+- 备注
+- 完成时间
 
-**Props**:
-- `isOpen`: 控制弹窗显示/隐藏
-- `onClose`: 关闭弹窗的回调函数
-- `task`: 要编辑的任务对象
-- `onSave`: 保存任务的回调函数
-- `title`: 弹窗标题（可选）
+## API 端点
 
-**使用示例**:
-```tsx
-<TaskEditor
-  isOpen={editorOpen}
-  onClose={closeEditor}
-  task={selectedTask}
-  onSave={handleSaveTask}
-  title="编辑任务"
-/>
+### Categories API
+- `GET /api/categories` - 获取所有分类
+- `POST /api/categories` - 创建分类
+- `PUT /api/categories/[id]` - 更新分类
+- `DELETE /api/categories/[id]` - 删除分类
+
+### Task Relations API
+- `GET /api/task-relations` - 获取任务关系
+- `POST /api/task-relations` - 创建任务关系
+- `DELETE /api/task-relations/[id]` - 删除任务关系
+
+### Tasks API (增强版)
+- `GET /api/tasks` - 获取任务列表（支持分类筛选）
+- `POST /api/tasks` - 创建任务
+- `PUT /api/tasks/[id]` - 更新任务
+- `DELETE /api/tasks/[id]` - 删除任务
+
+## 使用示例
+
+### 创建带分类的任务
+```typescript
+const task = await tasksApi.create({
+  title: '实现用户认证',
+  description: '添加JWT认证系统',
+  status: 'pending',
+  priority: 'high',
+  category_id: 'work-category-id',
+  estimated_duration: 480, // 8小时
+  progress: 0,
+  assignee: '张三',
+  tags: ['authentication', 'security']
+});
 ```
 
-### TaskIcons 组件
-
-**位置**: `components/TaskIcons.tsx`
-
-**功能**: 
-- 提供任务相关的图标组件
-- 处理动态图标导入
-- 返回React元素，可在JSX中使用
-
-**主要函数**:
-- `getPriorityIcon()`: 获取优先级图标
-
-**使用示例**:
-```tsx
-import { getPriorityIcon } from './components/TaskIcons'
-
-{getPriorityIcon(task.priority)}
+### 添加任务关系
+```typescript
+await taskRelationsApi.create({
+  parent_task_id: 'task-1',
+  child_task_id: 'task-2',
+  relation_type: 'subtask'
+});
 ```
 
-## 工具函数
-
-### taskUtils.ts
-
-**位置**: `utils/taskUtils.ts`
-
-**功能**: 提供任务相关的纯工具函数（不包含JSX）
-
-**主要函数**:
-- `getStatusColor()`: 获取状态颜色样式
-- `getPriorityColor()`: 获取优先级颜色样式
-- `isOverdue()`: 检查任务是否逾期
-- `formatDate()`: 格式化日期
-- `formatTagsString()`: 格式化标签字符串
-- `parseTagsString()`: 解析标签字符串
-- `getStatusLabel()`: 获取状态中文名称
-- `getPriorityLabel()`: 获取优先级中文名称
-
-## 类型定义
-
-### task.ts
-
-**位置**: `types/task.ts`
-
-**功能**: 定义任务相关的TypeScript类型
-
-**主要类型**:
-- `Task`: 任务对象接口
-- `TaskForm`: 任务表单接口
-- `TaskEditorProps`: 任务编辑器属性接口
-- `FilterStatus`: 筛选状态类型
-- `FilterPriority`: 筛选优先级类型
-- `ViewMode`: 视图模式类型
-
-## 模块化优势
-
-### 1. 代码复用
-- 任务编辑功能在主页面和看板页面中共享
-- 工具函数可在多个组件中使用
-- 类型定义统一管理，避免重复
-
-### 2. 维护性
-- 修改编辑功能只需更新一个组件
-- 工具函数集中管理，便于维护
-- 类型定义统一，减少类型错误
-
-### 3. 可扩展性
-- 新增页面可以轻松复用现有组件
-- 工具函数可以方便地添加新功能
-- 类型系统支持良好的扩展性
-
-### 4. 一致性
-- 所有页面的任务编辑体验保持一致
-- 工具函数确保样式和逻辑的一致性
-- 类型定义确保数据结构的一致性
-
-### 5. 架构清晰
-- 图标组件与工具函数分离，避免JSX语法错误
-- 纯工具函数与React组件分离
-- 类型定义独立管理
-
-## 使用指南
-
-### 添加新的任务相关页面
-
-1. 导入共享组件和工具函数：
-```tsx
-import TaskEditor from '../components/TaskEditor'
-import { getPriorityIcon } from '../components/TaskIcons'
-import { getStatusColor, formatDate } from '../utils/taskUtils'
-import { Task } from '../types/task'
+### 获取任务及其关系
+```typescript
+const task = await tasksApi.getById('task-id');
+const relations = await taskRelationsApi.getByTask('task-id');
 ```
 
-2. 使用TaskEditor组件：
-```tsx
-const [editorOpen, setEditorOpen] = useState(false)
-const [selectedTask, setSelectedTask] = useState<any>(null)
+## 设计优势
 
-const handleSaveTask = async (taskId: string, data: any) => {
-  await updateTask(taskId, data)
-}
+1. **灵活的层级结构**: 支持任务分解和子任务管理
+2. **网状关联**: 任务间可以建立多种类型的关系
+3. **分类管理**: 每个任务只能属于一个分类，便于组织
+4. **进度跟踪**: 支持任务进度和预计时长
+5. **权限控制**: 基于用户的行级安全策略
+6. **扩展性**: 易于添加新的关系类型和字段
 
-<TaskEditor
-  isOpen={editorOpen}
-  onClose={() => setEditorOpen(false)}
-  task={selectedTask}
-  onSave={handleSaveTask}
-/>
-```
+## 前端集成
 
-3. 使用图标和工具函数：
-```tsx
-{getPriorityIcon(task.priority)}
-<span className={getStatusColor(task.status)}>
-  {task.status}
-</span>
-```
+所有组件都使用 TypeScript 编写，提供完整的类型支持。组件采用 Tailwind CSS 样式，支持响应式设计。
 
-### 扩展功能
+## 下一步计划
 
-1. 添加新的工具函数到 `taskUtils.ts`
-2. 添加新的图标到 `TaskIcons.tsx`
-3. 添加新的类型定义到 `types/task.ts`
-4. 在需要的地方导入并使用
-
-## 技术细节
-
-### 图标处理
-- 使用动态导入避免打包体积过大
-- 图标组件独立管理，避免JSX语法错误
-- 支持懒加载和错误处理
-
-### 类型安全
-- 完整的TypeScript类型定义
-- 接口统一管理，确保类型一致性
-- 编译时类型检查，减少运行时错误
-
-### 性能优化
-- 组件懒加载
-- 工具函数纯函数化
-- 避免不必要的重新渲染
-
-这种模块化的设计使得代码更加清晰、可维护，并且为未来的功能扩展提供了良好的基础。
+1. 实现任务模板功能
+2. 添加任务依赖图可视化
+3. 支持批量任务操作
+4. 实现任务时间线视图
+5. 添加任务统计和报表功能

@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { UpdateTaskSchema, TaskMemory } from '../../../../lib/task-types';
 
+// Helper function to get category ID by name
+async function getCategoryIdByName(categoryName: string): Promise<string | null> {
+  if (!supabase) return null;
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('name', categoryName)
+    .single();
+    
+  if (error || !data) return null;
+  return data.id;
+}
+
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -74,7 +88,10 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('tasks')
-      .select('*')
+      .select(`
+        *,
+        category:categories(id, name, color, icon)
+      `)
       .eq('id', id)
       .single();
 
@@ -100,7 +117,13 @@ export async function GET(
         description: data.description || undefined,
         status: data.status,
         priority: data.priority,
+        category: data.category?.name,
         due_date: data.due_date || undefined,
+        estimated_duration: data.estimated_duration || undefined,
+        progress: data.progress || 0,
+        assignee: data.assignee || undefined,
+        completion_date: data.completion_date || undefined,
+        notes: data.notes || undefined,
       },
       tags: data.tags || [],
       created_at: data.created_at,
@@ -163,9 +186,13 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     
+    console.log('Received PUT request for task:', id);
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
     // Validate request body
     const validationResult = UpdateTaskSchema.safeParse(body);
     if (!validationResult.success) {
+      console.error('Validation failed:', validationResult.error.errors);
       return NextResponse.json(
         { error: 'Invalid task data', details: validationResult.error.errors },
         { status: 400 }
@@ -235,28 +262,44 @@ export async function PUT(
       if (updateData.content.description !== undefined) updateObject.description = updateData.content.description;
       if (updateData.content.status !== undefined) updateObject.status = updateData.content.status;
       if (updateData.content.priority !== undefined) updateObject.priority = updateData.content.priority;
+      if (updateData.content.category !== undefined) {
+        updateObject.category_id = updateData.content.category ? await getCategoryIdByName(updateData.content.category) : null;
+      }
+      if (updateData.content.category_id !== undefined) {
+        updateObject.category_id = updateData.content.category_id || null;
+      }
       if (updateData.content.due_date !== undefined) updateObject.due_date = updateData.content.due_date;
+      if (updateData.content.estimated_duration !== undefined) updateObject.estimated_duration = updateData.content.estimated_duration;
+      if (updateData.content.progress !== undefined) updateObject.progress = updateData.content.progress;
+      if (updateData.content.assignee !== undefined) updateObject.assignee = updateData.content.assignee;
+      if (updateData.content.completion_date !== undefined) updateObject.completion_date = updateData.content.completion_date;
+      if (updateData.content.notes !== undefined) updateObject.notes = updateData.content.notes;
     }
     if (updateData.tags !== undefined) {
       updateObject.tags = updateData.tags;
     }
 
+    console.log('Updating with object:', JSON.stringify(updateObject, null, 2));
+    
     const { data, error } = await supabase
       .from('tasks')
       .update(updateObject)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        category:categories(id, name, color, icon)
+      `)
       .single();
 
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json(
-        { error: 'Failed to update task' },
+        { error: 'Failed to update task', details: error },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
+    const responseData = {
       id: data.id,
       type: 'task',
       content: {
@@ -264,12 +307,24 @@ export async function PUT(
         description: data.description || undefined,
         status: data.status,
         priority: data.priority,
+        category: data.category?.name,
         due_date: data.due_date || undefined,
+        estimated_duration: data.estimated_duration || undefined,
+        progress: data.progress || 0,
+        assignee: data.assignee || undefined,
+        completion_date: data.completion_date || undefined,
+        notes: data.notes || undefined,
       },
       tags: data.tags || [],
       created_at: data.created_at,
       updated_at: data.updated_at,
-    });
+    };
+    
+    const response = NextResponse.json(responseData);
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return response;
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(

@@ -1,183 +1,231 @@
-// API 基础配置
-const normalizeBaseUrl = (url: string): string => {
-  if (!url) return '';
-  let normalized = url.trim();
-  // 去掉末尾的斜杠
-  normalized = normalized.replace(/\/+$/, '');
-  // 若以 /api 结尾，则移除，避免与 endpoint 的 /api 重复
-  normalized = normalized.replace(/\/api$/, '');
-  return normalized;
-};
+import { Task, Category, TaskRelationType } from '../app/types/task'
 
-const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
+// 若未配置 NEXT_PUBLIC_API_BASE，则使用相对路径，通过 Next.js rewrites 代理到 zmemory
+const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
 
-// 类型定义
-export interface TaskContent {
-  title: string;
-  description?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  category?: 'work' | 'personal' | 'project' | 'meeting' | 'learning' | 'maintenance' | 'other';
-  due_date?: string;
-  estimated_duration?: number;
-  progress?: number;
-  assignee?: string;
-  dependencies?: string[];
-  subtasks?: string[];
-  notes?: string;
-  completion_date?: string;
-}
-
+// 兼容类型定义（供 hooks 与页面引用）
 export interface TaskMemory {
-  id: string;
-  type: 'task';
-  content: TaskContent;
-  tags: string[];
-  metadata?: Record<string, any>;
-  created_at: string;
-  updated_at: string;
+  id: string
+  type: 'task'
+  content: Task
+  tags: string[]
+  metadata?: Record<string, any>
+  created_at: string
+  updated_at: string
 }
 
 export interface CreateTaskRequest {
-  type: 'task';
-  content: TaskContent;
-  tags?: string[];
-  metadata?: Record<string, any>;
+  type: 'task'
+  content: {
+    title: string
+    description?: string
+    status: Task['status']
+    priority: Task['priority']
+    category_id?: string
+    due_date?: string
+    estimated_duration?: number
+    progress?: number
+    assignee?: string
+    notes?: string
+  }
+  tags?: string[]
+  metadata?: Record<string, any>
 }
 
 export interface UpdateTaskRequest {
-  type?: 'task';
-  content?: Partial<TaskContent>;
-  tags?: string[];
-  metadata?: Record<string, any>;
+  type?: 'task'
+  content?: Partial<CreateTaskRequest['content']>
+  tags?: string[]
+  metadata?: Record<string, any>
 }
 
-// API 客户端类
-class ApiClient {
-  private baseUrl: string;
+// Categories API
+export const categoriesApi = {
+  async getAll(): Promise<Category[]> {
+    const response = await fetch(`${API_BASE}/api/categories`, { credentials: 'include' })
+    if (!response.ok) throw new Error('Failed to fetch categories')
+    const data = await response.json()
+    return data.categories || []
+  },
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  async create(category: { name: string; description?: string; color?: string; icon?: string }): Promise<Category> {
+    const response = await fetch(`${API_BASE}/api/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(category),
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to create category')
+    const data = await response.json()
+    return data.category
+  },
+
+  async update(id: string, category: Partial<Category>): Promise<Category> {
+    const response = await fetch(`${API_BASE}/api/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(category),
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to update category')
+    const data = await response.json()
+    return data.category
+  },
+
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/api/categories/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to delete category')
   }
+}
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
+// Task Relations API
+export const taskRelationsApi = {
+  async getByTask(taskId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/api/task-relations?task_id=${taskId}`, { credentials: 'include' })
+    if (!response.ok) throw new Error('Failed to fetch task relations')
+    const data = await response.json()
+    return data.relations || []
+  },
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || `HTTP error ${response.status} for ${url}`);
-    }
+  async create(relation: { parent_task_id: string; child_task_id: string; relation_type: TaskRelationType }): Promise<any> {
+    const response = await fetch(`${API_BASE}/api/task-relations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(relation),
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to create task relation')
+    const data = await response.json()
+    return data.relation
+  },
 
-    return response.json();
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/api/task-relations/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to delete task relation')
   }
+}
 
-  // 获取任务列表（支持丰富筛选）
-  async getTasks(params?: {
-    status?: TaskContent['status'];
-    priority?: TaskContent['priority'];
-    category?: TaskContent['category'];
-    assignee?: string;
-    tags?: string; // comma separated
+// Tasks API (通过 zmemory HTTP API)
+export const tasksApi = {
+  async getAll(params?: {
+    status?: string;
+    priority?: string;
+    category?: string;
     search?: string;
-    due_before?: string;
-    due_after?: string;
-    created_before?: string;
-    created_after?: string;
     limit?: number;
     offset?: number;
-    sort_by?: 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'title';
-    sort_order?: 'asc' | 'desc';
   }): Promise<TaskMemory[]> {
-    const searchParams = new URLSearchParams();
+    const searchParams = new URLSearchParams()
     if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) searchParams.append(k, String(v));
-      });
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, value.toString())
+      })
     }
-    const queryString = searchParams.toString();
-    const endpoint = `/api/tasks${queryString ? `?${queryString}` : ''}`;
-    return this.request<TaskMemory[]>(endpoint);
-  }
+    
+    const response = await fetch(`${API_BASE}/api/tasks?${searchParams}`, { credentials: 'include' })
+    if (!response.ok) throw new Error('Failed to fetch tasks')
+    const data = await response.json()
+    return data as TaskMemory[]
+  },
 
-  // 获取单个任务
-  async getTask(id: string): Promise<TaskMemory> {
-    return this.request<TaskMemory>(`/api/tasks/${id}`);
-  }
+  async getById(id: string): Promise<TaskMemory> {
+    const response = await fetch(`${API_BASE}/api/tasks/${id}`, { credentials: 'include' })
+    if (!response.ok) throw new Error('Failed to fetch task')
+    const data = await response.json()
+    return data as TaskMemory
+  },
 
-  // 创建任务
-  async createTask(data: CreateTaskRequest): Promise<TaskMemory> {
-    return this.request<TaskMemory>('/api/tasks', {
+  async create(task: {
+    title: string;
+    description?: string;
+    status: Task['status'];
+    priority: Task['priority'];
+    category_id?: string;
+    due_date?: string;
+    estimated_duration?: number;
+    progress?: number;
+    assignee?: string;
+    notes?: string;
+    tags?: string[];
+  }): Promise<TaskMemory> {
+    const response = await fetch(`${API_BASE}/api/tasks`, {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'task',
+        content: task,
+        tags: task.tags || []
+      }),
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to create task')
+    const data = await response.json()
+    return data as TaskMemory
+  },
 
-  // 更新任务
-  async updateTask(id: string, data: UpdateTaskRequest): Promise<TaskMemory> {
-    return this.request<TaskMemory>(`/api/tasks/${id}`, {
+  async update(id: string, updates: {
+    title?: string;
+    description?: string;
+    status?: Task['status'];
+    priority?: Task['priority'];
+    category_id?: string;
+    due_date?: string;
+    estimated_duration?: number;
+    progress?: number;
+    assignee?: string;
+    notes?: string;
+    tags?: string[];
+  }): Promise<TaskMemory> {
+    const payload = {
+      content: updates,
+      tags: updates.tags
+    };
+    
+    console.log('Updating task:', id, 'with payload:', JSON.stringify(payload, null, 2));
+    
+    const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  // 更新任务状态（便捷）
-  async updateTaskStatus(id: string, payload: { status: TaskContent['status']; notes?: string; progress?: number; }): Promise<TaskMemory> {
-    return this.request<TaskMemory>(`/api/tasks/${id}/status`, {
-      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    });
-  }
-
-  // 删除任务
-  async deleteTask(id: string): Promise<{ message: string; id: string }> {
-    return this.request<{ message: string; id: string }>(`/api/tasks/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // 任务统计
-  async getTaskStats(params?: { from_date?: string; to_date?: string; assignee?: string; }): Promise<{
-    total: number;
-    by_status: Record<string, number>;
-    by_priority: Record<string, number>;
-    by_category: Record<string, number>;
-    overdue: number;
-    due_today: number;
-    due_this_week: number;
-    completion_rate: number;
-    average_completion_time: number;
-  }> {
-    const searchParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) searchParams.append(k, String(v));
-      });
+      credentials: 'include',
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Update failed:', response.status, response.statusText, errorText);
+      throw new Error(`Failed to update task: ${response.status} ${response.statusText}`);
     }
-    const queryString = searchParams.toString();
-    const endpoint = `/api/tasks/stats${queryString ? `?${queryString}` : ''}`;
-    return this.request(endpoint);
-  }
+    
+    const data = await response.json()
+    console.log('Update successful:', data);
+    return data as TaskMemory
+  },
 
-  // 健康检查
-  async healthCheck(): Promise<{
-    status: string;
-    timestamp: string;
-    service: string;
-    version: string;
-  }> {
-    return this.request('/api/health');
+  async delete(id: string): Promise<{ message: string; id: string } | void> {
+    const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    if (!response.ok) throw new Error('Failed to delete task')
+    try {
+      return await response.json()
+    } catch {
+      return
+    }
   }
 }
 
-// 导出 API 客户端实例
-export const apiClient = new ApiClient(API_BASE_URL); 
+// 兼容导出：保持旧版 hooks 的 apiClient 接口
+export const apiClient = {
+  getTasks: (params?: Parameters<typeof tasksApi.getAll>[0]) => tasksApi.getAll(params),
+  getTask: (id: string) => tasksApi.getById(id),
+  createTask: (data: CreateTaskRequest) => tasksApi.create({ ...(data.content), tags: data.tags }),
+  updateTask: (id: string, data: UpdateTaskRequest) => tasksApi.update(id, { ...data.content, tags: data.tags }),
+  deleteTask: (id: string) => tasksApi.delete(id),
+} 

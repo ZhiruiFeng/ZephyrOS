@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
-import { TaskContent, TaskMemory } from '../../lib/api'
+import { TaskContent, TaskMemory, categoriesApi } from '../../lib/api'
 import dynamicIconImports from 'lucide-react/dynamicIconImports'
 const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
   <Suspense fallback={null}>
@@ -40,12 +40,18 @@ const COLUMNS: Array<{ key: StatusKey; title: string; hint?: string }> = [
 export default function KanbanPage() {
   const { tasks, isLoading, error } = useTasks({})
   const { updateTask } = useUpdateTask()
+  const [categories, setCategories] = useState<any[]>([])
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterPriority, setFilterPriority] = useState<'all' | TaskContent['priority']>('all')
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<TaskMemory | null>(null)
+
+  // 加载分类
+  React.useEffect(() => {
+    categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
+  }, [])
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
@@ -102,8 +108,18 @@ export default function KanbanPage() {
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const openEditor = (task: TaskMemory) => {
-    setSelected(task)
+  const openEditor = (taskMemory: TaskMemory) => {
+    // Convert TaskMemory to Task format expected by TaskEditor
+    const task = {
+      id: taskMemory.id,
+      ...taskMemory.content,
+      tags: taskMemory.tags,
+      created_at: taskMemory.created_at,
+      updated_at: taskMemory.updated_at,
+      // Add category_id from the top level if available
+      category_id: (taskMemory as any).category_id || taskMemory.content.category_id,
+    }
+    setSelected(task as any)
     setEditorOpen(true)
   }
 
@@ -251,6 +267,7 @@ export default function KanbanPage() {
         isOpen={editorOpen}
         onClose={closeEditor}
         task={selected}
+        categories={categories}
         onSave={handleSaveTask}
         title="编辑任务"
       />

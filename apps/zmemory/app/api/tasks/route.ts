@@ -9,6 +9,20 @@ import {
   TaskCategory
 } from '../../../lib/task-types';
 
+// Helper function to get category ID by name
+async function getCategoryIdByName(categoryName: string): Promise<string | null> {
+  if (!supabase) return null;
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('name', categoryName)
+    .single();
+    
+  if (error || !data) return null;
+  return data.id;
+}
+
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -213,13 +227,16 @@ export async function GET(request: NextRequest) {
       const end = start + query.limit;
       tasks = tasks.slice(start, end);
 
-      return NextResponse.json(tasks);
+      return jsonWithCors(request, tasks);
     }
 
     // Build Supabase query against tasks table
     let dbQuery = supabase
       .from('tasks')
-      .select('*');
+      .select(`
+        *,
+        category:categories(id, name, color, icon)
+      `);
 
     // Apply filters
     if (query.status) {
@@ -228,7 +245,12 @@ export async function GET(request: NextRequest) {
     if (query.priority) {
       dbQuery = dbQuery.eq('priority', query.priority);
     }
-    // category/assignee 不在 tasks 表中，忽略
+    if (query.category) {
+      dbQuery = dbQuery.eq('category_id', query.category);
+    }
+    if (query.assignee) {
+      dbQuery = dbQuery.eq('assignee', query.assignee);
+    }
     if (query.search) {
       dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
     }
@@ -283,19 +305,24 @@ export async function GET(request: NextRequest) {
         description: row.description || undefined,
         status: row.status,
         priority: row.priority,
+        category: row.category?.name,
         due_date: row.due_date || undefined,
+        estimated_duration: row.estimated_duration || undefined,
+        progress: row.progress || 0,
+        assignee: row.assignee || undefined,
+        completion_date: row.completion_date || undefined,
+        notes: row.notes || undefined,
       },
       tags: row.tags || [],
       created_at: row.created_at,
       updated_at: row.updated_at,
+      // surface category_id for frontend filtering
+      category_id: row.category_id,
     }));
-    return NextResponse.json(mapped);
+    return jsonWithCors(request, mapped);
   } catch (error) {
     console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }
 
@@ -339,9 +366,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
+    console.log('=== CREATE TASK API DEBUG ===');
+    console.log('Received body:', JSON.stringify(body, null, 2));
+    
     // Validate request body
     const validationResult = CreateTaskSchema.safeParse(body);
     if (!validationResult.success) {
+      console.error('CREATE TASK Validation failed:', validationResult.error.errors);
       return NextResponse.json(
         { error: 'Invalid task data', details: validationResult.error.errors },
         { status: 400 }
@@ -362,7 +393,15 @@ export async function POST(request: NextRequest) {
         created_at: now,
         updated_at: now
       };
-      return NextResponse.json(mockTask, { status: 201 });
+      return jsonWithCors(request, mockTask, 201);
+    }
+
+    // Determine category_id - handle both category (name) and category_id (direct ID)
+    let categoryId = null;
+    if (taskData.content.category_id) {
+      categoryId = taskData.content.category_id;
+    } else if (taskData.content.category) {
+      categoryId = await getCategoryIdByName(taskData.content.category);
     }
 
     const insertPayload: any = {
@@ -370,24 +409,31 @@ export async function POST(request: NextRequest) {
       description: taskData.content.description || null,
       status: taskData.content.status,
       priority: taskData.content.priority,
+      category_id: categoryId,
       due_date: taskData.content.due_date || null,
+      estimated_duration: taskData.content.estimated_duration || null,
+      progress: taskData.content.progress || 0,
+      assignee: taskData.content.assignee || null,
+      notes: taskData.content.notes || null,
       tags: taskData.tags || [],
       created_at: now,
       updated_at: now,
     };
 
+    console.log('Creating task with payload:', JSON.stringify(insertPayload, null, 2));
+
     const { data, error } = await supabase
       .from('tasks')
       .insert(insertPayload)
-      .select()
+      .select(`
+        *,
+        category:categories(id, name, color, icon)
+      `)
       .single();
 
     if (error) {
       console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create task' },
-        { status: 500 }
-      );
+      return jsonWithCors(request, { error: 'Failed to create task' }, 500);
     }
 
     const mapped: TaskMemory = {
@@ -398,28 +444,48 @@ export async function POST(request: NextRequest) {
         description: data.description || undefined,
         status: data.status,
         priority: data.priority,
+        category: data.category?.name,
         due_date: data.due_date || undefined,
+        estimated_duration: data.estimated_duration || undefined,
+        progress: data.progress || 0,
+        assignee: data.assignee || undefined,
+        notes: data.notes || undefined,
       },
       tags: data.tags || [],
       created_at: data.created_at,
       updated_at: data.updated_at,
-    };
-    return NextResponse.json(mapped, { status: 201 });
+      // Add category_id at the top level for frontend filtering
+      category_id: data.category_id,
+    } as any;
+    
+    console.log('Returning created task:', JSON.stringify(mapped, null, 2));
+    return jsonWithCors(request, mapped, 201);
   } catch (error) {
     console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }
 
 // OPTIONS - Handle CORS preflight requests
-export async function OPTIONS() {
+function jsonWithCors(request: NextRequest, body: any, status = 200) {
+  const origin = request.headers.get('origin') || '*';
+  const res = NextResponse.json(body, { status });
+  res.headers.set('Access-Control-Allow-Origin', origin);
+  res.headers.set('Vary', 'Origin');
+  res.headers.set('Access-Control-Allow-Credentials', 'true');
+  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  return res;
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin') || '*';
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': origin,
+      'Vary': 'Origin',
+      'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },

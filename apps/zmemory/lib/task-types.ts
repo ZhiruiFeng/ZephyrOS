@@ -54,6 +54,7 @@ export const TaskContentSchema = z.object({
     TaskCategory.MAINTENANCE,
     TaskCategory.OTHER
   ]).optional(),
+  category_id: z.string().optional(),
   due_date: z.string().datetime().optional(),
   estimated_duration: z.number().positive().optional(), // minutes
   progress: z.number().min(0).max(100).default(0),

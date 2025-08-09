@@ -1,29 +1,27 @@
 'use client'
 
-import React, { useMemo, useState, Suspense } from 'react'
+import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
-import dynamicIconImports from 'lucide-react/dynamicIconImports'
-const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
-  <Suspense fallback={null}>
-    <Comp {...props} />
-  </Suspense>
-)
-const Plus = Lazy(React.lazy(dynamicIconImports['plus'] as any))
-const CheckCircle = Lazy(React.lazy(dynamicIconImports['check-circle'] as any))
-const Circle = Lazy(React.lazy(dynamicIconImports['circle'] as any))
-const Clock = Lazy(React.lazy(dynamicIconImports['clock'] as any))
-const AlertCircle = Lazy(React.lazy(dynamicIconImports['alert-circle'] as any))
-const Trash2 = Lazy(React.lazy(dynamicIconImports['trash-2'] as any))
-const ChevronDown = Lazy(React.lazy(dynamicIconImports['chevron-down'] as any))
-const Filter = Lazy(React.lazy(dynamicIconImports['filter'] as any))
-const BarChart3 = Lazy(React.lazy(dynamicIconImports['bar-chart-3'] as any))
-const Calendar = Lazy(React.lazy(dynamicIconImports['calendar'] as any))
-const User = Lazy(React.lazy(dynamicIconImports['user'] as any))
-const ListTodo = Lazy(React.lazy(dynamicIconImports['list-todo'] as any))
-const KanbanSquare = Lazy(React.lazy(dynamicIconImports['kanban-square'] as any))
-const Tag = Lazy(React.lazy(dynamicIconImports['tag'] as any))
-const Pencil = Lazy(React.lazy(dynamicIconImports['pencil'] as any))
+import {
+  Plus,
+  CheckCircle,
+  Circle,
+  Clock,
+  AlertCircle,
+  Trash2,
+  ChevronDown,
+  Filter,
+  BarChart3,
+  Calendar,
+  User,
+  ListTodo,
+  KanbanSquare,
+  Tag,
+  Pencil,
+} from 'lucide-react'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
+import CategorySidebar from './components/CategorySidebar'
+import { categoriesApi, tasksApi } from '../lib/api'
 import TaskEditor from './components/TaskEditor'
 import { getPriorityIcon } from './components/TaskIcons'
 import { 
@@ -41,6 +39,7 @@ export default function ZFlowPage() {
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
   const [newTaskDueDate, setNewTaskDueDate] = useState<string>('')
   const [newTaskTags, setNewTaskTags] = useState('')
+  const [newTaskCategoryId, setNewTaskCategoryId] = useState<string | undefined>(undefined)
   const [showAddForm, setShowAddForm] = useState(false)
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterPriority, setFilterPriority] = useState<FilterPriority>('all')
@@ -48,9 +47,32 @@ export default function ZFlowPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [editorOpen, setEditorOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<any>(null)
+  const [categories, setCategories] = useState<any[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'uncategorized' | string>('all')
 
   // 使用 API hooks
   const { tasks, isLoading, error, refetch } = useTasks({})
+  // 加载分类
+  React.useEffect(() => {
+    categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
+  }, [])
+
+  // 统计各分类的任务计数
+  const categoryCounts = React.useMemo(() => {
+    const byId: Record<string, number> = {}
+    let uncategorized = 0
+    tasks.forEach((t: any) => {
+      const c = t.content as Task
+      const catId = (t as any).category_id || (t as any).content?.category_id
+      if (catId) byId[catId] = (byId[catId] || 0) + 1
+      else uncategorized += 1
+    })
+    return {
+      byId,
+      uncategorized,
+      total: tasks.length,
+    }
+  }, [tasks])
   const { createTask } = useCreateTask()
   const { updateTask } = useUpdateTask()
   const { deleteTask } = useDeleteTask()
@@ -59,18 +81,28 @@ export default function ZFlowPage() {
     if (!newTask.trim()) return
 
     try {
+      console.log('=== TASK CREATION DEBUG ===');
+      console.log('selectedCategory:', selectedCategory);
+      console.log('newTaskCategoryId:', newTaskCategoryId);
+      
       const tagsArray = newTaskTags
         .split(',')
         .map(t => t.trim())
         .filter(t => t.length > 0)
+
+      const finalCategoryId = newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined);
+      console.log('finalCategoryId:', finalCategoryId);
 
       const taskData = {
         title: newTask,
         description: newTaskDescription,
         status: 'pending' as const,
         priority: newTaskPriority,
+        category_id: finalCategoryId,
         due_date: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
       }
+
+      console.log('taskData being sent:', JSON.stringify(taskData, null, 2));
 
       await createTask({
         type: 'task',
@@ -84,6 +116,7 @@ export default function ZFlowPage() {
       setNewTaskPriority('medium')
       setNewTaskDueDate('')
       setNewTaskTags('')
+      setNewTaskCategoryId(undefined)
       setShowAddForm(false)
     } catch (error) {
       console.error('Failed to create task:', error)
@@ -118,7 +151,17 @@ export default function ZFlowPage() {
     }
   }
 
-  const openEditor = (task: any) => {
+  const openEditor = (taskMemory: any) => {
+    // Convert TaskMemory to Task format expected by TaskEditor
+    const task = {
+      id: taskMemory.id,
+      ...taskMemory.content,
+      tags: taskMemory.tags,
+      created_at: taskMemory.created_at,
+      updated_at: taskMemory.updated_at,
+      // Add category_id from the top level if available
+      category_id: (taskMemory as any).category_id || taskMemory.content.category_id,
+    }
     setSelectedTask(task)
     setEditorOpen(true)
   }
@@ -135,12 +178,19 @@ export default function ZFlowPage() {
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
       const c = t.content as Task
+      // 分类筛选：all 显示全部；uncategorized 显示没有 category_id 的任务；否则按 category_id 匹配
+      const catId = (t as any).category_id || (t as any).content?.category_id
+      const matchCategory = selectedCategory === 'all'
+        ? true
+        : selectedCategory === 'uncategorized'
+          ? !catId
+          : catId === selectedCategory
       const matchStatus = filterStatus === 'all' || c.status === filterStatus
       const matchPriority = filterPriority === 'all' || c.priority === filterPriority
       const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
-      return matchStatus && matchPriority && matchSearch
+      return matchCategory && matchStatus && matchPriority && matchSearch
     })
-  }, [tasks, filterStatus, filterPriority, search])
+  }, [tasks, selectedCategory, filterStatus, filterPriority, search])
 
   if (isLoading) {
     return (
@@ -169,6 +219,38 @@ export default function ZFlowPage() {
 
   return (
     <div className="py-8">
+      <div className="flex gap-4">
+        {/* 左侧分类栏 */}
+        <CategorySidebar
+          categories={categories}
+          selected={selectedCategory}
+          counts={categoryCounts}
+          onSelect={(key) => setSelectedCategory(key as any)}
+          onCreate={async (payload) => {
+            await categoriesApi.create({ name: payload.name, color: payload.color })
+            const next = await categoriesApi.getAll()
+            setCategories(next)
+          }}
+          onUpdate={async (id, payload) => {
+            await categoriesApi.update(id, payload)
+            const next = await categoriesApi.getAll()
+            setCategories(next)
+          }}
+          onDelete={async (id) => {
+            await categoriesApi.delete(id)
+            const next = await categoriesApi.getAll()
+            setCategories(next)
+            // If the deleted category was selected, switch to 'all'
+            if (selectedCategory === id) {
+              setSelectedCategory('all')
+            }
+          }}
+          className="hidden md:block rounded-lg"
+        />
+
+        {/* 右侧主内容 */}
+        <div className="flex-1">
+          
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -246,15 +328,21 @@ export default function ZFlowPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         {!showAddForm ? (
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => {
+              setNewTaskCategoryId(selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined)
+              setShowAddForm(true)
+            }}
             className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            添加新任务
+            {selectedCategory !== 'all' && selectedCategory !== 'uncategorized' && categories.find(cat => cat.id === selectedCategory) 
+              ? `添加新任务到「${categories.find(cat => cat.id === selectedCategory)?.name}」`
+              : '添加新任务'
+            }
           </button>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <input
                 type="text"
                 value={newTask}
@@ -272,6 +360,18 @@ export default function ZFlowPage() {
                 <option value="medium">中优先级</option>
                 <option value="high">高优先级</option>
                 <option value="urgent">紧急</option>
+              </select>
+              <select
+                value={newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : '')}
+                onChange={(e) => setNewTaskCategoryId(e.target.value || undefined)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">无分类</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
             </div>
             <textarea
@@ -311,7 +411,10 @@ export default function ZFlowPage() {
                 创建任务
               </button>
               <button
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false)
+                  setNewTaskCategoryId(undefined)
+                }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors duration-200"
               >
                 取消
@@ -416,14 +519,17 @@ export default function ZFlowPage() {
         )}
       </div>
 
-      {/* 使用共享的TaskEditor组件 */}
-      <TaskEditor
-        isOpen={editorOpen}
-        onClose={closeEditor}
-        task={selectedTask}
-        onSave={handleSaveTask}
-        title="编辑任务"
-      />
+          {/* 使用共享的TaskEditor组件 */}
+          <TaskEditor
+            isOpen={editorOpen}
+            onClose={closeEditor}
+            task={selectedTask}
+            categories={categories}
+            onSave={handleSaveTask}
+            title="编辑任务"
+          />
+        </div>
+      </div>
     </div>
   )
 } 

@@ -61,6 +61,7 @@ export function useCreateTask() {
 export function useUpdateTask() {
   const updateTask = async (id: string, data: UpdateTaskRequest) => {
     try {
+      console.log('useUpdateTask called with:', id, JSON.stringify(data, null, 2));
       const updatedTask = await apiClient.updateTask(id, data);
       await mutate(`task-${id}`, updatedTask, false);
       await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));

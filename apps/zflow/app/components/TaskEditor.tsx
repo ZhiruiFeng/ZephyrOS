@@ -1,20 +1,17 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
-import dynamicIconImports from 'lucide-react/dynamicIconImports'
-import { Task, TaskForm, TaskEditorProps } from '../types/task'
+import React, { useState, useEffect } from 'react'
+import { X as XIcon } from 'lucide-react'
+import { Task, TaskForm, TaskEditorProps, Category } from '../types/task'
+import CategorySelector from './CategorySelector'
 
-const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
-  <Suspense fallback={null}>
-    <Comp {...props} />
-  </Suspense>
-)
-const X = Lazy(React.lazy(dynamicIconImports['x'] as any))
+const X = XIcon
 
 export default function TaskEditor({ 
   isOpen, 
   onClose, 
   task, 
+  categories = [],
   onSave, 
   title = "编辑任务" 
 }: TaskEditorProps) {
@@ -23,20 +20,30 @@ export default function TaskEditor({
     description: '',
     status: 'pending',
     priority: 'medium',
+    category_id: '',
     due_date: '',
+    estimated_duration: 0,
+    progress: 0,
+    assignee: '',
+    notes: '',
     tags: ''
   })
 
   // 当任务数据变化时，更新表单
   useEffect(() => {
+    console.log('TaskEditor received task:', task);
     if (task) {
-      const taskContent = task.content as Task
       setForm({
-        title: taskContent.title,
-        description: taskContent.description || '',
-        status: taskContent.status,
-        priority: taskContent.priority,
-        due_date: taskContent.due_date ? new Date(taskContent.due_date).toISOString().slice(0, 16) : '',
+        title: task.title || '',
+        description: task.description || '',
+        status: task.status || 'pending',
+        priority: task.priority || 'medium',
+        category_id: task.category_id || '',
+        due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 16) : '',
+        estimated_duration: task.estimated_duration || 0,
+        progress: task.progress || 0,
+        assignee: task.assignee || '',
+        notes: task.notes || '',
         tags: (task.tags || []).filter((tag: string) => !['zflow', 'task'].includes(tag)).join(', ')
       })
     }
@@ -45,22 +52,36 @@ export default function TaskEditor({
   const handleSave = async () => {
     if (!task) return
 
+    if (!form.title.trim()) {
+      alert('任务标题不能为空')
+      return
+    }
+
     try {
       const tagsArray = form.tags
         .split(',')
         .map(t => t.trim())
         .filter(t => t.length > 0)
 
-      await onSave(task.id, {
+      const saveData = {
         content: {
           title: form.title,
           description: form.description,
           status: form.status,
           priority: form.priority,
+          category_id: form.category_id || undefined,
           due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined,
+          estimated_duration: form.estimated_duration || undefined,
+          progress: form.progress || 0,
+          assignee: form.assignee || undefined,
+          notes: form.notes || undefined,
         },
         tags: ['zflow', 'task', ...tagsArray]
-      })
+      };
+
+      console.log('TaskEditor saving with data:', JSON.stringify(saveData, null, 2));
+
+      await onSave(task.id, saveData)
       onClose()
     } catch (error) {
       console.error('Failed to save task:', error)
@@ -134,12 +155,58 @@ export default function TaskEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm text-gray-600 mb-1">分类</label>
+              <CategorySelector
+                value={form.category_id}
+                onChange={(categoryId) => setForm(f => ({ ...f, category_id: categoryId }))}
+                categories={categories}
+                placeholder="选择分类..."
+                className="w-full"
+              />
+            </div>
+            <div>
               <label className="block text-sm text-gray-600 mb-1">截止时间</label>
               <input
                 type="datetime-local"
                 value={form.due_date}
                 onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">预计时长（分钟）</label>
+              <input
+                type="number"
+                value={form.estimated_duration || ''}
+                onChange={(e) => setForm(f => ({ ...f, estimated_duration: e.target.value ? parseInt(e.target.value) : 0 }))}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="如：480"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">进度（%）</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={form.progress || 0}
+                onChange={(e) => setForm(f => ({ ...f, progress: parseInt(e.target.value) || 0 }))}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">负责人</label>
+              <input
+                value={form.assignee || ''}
+                onChange={(e) => setForm(f => ({ ...f, assignee: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="负责人姓名"
               />
             </div>
             <div>
@@ -151,6 +218,16 @@ export default function TaskEditor({
                 placeholder="如：frontend, bug, urgent"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">备注</label>
+            <textarea
+              value={form.notes || ''}
+              onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[80px]"
+              placeholder="任务备注..."
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
