@@ -11,12 +11,12 @@ export default function AuthButton() {
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-gray-600">{user.email}</span>
-      <button 
-        onClick={signOut} 
+      <button
+        onClick={signOut}
         disabled={loading}
         className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50"
       >
-        退出
+        Sign out
       </button>
     </div>
   )

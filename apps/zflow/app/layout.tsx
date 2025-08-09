@@ -5,6 +5,7 @@ import './globals.css'
 import React from 'react'
 import { supabase } from '../lib/supabase'
 import { AuthProvider } from '../contexts/AuthContext'
+import NavBar from './components/NavBar'
 
 export default function RootLayout({
   children,
@@ -19,6 +20,7 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-50 min-h-screen">
         <AuthProvider>
+          <NavBar />
           <SWRConfig
             value={{
               fetcher: async (url: string) => {

@@ -28,7 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!supabase) {
+    const client = supabase
+    if (!client) {
       setLoading(false)
       return
     }
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session } } = await client.auth.getSession()
         setSession(session)
         setUser(session?.user ?? null)
       } catch (error) {
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = client.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email)
       setSession(session)
       setUser(session?.user ?? null)
@@ -62,11 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signInWithGoogle = async () => {
-    if (!supabase) return
+    const client = supabase
+    if (!client) return
 
     try {
       setLoading(true)
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}`,
@@ -85,10 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    if (!supabase) return
+    const client = supabase
+    if (!client) return
 
     try {
-      const { error } = await supabase.auth.signOut()
+      const { error } = await client.auth.signOut()
       if (error) {
         console.error('Error signing out:', error)
       }
