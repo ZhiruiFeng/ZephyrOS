@@ -5,6 +5,7 @@ import './globals.css'
 import React from 'react'
 import { supabase } from '../lib/supabase'
 import { AuthProvider } from '../contexts/AuthContext'
+import { PrefsProvider } from '../contexts/PrefsContext'
 import NavBar from './components/NavBar'
 
 export default function RootLayout({
@@ -20,8 +21,9 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-50 min-h-screen">
         <AuthProvider>
-          <NavBar />
-          <SWRConfig
+          <PrefsProvider>
+            <NavBar />
+            <SWRConfig
             value={{
               fetcher: async (url: string) => {
                 const token = (await supabase?.auth.getSession())?.data.session?.access_token
@@ -35,9 +37,10 @@ export default function RootLayout({
               revalidateOnFocus: false,
               revalidateOnReconnect: true,
             }}
-          >
-            {children}
-          </SWRConfig>
+            >
+              {children}
+            </SWRConfig>
+          </PrefsProvider>
         </AuthProvider>
       </body>
     </html>

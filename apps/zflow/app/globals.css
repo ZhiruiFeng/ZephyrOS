@@ -24,4 +24,21 @@
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
   }
+
+  /* Modern UI helpers */
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/60 shadow-sm;
+  }
+
+  .card-hover {
+    @apply transition-transform transition-shadow duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  .pill-select {
+    @apply rounded-full border border-gray-200 bg-white/70 backdrop-blur px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary-500;
+  }
+
+  .pill-input {
+    @apply rounded-full border border-gray-200 bg-white/70 backdrop-blur px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-500;
+  }
 } 

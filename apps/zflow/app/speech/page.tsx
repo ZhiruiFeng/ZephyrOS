@@ -2,8 +2,24 @@
 
 import React from "react";
 import BatchTranscriber from "./components/BatchTranscriber";
+import { useAuth } from "../../contexts/AuthContext";
+import LoginPage from "../components/LoginPage";
 
 export default function SpeechDemoPage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
   return (
     <div className="py-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-2">语音转文字（批量回退版）</h1>

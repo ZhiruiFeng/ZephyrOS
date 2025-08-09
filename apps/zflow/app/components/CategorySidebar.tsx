@@ -1,14 +1,21 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Category } from '../types/task'
+import { usePrefs } from '../../contexts/PrefsContext'
 
 type SpecialCategory = 'all' | 'uncategorized'
 
 export interface CategoryCounts {
   byId: Record<string, number>
+  byIdCompleted: Record<string, number>
+  byIdIncomplete: Record<string, number>
   uncategorized: number
+  uncategorizedCompleted: number
+  uncategorizedIncomplete: number
   total: number
+  totalCompleted: number
+  totalIncomplete: number
 }
 
 interface CategorySidebarProps {
@@ -34,6 +41,7 @@ export default function CategorySidebar({
   onDelete,
   className = ''
 }: CategorySidebarProps) {
+  const { showCompletedCounts, setShowCompletedCounts } = (usePrefs() as any)
   const [isCreating, setIsCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState(presetColors[0])
@@ -41,6 +49,7 @@ export default function CategorySidebar({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('')
+  // using shared prefs from PrefsProvider
 
   const handleCreate = async () => {
     if (!newName.trim()) return
@@ -96,7 +105,9 @@ export default function CategorySidebar({
   return (
     <aside className={`w-full sm:w-60 lg:w-64 xl:w-72 shrink-0 bg-white border-r border-gray-200 ${className}`}>
       <div className="p-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Categories</h2>
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">Categories</h2>
+        </div>
         <nav className="space-y-1">
           <button
             onClick={() => onSelect('all')}
@@ -105,7 +116,16 @@ export default function CategorySidebar({
             }`}
           >
             <span>All</span>
-            <span className="text-xs opacity-70">{counts.total}</span>
+            {showCompletedCounts ? (
+              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">{counts.totalIncomplete}</span>
+                <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">{counts.totalCompleted}</span>
+              </span>
+            ) : (
+              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">{counts.totalIncomplete}</span>
+              </span>
+            )}
           </button>
           <button
             onClick={() => onSelect('uncategorized')}
@@ -114,7 +134,16 @@ export default function CategorySidebar({
             }`}
           >
             <span>Uncategorized</span>
-            <span className="text-xs opacity-70">{counts.uncategorized}</span>
+            {showCompletedCounts ? (
+              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">{counts.uncategorizedIncomplete}</span>
+                <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">{counts.uncategorizedCompleted}</span>
+              </span>
+            ) : (
+              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">{counts.uncategorizedIncomplete}</span>
+              </span>
+            )}
           </button>
           <div className="h-px bg-gray-200 my-2" />
           {categories.map((cat) => (
@@ -168,7 +197,16 @@ export default function CategorySidebar({
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
                       <span className="truncate max-w-[7rem]">{cat.name}</span>
                     </span>
-                    <span className="text-xs opacity-70">{counts.byId[cat.id] || 0}</span>
+                    {showCompletedCounts ? (
+                      <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                        <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">{counts.byIdIncomplete[cat.id] || 0}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">{counts.byIdCompleted[cat.id] || 0}</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                        <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">{counts.byIdIncomplete[cat.id] || 0}</span>
+                      </span>
+                    )}
                   </button>
                   {(onUpdate || onDelete) && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ml-1">

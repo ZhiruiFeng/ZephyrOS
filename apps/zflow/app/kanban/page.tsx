@@ -3,6 +3,9 @@
 import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
+import { usePrefs } from '../../contexts/PrefsContext'
+import { useAuth } from '../../contexts/AuthContext'
+import LoginPage from '../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
 import dynamicIconImports from 'lucide-react/dynamicIconImports'
 const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
@@ -38,13 +41,14 @@ const COLUMNS: Array<{ key: StatusKey; title: string; hint?: string }> = [
 ]
 
 export default function KanbanPage() {
-  const { tasks, isLoading, error } = useTasks({})
+  const { user, loading: authLoading } = useAuth()
+  const { tasks, isLoading, error } = useTasks(user ? {} : null)
   const { updateTask } = useUpdateTask()
   const [categories, setCategories] = useState<any[]>([])
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [filterPriority, setFilterPriority] = useState<'all' | TaskContent['priority']>('all')
+  const { filterPriority, setFilterPriority, hideCompleted, setHideCompleted, selectedCategory, setSelectedCategory, sortMode } = (usePrefs() as any)
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
 
@@ -53,14 +57,22 @@ export default function KanbanPage() {
     categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
   }, [])
 
+  // using shared prefs; local persistence handled by PrefsProvider
+
   const filtered = useMemo(() => {
+    const shouldHideCompleted = hideCompleted
     return tasks.filter((t) => {
       const c = t.content as TaskContent
+      const catId = (t as any).category_id || (t as any).content?.category_id
+      const matchCategory = selectedCategory === 'all' ? true : selectedCategory === 'uncategorized' ? !catId : catId === selectedCategory
       const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
       const matchPriority = filterPriority === 'all' || c.priority === filterPriority
-      return matchSearch && matchPriority
+      const matchCompletedHide = !(shouldHideCompleted && c.status === 'completed')
+      return matchCategory && matchSearch && matchPriority && matchCompletedHide
     })
-  }, [tasks, search, filterPriority])
+  }, [tasks, search, filterPriority, hideCompleted, selectedCategory])
+
+  // sort mode from shared prefs
 
   const byStatus = useMemo<Record<StatusKey, TaskMemory[]>>(() => {
     const map = {
@@ -74,8 +86,24 @@ export default function KanbanPage() {
       const s = (t.content as TaskContent).status
       map[s]?.push(t)
     }
+    // sort inside each column
+    const priorityOrder: Record<TaskContent['priority'], number> = { urgent: 0, high: 1, medium: 2, low: 3 }
+    const sorters: Record<typeof sortMode, (a: TaskMemory, b: TaskMemory) => number> = {
+      none: () => 0,
+      priority: (a, b) => priorityOrder[(a.content as TaskContent).priority] - priorityOrder[(b.content as TaskContent).priority],
+      due_date: (a, b) => {
+        const da = (a.content as TaskContent).due_date
+        const db = (b.content as TaskContent).due_date
+        if (!da && !db) return 0
+        if (!da) return 1
+        if (!db) return -1
+        return new Date(da).getTime() - new Date(db).getTime()
+      },
+    }
+    const sorter = sorters[sortMode]
+    ;(Object.keys(map) as StatusKey[]).forEach((k) => map[k].sort(sorter))
     return map
-  }, [filtered])
+  }, [filtered, sortMode])
 
   const onDragStart = (taskId: string, e: React.DragEvent) => {
     setDraggingId(taskId)
@@ -132,6 +160,21 @@ export default function KanbanPage() {
     await updateTask(taskId, data)
   }
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <LoginPage />
+  }
+
+  // Show loading while fetching data
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -147,45 +190,64 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <KanbanSquare className="w-7 h-7" /> Kanban
-          </h1>
-          <p className="text-gray-600">Drag cards between columns to update status</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tasks..."
-              className="text-sm outline-none"
-            />
+    <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute -left-10 -bottom-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative p-6 sm:p-8 flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                <KanbanSquare className="w-7 h-7" /> 看板
+              </h1>
+              <p className="mt-1 text-white/90">拖拽卡片在列之间即可更新任务状态</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="搜索任务..."
+                  className="text-sm outline-none bg-transparent placeholder:text-white/70 text-white"
+                />
+              </div>
+              <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
+                <select
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value as any)}
+                  className="text-sm outline-none bg-transparent text-white"
+                >
+                  <option value="all" className="text-gray-800">全部优先级</option>
+                  <option value="urgent" className="text-gray-800">紧急</option>
+                  <option value="high" className="text-gray-800">高</option>
+                  <option value="medium" className="text-gray-800">中</option>
+                  <option value="low" className="text-gray-800">低</option>
+                </select>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value || 'all')}
+                  className="text-sm outline-none bg-transparent text-white"
+                >
+                  <option value="all" className="text-gray-800">全部分类</option>
+                  <option value="uncategorized" className="text-gray-800">未分类</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id} className="text-gray-800">{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <Link href="/" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90 inline-flex items-center gap-2">
+                <ChevronLeft className="w-4 h-4" /> 返回列表
+              </Link>
+            </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value as any)}
-              className="text-sm outline-none"
-            >
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <Link href="/" className="btn btn-secondary flex items-center gap-1">
-            <ChevronLeft className="w-4 h-4" /> Back to List
-          </Link>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {COLUMNS.map((col) => (
-          <div key={col.key} className="bg-gray-100 rounded-lg p-3 border border-gray-200">
+          <div key={col.key} className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
                 <ListTodo className="w-4 h-4 text-primary-600" /> {col.title}
@@ -196,9 +258,7 @@ export default function KanbanPage() {
             <div
               onDragOver={allowDrop}
               onDrop={(e) => onDropTo(col.key, e)}
-              className={`min-h-[300px] rounded-md p-2 transition-colors ${
-                draggingId ? 'bg-gray-50' : 'bg-gray-100'
-              }`}
+              className={`min-h-[320px] rounded-xl p-2 transition-colors ${draggingId ? 'bg-white/60' : 'bg-white/40'}`}
             >
               {(byStatus[col.key] || []).map((task) => {
                 const c = task.content as TaskContent
@@ -208,51 +268,37 @@ export default function KanbanPage() {
                     draggable
                     onDragStart={(e) => onDragStart(task.id, e)}
                     onDragEnd={onDragEnd}
-                    className="card mb-2 cursor-grab active:cursor-grabbing select-none"
+                    className="card card-hover mb-2 cursor-grab active:cursor-grabbing select-none rounded-xl"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="pr-2">
-                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                      <div className="pr-2 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
                           {c.title}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">{c.status}</span>
                         </div>
                         {c.description && (
                           <div className="text-sm text-gray-600 mt-1 line-clamp-2">{c.description}</div>
                         )}
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          {task.tags?.slice(0, 4).map((tg) => (
-                            <span key={tg} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
-                              <Tag className="w-3 h-3" /> {tg}
-                            </span>
-                          ))}
-                          {task.tags && task.tags.length > 4 && (
-                            <span className="text-[10px] text-gray-500">+{task.tags.length - 4}</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-2">
-                          Created {formatDate(task.created_at)}
+                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                          <div className="flex items-center gap-2">
+                            {getPriorityIcon(c.priority)}
+                            {c.due_date && (
+                              <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                                <Calendar className="w-3.5 h-3.5" />
+                                {formatDate(c.due_date)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditor(task)
-                          }}
-                          className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
-                        >
-                          <Pencil className="w-3.5 h-3.5" /> Edit
-                        </button>
-                        <div className="flex items-center gap-2">
-                          {getPriorityIcon(c.priority)}
-                          {c.due_date && (
-                            <span className={`text-xs inline-flex items-center gap-1 ${isOverdue(c.due_date) ? 'text-red-600' : 'text-gray-500'}`}>
-                              <Calendar className="w-3.5 h-3.5" />
-                              {formatDate(c.due_date)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEditor(task)
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> 编辑
+                      </button>
                     </div>
                   </div>
                 )
@@ -262,7 +308,6 @@ export default function KanbanPage() {
         ))}
       </div>
 
-      {/* 使用共享的TaskEditor组件 */}
       <TaskEditor
         isOpen={editorOpen}
         onClose={closeEditor}
