@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
-import { TaskContent, TaskMemory, categoriesApi } from '../../lib/api'
+import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
 import dynamicIconImports from 'lucide-react/dynamicIconImports'
 const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
   <Suspense fallback={null}>
@@ -46,7 +46,7 @@ export default function KanbanPage() {
   const [search, setSearch] = useState('')
   const [filterPriority, setFilterPriority] = useState<'all' | TaskContent['priority']>('all')
   const [editorOpen, setEditorOpen] = useState(false)
-  const [selected, setSelected] = useState<TaskMemory | null>(null)
+  const [selected, setSelected] = useState<any | null>(null)
 
   // Load categories
   React.useEffect(() => {

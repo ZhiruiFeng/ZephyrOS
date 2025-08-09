@@ -2,12 +2,12 @@ import useSWR, { mutate } from 'swr';
 import { apiClient, TaskMemory, CreateTaskRequest, UpdateTaskRequest } from '../lib/api';
 
 // Hook to get memory list
-export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0]) {
-  const key = params ? `tasks-${JSON.stringify(params)}` : 'tasks';
+export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0] | null) {
+  const key = params === null ? null : (params ? `tasks-${JSON.stringify(params)}` : 'tasks');
 
   const { data, error, isLoading, mutate: refetch } = useSWR(
     key,
-    () => apiClient.getTasks(params),
+    () => params !== null ? apiClient.getTasks(params) : null,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

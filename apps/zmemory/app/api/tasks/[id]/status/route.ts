@@ -76,10 +76,11 @@ const StatusUpdateSchema = z.object({
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: any }
 ) {
   try {
-    const { id } = await params;
+    const resolved = params?.then ? await params : params;
+    const { id } = resolved as { id: string };
     const body = await request.json();
     
     // Validate request body

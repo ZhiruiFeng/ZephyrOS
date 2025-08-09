@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
 import { z } from 'zod';
 
 // Validation schema
@@ -58,9 +59,16 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { categories: mockCategories });
     }
 
-    const { data: categories, error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { data: categories, error } = await client
       .from('categories')
       .select('*')
+      .eq('user_id', userId)
       .order('name');
 
     if (error) {
@@ -93,10 +101,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = CreateCategorySchema.parse(body);
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+    const client = createClientForRequest(request) || supabase
 
-    const { data: category, error } = await supabase
+    const { data: category, error } = await client
       .from('categories')
-      .insert(validatedData)
+      .insert({ ...validatedData, user_id: userId })
       .select()
       .single();
 

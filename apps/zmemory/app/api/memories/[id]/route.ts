@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
 import { z } from 'zod';
 
 // Create Supabase client
@@ -21,10 +22,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { data, error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+    const { data, error } = await client
       .from('memories')
       .select('*')
       .eq('id', params.id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -62,13 +69,19 @@ export async function PUT(
     // Validate input data
     const validatedData = MemoryUpdateSchema.parse(body);
     
-    const { data, error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+    const { data, error } = await client
       .from('memories')
       .update({
         ...validatedData,
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -109,10 +122,16 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+    const { error } = await client
       .from('memories')
       .delete()
-      .eq('id', params.id);
+      .eq('id', params.id)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Database error:', error);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
 function jsonWithCors(request: NextRequest, body: any, status = 200) {
   const origin = request.headers.get('origin') || '*';
   const res = NextResponse.json(body, { status });
@@ -32,19 +33,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    // 检查用户认证
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
-    }
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
+    const supabase = createClientForRequest(request)!
 
     const { error } = await supabase
       .from('task_relations')
       .delete()
       .eq('id', params.id)
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (error) {
       if (error.code === 'PGRST116') {

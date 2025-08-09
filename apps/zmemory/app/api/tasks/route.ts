@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
 import { 
   CreateTaskSchema, 
   TaskQuerySchema, 
@@ -9,21 +10,20 @@ import {
   TaskCategory
 } from '../../../lib/task-types';
 
-// Helper function to get category ID by name
-async function getCategoryIdByName(categoryName: string): Promise<string | null> {
-  if (!supabase) return null;
-  
-  const { data, error } = await supabase
+// Helper function to get category ID by name for current user
+async function getCategoryIdByName(client: SupabaseClient, userId: string, categoryName: string): Promise<string | null> {
+  const { data, error } = await client
     .from('categories')
     .select('id')
     .eq('name', categoryName)
+    .eq('user_id', userId)
     .single();
-    
+
   if (error || !data) return null;
   return data.id;
 }
 
-// Create Supabase client
+// Create Supabase client (service key only for mock fallback; real requests use bearer token)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -230,13 +230,22 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, tasks);
     }
 
+    // Enforce auth
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+
+    const client = createClientForRequest(request) || supabase
+
     // Build Supabase query against tasks table
-    let dbQuery = supabase
+    let dbQuery = client
       .from('tasks')
       .select(`
         *,
         category:categories(id, name, color, icon)
-      `);
+      `)
+      .eq('user_id', userId);
 
     // Apply filters
     if (query.status) {
@@ -396,12 +405,20 @@ export async function POST(request: NextRequest) {
       return jsonWithCors(request, mockTask, 201);
     }
 
+    // Enforce auth
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+
+    const client = createClientForRequest(request) || supabase
+
     // Determine category_id - handle both category (name) and category_id (direct ID)
     let categoryId = null;
     if (taskData.content.category_id) {
       categoryId = taskData.content.category_id;
     } else if (taskData.content.category) {
-      categoryId = await getCategoryIdByName(taskData.content.category);
+      categoryId = await getCategoryIdByName(client, userId, taskData.content.category);
     }
 
     const insertPayload: any = {
@@ -418,11 +435,12 @@ export async function POST(request: NextRequest) {
       tags: taskData.tags || [],
       created_at: now,
       updated_at: now,
+      user_id: userId,
     };
 
     console.log('Creating task with payload:', JSON.stringify(insertPayload, null, 2));
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('tasks')
       .insert(insertPayload)
       .select(`

@@ -3,6 +3,8 @@
 import { SWRConfig } from 'swr'
 import './globals.css'
 import React from 'react'
+import { supabase } from '../lib/supabase'
+import { AuthProvider } from '../contexts/AuthContext'
 
 export default function RootLayout({
   children,
@@ -16,17 +18,25 @@ export default function RootLayout({
         <meta name="description" content="个人AI操作系统的任务管理模块" />
       </head>
       <body className="bg-gray-50 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AuthProvider>
           <SWRConfig
             value={{
-              fetcher: (url: string) => fetch(url).then(res => res.json()),
+              fetcher: async (url: string) => {
+                const token = (await supabase?.auth.getSession())?.data.session?.access_token
+                const res = await fetch(url, {
+                  credentials: 'include',
+                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                })
+                if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+                return res.json()
+              },
               revalidateOnFocus: false,
               revalidateOnReconnect: true,
             }}
           >
             {children}
           </SWRConfig>
-        </div>
+        </AuthProvider>
       </body>
     </html>
   )

@@ -48,7 +48,23 @@ ZephyrOS/
 Copy environment variables file:
 ```bash
 cp env.example .env.local
+# 填入以下关键变量：
+# NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+# （如需 Google 登录）GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 ```
+### Authentication (可选但推荐)
+
+本项目已内置 Supabase Auth 并支持 Google OAuth 登录：
+
+- 前端 `apps/zflow` 使用 Supabase Browser Client，自动为请求附带 `Authorization: Bearer <token>`
+- 后端 `apps/zmemory` 使用请求头中的 Bearer Token 创建 Supabase Client，并依赖数据库 RLS 进行用户数据隔离
+
+配置步骤：
+
+1. 在 Supabase Dashboard 启用 Google Provider，获取 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+2. 在 `.env.local` 配置：`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`GOOGLE_*`
+3. 运行前端、后端后，前端右上角可见“使用 Google 登录”按钮
+
 
 Configure environment variables:
 ```env

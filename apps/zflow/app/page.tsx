@@ -32,8 +32,12 @@ import {
   formatTagsString
 } from './utils/taskUtils'
 import { Task, FilterStatus, FilterPriority, ViewMode } from './types/task'
+import AuthButton from './components/AuthButton'
+import LoginPage from './components/LoginPage'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function ZFlowPage() {
+  const { user, loading: authLoading } = useAuth()
   const [newTask, setNewTask] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
@@ -50,12 +54,15 @@ export default function ZFlowPage() {
   const [categories, setCategories] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'uncategorized' | string>('all')
 
-  // Use API hooks
-  const { tasks, isLoading, error, refetch } = useTasks({})
-  // Load categories
+  // Use API hooks - only when authenticated
+  const { tasks, isLoading, error, refetch } = useTasks(user ? {} : null)
+  
+  // Load categories - only when authenticated
   React.useEffect(() => {
-    categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
-  }, [])
+    if (user) {
+      categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
+    }
+  }, [user])
 
   // Count tasks by category
   const categoryCounts = React.useMemo(() => {
@@ -192,6 +199,21 @@ export default function ZFlowPage() {
     })
   }, [tasks, selectedCategory, filterStatus, filterPriority, search])
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <LoginPage />
+  }
+
+  // Show loading while fetching data
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -218,7 +240,11 @@ export default function ZFlowPage() {
   }
 
   return (
-    <div className="py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-8">
+        <div className="flex justify-end mb-4">
+          <AuthButton />
+        </div>
       <div className="flex gap-4">
         {/* Left category sidebar */}
         <CategorySidebar
@@ -530,6 +556,7 @@ export default function ZFlowPage() {
           />
         </div>
       </div>
+    </div>
     </div>
   )
 } 

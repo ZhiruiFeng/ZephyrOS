@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
 
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -62,10 +63,17 @@ export async function GET(
       return jsonWithCors(request, { category: id === '1' ? mockCategory : null });
     }
 
-    const { data: category, error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { data: category, error } = await client
       .from('categories')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -103,11 +111,17 @@ export async function PUT(
     }
 
     const validatedData = UpdateCategorySchema.parse(body);
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+    const client = createClientForRequest(request) || supabase
 
-    const { data: category, error } = await supabase
+    const { data: category, error } = await client
       .from('categories')
       .update(validatedData)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -145,10 +159,17 @@ export async function DELETE(
     }
 
     // Check if there are tasks using this category
-    const { data: tasks, error: tasksError } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { data: tasks, error: tasksError } = await client
       .from('tasks')
       .select('id')
       .eq('category_id', id)
+      .eq('user_id', userId)
       .limit(1);
 
     if (tasksError) {
@@ -160,10 +181,11 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Cannot delete category that is in use' }, 400);
     }
 
-    const { error } = await supabase
+    const { error } = await client
       .from('categories')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userId);
 
     if (error) {
       if (error.code === 'PGRST116') {

@@ -258,7 +258,7 @@ export async function GET(request: NextRequest) {
       if (task.due_date) {
         const dueDate = new Date(task.due_date);
         
-        if (dueDate < now && content.status !== TaskStatus.COMPLETED) {
+        if (dueDate < now && task.status !== TaskStatus.COMPLETED) {
           stats.overdue++;
         }
         

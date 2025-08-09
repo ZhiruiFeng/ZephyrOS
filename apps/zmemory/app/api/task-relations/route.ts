@@ -23,8 +23,7 @@ export async function OPTIONS(request: NextRequest) {
     },
   });
 }
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
 import { z } from 'zod';
 
 // 验证schema
@@ -39,26 +38,22 @@ const CreateTaskRelationSchema = z.object({
 // GET /api/task-relations - 获取任务关系
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    // 检查用户认证
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
-    }
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
+    const supabase = createClientForRequest(request)
 
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get('task_id');
     const relationType = searchParams.get('relation_type');
 
-    let query = supabase
+    let query = supabase!
       .from('task_relations')
       .select(`
         *,
         parent_task:tasks!parent_task_id(id, title, status, priority),
         child_task:tasks!child_task_id(id, title, status, priority)
       `)
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (taskId) {
       query = query.or(`parent_task_id.eq.${taskId},child_task_id.eq.${taskId}`);
@@ -85,13 +80,9 @@ export async function GET(request: NextRequest) {
 // POST /api/task-relations - 创建任务关系
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    // 检查用户认证
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
-    }
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
+    const supabase = createClientForRequest(request)!
 
     const body = await request.json();
     const validatedData = CreateTaskRelationSchema.parse(body);
@@ -101,7 +92,7 @@ export async function POST(request: NextRequest) {
       .from('tasks')
       .select('id')
       .in('id', [validatedData.parent_task_id, validatedData.child_task_id])
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (tasksError) {
       console.error('检查任务存在性失败:', tasksError);
@@ -119,7 +110,7 @@ export async function POST(request: NextRequest) {
       .eq('parent_task_id', validatedData.parent_task_id)
       .eq('child_task_id', validatedData.child_task_id)
       .eq('relation_type', validatedData.relation_type)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -135,7 +126,7 @@ export async function POST(request: NextRequest) {
       .from('task_relations')
       .insert({
         ...validatedData,
-        user_id: user.id
+        user_id: userId
       })
       .select(`
         *,

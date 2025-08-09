@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
 import { UpdateTaskSchema, TaskMemory } from '../../../../lib/task-types';
 
 // Helper function to get category ID by name
@@ -52,10 +53,11 @@ const supabase = supabaseUrl && supabaseKey
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: any }
 ) {
   try {
-    const { id } = await params;
+    const resolved = params?.then ? await params : params;
+    const { id } = resolved as { id: string };
 
     // If Supabase is not configured, return mock data
     if (!supabase) {
@@ -86,13 +88,20 @@ export async function GET(
       }
     }
 
-    const { data, error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { data, error } = await client
       .from('tasks')
       .select(`
         *,
         category:categories(id, name, color, icon)
       `)
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -180,10 +189,11 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: any }
 ) {
   try {
-    const { id } = await params;
+    const resolved = params?.then ? await params : params;
+    const { id } = resolved as { id: string };
     const body = await request.json();
     
     console.log('Received PUT request for task:', id);
@@ -234,10 +244,17 @@ export async function PUT(
     }
 
     // First, get the existing task
-    const { data: existingTask, error: fetchError } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { data: existingTask, error: fetchError } = await client
       .from('tasks')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
 
     if (fetchError) {
@@ -281,10 +298,11 @@ export async function PUT(
 
     console.log('Updating with object:', JSON.stringify(updateObject, null, 2));
     
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('tasks')
       .update(updateObject)
       .eq('id', id)
+      .eq('user_id', userId)
       .select(`
         *,
         category:categories(id, name, color, icon)
@@ -369,10 +387,11 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: any }
 ) {
   try {
-    const { id } = await params;
+    const resolved = params?.then ? await params : params;
+    const { id } = resolved as { id: string };
 
     // If Supabase is not configured, return mock response
     if (!supabase) {
@@ -389,10 +408,17 @@ export async function DELETE(
       }
     }
 
-    const { error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { error } = await client
       .from('tasks')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Database error:', error);

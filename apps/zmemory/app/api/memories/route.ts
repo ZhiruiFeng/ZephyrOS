@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
 import { z } from 'zod';
 
 // Create Supabase client
@@ -54,9 +55,16 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit') || '50';
     const offset = searchParams.get('offset') || '0';
 
-    let query = supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+
+    let query = client
       .from('memories')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
@@ -112,10 +120,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(mockMemory, { status: 201 });
     }
 
-    const { data, error } = await supabase
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const client = createClientForRequest(request) || supabase
+
+    const { data, error } = await client
       .from('memories')
       .insert({
         ...body,
+        user_id: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
