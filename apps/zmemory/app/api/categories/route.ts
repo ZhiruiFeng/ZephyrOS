@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-// 验证schema
+// Validation schema
 const CreateCategorySchema = z.object({
-  name: z.string().min(1, '分类名称不能为空').max(50, '分类名称过长'),
+  name: z.string().min(1, 'Category name cannot be empty').max(50, 'Category name too long'),
   description: z.string().optional(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, '颜色格式不正确').default('#6B7280'),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Color format is invalid').default('#6B7280'),
   icon: z.string().optional()
 });
 
@@ -45,7 +45,7 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
-// GET /api/categories - 获取所有分类
+// GET /api/categories - Get all categories
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
@@ -64,18 +64,18 @@ export async function GET(request: NextRequest) {
       .order('name');
 
     if (error) {
-      console.error('获取分类失败:', error);
-      return jsonWithCors(request, { error: '获取分类失败' }, 500);
+      console.error('Failed to get categories:', error);
+      return jsonWithCors(request, { error: 'Failed to get categories' }, 500);
     }
 
     return jsonWithCors(request, { categories });
   } catch (error) {
-    console.error('获取分类时发生错误:', error);
-    return jsonWithCors(request, { error: '服务器内部错误' }, 500);
+    console.error('Error occurred while getting categories:', error);
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }
 
-// POST /api/categories - 创建新分类
+// POST /api/categories - Create new category
 export async function POST(request: NextRequest) {
   try {
     if (!supabase) {
@@ -101,19 +101,19 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      if (error.code === '23505') { // 唯一约束违反
-        return jsonWithCors(request, { error: '分类名称已存在' }, 400);
+      if (error.code === '23505') { // Unique constraint violation
+        return jsonWithCors(request, { error: 'Category name already exists' }, 400);
       }
-      console.error('创建分类失败:', error);
-      return jsonWithCors(request, { error: '创建分类失败' }, 500);
+      console.error('Failed to create category:', error);
+      return jsonWithCors(request, { error: 'Failed to create category' }, 500);
     }
 
     return jsonWithCors(request, { category }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return jsonWithCors(request, { error: '数据验证失败', details: error.errors }, 400);
+      return jsonWithCors(request, { error: 'Data validation failed', details: error.errors }, 400);
     }
-    console.error('创建分类时发生错误:', error);
-    return jsonWithCors(request, { error: '服务器内部错误' }, 500);
+    console.error('Error occurred while creating category:', error);
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }

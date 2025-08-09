@@ -89,28 +89,28 @@ Check the health status of the API service.
 
 ---
 
-### Task Management (推荐)
+### Task Management (Recommended)
 
-基于 `/api/tasks` 的专用任务接口，具备更丰富的筛选、排序与状态更新能力。
+Dedicated task interface based on `/api/tasks`, with richer filtering, sorting, and status update capabilities.
 
 #### GET /api/tasks
 
-查询任务列表（支持筛选、分页、排序）。
+Query task list (supports filtering, pagination, sorting).
 
-可用查询参数：`status`、`priority`、`category`、`assignee`、`tags`、`search`、`due_before`、`due_after`、`created_before`、`created_after`、`limit`、`offset`、`sort_by`、`sort_order`。
+Available query parameters: `status`, `priority`, `category`, `assignee`, `tags`, `search`, `due_before`, `due_after`, `created_before`, `created_after`, `limit`, `offset`, `sort_by`, `sort_order`.
 
-示例：
+Example:
 ```bash
 GET /api/tasks?status=pending&priority=high&limit=10&offset=0&sort_by=created_at&sort_order=desc
 ```
 
-响应：`TaskMemory[]`
+Response: `TaskMemory[]`
 
 #### POST /api/tasks
 
-创建任务。
+Create task.
 
-请求体：
+Request body:
 ```json
 {
   "type": "task",
@@ -126,27 +126,27 @@ GET /api/tasks?status=pending&priority=high&limit=10&offset=0&sort_by=created_at
 }
 ```
 
-响应：`TaskMemory`
+Response: `TaskMemory`
 
 #### GET /api/tasks/[id]
 
-获取单个任务。
+Get single task.
 
 #### PUT /api/tasks/[id]
 
-更新任务（部分字段）。
+Update task (partial fields).
 
 #### DELETE /api/tasks/[id]
 
-删除任务。
+Delete task.
 
 #### PUT /api/tasks/[id]/status
 
-仅更新任务状态（及可选的 `notes`、`progress`）。
+Update only task status (and optional `notes`, `progress`).
 
 ---
 
-### Memory Management（兼容）
+### Memory Management (Compatible)
 
 #### GET /api/memories
 
@@ -162,7 +162,7 @@ Retrieve a list of memories with optional filtering.
 # Get all memories
 GET /api/memories
 
-# Get only tasks (兼容旧接口)
+# Get only tasks (compatible with old interface)
 GET /api/memories?type=task
 
 # Get first 10 tasks
@@ -615,7 +615,133 @@ Access-Control-Allow-Headers: Content-Type, Authorization
 3. **Metrics**: Track API usage and performance metrics
 4. **Logging**: Comprehensive request/response logging
 
+## Architectural Improvements & Best Practices
+
+### Code Organization
+
+ZephyrOS has been restructured to improve maintainability and reusability:
+
+#### Constants
+- **Location**: `/apps/zflow/app/constants/task.ts`
+- **Purpose**: Centralized task status, priority, and color definitions
+- **Benefits**: Consistent values across components, easy to maintain
+
+```typescript
+import { TASK_STATUS, TASK_PRIORITY, STATUS_COLORS } from '../constants/task';
+
+// Use constants instead of hardcoded strings
+if (task.status === TASK_STATUS.COMPLETED) {
+  // ...
+}
+```
+
+#### Error Handling
+- **Location**: `/apps/zflow/app/utils/errorHandling.ts`
+- **Purpose**: Standardized error messages and handling
+- **Benefits**: Consistent user experience, easier error tracking
+
+```typescript
+import { showErrorNotification, CONFIRMATION_MESSAGES } from '../utils/errorHandling';
+
+// Standardized error handling
+try {
+  await updateTask(id, data);
+} catch (error) {
+  showErrorNotification(error);
+}
+```
+
+#### Form Validation
+- **Location**: `/apps/zflow/app/utils/validation.ts`
+- **Purpose**: Centralized validation logic for forms
+- **Benefits**: Consistent validation rules, reusable across forms
+
+```typescript
+import { validateTask } from '../utils/validation';
+
+const validation = validateTask(formData);
+if (!validation.isValid) {
+  setErrors(validation.errors);
+  return;
+}
+```
+
+#### Shared UI Components
+- **Location**: `/apps/zflow/app/components/shared/`
+- **Purpose**: Reusable UI components for common patterns
+- **Benefits**: Consistent styling, reduced code duplication
+
+```typescript
+import { StatusBadge, PriorityBadge, LoadingSpinner } from '../components/shared/StatusBadge';
+
+// Use shared components for consistency
+<StatusBadge status={task.status} />
+<PriorityBadge priority={task.priority} />
+```
+
+### API Client Architecture
+
+The API layer has been standardized with:
+
+1. **Single Source of Truth**: Unified API interface in `api.ts`
+2. **Type Safety**: Full TypeScript coverage with proper interfaces
+3. **Error Handling**: Consistent error responses across all endpoints
+4. **Caching**: SWR integration for optimal data fetching
+
+### Development Best Practices
+
+#### 1. Type Safety
+- Always use TypeScript interfaces
+- Avoid `any` type where possible
+- Use type guards for runtime type checking
+
+#### 2. Error Handling
+- Use the centralized error handling utilities
+- Provide user-friendly error messages
+- Log errors for debugging in development
+
+#### 3. Performance
+- Use SWR for data fetching and caching
+- Implement proper loading states
+- Optimize re-renders with useMemo and useCallback
+
+#### 4. Accessibility
+- Use semantic HTML elements
+- Provide proper ARIA labels
+- Ensure keyboard navigation support
+
+#### 5. Testing
+- Write unit tests for utility functions
+- Test API endpoints with proper mocking
+- Include integration tests for critical flows
+
+### Internationalization (i18n) Ready
+
+The codebase has been prepared for internationalization:
+- All user-facing strings extracted to constants
+- Utility functions for date/time formatting with locale support
+- Consistent text structure across components
+
+### Future Enhancements
+
+1. **Authentication & Authorization**
+   - User-based task management
+   - Role-based permissions
+   - Secure API endpoints
+
+2. **Real-time Updates**
+   - WebSocket integration
+   - Live collaboration features
+   - Push notifications
+
+3. **Advanced Features**
+   - Task templates
+   - Recurring tasks
+   - Time tracking
+   - Advanced reporting
+
 ---
 
 **API Version**: 1.0.0  
-**Last Updated**: August 2025
+**Last Updated**: August 2025  
+**Architecture Version**: 2.0.0

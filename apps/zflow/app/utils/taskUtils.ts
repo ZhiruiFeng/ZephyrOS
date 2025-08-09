@@ -1,6 +1,6 @@
 import { Task } from '../types/task'
 
-// 获取状态颜色
+// Get status color
 export const getStatusColor = (status: string) => {
   switch (status) {
     case 'completed':
@@ -16,7 +16,7 @@ export const getStatusColor = (status: string) => {
   }
 }
 
-// 获取优先级颜色
+// Get priority color
 export const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'urgent':
@@ -32,7 +32,7 @@ export const getPriorityColor = (priority: string) => {
   }
 }
 
-// 检查是否逾期
+// Check if overdue
 export const isOverdue = (dueDate?: string) => {
   if (!dueDate) return false
   const due = new Date(dueDate).getTime()
@@ -40,22 +40,22 @@ export const isOverdue = (dueDate?: string) => {
   return due < now
 }
 
-// 格式化日期
-export const formatDate = (date: string, locale: string = 'zh-CN') => {
+// Format date
+export const formatDate = (date: string, locale: string = 'en-US') => {
   return new Date(date).toLocaleDateString(locale)
 }
 
-// 格式化日期时间
-export const formatDateTime = (date: string, locale: string = 'zh-CN') => {
+// Format date时间
+export const formatDateTime = (date: string, locale: string = 'en-US') => {
   return new Date(date).toLocaleString(locale)
 }
 
-// 处理标签数组
+// Process tags array
 export const processTags = (tags: string[] = [], excludeTags: string[] = ['zflow', 'task']) => {
   return tags.filter(tag => !excludeTags.includes(tag))
 }
 
-// 将标签字符串转换为数组
+// Convert tags string to array
 export const parseTagsString = (tagsString: string): string[] => {
   return tagsString
     .split(',')
@@ -63,30 +63,30 @@ export const parseTagsString = (tagsString: string): string[] => {
     .filter(t => t.length > 0)
 }
 
-// 将标签数组转换为字符串
+// Convert tags array to string
 export const formatTagsString = (tags: string[] = [], excludeTags: string[] = ['zflow', 'task']): string => {
   return processTags(tags, excludeTags).join(', ')
 }
 
-// 获取任务状态的中文名称
+// Get task status English name
 export const getStatusLabel = (status: string): string => {
   const statusMap: Record<string, string> = {
-    'pending': '待办',
-    'in_progress': '进行中',
-    'completed': '已完成',
-    'cancelled': '取消',
-    'on_hold': '搁置'
+    'pending': 'Todo',
+    'in_progress': 'In Progress',
+    'completed': 'Completed',
+    'cancelled': 'Cancelled',
+    'on_hold': 'On Hold'
   }
   return statusMap[status] || status
 }
 
-// 获取优先级的中文名称
+// Get priority English name
 export const getPriorityLabel = (priority: string): string => {
   const priorityMap: Record<string, string> = {
-    'urgent': '紧急',
-    'high': '高',
-    'medium': '中',
-    'low': '低'
+    'urgent': 'Urgent',
+    'high': 'High',
+    'medium': 'Medium',
+    'low': 'Low'
   }
   return priorityMap[priority] || priority
 }

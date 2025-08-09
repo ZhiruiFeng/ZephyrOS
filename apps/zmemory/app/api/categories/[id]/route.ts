@@ -35,15 +35,15 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
-// 验证schema
+// Validation schema
 const UpdateCategorySchema = z.object({
-  name: z.string().min(1, '分类名称不能为空').max(50, '分类名称过长').optional(),
+  name: z.string().min(1, 'Category name cannot be empty').max(50, 'Category name too long').optional(),
   description: z.string().optional(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, '颜色格式不正确').optional(),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Color format is invalid').optional(),
   icon: z.string().optional()
 });
 
-// GET /api/categories/[id] - 获取单个分类
+// GET /api/categories/[id] - Get single category
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,20 +70,20 @@ export async function GET(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: '分类不存在' }, 404);
+        return jsonWithCors(request, { error: 'Category not found' }, 404);
       }
-      console.error('获取分类失败:', error);
-      return jsonWithCors(request, { error: '获取分类失败' }, 500);
+      console.error('Failed to get category:', error);
+      return jsonWithCors(request, { error: 'Failed to get category' }, 500);
     }
 
     return jsonWithCors(request, { category });
   } catch (error) {
-    console.error('获取分类时发生错误:', error);
-    return jsonWithCors(request, { error: '服务器内部错误' }, 500);
+    console.error('Error occurred while getting category:', error);
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }
 
-// PUT /api/categories/[id] - 更新分类
+// PUT /api/categories/[id] - Update category
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -113,26 +113,26 @@ export async function PUT(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: '分类不存在' }, 404);
+        return jsonWithCors(request, { error: 'Category not found' }, 404);
       }
-      if (error.code === '23505') { // 唯一约束违反
-        return jsonWithCors(request, { error: '分类名称已存在' }, 400);
+      if (error.code === '23505') { // Unique constraint violation
+        return jsonWithCors(request, { error: 'Category name already exists' }, 400);
       }
-      console.error('更新分类失败:', error);
-      return jsonWithCors(request, { error: '更新分类失败' }, 500);
+      console.error('Failed to update category:', error);
+      return jsonWithCors(request, { error: 'Failed to update category' }, 500);
     }
 
     return jsonWithCors(request, { category });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return jsonWithCors(request, { error: '数据验证失败', details: error.errors }, 400);
+      return jsonWithCors(request, { error: 'Data validation failed', details: error.errors }, 400);
     }
-    console.error('更新分类时发生错误:', error);
-    return jsonWithCors(request, { error: '服务器内部错误' }, 500);
+    console.error('Error occurred while updating category:', error);
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }
 
-// DELETE /api/categories/[id] - 删除分类
+// DELETE /api/categories/[id] - Delete category
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -141,10 +141,10 @@ export async function DELETE(
     const { id } = await params;
     
     if (!supabase) {
-      return jsonWithCors(request, { message: '分类删除成功' });
+      return jsonWithCors(request, { message: 'Category deleted successfully' });
     }
 
-    // 检查是否有任务使用此分类
+    // Check if there are tasks using this category
     const { data: tasks, error: tasksError } = await supabase
       .from('tasks')
       .select('id')
@@ -152,12 +152,12 @@ export async function DELETE(
       .limit(1);
 
     if (tasksError) {
-      console.error('检查分类使用情况失败:', tasksError);
-      return jsonWithCors(request, { error: '检查分类使用情况失败' }, 500);
+      console.error('Failed to check category usage:', tasksError);
+      return jsonWithCors(request, { error: 'Failed to check category usage' }, 500);
     }
 
     if (tasks && tasks.length > 0) {
-      return jsonWithCors(request, { error: '无法删除正在使用的分类' }, 400);
+      return jsonWithCors(request, { error: 'Cannot delete category that is in use' }, 400);
     }
 
     const { error } = await supabase
@@ -167,15 +167,15 @@ export async function DELETE(
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: '分类不存在' }, 404);
+        return jsonWithCors(request, { error: 'Category not found' }, 404);
       }
-      console.error('删除分类失败:', error);
-      return jsonWithCors(request, { error: '删除分类失败' }, 500);
+      console.error('Failed to delete category:', error);
+      return jsonWithCors(request, { error: 'Failed to delete category' }, 500);
     }
 
     return jsonWithCors(request, { message: '分类删除成功' });
   } catch (error) {
-    console.error('删除分类时发生错误:', error);
-    return jsonWithCors(request, { error: '服务器内部错误' }, 500);
+    console.error('Error occurred while deleting category:', error);
+    return jsonWithCors(request, { error: 'Internal server error' }, 500);
   }
 }

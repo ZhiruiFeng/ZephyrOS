@@ -48,7 +48,7 @@ export default function KanbanPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<TaskMemory | null>(null)
 
-  // 加载分类
+  // Load categories
   React.useEffect(() => {
     categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
   }, [])
@@ -97,7 +97,7 @@ export default function KanbanPage() {
       await updateTask(id, { content: { status } })
     } catch (err) {
       console.error('Failed to move task:', err)
-      alert('移动任务失败，请重试')
+      alert('Failed to move task, please try again')
     } finally {
       setDraggingId(null)
     }
@@ -142,7 +142,7 @@ export default function KanbanPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-red-600">加载失败</div>
+      <div className="flex items-center justify-center min-h-screen text-red-600">Failed to load</div>
     )
   }
 
@@ -151,16 +151,16 @@ export default function KanbanPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <KanbanSquare className="w-7 h-7" /> 看板
+            <KanbanSquare className="w-7 h-7" /> Kanban
           </h1>
-          <p className="text-gray-600">拖拽卡片在不同列间以更新状态</p>
+          <p className="text-gray-600">Drag cards between columns to update status</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索任务..."
+              placeholder="Search tasks..."
               className="text-sm outline-none"
             />
           </div>
@@ -170,15 +170,15 @@ export default function KanbanPage() {
               onChange={(e) => setFilterPriority(e.target.value as any)}
               className="text-sm outline-none"
             >
-              <option value="all">全部优先级</option>
-              <option value="urgent">紧急</option>
-              <option value="high">高</option>
-              <option value="medium">中</option>
-              <option value="low">低</option>
+              <option value="all">All Priority</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
             </select>
           </div>
           <Link href="/" className="btn btn-secondary flex items-center gap-1">
-            <ChevronLeft className="w-4 h-4" /> 返回列表
+            <ChevronLeft className="w-4 h-4" /> Back to List
           </Link>
         </div>
       </div>
@@ -230,7 +230,7 @@ export default function KanbanPage() {
                           )}
                         </div>
                         <div className="text-xs text-gray-400 mt-2">
-                          创建于 {formatDate(task.created_at)}
+                          Created {formatDate(task.created_at)}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -241,7 +241,7 @@ export default function KanbanPage() {
                           }}
                           className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
                         >
-                          <Pencil className="w-3.5 h-3.5" /> 编辑
+                          <Pencil className="w-3.5 h-3.5" /> Edit
                         </button>
                         <div className="flex items-center gap-2">
                           {getPriorityIcon(c.priority)}
@@ -269,7 +269,7 @@ export default function KanbanPage() {
         task={selected}
         categories={categories}
         onSave={handleSaveTask}
-        title="编辑任务"
+        title="Edit Task"
       />
     </div>
   )

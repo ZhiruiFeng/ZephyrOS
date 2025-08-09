@@ -1,9 +1,9 @@
 import { Task, Category, TaskRelationType } from '../app/types/task'
 
-// 若未配置 NEXT_PUBLIC_API_BASE，则使用相对路径，通过 Next.js rewrites 代理到 zmemory
+// If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
 const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
 
-// 兼容类型定义（供 hooks 与页面引用）
+// Compatible type definitions (for hooks and page references)
 export interface TaskMemory {
   id: string
   type: 'task'
@@ -111,7 +111,7 @@ export const taskRelationsApi = {
   }
 }
 
-// Tasks API (通过 zmemory HTTP API)
+// Tasks API (via zmemory HTTP API)
 export const tasksApi = {
   async getAll(params?: {
     status?: string;
@@ -221,7 +221,7 @@ export const tasksApi = {
   }
 }
 
-// 兼容导出：保持旧版 hooks 的 apiClient 接口
+// Compatible export: maintain apiClient interface for legacy hooks
 export const apiClient = {
   getTasks: (params?: Parameters<typeof tasksApi.getAll>[0]) => tasksApi.getAll(params),
   getTask: (id: string) => tasksApi.getById(id),

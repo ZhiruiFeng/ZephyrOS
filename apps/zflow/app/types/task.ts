@@ -1,4 +1,4 @@
-// 分类类型定义
+// Category type definition
 export interface Category {
   id: string;
   name: string;
@@ -9,7 +9,7 @@ export interface Category {
   updated_at: string;
 }
 
-// 任务关系类型
+// Task relation type
 export type TaskRelationType = 'subtask' | 'related' | 'dependency' | 'blocked_by';
 
 export interface TaskRelation {
@@ -20,7 +20,7 @@ export interface TaskRelation {
   created_at: string;
 }
 
-// 任务类型定义
+// Task type definition
 export interface Task {
   id: string;
   title: string;
@@ -32,20 +32,20 @@ export interface Task {
   created_at: string;
   updated_at: string;
   due_date?: string;
-  estimated_duration?: number; // 分钟
+  estimated_duration?: number; // minutes
   progress: number; // 0-100
   assignee?: string;
   completion_date?: string;
   notes?: string;
   tags?: string[];
-  // 关系数据
+  // Relation data
   subtasks?: Task[];
   related_tasks?: Task[];
   dependencies?: Task[];
   blocked_by?: Task[];
 }
 
-// 任务表单类型
+// Task form type
 export interface TaskForm {
   title: string;
   description: string;
@@ -60,7 +60,7 @@ export interface TaskForm {
   tags: string;
 }
 
-// 任务编辑器属性
+// Task editor properties
 export interface TaskEditorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -84,21 +84,21 @@ export interface TaskEditorProps {
   title?: string;
 }
 
-// 任务状态类型
+// Task status type
 export type TaskStatus = Task['status']
 
-// 任务优先级类型
+// Task priority type
 export type TaskPriority = Task['priority']
 
-// 筛选器类型
+// Filter types
 export type FilterStatus = 'all' | TaskStatus
 export type FilterPriority = 'all' | TaskPriority
 export type FilterCategory = 'all' | string
 
-// 视图模式类型
+// View mode type
 export type ViewMode = 'list' | 'grid' | 'kanban'
 
-// 任务统计类型
+// Task statistics type
 export interface TaskStats {
   total: number;
   by_status: Record<TaskStatus, number>;
@@ -108,5 +108,5 @@ export interface TaskStats {
   due_today: number;
   due_this_week: number;
   completion_rate: number;
-  average_completion_time: number; // 天数
+  average_completion_time: number; // days
 }

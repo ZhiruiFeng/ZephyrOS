@@ -13,7 +13,7 @@ export default function TaskEditor({
   task, 
   categories = [],
   onSave, 
-  title = "编辑任务" 
+  title = "Edit Task" 
 }: TaskEditorProps) {
   const [form, setForm] = useState<TaskForm>({
     title: '',
@@ -29,7 +29,7 @@ export default function TaskEditor({
     tags: ''
   })
 
-  // 当任务数据变化时，更新表单
+  // Update form when task data changes
   useEffect(() => {
     console.log('TaskEditor received task:', task);
     if (task) {
@@ -53,7 +53,7 @@ export default function TaskEditor({
     if (!task) return
 
     if (!form.title.trim()) {
-      alert('任务标题不能为空')
+      alert('Task title cannot be empty')
       return
     }
 
@@ -85,7 +85,7 @@ export default function TaskEditor({
       onClose()
     } catch (error) {
       console.error('Failed to save task:', error)
-      alert('保存失败，请重试')
+      alert('Save failed, please try again')
     }
   }
 
@@ -104,68 +104,68 @@ export default function TaskEditor({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">标题</label>
+            <label className="block text-sm text-gray-600 mb-1">Title</label>
             <input
               value={form.title}
               onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="输入任务标题"
+              placeholder="Enter task title"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">描述</label>
+            <label className="block text-sm text-gray-600 mb-1">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[100px]"
-              placeholder="输入任务描述"
+              placeholder="Enter task description"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">状态</label>
+              <label className="block text-sm text-gray-600 mb-1">Status</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm(f => ({ ...f, status: e.target.value as Task['status'] }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
-                <option value="pending">待办</option>
-                <option value="in_progress">进行中</option>
-                <option value="on_hold">搁置</option>
-                <option value="completed">已完成</option>
-                <option value="cancelled">取消</option>
+                <option value="pending">Todo</option>
+                <option value="in_progress">In Progress</option>
+                <option value="on_hold">On Hold</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">优先级</label>
+              <label className="block text-sm text-gray-600 mb-1">Priority</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm(f => ({ ...f, priority: e.target.value as Task['priority'] }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
-                <option value="urgent">紧急</option>
-                <option value="high">高</option>
-                <option value="medium">中</option>
-                <option value="low">低</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">分类</label>
+              <label className="block text-sm text-gray-600 mb-1">Category</label>
               <CategorySelector
                 value={form.category_id}
                 onChange={(categoryId) => setForm(f => ({ ...f, category_id: categoryId }))}
                 categories={categories}
-                placeholder="选择分类..."
+                placeholder="Select category..."
                 className="w-full"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">截止时间</label>
+              <label className="block text-sm text-gray-600 mb-1">Due Date</label>
               <input
                 type="datetime-local"
                 value={form.due_date}
@@ -177,17 +177,17 @@ export default function TaskEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">预计时长（分钟）</label>
+              <label className="block text-sm text-gray-600 mb-1">Estimated Duration (minutes)</label>
               <input
                 type="number"
                 value={form.estimated_duration || ''}
                 onChange={(e) => setForm(f => ({ ...f, estimated_duration: e.target.value ? parseInt(e.target.value) : 0 }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="如：480"
+                placeholder="e.g. 480"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">进度（%）</label>
+              <label className="block text-sm text-gray-600 mb-1">Progress (%)</label>
               <input
                 type="number"
                 min="0"
@@ -201,32 +201,32 @@ export default function TaskEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">负责人</label>
+              <label className="block text-sm text-gray-600 mb-1">Assignee</label>
               <input
                 value={form.assignee || ''}
                 onChange={(e) => setForm(f => ({ ...f, assignee: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="负责人姓名"
+                placeholder="Assignee name"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">标签（逗号分隔）</label>
+              <label className="block text-sm text-gray-600 mb-1">Tags (comma separated)</label>
               <input
                 value={form.tags}
                 onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="如：frontend, bug, urgent"
+                placeholder="e.g. frontend, bug, urgent"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">备注</label>
+            <label className="block text-sm text-gray-600 mb-1">Notes</label>
             <textarea
               value={form.notes || ''}
               onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[80px]"
-              placeholder="任务备注..."
+              placeholder="Task notes..."
             />
           </div>
 
@@ -235,13 +235,13 @@ export default function TaskEditor({
               onClick={onClose} 
               className="px-4 py-2 text-sm rounded border border-gray-300 text-gray-700"
             >
-              取消
+              Cancel
             </button>
             <button 
               onClick={handleSave} 
               className="px-4 py-2 text-sm rounded bg-primary-600 text-white hover:bg-primary-700"
             >
-              保存
+              Save
             </button>
           </div>
         </div>

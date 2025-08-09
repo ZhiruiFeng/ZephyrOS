@@ -1,7 +1,7 @@
 import useSWR, { mutate } from 'swr';
 import { apiClient, TaskMemory, CreateTaskRequest, UpdateTaskRequest } from '../lib/api';
 
-// 获取记忆列表的 hook
+// Hook to get memory list
 export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0]) {
   const key = params ? `tasks-${JSON.stringify(params)}` : 'tasks';
 
@@ -22,7 +22,7 @@ export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0]) {
   };
 }
 
-// 获取单个记忆的 hook
+// Hook to get single memory
 export function useTask(id: string) {
   const { data, error, isLoading, mutate: refetch } = useSWR(
     id ? `task-${id}` : null,
@@ -41,7 +41,7 @@ export function useTask(id: string) {
   };
 }
 
-// 创建记忆的 hook
+// Hook to create memory
 export function useCreateTask() {
   const createTask = async (data: CreateTaskRequest) => {
     try {
@@ -57,7 +57,7 @@ export function useCreateTask() {
   return { createTask };
 }
 
-// 更新记忆的 hook
+// Hook to update memory
 export function useUpdateTask() {
   const updateTask = async (id: string, data: UpdateTaskRequest) => {
     try {
@@ -75,7 +75,7 @@ export function useUpdateTask() {
   return { updateTask };
 }
 
-// 删除记忆的 hook
+// Hook to delete memory
 export function useDeleteTask() {
   const deleteTask = async (id: string) => {
     try {
@@ -90,4 +90,4 @@ export function useDeleteTask() {
 
   return { deleteTask };
 }
-// 兼容导出：若有旧代码引用 useTasks，此实现即为任务数据源
+// Compatible export: if legacy code references useTasks, this implementation is the task data source
