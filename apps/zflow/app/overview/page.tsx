@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X } from 'lucide-react'
@@ -18,7 +18,7 @@ import { isOverdue, formatDate } from '../utils/taskUtils'
 type ViewKey = 'current' | 'future' | 'archive'
 type DisplayMode = 'list' | 'grid'
 
-export default function OverviewPage() {
+function OverviewPageContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const params = useSearchParams()
@@ -800,6 +800,18 @@ function sortTasks(list: TaskMemory[], mode: 'none' | 'priority' | 'due_date') {
     })
   }
   return list
+}
+
+export default function OverviewPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    }>
+      <OverviewPageContent />
+    </Suspense>
+  )
 }
 
 

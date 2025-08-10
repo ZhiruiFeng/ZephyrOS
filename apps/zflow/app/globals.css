@@ -11,6 +11,13 @@
     background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
     min-height: 100vh;
   }
+
+  /* Mobile-specific base styles */
+  @media (max-width: 640px) {
+    body {
+      font-size: 14px;
+    }
+  }
 }
 
 @layer components {
@@ -73,5 +80,288 @@
 
   .form-select {
     @apply px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm;
+  }
+
+  /* Mobile-optimized components */
+  .mobile-card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6;
+  }
+
+  .mobile-btn {
+    @apply px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base;
+  }
+
+  .mobile-input {
+    @apply px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base;
+  }
+
+  /* Touch-friendly buttons */
+  .touch-btn {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+
+  /* Mobile sidebar */
+  .mobile-sidebar {
+    @apply fixed inset-y-0 left-0 z-50 w-80 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out;
+  }
+
+  .mobile-sidebar-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-40;
+  }
+
+  /* Mobile toolbar */
+  .mobile-toolbar {
+    @apply flex items-center gap-1 p-2 bg-gray-50 border-b border-gray-200;
+  }
+
+  .mobile-toolbar-btn {
+    @apply p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors touch-btn;
+  }
+
+  /* Mobile dropdown */
+  .mobile-dropdown {
+    @apply absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48;
+  }
+
+  /* Mobile grid layouts */
+  .mobile-grid-1 {
+    @apply grid grid-cols-1 gap-4;
+  }
+
+  .mobile-grid-2 {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+  }
+
+  .mobile-grid-3 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .mobile-grid-4 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  /* Mobile text utilities */
+  .mobile-text-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .mobile-text-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-text-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  .mobile-text-xl {
+    @apply text-lg sm:text-xl;
+  }
+
+  /* Mobile spacing */
+  .mobile-p-2 {
+    @apply p-2 sm:p-3;
+  }
+
+  .mobile-p-4 {
+    @apply p-3 sm:p-4;
+  }
+
+  .mobile-p-6 {
+    @apply p-4 sm:p-6;
+  }
+
+  .mobile-mb-2 {
+    @apply mb-2 sm:mb-3;
+  }
+
+  .mobile-mb-4 {
+    @apply mb-3 sm:mb-4;
+  }
+
+  .mobile-mb-6 {
+    @apply mb-4 sm:mb-6;
+  }
+
+  /* Mobile responsive utilities */
+  .mobile-hidden {
+    @apply hidden sm:block;
+  }
+
+  .mobile-block {
+    @apply block sm:hidden;
+  }
+
+  .mobile-flex {
+    @apply flex sm:hidden;
+  }
+
+  .mobile-flex-col {
+    @apply flex-col sm:flex-row;
+  }
+
+  .mobile-text-center {
+    @apply text-center sm:text-left;
+  }
+
+  /* Markdown Editor */
+  .markdown-editor {
+    @apply font-mono text-sm leading-relaxed;
+  }
+
+  .markdown-preview {
+    @apply prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-ul:text-gray-700 prose-ol:text-gray-700 prose-blockquote:text-gray-600 prose-code:text-gray-800 prose-a:text-blue-600;
+  }
+
+  .markdown-preview h1 {
+    @apply text-2xl font-bold text-gray-900 mb-4;
+  }
+
+  .markdown-preview h2 {
+    @apply text-xl font-bold text-gray-900 mb-3;
+  }
+
+  .markdown-preview h3 {
+    @apply text-lg font-bold text-gray-900 mb-2;
+  }
+
+  .markdown-preview p {
+    @apply text-gray-700 mb-3;
+  }
+
+  .markdown-preview ul {
+    @apply list-disc list-inside space-y-1 mb-3;
+  }
+
+  .markdown-preview ol {
+    @apply list-decimal list-inside space-y-1 mb-3;
+  }
+
+  .markdown-preview blockquote {
+    @apply border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3;
+  }
+
+  .markdown-preview code {
+    @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
+  }
+
+  .markdown-preview a {
+    @apply text-blue-600 hover:underline;
+  }
+
+  .markdown-preview img {
+    @apply max-w-full h-auto rounded;
+  }
+
+  .markdown-preview hr {
+    @apply border-gray-300 my-4;
+  }
+
+  /* Mobile markdown adjustments */
+  @media (max-width: 640px) {
+    .markdown-editor {
+      @apply text-sm leading-relaxed;
+    }
+
+    .markdown-preview {
+      @apply prose-sm;
+    }
+
+    .markdown-preview h1 {
+      @apply text-xl font-bold mb-3;
+    }
+
+    .markdown-preview h2 {
+      @apply text-lg font-bold mb-2;
+    }
+
+    .markdown-preview h3 {
+      @apply text-base font-bold mb-2;
+    }
+
+    .markdown-preview p {
+      @apply mb-2;
+    }
+
+    .markdown-preview ul,
+    .markdown-preview ol {
+      @apply mb-2;
+    }
+
+    .markdown-preview blockquote {
+      @apply mb-2;
+    }
+  }
+
+  /* Kanban mobile optimizations */
+  .kanban-mobile-card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-3;
+  }
+
+  .kanban-mobile-column {
+    @apply bg-white/70 backdrop-blur-md rounded-xl p-3 mb-4;
+  }
+
+  /* Work mode mobile optimizations */
+  .work-mode-mobile-sidebar {
+    @apply fixed inset-y-0 left-0 z-50 w-80 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out;
+  }
+
+  .work-mode-mobile-content {
+    @apply flex-1 flex flex-col;
+  }
+
+  /* Focus mode mobile optimizations */
+  .focus-mobile-header {
+    @apply bg-white border-b border-gray-200 px-4 py-3;
+  }
+
+  .focus-mobile-tabs {
+    @apply flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit;
+  }
+
+  .focus-mobile-tab {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors;
+  }
+
+  /* Line clamp utilities for mobile */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Mobile scrollbar styling */
+  @media (max-width: 640px) {
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 2px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
   }
 } 

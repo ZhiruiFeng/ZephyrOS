@@ -22,6 +22,10 @@ const Circle = Lazy(React.lazy(dynamicIconImports['circle'] as any))
 const Tag = Lazy(React.lazy(dynamicIconImports['tag'] as any))
 const Calendar = Lazy(React.lazy(dynamicIconImports['calendar'] as any))
 const Pencil = Lazy(React.lazy(dynamicIconImports['pencil'] as any))
+const FileText = Lazy(React.lazy(dynamicIconImports['file-text'] as any))
+const Search = Lazy(React.lazy(dynamicIconImports['search'] as any))
+const Filter = Lazy(React.lazy(dynamicIconImports['filter'] as any))
+const Menu = Lazy(React.lazy(dynamicIconImports['menu'] as any))
 import TaskEditor from '../components/TaskEditor'
 import { getPriorityIcon } from '../components/TaskIcons'
 import { 
@@ -47,6 +51,7 @@ export default function KanbanPage() {
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
   const { filterPriority, setFilterPriority, hideCompleted, setHideCompleted, selectedCategory, setSelectedCategory, sortMode } = (usePrefs() as any)
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
@@ -200,19 +205,39 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
+    <div className="py-4 sm:py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-4 sm:mb-6">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -left-10 -bottom-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative p-6 sm:p-8 flex items-center justify-between gap-4">
+          <div className="relative p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                <KanbanSquare className="w-7 h-7" /> 看板
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
+                <KanbanSquare className="w-6 h-6 sm:w-7 sm:h-7" /> 看板
               </h1>
-              <p className="mt-1 text-white/90">拖拽卡片在列之间即可更新任务状态</p>
+              <p className="mt-1 text-white/90 text-sm sm:text-base">拖拽卡片在列之间即可更新任务状态</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Mobile Search */}
+              <div className="sm:hidden flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5 flex-1 max-w-xs">
+                <Search className="w-4 h-4 text-white/70" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="搜索任务..."
+                  className="text-sm outline-none bg-transparent placeholder:text-white/70 text-white flex-1"
+                />
+              </div>
+              
+              {/* Mobile Filter Button */}
+              <button
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                className="sm:hidden flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5"
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+              
+              {/* Desktop Search and Filters */}
               <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
                 <input
                   value={search}
@@ -247,27 +272,132 @@ export default function KanbanPage() {
                   ))}
                 </select>
               </div>
-              <Link href="/" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90 inline-flex items-center gap-2">
-                <ChevronLeft className="w-4 h-4" /> 返回列表
+              <Link href="/focus?view=work" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90 inline-flex items-center gap-2 text-sm">
+                <FileText className="w-4 h-4" /> 
+                <span className="hidden lg:inline">Work Mode</span>
+                <span className="lg:hidden">工作</span>
               </Link>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Mobile Filters Panel */}
+      {showMobileFilters && (
+        <div className="sm:hidden mb-4 p-4 bg-white rounded-lg border border-gray-200">
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+              <select
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">全部优先级</option>
+                <option value="urgent">紧急</option>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value || 'all')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">全部分类</option>
+                <option value="uncategorized">未分类</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Soft WIP limit hints */}
       {byStatus.in_progress.length > 3 && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-2">
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-2 text-sm">
           当前进行中的任务已超过 3 个，建议收敛以保持专注。
         </div>
       )}
       {byStatus.pending.length > 10 && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-4 py-2">
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-4 py-2 text-sm">
           待办池已超过 10 个，考虑精简以提升清晰度。
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* Mobile: Single Column Layout */}
+      <div className="sm:hidden space-y-4">
+        {COLUMNS.map((col) => (
+          <div key={col.key} className="glass rounded-2xl p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                <ListTodo className="w-4 h-4 text-primary-600" /> {col.title}
+              </h2>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {byStatus[col.key]?.length || 0}
+              </span>
+            </div>
+
+            <div
+              onDragOver={allowDrop}
+              onDrop={(e) => onDropTo(col.key, e)}
+              className={`min-h-[200px] rounded-xl p-2 transition-colors ${draggingId ? 'bg-white/60' : 'bg-white/40'}`}
+            >
+              {(byStatus[col.key] || []).map((task) => {
+                const c = task.content as TaskContent
+                return (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={(e) => onDragStart(task.id, e)}
+                    onDragEnd={onDragEnd}
+                    className="card card-hover mb-3 cursor-grab active:cursor-grabbing select-none rounded-xl p-3"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-medium text-gray-900 text-sm leading-tight flex-1 pr-2">
+                          {c.title}
+                        </h3>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditor(task)
+                          }}
+                          className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> 编辑
+                        </button>
+                      </div>
+                      {c.description && (
+                        <div className="text-xs text-gray-600 line-clamp-2">{c.description}</div>
+                      )}
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center gap-2">
+                          {getPriorityIcon(c.priority)}
+                          {c.due_date && (
+                            <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                              <Calendar className="w-3.5 h-3.5" />
+                              {formatDate(c.due_date)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: Multi Column Layout */}
+      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {COLUMNS.map((col) => (
           <div key={col.key} className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between mb-2">

@@ -39,9 +39,17 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
   const [filterPriority, setFilterPriority] = useState<FilterPriority>('all')
   const [sortMode, setSortMode] = useState<SortMode>('none')
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'uncategorized' | string>('all')
+  const [isClient, setIsClient] = useState(false)
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Initialize from localStorage (with some legacy keys support)
   useEffect(() => {
+    if (!isClient) return
+    
     try {
       const storedHide = localStorage.getItem(STORAGE_KEYS.hideCompleted)
       const legacyHide = localStorage.getItem('zflow:hideCompleted')
@@ -62,27 +70,32 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
       const storedCategory = localStorage.getItem(STORAGE_KEYS.selectedCategory) as any
       if (storedCategory) setSelectedCategory(storedCategory)
     } catch {}
-  }, [])
+  }, [isClient])
 
   useEffect(() => {
+    if (!isClient) return
     try { localStorage.setItem(STORAGE_KEYS.hideCompleted, hideCompleted ? '1' : '0') } catch {}
-  }, [hideCompleted])
+  }, [hideCompleted, isClient])
 
   useEffect(() => {
+    if (!isClient) return
     try { localStorage.setItem(STORAGE_KEYS.showCompletedCounts, showCompletedCounts ? '1' : '0') } catch {}
-  }, [showCompletedCounts])
+  }, [showCompletedCounts, isClient])
 
   useEffect(() => {
+    if (!isClient) return
     try { localStorage.setItem(STORAGE_KEYS.filterPriority, filterPriority) } catch {}
-  }, [filterPriority])
+  }, [filterPriority, isClient])
 
   useEffect(() => {
+    if (!isClient) return
     try { localStorage.setItem(STORAGE_KEYS.sortMode, sortMode) } catch {}
-  }, [sortMode])
+  }, [sortMode, isClient])
 
   useEffect(() => {
+    if (!isClient) return
     try { localStorage.setItem(STORAGE_KEYS.selectedCategory, String(selectedCategory)) } catch {}
-  }, [selectedCategory])
+  }, [selectedCategory, isClient])
 
   const value: PrefsContextValue = useMemo(() => ({
     hideCompleted, setHideCompleted,
@@ -98,9 +111,11 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function usePrefs(): PrefsContextValue {
-  const ctx = useContext(PrefsContext)
-  if (!ctx) throw new Error('usePrefs must be used within PrefsProvider')
-  return ctx
+  const context = useContext(PrefsContext)
+  if (context === undefined) {
+    throw new Error('usePrefs must be used within a PrefsProvider')
+  }
+  return context
 }
 
 

@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ListTodo, KanbanSquare, Mic, LayoutDashboard, SlidersHorizontal } from 'lucide-react'
+import { ListTodo, KanbanSquare, Mic, LayoutDashboard, SlidersHorizontal, Target } from 'lucide-react'
 import AuthButton from './AuthButton'
 import { usePrefs } from '../../contexts/PrefsContext'
 
@@ -61,14 +61,14 @@ export default function NavBar() {
               ZFlow
             </Link>
             <div className="hidden sm:flex items-center gap-1 ml-2">
+              <NavLink href="/focus">
+                <span className="inline-flex items-center gap-1">
+                  <Target className="w-4 h-4" /> Focus
+                </span>
+              </NavLink>
               <NavLink href="/overview">
                 <span className="inline-flex items-center gap-1">
                   <ListTodo className="w-4 h-4" /> Overview
-                </span>
-              </NavLink>
-              <NavLink href="/kanban">
-                <span className="inline-flex items-center gap-1">
-                  <KanbanSquare className="w-4 h-4" /> Kanban
                 </span>
               </NavLink>
               <NavLink href="/speech">
@@ -76,7 +76,6 @@ export default function NavBar() {
                   <Mic className="w-4 h-4" /> Speech
                 </span>
               </NavLink>
-              {/* Focus 主入口保留 Kanban，Backlog/Archive 已整合到 Overview */}
             </div>
           </div>
 

@@ -26,8 +26,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isClient, setIsClient] = useState(false)
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
+    if (!isClient) return
+    
     const client = supabase
     if (!client) {
       setLoading(false)
@@ -60,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [isClient])
 
   const signInWithGoogle = async () => {
     const client = supabase
