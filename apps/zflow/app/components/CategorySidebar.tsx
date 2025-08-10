@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Category } from '../types/task'
 import { usePrefs } from '../../contexts/PrefsContext'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 type SpecialCategory = 'all' | 'uncategorized'
 
@@ -43,6 +44,7 @@ export default function CategorySidebar({
   onDelete,
   className = ''
 }: CategorySidebarProps) {
+  const { t } = useTranslation()
   const [isCreating, setIsCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState(presetColors[0])
@@ -86,12 +88,12 @@ export default function CategorySidebar({
 
   const handleDelete = async (categoryId: string) => {
     if (!onDelete) return
-    if (!confirm('Are you sure you want to delete this category? Associated tasks will become uncategorized.')) return
+    if (!confirm(t.messages.confirmDeleteCategory)) return
     setSubmitting(true)
     try {
       await onDelete(categoryId)
     } catch (error) {
-      alert('Delete failed, please try again')
+      alert(t.messages.categoryDeleteFailed)
     } finally {
       setSubmitting(false)
     }
@@ -107,7 +109,7 @@ export default function CategorySidebar({
     <aside className={`w-full sm:w-60 lg:w-64 xl:w-72 shrink-0 glass rounded-xl shadow-sm ${className}`}>
       <div className="p-6">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">分类</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t.ui.categories}</h2>
         </div>
         <nav className="space-y-2">
           <button
@@ -118,7 +120,7 @@ export default function CategorySidebar({
                 : 'text-gray-700 hover:bg-white/50 bg-white/30'
             }`}
           >
-            <span>全部</span>
+            <span>{t.common.all}</span>
             <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
                               <span className={`px-2 py-1 rounded-full ${selected === 'all' ? 'bg-white/20 text-white' : 'bg-primary-50 text-primary-700'}`}>
                   {counts.total}
@@ -133,7 +135,7 @@ export default function CategorySidebar({
                 : 'text-gray-700 hover:bg-white/50 bg-white/30'
             }`}
           >
-            <span>未分类</span>
+            <span>{t.ui.uncategorized}</span>
             <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
                               <span className={`px-2 py-1 rounded-full ${selected === 'uncategorized' ? 'bg-white/20 text-white' : 'bg-primary-50 text-primary-700'}`}>
                   {counts.uncategorized}
@@ -148,7 +150,7 @@ export default function CategorySidebar({
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    placeholder="分类名称"
+                    placeholder={t.ui.categoryName}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="flex items-center gap-2 flex-wrap">
@@ -169,13 +171,13 @@ export default function CategorySidebar({
                       disabled={!editName.trim() || submitting}
                       className="flex-1 text-sm px-3 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50 hover:bg-primary-700 transition-colors duration-200"
                     >
-                      保存
+                      {t.common.save}
                     </button>
                     <button
                       onClick={cancelEdit}
                       className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors duration-200"
                     >
-                      取消
+                      {t.common.cancel}
                     </button>
                   </div>
                 </div>
@@ -207,7 +209,7 @@ export default function CategorySidebar({
                           <button
                             onClick={(e) => { e.stopPropagation(); startEdit(cat) }}
                             className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-white/50 rounded-lg transition-all duration-200"
-                            title="编辑分类"
+                            title={t.ui.editCategory}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -218,7 +220,7 @@ export default function CategorySidebar({
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(cat.id) }}
                             className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-white/50 rounded-lg transition-all duration-200"
-                            title="删除分类"
+                            title={t.ui.deleteCategory}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -238,7 +240,7 @@ export default function CategorySidebar({
                 <input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="新分类名称"
+                  placeholder={t.ui.newCategoryName}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 />
@@ -260,13 +262,13 @@ export default function CategorySidebar({
                     disabled={!newName.trim() || submitting}
                     className="flex-1 text-sm px-3 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50 hover:bg-primary-700 transition-colors duration-200"
                   >
-                    创建
+                    {t.common.create}
                   </button>
                   <button
                     onClick={() => setIsCreating(false)}
                     className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors duration-200"
                   >
-                    取消
+                    {t.common.cancel}
                   </button>
                 </div>
               </div>
@@ -278,7 +280,7 @@ export default function CategorySidebar({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                新建分类
+                {t.ui.newCategory}
               </button>
             )}
           </div>

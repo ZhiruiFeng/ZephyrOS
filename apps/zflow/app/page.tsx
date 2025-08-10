@@ -36,10 +36,12 @@ import AuthButton from './components/AuthButton'
 import LoginPage from './components/LoginPage'
 import { useAuth } from '../contexts/AuthContext'
 import { usePrefs } from '../contexts/PrefsContext'
+import { useTranslation } from '../contexts/LanguageContext'
 
 export default function ZFlowPage() {
   const { user, loading: authLoading } = useAuth()
   const { hideCompleted, setHideCompleted, filterPriority, setFilterPriority, sortMode } = (usePrefs() as any)
+  const { t } = useTranslation()
   const [newTask, setNewTask] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
@@ -218,7 +220,7 @@ export default function ZFlowPage() {
       setShowAddForm(false)
     } catch (error) {
       console.error('Failed to create task:', error)
-      alert('Failed to create task, please try again')
+      alert(t.messages.taskCreateFailed)
     }
   }
 
@@ -236,18 +238,18 @@ export default function ZFlowPage() {
       })
     } catch (error) {
       console.error('Failed to update task:', error)
-      alert('Failed to update task, please try again')
+      alert(t.messages.taskUpdateFailed)
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return
+    if (!confirm(t.messages.confirmDelete)) return
 
     try {
       await deleteTask(taskId)
     } catch (error) {
       console.error('Failed to delete task:', error)
-      alert('Failed to delete task, please try again')
+      alert(t.messages.taskDeleteFailed)
     }
   }
 
@@ -415,7 +417,7 @@ export default function ZFlowPage() {
                 <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
                   <ListTodo className="w-7 h-7" /> ZFlow
                 </h1>
-                <p className="mt-1 text-white/90">简洁高效的任务工作台（列表 / 网格 / 看板 / 统计）</p>
+                <p className="mt-1 text-white/90">{t.meta.taskManagementWorkbench}</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center bg-white/10 rounded-full p-1">
@@ -423,16 +425,16 @@ export default function ZFlowPage() {
                     onClick={() => setViewMode('list')}
                     className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ${viewMode === 'list' ? 'bg-white text-primary-700' : 'text-white/90 hover:bg-white/10'}`}
                   >
-                    <ListTodo className="w-4 h-4" /> 列表
+                    <ListTodo className="w-4 h-4" /> {t.ui.listView}
                   </button>
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ${viewMode === 'grid' ? 'bg-white text-primary-700' : 'text-white/90 hover:bg-white/10'}`}
                   >
-                    <BarChart3 className="w-4 h-4" /> 网格
+                    <BarChart3 className="w-4 h-4" /> {t.ui.gridView}
                   </button>
                 </div>
-                <Link href="/kanban" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90">
+                <Link href="/focus?view=work" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90">
                   <span className="inline-flex items-center gap-2"><KanbanSquare className="w-4 h-4" /> Focus</span>
                 </Link>
               </div>
@@ -440,27 +442,27 @@ export default function ZFlowPage() {
 
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <button onClick={() => { setFilterStatus('all'); setHideCompleted(false); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">总任务</div>
+                <div className="text-xs text-gray-500">{t.ui.totalTasks}</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.total}</div>
               </button>
               <button onClick={() => { setFilterStatus('pending'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">计划中</div>
+                <div className="text-xs text-gray-500">{t.ui.planned}</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.pending}</div>
               </button>
               <button onClick={() => { setFilterStatus('in_progress'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">进行中</div>
+                <div className="text-xs text-gray-500">{t.ui.inProgress}</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.inProgress}</div>
               </button>
               <button onClick={() => { setFilterStatus('completed'); setHideCompleted(false); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">已完成</div>
+                <div className="text-xs text-gray-500">{t.ui.completed}</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.completed}</div>
               </button>
               <button onClick={() => { setFilterStatus('on_hold'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">待办项</div>
+                <div className="text-xs text-gray-500">{t.ui.backlog}</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.onHold}</div>
               </button>
               <button onClick={() => { setFilterStatus('cancelled'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">废弃</div>
+                <div className="text-xs text-gray-500">{t.ui.abandoned}</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.cancelled}</div>
               </button>
             </div>
@@ -478,12 +480,12 @@ export default function ZFlowPage() {
               onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
               className="pill-select"
             >
-              <option value="all">全部状态</option>
-              <option value="pending">待办</option>
-              <option value="in_progress">进行中</option>
-              <option value="completed">已完成</option>
-              <option value="on_hold">搁置</option>
-              <option value="cancelled">取消</option>
+              <option value="all">{t.ui.allStatus}</option>
+              <option value="pending">{t.task.statusPending}</option>
+              <option value="in_progress">{t.task.statusInProgress}</option>
+              <option value="completed">{t.task.statusCompleted}</option>
+              <option value="on_hold">{t.task.statusOnHold}</option>
+              <option value="cancelled">{t.task.statusCancelled}</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -493,18 +495,18 @@ export default function ZFlowPage() {
               onChange={(e) => setFilterPriority(e.target.value as FilterPriority)}
               className="pill-select"
             >
-              <option value="all">全部优先级</option>
-              <option value="urgent">紧急</option>
-              <option value="high">高</option>
-              <option value="medium">中</option>
-              <option value="low">低</option>
+              <option value="all">{t.ui.allPriority}</option>
+              <option value="urgent">{t.task.priorityUrgent}</option>
+              <option value="high">{t.task.priorityHigh}</option>
+              <option value="medium">{t.task.priorityMedium}</option>
+              <option value="low">{t.task.priorityLow}</option>
             </select>
           </div>
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索标题或描述..."
+              placeholder={t.ui.searchPlaceholder}
               className="pill-input w-full"
             />
           </div>
@@ -524,8 +526,8 @@ export default function ZFlowPage() {
           >
             <Plus className="w-4 h-4" />
             {selectedCategory !== 'all' && selectedCategory !== 'uncategorized' && categories.find(cat => cat.id === selectedCategory) 
-              ? `添加到「${categories.find(cat => cat.id === selectedCategory)?.name}」`
-              : '新建任务'
+              ? `${t.task.addToCategory}「${categories.find(cat => cat.id === selectedCategory)?.name}」`
+              : t.task.addTask
             }
           </button>
         ) : (
@@ -536,7 +538,7 @@ export default function ZFlowPage() {
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                placeholder="任务标题..."
+                placeholder={t.task.taskTitle}
                 className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <select
@@ -544,17 +546,17 @@ export default function ZFlowPage() {
                 onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}
                 className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="low">低优先级</option>
-                <option value="medium">中优先级</option>
-                <option value="high">高优先级</option>
-                <option value="urgent">紧急</option>
+                <option value="low">{t.task.priorityLow} Priority</option>
+                <option value="medium">{t.task.priorityMedium} Priority</option>
+                <option value="high">{t.task.priorityHigh} Priority</option>
+                <option value="urgent">{t.task.priorityUrgent}</option>
               </select>
               <select
                 value={newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : '')}
                 onChange={(e) => setNewTaskCategoryId(e.target.value || undefined)}
                 className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">无分类</option>
+                <option value="">{t.ui.noCategory}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -565,7 +567,7 @@ export default function ZFlowPage() {
             <textarea
               value={newTaskDescription}
               onChange={(e) => setNewTaskDescription(e.target.value)}
-              placeholder="任务描述（可选）..."
+              placeholder={t.task.taskDescription}
               className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
@@ -585,7 +587,7 @@ export default function ZFlowPage() {
                   type="text"
                   value={newTaskTags}
                   onChange={(e) => setNewTaskTags(e.target.value)}
-                  placeholder="标签（用英文逗号分隔）..."
+                  placeholder={t.ui.tagsPlaceholder}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -596,7 +598,7 @@ export default function ZFlowPage() {
                 disabled={!newTask.trim()}
                 className="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50"
               >
-                创建任务
+                {t.task.createTask}
               </button>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <label className="inline-flex items-center gap-1">
@@ -610,7 +612,7 @@ export default function ZFlowPage() {
                       ;(window as any).__zflowJoinAttention = e.target.checked
                     }}
                   />
-                  <span>创建后加入注意力池（Pending）</span>
+                  <span>{t.task.joinAttentionPool}</span>
                 </label>
               </div>
               <button
@@ -620,7 +622,7 @@ export default function ZFlowPage() {
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors duration-200"
               >
-                取消
+                {t.common.cancel}
               </button>
             </div>
           </div>
@@ -632,7 +634,7 @@ export default function ZFlowPage() {
         {filteredTasks.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
             <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>No tasks yet, start by adding your first task!</p>
+            <p>{t.messages.noTasksYet}</p>
           </div>
         ) : (
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
@@ -706,12 +708,12 @@ export default function ZFlowPage() {
 
                   {/* Time information */}
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>创建于 {formatDate(task.created_at)}</span>
+                    <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
                     {taskContent.due_date && (
                       <span className={`inline-flex items-center gap-1 ${isOverdue(taskContent.due_date) ? 'text-red-600' : ''}`}>
                         <Calendar className="w-3 h-3" />
                         {formatDate(taskContent.due_date)}
-                        {isOverdue(taskContent.due_date) && '（已逾期）'}
+                        {isOverdue(taskContent.due_date) && t.ui.overdue}
                       </span>
                     )}
                   </div>
@@ -729,7 +731,7 @@ export default function ZFlowPage() {
             task={selectedTask}
             categories={categories}
             onSave={handleSaveTask}
-            title="Edit Task"
+            title={t.ui.editTaskTitle}
           />
         </div>
       </div>

@@ -2,10 +2,12 @@
 
 import React from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../contexts/LanguageContext";
 import LoginPage from "../components/LoginPage";
 
 export default function SpeechDemoPage() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
@@ -21,10 +23,10 @@ export default function SpeechDemoPage() {
 
   return (
     <div className="py-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-2">语音转文字（批量回退版）</h1>
-      <p className="text-gray-600 mb-6">不存音频，仅用于快速输入文本。默认使用 OpenAI gpt-4o-mini-transcribe。</p>
+      <h1 className="text-2xl font-semibold mb-2">{t.speech.title}</h1>
+      <p className="text-gray-600 mb-6">{t.speech.description}</p>
       <div className="p-4 border rounded-lg">
-        <p>语音转文字功能正在开发中...</p>
+        <p>Speech to text feature is in development...</p>
       </div>
     </div>
   );

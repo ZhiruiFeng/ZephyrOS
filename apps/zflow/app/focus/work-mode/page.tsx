@@ -10,6 +10,7 @@ import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
 import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu } from 'lucide-react'
 import MarkdownEditor from './MarkdownEditor'
 import { Category } from '../../types/task'
+import { useTranslation } from '../../../contexts/LanguageContext'
 
 interface TaskWithCategory extends TaskMemory {
   category?: Category
@@ -17,6 +18,7 @@ interface TaskWithCategory extends TaskMemory {
 }
 
 export default function WorkModePage() {
+  const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
   const { updateTask } = useUpdateTask()
@@ -199,7 +201,7 @@ export default function WorkModePage() {
   }
 
   const addTag = () => {
-    const tag = prompt('请输入标签:')
+    const tag = prompt(t.ui.enterTag)
     if (tag && tag.trim()) {
       setTaskInfo(prev => ({
         ...prev,
@@ -240,7 +242,7 @@ export default function WorkModePage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-red-600">Failed to load</div>
+      <div className="flex items-center justify-center min-h-screen text-red-600">{t.messages.failedToLoadTasks}</div>
     )
   }
 
@@ -263,7 +265,7 @@ export default function WorkModePage() {
       `}>
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between lg:hidden">
-            <h2 className="text-lg font-semibold text-gray-900">任务资源管理器</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t.ui.taskExplorer}</h2>
             <button
               onClick={() => setMobileSidebarOpen(false)}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
@@ -272,8 +274,8 @@ export default function WorkModePage() {
             </button>
           </div>
           <div className="hidden lg:block">
-            <h2 className="text-lg font-semibold text-gray-900">任务资源管理器</h2>
-            <p className="text-sm text-gray-600 mt-1">选择任务开始专注工作</p>
+            <h2 className="text-lg font-semibold text-gray-900">{t.ui.taskExplorer}</h2>
+            <p className="text-sm text-gray-600 mt-1">{t.ui.selectTaskToWork}</p>
           </div>
           
           {/* View Mode Toggle */}
@@ -288,7 +290,7 @@ export default function WorkModePage() {
                 }`}
               >
                 <Clock className="w-4 h-4" />
-                当前
+{t.ui.currentTasks}
               </button>
               <button
                 onClick={() => setViewMode('backlog')}
@@ -303,7 +305,7 @@ export default function WorkModePage() {
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {viewMode === 'current' ? '显示当前和过期的任务' : '显示暂停的任务'}
+              {viewMode === 'current' ? t.ui.currentTasksDesc : t.ui.backlogTasksDesc}
             </p>
           </div>
         </div>
@@ -322,7 +324,7 @@ export default function WorkModePage() {
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 )}
                 <Folder className="w-4 h-4 text-gray-500" />
-                <span className="font-medium text-gray-700">未分类</span>
+                <span className="font-medium text-gray-700">{t.ui.uncategorized}</span>
                 <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                   {tasksByCategory.uncategorized.length}
                 </span>
@@ -406,15 +408,15 @@ export default function WorkModePage() {
               className="lg:hidden flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
             >
               <Menu className="w-4 h-4" />
-              任务列表
+              {t.ui.taskList}
             </button>
             <button
               onClick={() => setSidebarVisible(!sidebarVisible)}
               className="hidden lg:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
-              title={sidebarVisible ? "隐藏侧边栏" : "显示侧边栏"}
+              title={sidebarVisible ? t.ui.hideSidebar : t.ui.showSidebar}
             >
               {sidebarVisible ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-              {sidebarVisible ? "隐藏侧边栏" : "显示侧边栏"}
+              {sidebarVisible ? t.ui.hideSidebar : t.ui.showSidebar}
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -423,8 +425,8 @@ export default function WorkModePage() {
               className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm"
             >
               <KanbanSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">切换到看板</span>
-              <span className="sm:hidden">看板</span>
+              <span className="hidden sm:inline">{t.ui.switchToKanban}</span>
+              <span className="sm:hidden">{t.nav.kanban}</span>
             </Link>
           </div>
         </div>
@@ -455,8 +457,8 @@ export default function WorkModePage() {
                     className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors text-sm"
                   >
                     <Settings className="w-4 h-4" />
-                    <span className="hidden sm:inline">{showTaskInfo ? '隐藏' : '显示'}任务信息</span>
-                    <span className="sm:hidden">{showTaskInfo ? '隐藏' : '信息'}</span>
+                    <span className="hidden sm:inline">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
+                    <span className="sm:hidden">{showTaskInfo ? t.common.hide : t.ui.taskInfo}</span>
                   </button>
                   <button
                     onClick={handleSaveNotes}
@@ -464,8 +466,8 @@ export default function WorkModePage() {
                     className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                   >
                     <Save className="w-4 h-4" />
-                    <span className="hidden sm:inline">{isSaving ? '保存中...' : '保存笔记'}</span>
-                    <span className="sm:hidden">{isSaving ? '保存中' : '保存'}</span>
+                    <span className="hidden sm:inline">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
+                    <span className="sm:hidden">{isSaving ? t.common.loading : t.common.save}</span>
                   </button>
                 </div>
               </div>
@@ -477,7 +479,7 @@ export default function WorkModePage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <Settings className="w-5 h-5" />
-                    任务信息
+                    {t.ui.taskInfo}
                   </h3>
                   <div className="flex items-center gap-2">
                     {editingTaskInfo ? (
@@ -488,7 +490,7 @@ export default function WorkModePage() {
                           className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm transition-colors"
                         >
                           <Save className="w-4 h-4" />
-                          保存
+                          {t.common.save}
                         </button>
                         <button
                           onClick={() => {
@@ -509,7 +511,7 @@ export default function WorkModePage() {
                           }}
                           className="px-3 py-1.5 text-gray-600 hover:text-gray-900 text-sm transition-colors"
                         >
-                          取消
+                          {t.common.cancel}
                         </button>
                       </>
                     ) : (
@@ -518,7 +520,7 @@ export default function WorkModePage() {
                         className="flex items-center gap-2 px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm transition-colors"
                       >
                         <Settings className="w-4 h-4" />
-                        编辑
+                        {t.common.edit}
                       </button>
                     )}
                   </div>
@@ -528,7 +530,7 @@ export default function WorkModePage() {
                   <div className="space-y-4">
                     {/* Title */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">标题</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.title}</label>
                       <input
                         type="text"
                         value={taskInfo.title}
@@ -539,7 +541,7 @@ export default function WorkModePage() {
 
                     {/* Description */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.description}</label>
                       <textarea
                         value={taskInfo.description}
                         onChange={(e) => setTaskInfo(prev => ({ ...prev, description: e.target.value }))}
@@ -551,37 +553,37 @@ export default function WorkModePage() {
                     {/* Status and Priority */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.status}</label>
                         <select
                           value={taskInfo.status}
                           onChange={(e) => setTaskInfo(prev => ({ ...prev, status: e.target.value as any }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
-                          <option value="pending">待办</option>
-                          <option value="in_progress">进行中</option>
-                          <option value="completed">已完成</option>
-                          <option value="cancelled">已取消</option>
-                          <option value="on_hold">暂停</option>
+                          <option value="pending">{t.task.statusPending}</option>
+                          <option value="in_progress">{t.task.statusInProgress}</option>
+                          <option value="completed">{t.task.statusCompleted}</option>
+                          <option value="cancelled">{t.task.statusCancelled}</option>
+                          <option value="on_hold">{t.task.statusOnHold}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.priority}</label>
                         <select
                           value={taskInfo.priority}
                           onChange={(e) => setTaskInfo(prev => ({ ...prev, priority: e.target.value as any }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
-                          <option value="low">低</option>
-                          <option value="medium">中</option>
-                          <option value="high">高</option>
-                          <option value="urgent">紧急</option>
+                          <option value="low">{t.task.priorityLow}</option>
+                          <option value="medium">{t.task.priorityMedium}</option>
+                          <option value="high">{t.task.priorityHigh}</option>
+                          <option value="urgent">{t.task.priorityUrgent}</option>
                         </select>
                       </div>
                     </div>
 
                     {/* Progress */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">进度 ({taskInfo.progress}%)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.progress} ({taskInfo.progress}%)</label>
                       <input
                         type="range"
                         min="0"
@@ -595,7 +597,7 @@ export default function WorkModePage() {
                     {/* Due Date and Estimated Duration */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">截止日期</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.ui.dueDate}</label>
                         <input
                           type="datetime-local"
                           value={taskInfo.due_date}
@@ -604,7 +606,7 @@ export default function WorkModePage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">预估时长 (分钟)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.ui.estimatedDurationMinutes}</label>
                         <input
                           type="number"
                           value={taskInfo.estimated_duration}
@@ -616,7 +618,7 @@ export default function WorkModePage() {
 
                     {/* Assignee */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">负责人</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.ui.assignee}</label>
                       <input
                         type="text"
                         value={taskInfo.assignee}
@@ -627,7 +629,7 @@ export default function WorkModePage() {
 
                     {/* Tags */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">标签</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.tags}</label>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {taskInfo.tags.map((tag, index) => (
                           <span
@@ -649,7 +651,7 @@ export default function WorkModePage() {
                         className="flex items-center gap-2 px-3 py-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-md transition-colors text-sm"
                       >
                         <Plus className="w-4 h-4" />
-                        添加标签
+                        {t.ui.addTag}
                       </button>
                     </div>
                   </div>
@@ -657,37 +659,37 @@ export default function WorkModePage() {
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-medium text-gray-700">状态:</span>
+                        <span className="font-medium text-gray-700">{t.task.status}:</span>
                         <span className="ml-2 text-gray-600">{taskInfo.status}</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">优先级:</span>
+                        <span className="font-medium text-gray-700">{t.task.priority}:</span>
                         <span className="ml-2 text-gray-600">{taskInfo.priority}</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">进度:</span>
+                        <span className="font-medium text-gray-700">{t.task.progress}:</span>
                         <span className="ml-2 text-gray-600">{taskInfo.progress}%</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">负责人:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.assignee || '未分配'}</span>
+                        <span className="font-medium text-gray-700">{t.ui.assignee}:</span>
+                        <span className="ml-2 text-gray-600">{taskInfo.assignee || t.ui.unassigned}</span>
                       </div>
                     </div>
                     {taskInfo.due_date && (
                       <div>
-                        <span className="font-medium text-gray-700">截止日期:</span>
+                        <span className="font-medium text-gray-700">{t.ui.dueDate}:</span>
                         <span className="ml-2 text-gray-600">{new Date(taskInfo.due_date).toLocaleString()}</span>
                       </div>
                     )}
                     {taskInfo.estimated_duration > 0 && (
                       <div>
-                        <span className="font-medium text-gray-700">预估时长:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.estimated_duration} 分钟</span>
+                        <span className="font-medium text-gray-700">{t.task.estimatedDuration}:</span>
+                        <span className="ml-2 text-gray-600">{taskInfo.estimated_duration} {t.ui.minutes}</span>
                       </div>
                     )}
                     {taskInfo.tags.length > 0 && (
                       <div>
-                        <span className="font-medium text-gray-700">标签:</span>
+                        <span className="font-medium text-gray-700">{t.task.tags}:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {taskInfo.tags.map((tag, index) => (
                             <span
@@ -710,7 +712,7 @@ export default function WorkModePage() {
               <MarkdownEditor
                 value={notes}
                 onChange={setNotes}
-                placeholder="在这里记录你的想法、进度和笔记..."
+                placeholder={t.ui.writeNotesHere}
               />
             </div>
           </>
@@ -718,14 +720,14 @@ export default function WorkModePage() {
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center">
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">选择任务开始工作</h3>
-              <p className="text-gray-600">从左侧选择一个任务来查看和编辑其笔记</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t.ui.selectTaskToStart}</h3>
+              <p className="text-gray-600">{t.ui.selectTaskFromLeft}</p>
               <button
                 onClick={() => setMobileSidebarOpen(true)}
                 className="lg:hidden mt-4 flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
               >
                 <Menu className="w-4 h-4" />
-                打开任务列表
+                {t.ui.openTaskList}
               </button>
             </div>
           </div>

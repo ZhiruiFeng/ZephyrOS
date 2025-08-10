@@ -16,55 +16,57 @@ import {
   User,
   Bell
 } from 'lucide-react'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 export default function MobileTestPage() {
+  const { t } = useTranslation()
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
   const features = [
     {
-      title: '响应式布局',
-      description: '自适应不同屏幕尺寸，从手机到桌面',
+      title: t.ui.responsiveLayout,
+      description: t.ui.responsiveLayoutDesc,
       icon: Smartphone,
       status: 'completed'
     },
     {
-      title: '触摸友好交互',
-      description: '优化按钮大小和间距，适合手指操作',
+      title: t.ui.touchFriendlyInteraction,
+      description: t.ui.touchFriendlyInteractionDesc,
       icon: Tablet,
       status: 'completed'
     },
     {
-      title: '移动端侧边栏',
-      description: '可滑动的侧边栏，支持手势操作',
+      title: t.ui.mobileSidebarFeature,
+      description: t.ui.mobileSidebarDesc,
       icon: Monitor,
       status: 'completed'
     },
     {
-      title: '移动端工具栏',
-      description: '紧凑的工具栏设计，节省屏幕空间',
+      title: t.ui.mobileToolbarFeature,
+      description: t.ui.mobileToolbarDesc,
       icon: Settings,
       status: 'completed'
     },
     {
-      title: '移动端搜索',
-      description: '优化的搜索界面和过滤器',
+      title: t.ui.mobileSearchFeature,
+      description: t.ui.mobileSearchDesc,
       icon: Search,
       status: 'completed'
     },
     {
-      title: '移动端看板',
-      description: '单列布局，适合垂直滚动',
+      title: t.ui.mobileKanbanFeature,
+      description: t.ui.mobileKanbanDesc,
       icon: CheckCircle,
       status: 'completed'
     }
   ]
 
   const tabs = [
-    { id: 'overview', name: '概览', icon: Monitor },
-    { id: 'focus', name: '专注模式', icon: CheckCircle },
-    { id: 'kanban', name: '看板', icon: Settings },
-    { id: 'work', name: '工作模式', icon: User }
+    { id: 'overview', name: t.nav.overview, icon: Monitor },
+    { id: 'focus', name: t.nav.focusMode, icon: CheckCircle },
+    { id: 'kanban', name: t.nav.kanban, icon: Settings },
+    { id: 'work', name: t.nav.workMode, icon: User }
   ]
 
   return (
@@ -79,7 +81,7 @@ export default function MobileTestPage() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-semibold text-gray-900">移动端测试</h1>
+            <h1 className="text-lg font-semibold text-gray-900">{t.ui.mobileTest}</h1>
           </div>
           <div className="flex items-center gap-2">
             <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md">
@@ -115,9 +117,9 @@ export default function MobileTestPage() {
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
               <ArrowLeft className="w-4 h-4" />
-              返回
+              {t.ui.backToHome}
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">移动端优化测试</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t.ui.mobileOptimization}</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
@@ -148,19 +150,19 @@ export default function MobileTestPage() {
             <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl p-6 sm:p-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold mb-2">移动端优化完成</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-2">{t.ui.mobileOptimizationComplete}</h2>
                   <p className="text-white/90 text-sm sm:text-base">
-                    所有页面都已针对移动设备进行了优化，提供更好的用户体验
+                    {t.ui.testDescription}
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold">6</div>
-                    <div className="text-sm text-white/80">优化功能</div>
+                    <div className="text-sm text-white/80">{t.ui.optimizationFeatures}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold">100%</div>
-                    <div className="text-sm text-white/80">完成度</div>
+                    <div className="text-sm text-white/80">{t.ui.completionRate}</div>
                   </div>
                 </div>
               </div>
@@ -179,7 +181,7 @@ export default function MobileTestPage() {
                       <p className="text-sm text-gray-600 mb-3">{feature.description}</p>
                       <div className="flex items-center gap-2 text-sm text-green-600">
                         <CheckCircle className="w-4 h-4" />
-                        已完成
+{t.ui.completed}
                       </div>
                     </div>
                   </div>
@@ -189,7 +191,7 @@ export default function MobileTestPage() {
 
             {/* Test Links */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">测试链接</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t.ui.testLinks}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Link
                   href="/focus"
@@ -199,8 +201,8 @@ export default function MobileTestPage() {
                     <CheckCircle className="w-5 h-5 text-primary-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">专注模式</div>
-                    <div className="text-sm text-gray-600">测试看板和工作模式</div>
+                    <div className="font-medium text-gray-900">{t.nav.focusMode}</div>
+                    <div className="text-sm text-gray-600">{t.ui.testFocusModeDesc}</div>
                   </div>
                 </Link>
                 
@@ -212,8 +214,8 @@ export default function MobileTestPage() {
                     <Settings className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">看板模式</div>
-                    <div className="text-sm text-gray-600">测试拖拽和移动端布局</div>
+                    <div className="font-medium text-gray-900">{t.nav.kanban}</div>
+                    <div className="text-sm text-gray-600">{t.ui.testKanbanModeDesc}</div>
                   </div>
                 </Link>
                 
@@ -225,8 +227,8 @@ export default function MobileTestPage() {
                     <User className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">工作模式</div>
-                    <div className="text-sm text-gray-600">测试侧边栏和编辑器</div>
+                    <div className="font-medium text-gray-900">{t.nav.workMode}</div>
+                    <div className="text-sm text-gray-600">{t.ui.testWorkModeDesc}</div>
                   </div>
                 </Link>
               </div>
@@ -237,19 +239,19 @@ export default function MobileTestPage() {
         {activeTab === 'focus' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">专注模式优化</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t.ui.focusModeOptimization}</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>移动端头部导航</span>
+                  <span>{t.ui.mobileHeader}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>响应式模式切换</span>
+                  <span>{t.ui.responsiveModeSwitching}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>触摸友好的按钮</span>
+                  <span>{t.ui.touchFriendlyButtons}</span>
                 </div>
               </div>
               <div className="mt-6">
@@ -257,7 +259,7 @@ export default function MobileTestPage() {
                   href="/focus"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
                 >
-                  测试专注模式
+                  {t.ui.testFocusMode}
                 </Link>
               </div>
             </div>
@@ -267,19 +269,19 @@ export default function MobileTestPage() {
         {activeTab === 'kanban' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">看板模式优化</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t.ui.kanbanModeOptimization}</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>移动端单列布局</span>
+                  <span>{t.ui.mobileLayout}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>移动端搜索和过滤</span>
+                  <span>{t.ui.mobileSearchFilter}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>触摸拖拽支持</span>
+                  <span>{t.ui.touchDragSupport}</span>
                 </div>
               </div>
               <div className="mt-6">
@@ -287,7 +289,7 @@ export default function MobileTestPage() {
                   href="/focus?view=kanban"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
                 >
-                  测试看板模式
+                  {t.ui.testKanbanMode}
                 </Link>
               </div>
             </div>
@@ -297,19 +299,19 @@ export default function MobileTestPage() {
         {activeTab === 'work' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">工作模式优化</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t.ui.workModeOptimization}</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>移动端侧边栏</span>
+                  <span>{t.ui.mobileSidebar}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>响应式编辑器</span>
+                  <span>{t.ui.responsiveEditor}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>移动端工具栏</span>
+                  <span>{t.ui.mobileToolbar}</span>
                 </div>
               </div>
               <div className="mt-6">
@@ -317,7 +319,7 @@ export default function MobileTestPage() {
                   href="/focus?view=work"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
                 >
-                  测试工作模式
+                  {t.ui.testWorkMode}
                 </Link>
               </div>
             </div>

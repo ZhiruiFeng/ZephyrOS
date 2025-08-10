@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react'
 import { Plus } from 'lucide-react'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 interface FloatingAddButtonProps {
   onClick: () => void
@@ -14,6 +15,7 @@ export default function FloatingAddButton({
   className = '', 
   showKeyboardHint = true 
 }: FloatingAddButtonProps) {
+  const { t } = useTranslation()
   
   // 键盘快捷键支持
   useEffect(() => {
@@ -53,8 +55,8 @@ export default function FloatingAddButton({
           focus:outline-none focus:ring-4 focus:ring-blue-300
           ${className}
         `}
-        aria-label="新建任务 (快捷键: Ctrl+N)"
-        title="新建任务 (快捷键: Ctrl+N)"
+        aria-label={t.ui.newTaskShortcut}
+        title={t.ui.newTaskShortcut}
       >
         <Plus className="w-6 h-6 transition-transform duration-200 group-hover:rotate-90" />
       </button>

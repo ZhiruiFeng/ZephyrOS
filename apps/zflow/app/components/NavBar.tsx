@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ListTodo, KanbanSquare, Mic, LayoutDashboard, SlidersHorizontal, Target } from 'lucide-react'
 import AuthButton from './AuthButton'
+import LanguageSelector from './LanguageSelector'
 import { usePrefs } from '../../contexts/PrefsContext'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname()
@@ -24,6 +26,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 
 export default function NavBar() {
   const { hideCompleted, setHideCompleted, showCompletedCounts, setShowCompletedCounts, filterPriority, setFilterPriority, sortMode, setSortMode } = usePrefs()
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
   const menuRef = React.useRef<HTMLDivElement | null>(null)
   const pathname = usePathname()
@@ -61,61 +64,62 @@ export default function NavBar() {
               ZFlow
             </Link>
             <div className="hidden sm:flex items-center gap-1 ml-2">
-              <NavLink href="/focus">
+              <NavLink href="/focus?view=work">
                 <span className="inline-flex items-center gap-1">
-                  <Target className="w-4 h-4" /> Focus
+                  <Target className="w-4 h-4" /> {t.nav.focus}
                 </span>
               </NavLink>
               <NavLink href="/overview">
                 <span className="inline-flex items-center gap-1">
-                  <ListTodo className="w-4 h-4" /> Overview
+                  <ListTodo className="w-4 h-4" /> {t.nav.overview}
                 </span>
               </NavLink>
               <NavLink href="/speech">
                 <span className="inline-flex items-center gap-1">
-                  <Mic className="w-4 h-4" /> Speech
+                  <Mic className="w-4 h-4" /> {t.nav.speech}
                 </span>
               </NavLink>
             </div>
           </div>
 
           <div className="flex items-center gap-3 relative" ref={menuRef}>
+            <LanguageSelector compact className="hidden sm:block" />
             <button
               onClick={() => setOpen((v) => !v)}
               className="px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 inline-flex items-center gap-2"
-              title="偏好设置"
+              title={t.common.settings}
             >
-              <SlidersHorizontal className="w-4 h-4" /> 设置
+              <SlidersHorizontal className="w-4 h-4" /> {t.common.settings}
             </button>
             {open && (
               <div className="absolute right-20 top-10 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50">
-                <div className="text-xs font-semibold text-gray-600 mb-2">显示</div>
+                <div className="text-xs font-semibold text-gray-600 mb-2">Display</div>
                 <label className="flex items-center justify-between text-sm py-1">
-                  <span>隐藏已完成</span>
+                  <span>{t.ui.hideCompleted}</span>
                   <input type="checkbox" className="h-4 w-4" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} />
                 </label>
                 <label className="flex items-center justify-between text-sm py-1">
-                  <span>侧边栏显示完成数</span>
+                  <span>{t.ui.showCompletedCounts}</span>
                   <input type="checkbox" className="h-4 w-4" checked={showCompletedCounts} onChange={(e) => setShowCompletedCounts(e.target.checked)} />
                 </label>
                 <div className="h-px bg-gray-200 my-2" />
-                <div className="text-xs font-semibold text-gray-600 mb-2">筛选</div>
+                <div className="text-xs font-semibold text-gray-600 mb-2">{t.common.filter}</div>
                 <div className="flex items-center justify-between text-sm py-1">
-                  <span>优先级</span>
+                  <span>{t.task.priority}</span>
                   <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as any)} className="border border-gray-300 rounded px-2 py-1 text-sm">
-                    <option value="all">全部</option>
-                    <option value="urgent">紧急</option>
-                    <option value="high">高</option>
-                    <option value="medium">中</option>
-                    <option value="low">低</option>
+                    <option value="all">{t.ui.allPriority}</option>
+                    <option value="urgent">{t.task.priorityUrgent}</option>
+                    <option value="high">{t.task.priorityHigh}</option>
+                    <option value="medium">{t.task.priorityMedium}</option>
+                    <option value="low">{t.task.priorityLow}</option>
                   </select>
                 </div>
                 <div className="flex items-center justify-between text-sm py-1">
-                  <span>任务排序</span>
+                  <span>{t.ui.taskSorting}</span>
                   <select value={sortMode} onChange={(e) => setSortMode(e.target.value as any)} className="border border-gray-300 rounded px-2 py-1 text-sm">
-                    <option value="none">不排序</option>
-                    <option value="priority">按优先级</option>
-                    <option value="due_date">按截止时间</option>
+                    <option value="none">{t.ui.sortNone}</option>
+                    <option value="priority">{t.ui.sortByPriority}</option>
+                    <option value="due_date">{t.ui.sortByDueDate}</option>
                   </select>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { X, Calendar, Tag, Save, X as XIcon } from 'lucide-react'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 interface AddTaskModalProps {
   isOpen: boolean
@@ -18,6 +19,7 @@ export default function AddTaskModal({
   categories, 
   defaultCategoryId 
 }: AddTaskModalProps) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -73,13 +75,13 @@ export default function AddTaskModal({
       onClose()
     } catch (error) {
       console.error('Failed to create task:', error)
-      // 可以在这里添加错误提示
+      // Add error handling here
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // 处理键盘快捷键
+  // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       handleClose()
@@ -110,7 +112,7 @@ export default function AddTaskModal({
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">新建任务</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t.task.createTask}</h2>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
@@ -125,13 +127,13 @@ export default function AddTaskModal({
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              任务标题 *
+              {t.task.title} *
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="输入任务标题..."
+              placeholder={t.task.taskTitle}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
@@ -140,12 +142,12 @@ export default function AddTaskModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              任务描述
+              {t.task.description}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="输入任务描述（可选）..."
+              placeholder={t.task.taskDescription}
               rows={3}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
@@ -155,29 +157,29 @@ export default function AddTaskModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                优先级
+                {t.task.priority}
               </label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="low">低优先级</option>
-                <option value="medium">中优先级</option>
-                <option value="high">高优先级</option>
-                <option value="urgent">紧急</option>
+                <option value="low">{t.task.priorityLow} Priority</option>
+                <option value="medium">{t.task.priorityMedium} Priority</option>
+                <option value="high">{t.task.priorityHigh} Priority</option>
+                <option value="urgent">{t.task.priorityUrgent}</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                分类
+                {t.task.category}
               </label>
               <select
                 value={formData.categoryId}
                 onChange={(e) => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">无分类</option>
+                <option value="">{t.ui.noCategory}</option>
                 {categories.map((cat: any) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
@@ -189,7 +191,7 @@ export default function AddTaskModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                截止日期
+                {t.task.dueDate}
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -203,7 +205,7 @@ export default function AddTaskModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                标签
+                {t.task.tags}
               </label>
               <div className="relative">
                 <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -211,7 +213,7 @@ export default function AddTaskModal({
                   type="text"
                   value={formData.tags}
                   onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                  placeholder="标签（用英文逗号分隔）..."
+                  placeholder={t.ui.tagsPlaceholder}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -228,14 +230,14 @@ export default function AddTaskModal({
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <label htmlFor="joinAttention" className="text-sm text-gray-700">
-              创建后加入注意力池（Pending状态）
+              {t.task.joinAttentionPool}
             </label>
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <div className="text-xs text-gray-500">
-              快捷键: Ctrl+Enter 保存, Esc 取消
+              Shortcuts: Ctrl+Enter to Save, Esc to Cancel
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -244,7 +246,7 @@ export default function AddTaskModal({
                 disabled={isSubmitting}
                 className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors disabled:opacity-50"
               >
-                取消
+                {t.common.cancel}
               </button>
               <button
                 type="submit"
@@ -252,7 +254,7 @@ export default function AddTaskModal({
                 className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                {isSubmitting ? '创建中...' : '创建任务'}
+                {isSubmitting ? `${t.common.create}...` : t.task.createTask}
               </button>
             </div>
           </div>

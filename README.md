@@ -1,6 +1,6 @@
-# ZephyrOS
+# ZephyrOS - Personal AI Operating System
 
-A modern task management and memory system with frontend-backend separation architecture.
+A modern, modular task management and productivity platform built with Next.js, React, and TypeScript.
 
 ## Architecture Overview
 
@@ -243,6 +243,19 @@ npm start
 4. Push to branch
 5. Create Pull Request
 
-## License
+## 🤝 Support
+
+- **Documentation**: Check the `/guidance` directory for detailed guides
+- **Issues**: Report bugs and request features via GitHub Issues
+- **API Reference**: Visit http://localhost:3001/api/docs when running locally
+- **Development**: See guidance/CONTRIBUTING.md for development guidelines
+
+---
+
+**Current Version**: 2.0.0  
+**Architecture**: Modular monorepo with i18n support  
+**Status**: Production-ready core features with ongoing enhancements
+
+## 📄 License
 
 MIT License

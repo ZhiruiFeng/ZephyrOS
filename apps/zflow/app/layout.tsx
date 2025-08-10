@@ -6,7 +6,9 @@ import React from 'react'
 import { supabase } from '../lib/supabase'
 import { AuthProvider } from '../contexts/AuthContext'
 import { PrefsProvider } from '../contexts/PrefsContext'
+import { LanguageProvider } from '../contexts/LanguageContext'
 import NavBar from './components/NavBar'
+import DynamicHead from './components/DynamicHead'
 
 export default function RootLayout({
   children,
@@ -14,15 +16,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <head>
-        <title>ZFlow - 任务管理系统</title>
-        <meta name="description" content="个人AI操作系统的任务管理模块" />
+        <title>ZFlow - Task Management System</title>
+        <meta name="description" content="Personal AI operating system task management module" />
       </head>
       <body className="bg-gray-50 min-h-screen">
         <AuthProvider>
-          <PrefsProvider>
-            <NavBar />
+          <LanguageProvider>
+            <PrefsProvider>
+              <DynamicHead />
+              <NavBar />
             <SWRConfig
             value={{
               fetcher: async (url: string) => {
@@ -40,7 +44,8 @@ export default function RootLayout({
             >
               {children}
             </SWRConfig>
-          </PrefsProvider>
+            </PrefsProvider>
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

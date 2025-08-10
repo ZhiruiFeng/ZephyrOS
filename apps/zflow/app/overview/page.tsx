@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/LoginPage'
 import CategorySidebar from '../components/CategorySidebar'
 import FloatingAddButton from '../components/FloatingAddButton'
@@ -20,6 +21,7 @@ type DisplayMode = 'list' | 'grid'
 
 function OverviewPageContent() {
   const { user, loading: authLoading } = useAuth()
+  const { t } = useTranslation()
   const router = useRouter()
   const params = useSearchParams()
   const view = (params.get('view') as ViewKey) || 'current'
@@ -294,7 +296,7 @@ function OverviewPageContent() {
                   </div>
                   <div className="text-center md:text-left">
                     <h3 className="text-xs md:text-sm font-medium text-gray-600">Current</h3>
-                    <p className="text-xs text-gray-500 hidden md:block">进行中 + 24小时内完成</p>
+                    <p className="text-xs text-gray-500 hidden md:block">{t.ui.inProgress} + Completed within 24h</p>
                   </div>
                 </div>
                 <p className="text-xl md:text-3xl font-bold text-primary-600 text-center md:text-left">{stats.current}</p>
@@ -314,7 +316,7 @@ function OverviewPageContent() {
                   </div>
                   <div className="text-center md:text-left">
                     <h3 className="text-xs md:text-sm font-medium text-gray-600">Future</h3>
-                    <p className="text-xs text-gray-500 hidden md:block">待办事项</p>
+                    <p className="text-xs text-gray-500 hidden md:block">{t.ui.backlogItems}</p>
                   </div>
                 </div>
                 <p className="text-xl md:text-3xl font-bold text-primary-700 text-center md:text-left">{stats.future}</p>
@@ -334,7 +336,7 @@ function OverviewPageContent() {
                   </div>
                   <div className="text-center md:text-left">
                     <h3 className="text-xs md:text-sm font-medium text-gray-600">Archive</h3>
-                    <p className="text-xs text-gray-500 hidden md:block">已归档 + 已取消</p>
+                    <p className="text-xs text-gray-500 hidden md:block">Archived + Cancelled</p>
                   </div>
                 </div>
                 <p className="text-xl md:text-3xl font-bold text-primary-800 text-center md:text-left">{stats.archive}</p>
@@ -346,10 +348,10 @@ function OverviewPageContent() {
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Tag className="w-4 h-4" />
                 <span>
-                  当前分类: {
-                    selectedCategory === 'all' ? '全部' : 
-                    selectedCategory === 'uncategorized' ? '未分类' : 
-                    categories.find(c => c.id === selectedCategory)?.name || '未知'
+                  {t.ui.currentCategory}: {
+                    selectedCategory === 'all' ? t.common.all : 
+                    selectedCategory === 'uncategorized' ? t.ui.uncategorized : 
+                    categories.find(c => c.id === selectedCategory)?.name || 'Unknown'
                   }
                 </span>
               </div>
@@ -363,7 +365,7 @@ function OverviewPageContent() {
                   <input 
                     value={search} 
                     onChange={(e) => setSearch(e.target.value)} 
-                    placeholder="搜索任务..." 
+                    placeholder={t.ui.searchTasks} 
                     className="bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-500 w-full sm:w-48"
                   />
                 </div>
@@ -372,11 +374,11 @@ function OverviewPageContent() {
                   onChange={(e) => setFilterPriority(e.target.value as any)} 
                   className="glass rounded-full px-3 md:px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="all">全部优先级</option>
-                  <option value="urgent">紧急</option>
-                  <option value="high">高</option>
-                  <option value="medium">中</option>
-                  <option value="low">低</option>
+                  <option value="all">{t.ui.allPriority}</option>
+                  <option value="urgent">{t.task.priorityUrgent}</option>
+                  <option value="high">{t.task.priorityHigh}</option>
+                  <option value="medium">{t.task.priorityMedium}</option>
+                  <option value="low">{t.task.priorityLow}</option>
                 </select>
                 
                 {/* Mobile Category Selector Button */}
@@ -387,9 +389,9 @@ function OverviewPageContent() {
                   <span className="flex items-center gap-2">
                     <Tag className="w-4 h-4" />
                     <span>
-                      {selectedCategory === 'all' ? '全部分类' : 
-                       selectedCategory === 'uncategorized' ? '未分类' : 
-                       categories.find(c => c.id === selectedCategory)?.name || '选择分类'}
+                      {selectedCategory === 'all' ? t.ui.allCategories : 
+                       selectedCategory === 'uncategorized' ? t.ui.uncategorized : 
+                       categories.find(c => c.id === selectedCategory)?.name || t.ui.selectCategory}
                     </span>
                   </span>
                   <ChevronDown className="w-4 h-4" />
@@ -408,7 +410,7 @@ function OverviewPageContent() {
                         : 'text-gray-600 hover:bg-white/50'
                     }`}
                   >
-                    列表
+                    {t.ui.listView}
                   </button>
                   <button
                     onClick={() => setDisplayMode('grid')}
@@ -419,15 +421,15 @@ function OverviewPageContent() {
                     }`}
                   >
                     <Grid className="w-3 h-3" />
-                    网格
+                    {t.ui.gridView}
                   </button>
                 </div>
 
                 {/* Focus Button */}
-                <button className="bg-primary-600 text-white px-3 md:px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                <Link href="/focus?view=work" className="bg-primary-600 text-white px-3 md:px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                   <Focus className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="hidden sm:inline">Focus</span>
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -438,7 +440,7 @@ function OverviewPageContent() {
               <div className="space-y-3 md:space-y-4">
                 {getCurrentList().length === 0 ? (
                   <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-                    暂无当前任务
+                    {t.ui.noCurrentTasks}
                   </div>
                 ) : (
                   <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
@@ -476,12 +478,12 @@ function OverviewPageContent() {
                             </div>
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500 gap-1">
-                            <span>创建于 {formatDate(task.created_at)}</span>
+                            <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
                             {c.due_date && (
                               <span className={`inline-flex items-center gap-1 ${isOverdue(c.due_date) ? 'text-red-600' : ''}`}>
                                 <Calendar className="w-3 h-3" />
                                 {formatDate(c.due_date)}
-                                {isOverdue(c.due_date) && '（已逾期）'}
+                                {isOverdue(c.due_date) && t.ui.overdue}
                               </span>
                             )}
                           </div>
@@ -497,7 +499,7 @@ function OverviewPageContent() {
               <div className="space-y-3 md:space-y-4">
                 {getFutureList().length === 0 ? (
                   <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-                    暂无待办事项
+                    {t.ui.noBacklogItems}
                   </div>
                 ) : (
                   <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
@@ -522,7 +524,7 @@ function OverviewPageContent() {
                             </div>
                           </div>
                           <div className="flex flex-col gap-2">
-                            <span className="text-xs text-gray-500">创建于 {formatDate(task.created_at)}</span>
+                            <span className="text-xs text-gray-500">{t.ui.createdAt} {formatDate(task.created_at)}</span>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                               {/* Quick Category Change */}
                               <select
@@ -531,7 +533,7 @@ function OverviewPageContent() {
                                 className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <option value="">无分类</option>
+                                <option value="">{t.ui.noCategory}</option>
                                 {categories.map((cat: any) => (
                                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
@@ -542,7 +544,7 @@ function OverviewPageContent() {
                                 <button
                                   onClick={() => handleEditTask(task)}
                                   className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                                  title="编辑任务"
+                                  title={t.task.editTask}
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -554,7 +556,7 @@ function OverviewPageContent() {
                                   onClick={() => activate(task.id)} 
                                   className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors duration-200"
                                 >
-                                  激活
+                                  {t.task.activateTask}
                                 </button>
                               </div>
                             </div>
@@ -571,7 +573,7 @@ function OverviewPageContent() {
               <div className="space-y-3 md:space-y-4">
                 {getArchiveList().length === 0 ? (
                   <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-                    暂无归档任务
+                    {t.ui.noArchivedTasks}
                   </div>
                 ) : (
                   <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
@@ -601,14 +603,14 @@ function OverviewPageContent() {
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <span className="text-xs text-gray-500">
-                              {c.status === 'completed' ? '完成于' : '取消于'} {formatDate(task.created_at)}
+                              {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(task.created_at)}
                             </span>
                             {c.status === 'completed' && (
                               <button 
                                 onClick={() => reopen(task.id)} 
                                 className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
                               >
-                                重新打开
+                                {t.task.reopenTask}
                               </button>
                             )}
                           </div>
@@ -644,7 +646,7 @@ function OverviewPageContent() {
         task={editingTask}
         categories={categories}
         onSave={handleSaveTask}
-        title="编辑任务"
+        title={t.task.editTask}
       />
 
       {/* Mobile Category Selector Modal */}
@@ -660,7 +662,7 @@ function OverviewPageContent() {
           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">选择分类</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t.ui.selectCategory}</h3>
               <button
                 onClick={() => setShowMobileCategorySelector(false)}
                 className="p-2 text-gray-500 hover:text-gray-700 rounded-lg"
@@ -680,7 +682,7 @@ function OverviewPageContent() {
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <span>全部</span>
+                <span>{t.common.all}</span>
                 <span className={`px-2 py-1 rounded-full text-xs ${
                   selectedCategory === 'all' 
                     ? 'bg-white/20 text-white' 
@@ -699,7 +701,7 @@ function OverviewPageContent() {
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <span>未分类</span>
+                <span>{t.ui.uncategorized}</span>
                 <span className={`px-2 py-1 rounded-full text-xs ${
                   selectedCategory === 'uncategorized' 
                     ? 'bg-white/20 text-white' 
@@ -741,7 +743,7 @@ function OverviewPageContent() {
               {categories.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <Tag className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">暂无分类</p>
+                  <p className="text-sm">No categories</p>
                 </div>
               )}
             </div>

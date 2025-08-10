@@ -33,17 +33,19 @@ import {
   formatDate,
   formatTagsString
 } from '../utils/taskUtils'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 type StatusKey = TaskContent['status']
 
 // Focused attention pool: only show pending, in_progress, completed (within 24h)
-const COLUMNS: Array<{ key: StatusKey; title: string; hint?: string }> = [
-  { key: 'pending', title: 'Todo' },
-  { key: 'in_progress', title: 'In Progress' },
-  { key: 'completed', title: 'Done (24h)' },
+const getColumns = (t: any): Array<{ key: StatusKey; title: string; hint?: string }> => [
+  { key: 'pending', title: t.ui.todo },
+  { key: 'in_progress', title: t.ui.inProgress },
+  { key: 'completed', title: t.ui.done24h },
 ]
 
 export default function KanbanPage() {
+  const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
   const { updateTask } = useUpdateTask()
@@ -140,7 +142,7 @@ export default function KanbanPage() {
       await updateTask(id, { content: { status } })
     } catch (err) {
       console.error('Failed to move task:', err)
-      alert('Failed to move task, please try again')
+      alert(t.messages.taskUpdateFailed)
     } finally {
       setDraggingId(null)
     }
@@ -200,7 +202,7 @@ export default function KanbanPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-red-600">Failed to load</div>
+      <div className="flex items-center justify-center min-h-screen text-red-600">{t.messages.failedToLoadTasks}</div>
     )
   }
 
@@ -213,9 +215,9 @@ export default function KanbanPage() {
           <div className="relative p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
-                <KanbanSquare className="w-6 h-6 sm:w-7 sm:h-7" /> 看板
+                <KanbanSquare className="w-6 h-6 sm:w-7 sm:h-7" /> {t.ui.kanbanTitle}
               </h1>
-              <p className="mt-1 text-white/90 text-sm sm:text-base">拖拽卡片在列之间即可更新任务状态</p>
+              <p className="mt-1 text-white/90 text-sm sm:text-base">{t.ui.dragToUpdateStatus}</p>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Mobile Search */}
@@ -224,7 +226,7 @@ export default function KanbanPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="搜索任务..."
+                  placeholder={t.ui.searchTasks}
                   className="text-sm outline-none bg-transparent placeholder:text-white/70 text-white flex-1"
                 />
               </div>
@@ -242,7 +244,7 @@ export default function KanbanPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="搜索任务..."
+                  placeholder={t.ui.searchTasks}
                   className="text-sm outline-none bg-transparent placeholder:text-white/70 text-white"
                 />
               </div>
@@ -252,11 +254,11 @@ export default function KanbanPage() {
                   onChange={(e) => setFilterPriority(e.target.value as any)}
                   className="text-sm outline-none bg-transparent text-white"
                 >
-                  <option value="all" className="text-gray-800">全部优先级</option>
-                  <option value="urgent" className="text-gray-800">紧急</option>
-                  <option value="high" className="text-gray-800">高</option>
-                  <option value="medium" className="text-gray-800">中</option>
-                  <option value="low" className="text-gray-800">低</option>
+                  <option value="all" className="text-gray-800">{t.ui.allPriorities}</option>
+                  <option value="urgent" className="text-gray-800">{t.task.priorityUrgent}</option>
+                  <option value="high" className="text-gray-800">{t.task.priorityHigh}</option>
+                  <option value="medium" className="text-gray-800">{t.task.priorityMedium}</option>
+                  <option value="low" className="text-gray-800">{t.task.priorityLow}</option>
                 </select>
               </div>
               <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
@@ -265,8 +267,8 @@ export default function KanbanPage() {
                   onChange={(e) => setSelectedCategory(e.target.value || 'all')}
                   className="text-sm outline-none bg-transparent text-white"
                 >
-                  <option value="all" className="text-gray-800">全部分类</option>
-                  <option value="uncategorized" className="text-gray-800">未分类</option>
+                  <option value="all" className="text-gray-800">{t.ui.allCategories}</option>
+                  <option value="uncategorized" className="text-gray-800">{t.ui.uncategorized}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id} className="text-gray-800">{c.name}</option>
                   ))}
@@ -274,8 +276,8 @@ export default function KanbanPage() {
               </div>
               <Link href="/focus?view=work" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90 inline-flex items-center gap-2 text-sm">
                 <FileText className="w-4 h-4" /> 
-                <span className="hidden lg:inline">Work Mode</span>
-                <span className="lg:hidden">工作</span>
+                <span className="hidden lg:inline">{t.ui.workMode}</span>
+                <span className="lg:hidden">{t.ui.work}</span>
               </Link>
             </div>
           </div>
@@ -287,28 +289,28 @@ export default function KanbanPage() {
         <div className="sm:hidden mb-4 p-4 bg-white rounded-lg border border-gray-200">
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.priority}</label>
               <select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value as any)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="all">全部优先级</option>
-                <option value="urgent">紧急</option>
-                <option value="high">高</option>
-                <option value="medium">中</option>
-                <option value="low">低</option>
+                <option value="all">{t.ui.allPriorities}</option>
+                <option value="urgent">{t.task.priorityUrgent}</option>
+                <option value="high">{t.task.priorityHigh}</option>
+                <option value="medium">{t.task.priorityMedium}</option>
+                <option value="low">{t.task.priorityLow}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.category}</label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value || 'all')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="all">全部分类</option>
-                <option value="uncategorized">未分类</option>
+                <option value="all">{t.ui.allCategories}</option>
+                <option value="uncategorized">{t.ui.uncategorized}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -321,18 +323,18 @@ export default function KanbanPage() {
       {/* Soft WIP limit hints */}
       {byStatus.in_progress.length > 3 && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-2 text-sm">
-          当前进行中的任务已超过 3 个，建议收敛以保持专注。
+          {t.ui.wipLimitExceeded}
         </div>
       )}
       {byStatus.pending.length > 10 && (
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-4 py-2 text-sm">
-          待办池已超过 10 个，考虑精简以提升清晰度。
+          {t.ui.backlogLimitExceeded}
         </div>
       )}
 
       {/* Mobile: Single Column Layout */}
       <div className="sm:hidden space-y-4">
-        {COLUMNS.map((col) => (
+        {getColumns(t).map((col) => (
           <div key={col.key} className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -370,7 +372,7 @@ export default function KanbanPage() {
                           }}
                           className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
                         >
-                          <Pencil className="w-3.5 h-3.5" /> 编辑
+                          <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
                         </button>
                       </div>
                       {c.description && (
@@ -398,7 +400,7 @@ export default function KanbanPage() {
 
       {/* Desktop: Multi Column Layout */}
       <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {COLUMNS.map((col) => (
+        {getColumns(t).map((col) => (
           <div key={col.key} className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -449,7 +451,7 @@ export default function KanbanPage() {
                         }}
                         className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
                       >
-                        <Pencil className="w-3.5 h-3.5" /> 编辑
+                        <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
                       </button>
                     </div>
                   </div>
@@ -466,7 +468,7 @@ export default function KanbanPage() {
         task={selected}
         categories={categories}
         onSave={handleSaveTask}
-        title="Edit Task"
+        title={t.task.editTask}
       />
     </div>
   )

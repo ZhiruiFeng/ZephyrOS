@@ -4,13 +4,29 @@ import React, { useState, useEffect, Suspense } from 'react'
 import { KanbanSquare, FileText, Target, Menu, X } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useTranslation } from '../../contexts/LanguageContext'
 
-const KanbanPage = dynamic(() => import('../kanban/page'), { ssr: false })
-import WorkModePage from './work-mode/page'
+const KanbanPage = dynamic(() => import('../kanban/page'), { 
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+  )
+})
+const WorkModePage = dynamic(() => import('./work-mode/page'), { 
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+  )
+})
 
 type ViewMode = 'kanban' | 'work'
 
 function FocusPageContent() {
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const [viewMode, setViewMode] = useState<ViewMode>('kanban')
   const [isClient, setIsClient] = useState(false)
@@ -58,7 +74,7 @@ function FocusPageContent() {
             >
               {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="text-lg font-semibold text-gray-900">专注模式</h1>
+            <h1 className="text-lg font-semibold text-gray-900">{t.nav.focusMode}</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -68,12 +84,12 @@ function FocusPageContent() {
               {viewMode === 'kanban' ? (
                 <>
                   <FileText className="w-4 h-4" />
-                  工作模式
+                  {t.nav.workMode}
                 </>
               ) : (
                 <>
                   <KanbanSquare className="w-4 h-4" />
-                  看板模式
+                  {t.nav.kanban}
                 </>
               )}
             </button>
@@ -92,7 +108,7 @@ function FocusPageContent() {
               }`}
             >
               <KanbanSquare className="w-4 h-4" />
-              看板
+              {t.nav.kanban}
             </button>
             <button
               onClick={() => setViewMode('work')}
@@ -103,7 +119,7 @@ function FocusPageContent() {
               }`}
             >
               <FileText className="w-4 h-4" />
-              工作
+              {t.nav.workMode}
             </button>
           </div>
         </div>

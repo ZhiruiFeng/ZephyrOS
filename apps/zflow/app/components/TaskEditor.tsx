@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { X as XIcon } from 'lucide-react'
 import { Task, TaskForm, TaskEditorProps, Category } from '../types/task'
 import CategorySelector from './CategorySelector'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 const X = XIcon
 
@@ -13,8 +14,9 @@ export default function TaskEditor({
   task, 
   categories = [],
   onSave, 
-  title = "Edit Task" 
+  title 
 }: TaskEditorProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<TaskForm>({
     title: '',
     description: '',
@@ -96,7 +98,7 @@ export default function TaskEditor({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-xl p-5 overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold">{title}</h3>
+          <h3 className="text-xl font-semibold">{title || t.task.editTask}</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="w-5 h-5" />
           </button>
@@ -104,68 +106,68 @@ export default function TaskEditor({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Title</label>
+            <label className="block text-sm text-gray-600 mb-1">{t.task.title}</label>
             <input
               value={form.title}
               onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="Enter task title"
+              placeholder={t.task.taskTitle}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Description</label>
+            <label className="block text-sm text-gray-600 mb-1">{t.task.description}</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[100px]"
-              placeholder="Enter task description"
+              placeholder={t.task.taskDescription}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Status</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.status}</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm(f => ({ ...f, status: e.target.value as Task['status'] }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
-                <option value="pending">Todo</option>
-                <option value="in_progress">In Progress</option>
-                <option value="on_hold">On Hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="pending">{t.task.statusPending}</option>
+                <option value="in_progress">{t.task.statusInProgress}</option>
+                <option value="on_hold">{t.task.statusOnHold}</option>
+                <option value="completed">{t.task.statusCompleted}</option>
+                <option value="cancelled">{t.task.statusCancelled}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Priority</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.priority}</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm(f => ({ ...f, priority: e.target.value as Task['priority'] }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+                <option value="urgent">{t.task.priorityUrgent}</option>
+                <option value="high">{t.task.priorityHigh}</option>
+                <option value="medium">{t.task.priorityMedium}</option>
+                <option value="low">{t.task.priorityLow}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Category</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.category}</label>
               <CategorySelector
                 value={form.category_id}
                 onChange={(categoryId) => setForm(f => ({ ...f, category_id: categoryId }))}
                 categories={categories}
-                placeholder="Select category..."
+                placeholder={t.task.selectCategory}
                 className="w-full"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Due Date</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.dueDate}</label>
               <input
                 type="datetime-local"
                 value={form.due_date}
@@ -177,17 +179,17 @@ export default function TaskEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Estimated Duration (minutes)</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.estimatedDuration}</label>
               <input
                 type="number"
                 value={form.estimated_duration || ''}
                 onChange={(e) => setForm(f => ({ ...f, estimated_duration: e.target.value ? parseInt(e.target.value) : 0 }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="e.g. 480"
+                placeholder={t.task.estimatedDurationPlaceholder}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Progress (%)</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.progress}</label>
               <input
                 type="number"
                 min="0"
@@ -201,32 +203,32 @@ export default function TaskEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Assignee</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.assignee}</label>
               <input
                 value={form.assignee || ''}
                 onChange={(e) => setForm(f => ({ ...f, assignee: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="Assignee name"
+                placeholder={t.task.assigneePlaceholder}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Tags (comma separated)</label>
+              <label className="block text-sm text-gray-600 mb-1">{t.task.tagsField}</label>
               <input
                 value={form.tags}
                 onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="e.g. frontend, bug, urgent"
+                placeholder={t.ui.tagsPlaceholder}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Notes</label>
+            <label className="block text-sm text-gray-600 mb-1">{t.task.notes}</label>
             <textarea
               value={form.notes || ''}
               onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[80px]"
-              placeholder="Task notes..."
+              placeholder={t.task.notesPlaceholder}
             />
           </div>
 
@@ -235,13 +237,13 @@ export default function TaskEditor({
               onClick={onClose} 
               className="px-4 py-2 text-sm rounded border border-gray-300 text-gray-700"
             >
-              Cancel
+              {t.common.cancel}
             </button>
             <button 
               onClick={handleSave} 
               className="px-4 py-2 text-sm rounded bg-primary-600 text-white hover:bg-primary-700"
             >
-              Save
+              {t.common.save}
             </button>
           </div>
         </div>
