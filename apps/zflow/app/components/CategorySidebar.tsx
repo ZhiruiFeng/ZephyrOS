@@ -22,6 +22,7 @@ interface CategorySidebarProps {
   categories: Category[]
   selected: string | SpecialCategory
   counts: CategoryCounts
+  view?: 'current' | 'future' | 'archive'
   onSelect: (key: string | SpecialCategory) => void
   onCreate: (payload: { name: string; color?: string }) => Promise<void>
   onUpdate?: (id: string, payload: { name: string; color?: string; description?: string }) => Promise<void>
@@ -35,13 +36,13 @@ export default function CategorySidebar({
   categories,
   selected,
   counts,
+  view = 'current',
   onSelect,
   onCreate,
   onUpdate,
   onDelete,
   className = ''
 }: CategorySidebarProps) {
-  const { showCompletedCounts, setShowCompletedCounts } = (usePrefs() as any)
   const [isCreating, setIsCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState(presetColors[0])
@@ -103,7 +104,7 @@ export default function CategorySidebar({
   }
 
   return (
-    <aside className={`w-full sm:w-60 lg:w-64 xl:w-72 shrink-0 bg-white/70 backdrop-blur-md border border-white/60 rounded-xl shadow-sm ${className}`}>
+    <aside className={`w-full sm:w-60 lg:w-64 xl:w-72 shrink-0 glass rounded-xl shadow-sm ${className}`}>
       <div className="p-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-800">分类</h2>
@@ -113,53 +114,31 @@ export default function CategorySidebar({
             onClick={() => onSelect('all')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               selected === 'all' 
-                ? 'bg-blue-600 text-white shadow-sm' 
+                ? 'bg-primary-600 text-white shadow-sm' 
                 : 'text-gray-700 hover:bg-white/50 bg-white/30'
             }`}
           >
             <span>全部</span>
-            {showCompletedCounts ? (
-              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
-                <span className={`px-2 py-1 rounded-full ${selected === 'all' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                  {counts.totalIncomplete}
+            <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                              <span className={`px-2 py-1 rounded-full ${selected === 'all' ? 'bg-white/20 text-white' : 'bg-primary-50 text-primary-700'}`}>
+                  {counts.total}
                 </span>
-                <span className={`px-2 py-1 rounded-full ${selected === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                  {counts.totalCompleted}
-                </span>
-              </span>
-            ) : (
-              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
-                <span className={`px-2 py-1 rounded-full ${selected === 'all' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                  {counts.totalIncomplete}
-                </span>
-              </span>
-            )}
+            </span>
           </button>
           <button
             onClick={() => onSelect('uncategorized')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               selected === 'uncategorized' 
-                ? 'bg-blue-600 text-white shadow-sm' 
+                ? 'bg-primary-600 text-white shadow-sm' 
                 : 'text-gray-700 hover:bg-white/50 bg-white/30'
             }`}
           >
             <span>未分类</span>
-            {showCompletedCounts ? (
-              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
-                <span className={`px-2 py-1 rounded-full ${selected === 'uncategorized' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                  {counts.uncategorizedIncomplete}
+            <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                              <span className={`px-2 py-1 rounded-full ${selected === 'uncategorized' ? 'bg-white/20 text-white' : 'bg-primary-50 text-primary-700'}`}>
+                  {counts.uncategorized}
                 </span>
-                <span className={`px-2 py-1 rounded-full ${selected === 'uncategorized' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                  {counts.uncategorizedCompleted}
-                </span>
-              </span>
-            ) : (
-              <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
-                <span className={`px-2 py-1 rounded-full ${selected === 'uncategorized' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                  {counts.uncategorizedIncomplete}
-                </span>
-              </span>
-            )}
+            </span>
           </button>
           <div className="h-px bg-white/40 my-3" />
           {categories.map((cat) => (
@@ -188,7 +167,7 @@ export default function CategorySidebar({
                     <button
                       onClick={handleUpdate}
                       disabled={!editName.trim() || submitting}
-                      className="flex-1 text-sm px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700 transition-colors duration-200"
+                      className="flex-1 text-sm px-3 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50 hover:bg-primary-700 transition-colors duration-200"
                     >
                       保存
                     </button>
@@ -206,7 +185,7 @@ export default function CategorySidebar({
                     onClick={() => onSelect(cat.id)}
                     className={`flex-1 flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       selected === cat.id 
-                        ? 'bg-blue-600 text-white shadow-sm' 
+                        ? 'bg-primary-600 text-white shadow-sm' 
                         : 'text-gray-700 hover:bg-white/50 bg-white/30'
                     }`}
                     title={cat.description}
@@ -215,22 +194,11 @@ export default function CategorySidebar({
                       <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: cat.color }} />
                       <span className="truncate max-w-[7rem]">{cat.name}</span>
                     </span>
-                    {showCompletedCounts ? (
-                      <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
-                        <span className={`px-2 py-1 rounded-full ${selected === cat.id ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                          {counts.byIdIncomplete[cat.id] || 0}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full ${selected === cat.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                          {counts.byIdCompleted[cat.id] || 0}
-                        </span>
+                    <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
+                      <span className={`px-2 py-1 rounded-full ${selected === cat.id ? 'bg-white/20 text-white' : 'bg-primary-50 text-primary-700'}`}>
+                        {counts.byId[cat.id] || 0}
                       </span>
-                    ) : (
-                      <span className="text-xs inline-flex items-center gap-1 opacity-80 ml-auto">
-                        <span className={`px-2 py-1 rounded-full ${selected === cat.id ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                          {counts.byIdIncomplete[cat.id] || 0}
-                        </span>
-                      </span>
-                    )}
+                    </span>
                   </button>
                   {(onUpdate || onDelete) && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-2">
@@ -238,7 +206,7 @@ export default function CategorySidebar({
                         {onUpdate && (
                           <button
                             onClick={(e) => { e.stopPropagation(); startEdit(cat) }}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-white/50 rounded-lg transition-all duration-200"
+                            className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-white/50 rounded-lg transition-all duration-200"
                             title="编辑分类"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,7 +258,7 @@ export default function CategorySidebar({
                   <button
                     onClick={handleCreate}
                     disabled={!newName.trim() || submitting}
-                    className="flex-1 text-sm px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700 transition-colors duration-200"
+                    className="flex-1 text-sm px-3 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50 hover:bg-primary-700 transition-colors duration-200"
                   >
                     创建
                   </button>
@@ -305,7 +273,7 @@ export default function CategorySidebar({
             ) : (
               <button
                 onClick={() => setIsCreating(true)}
-                className="w-full px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -315,17 +283,7 @@ export default function CategorySidebar({
             )}
           </div>
         </nav>
-        <div className="mt-6 pt-4 border-t border-white/40">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showCompletedCounts}
-              onChange={(e) => setShowCompletedCounts(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span>显示已完成数量</span>
-          </label>
-        </div>
+
       </div>
     </aside>
   )

@@ -3,10 +3,13 @@
 import React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings } from 'lucide-react'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/LoginPage'
 import CategorySidebar from '../components/CategorySidebar'
+import FloatingAddButton from '../components/FloatingAddButton'
+import AddTaskModal from '../components/AddTaskModal'
+import TaskEditor from '../components/TaskEditor'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hooks/useMemories'
 import { categoriesApi, TaskMemory, TaskContent } from '../../lib/api'
 import { getPriorityIcon } from '../components/TaskIcons'
@@ -35,14 +38,15 @@ export default function OverviewPage() {
   const [search, setSearch] = React.useState('')
   const [sortMode, setSortMode] = React.useState<'none' | 'priority' | 'due_date'>('none')
 
-  // Quick capture
-  const [showAddForm, setShowAddForm] = React.useState(false)
-  const [newTaskTitle, setNewTaskTitle] = React.useState('')
-  const [newTaskDescription, setNewTaskDescription] = React.useState('')
-  const [newTaskPriority, setNewTaskPriority] = React.useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
-  const [newTaskDueDate, setNewTaskDueDate] = React.useState('')
-  const [newTaskTags, setNewTaskTags] = React.useState('')
-  const [newTaskCategoryId, setNewTaskCategoryId] = React.useState<string | undefined>(undefined)
+  // Add task modal
+  const [showAddModal, setShowAddModal] = React.useState(false)
+  
+  // Task editor
+  const [editingTask, setEditingTask] = React.useState<any>(null)
+  const [showTaskEditor, setShowTaskEditor] = React.useState(false)
+
+  // Mobile category selector
+  const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
 
   React.useEffect(() => {
     if (user) categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
@@ -126,24 +130,109 @@ export default function OverviewPage() {
     return { current, future, archive }
   }, [tasks])
 
-  const addTask = async () => {
-    if (!newTaskTitle.trim()) return
-    const tagsArray = newTaskTags.split(',').map(t => t.trim()).filter(Boolean)
-    const joinAttention = (() => { try { return localStorage.getItem('zflow:quickCapture:joinAttention') === '1' || (window as any).__zflowJoinAttention === true } catch { return false } })()
-    const finalCategoryId = newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined)
-    await createTask({
-      type: 'task',
-      content: {
-        title: newTaskTitle,
-        description: newTaskDescription,
-        status: (joinAttention ? 'pending' : 'on_hold'),
-        priority: newTaskPriority,
-        category_id: finalCategoryId,
-        due_date: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
-      },
-      tags: ['zflow', 'task', ...tagsArray]
-    })
-    setNewTaskTitle(''); setNewTaskDescription(''); setNewTaskPriority('medium'); setNewTaskDueDate(''); setNewTaskTags(''); setNewTaskCategoryId(undefined); setShowAddForm(false)
+  // Calculate category counts based on current view
+  const viewBasedCounts = React.useMemo(() => {
+    const getTasksForView = (viewType: ViewKey) => {
+      switch (viewType) {
+        case 'current':
+          return tasks.filter(t => {
+            const c = t.content as TaskContent
+            if (c.status === 'pending' || c.status === 'in_progress') return true
+            if (c.status === 'completed') {
+              const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+              return completedAt && now - completedAt <= windowMs
+            }
+            return false
+          })
+        case 'future':
+          return tasks.filter(t => {
+            const c = t.content as TaskContent
+            return c.status === 'on_hold'
+          })
+        case 'archive':
+          return tasks.filter(t => {
+            const c = t.content as TaskContent
+            if (c.status === 'cancelled') return true
+            if (c.status === 'completed') {
+              const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+              return completedAt && now - completedAt > windowMs
+            }
+            return false
+          })
+        default:
+          return []
+      }
+    }
+
+    const viewTasks = getTasksForView(view)
+    const counts = {
+      byId: {} as Record<string, number>,
+      byIdCompleted: {} as Record<string, number>,
+      byIdIncomplete: {} as Record<string, number>,
+      uncategorized: 0,
+      uncategorizedCompleted: 0,
+      uncategorizedIncomplete: 0,
+      total: viewTasks.length,
+      totalCompleted: 0,
+      totalIncomplete: 0,
+    }
+
+    for (const t of viewTasks) {
+      const c = t.content as TaskContent
+      const completed = c.status === 'completed'
+      const catId = (t as any).category_id || c.category_id
+      if (catId) {
+        counts.byId[catId] = (counts.byId[catId] || 0) + 1
+        if (completed) counts.byIdCompleted[catId] = (counts.byIdCompleted[catId] || 0) + 1
+        else counts.byIdIncomplete[catId] = (counts.byIdIncomplete[catId] || 0) + 1
+      } else {
+        counts.uncategorized += 1
+        if (completed) counts.uncategorizedCompleted += 1
+        else counts.uncategorizedIncomplete += 1
+      }
+      if (completed) counts.totalCompleted += 1
+      else counts.totalIncomplete += 1
+    }
+
+    return counts
+  }, [tasks, view, now])
+
+  const handleAddTask = async (taskData: any) => {
+    await createTask(taskData)
+  }
+
+  const handleEditTask = (task: TaskMemory) => {
+    // Convert TaskMemory to Task format for TaskEditor
+    const taskContent = task.content as TaskContent
+    const convertedTask = {
+      id: task.id,
+      title: taskContent.title,
+      description: taskContent.description,
+      status: taskContent.status,
+      priority: taskContent.priority,
+      category_id: (task as any).category_id || taskContent.category_id,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+      due_date: taskContent.due_date,
+      estimated_duration: taskContent.estimated_duration,
+      progress: taskContent.progress || 0,
+      assignee: taskContent.assignee,
+      completion_date: taskContent.completion_date,
+      notes: taskContent.notes,
+      tags: task.tags
+    }
+    setEditingTask(convertedTask as any)
+    setShowTaskEditor(true)
+  }
+
+  const handleSaveTask = async (taskId: string, data: any) => {
+    await updateTask(taskId, data)
+    setShowTaskEditor(false)
+    setEditingTask(null)
+  }
+
+  const handleUpdateCategory = async (taskId: string, categoryId: string | undefined) => {
+    await updateTask(taskId, { content: { category_id: categoryId } })
   }
 
   const toggleComplete = async (id: string, current: string) => {
@@ -165,14 +254,15 @@ export default function OverviewPage() {
   const getArchiveList = () => archiveList
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
+        <div className="flex gap-4 md:gap-6">
           {/* Left: Category sidebar */}
           <CategorySidebar
             categories={categories}
             selected={selectedCategory}
-            counts={computeCounts(tasks)}
+            counts={viewBasedCounts}
+            view={view}
             onSelect={(key) => setSelectedCategory(key as any)}
             onCreate={async (payload) => { await categoriesApi.create({ name: payload.name, color: payload.color }); setCategories(await categoriesApi.getAll()) }}
             onUpdate={async (id, payload) => { await categoriesApi.update(id, payload); setCategories(await categoriesApi.getAll()) }}
@@ -183,84 +273,98 @@ export default function OverviewPage() {
           {/* Right: Main Content */}
           <div className="flex-1">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8">
               <button
                 onClick={() => setView('current')}
-                className={`bg-white/70 backdrop-blur-md rounded-xl p-6 border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
                   view === 'current' 
-                    ? 'border-blue-300 shadow-md -translate-y-0.5' 
-                    : 'border-white/60 shadow-sm'
+                    ? 'border-primary-300 shadow-md -translate-y-0.5' 
+                    : ''
                 }`}
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-blue-600" />
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-100 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <Clock className="w-4 h-4 md:w-5 md:h-5 text-primary-600" />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Current</h3>
-                    <p className="text-xs text-gray-500">进行中 + 24小时内完成</p>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Current</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">进行中 + 24小时内完成</p>
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-blue-600">{stats.current}</p>
+                <p className="text-xl md:text-3xl font-bold text-primary-600 text-center md:text-left">{stats.current}</p>
               </button>
 
               <button
                 onClick={() => setView('future')}
-                className={`bg-white/70 backdrop-blur-md rounded-xl p-6 border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
                   view === 'future' 
-                    ? 'border-blue-300 shadow-md -translate-y-0.5' 
-                    : 'border-white/60 shadow-sm'
+                    ? 'border-primary-300 shadow-md -translate-y-0.5' 
+                    : ''
                 }`}
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <ListTodo className="w-5 h-5 text-purple-600" />
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-200 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-primary-700" />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Future</h3>
-                    <p className="text-xs text-gray-500">待办事项</p>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Future</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">待办事项</p>
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-purple-600">{stats.future}</p>
+                <p className="text-xl md:text-3xl font-bold text-primary-700 text-center md:text-left">{stats.future}</p>
               </button>
 
               <button
                 onClick={() => setView('archive')}
-                className={`bg-white/70 backdrop-blur-md rounded-xl p-6 border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
                   view === 'archive' 
-                    ? 'border-blue-300 shadow-md -translate-y-0.5' 
-                    : 'border-white/60 shadow-sm'
+                    ? 'border-primary-300 shadow-md -translate-y-0.5' 
+                    : ''
                 }`}
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Archive className="w-5 h-5 text-gray-600" />
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-300 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <Archive className="w-4 h-4 md:w-5 md:h-5 text-primary-800" />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Archive</h3>
-                    <p className="text-xs text-gray-500">已归档 + 已取消</p>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Archive</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">已归档 + 已取消</p>
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-gray-600">{stats.archive}</p>
+                <p className="text-xl md:text-3xl font-bold text-primary-800 text-center md:text-left">{stats.archive}</p>
               </button>
             </div>
 
+            {/* Current Category Display (Mobile) */}
+            <div className="md:hidden mb-3">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Tag className="w-4 h-4" />
+                <span>
+                  当前分类: {
+                    selectedCategory === 'all' ? '全部' : 
+                    selectedCategory === 'uncategorized' ? '未分类' : 
+                    categories.find(c => c.id === selectedCategory)?.name || '未知'
+                  }
+                </span>
+              </div>
+            </div>
+
             {/* Search, Filters and View Controls */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
               {/* Left: Search and Filters */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center bg-white/70 backdrop-blur-md rounded-full px-4 py-2 border border-white/60">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                <div className="flex items-center glass rounded-full px-3 md:px-4 py-2">
                   <input 
                     value={search} 
                     onChange={(e) => setSearch(e.target.value)} 
                     placeholder="搜索任务..." 
-                    className="bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-500 w-48"
+                    className="bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-500 w-full sm:w-48"
                   />
                 </div>
                 <select 
                   value={filterPriority} 
                   onChange={(e) => setFilterPriority(e.target.value as any)} 
-                  className="bg-white/70 backdrop-blur-md border border-white/60 rounded-full px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="glass rounded-full px-3 md:px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="all">全部优先级</option>
                   <option value="urgent">紧急</option>
@@ -268,25 +372,33 @@ export default function OverviewPage() {
                   <option value="medium">中</option>
                   <option value="low">低</option>
                 </select>
+                
+                {/* Mobile Category Selector Button */}
+                <button
+                  onClick={() => setShowMobileCategorySelector(true)}
+                  className="md:hidden flex items-center justify-between glass rounded-full px-3 py-2 text-sm text-gray-700 hover:bg-white/50 transition-colors duration-200"
+                >
+                  <span className="flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    <span>
+                      {selectedCategory === 'all' ? '全部分类' : 
+                       selectedCategory === 'uncategorized' ? '未分类' : 
+                       categories.find(c => c.id === selectedCategory)?.name || '选择分类'}
+                    </span>
+                  </span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Right: View Controls and Current View Indicator */}
-              <div className="flex items-center gap-4">
-                {/* Current View Indicator */}
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <span>当前视图:</span>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-                    {view === 'current' ? 'Current' : view === 'future' ? 'Future' : 'Archive'}
-                  </span>
-                </div>
-
+              <div className="flex items-center justify-center sm:justify-end gap-2 md:gap-4">
                 {/* View Mode Toggle */}
-                <div className="flex items-center bg-white/70 backdrop-blur-md rounded-full p-1 border border-white/60">
+                <div className="flex items-center glass rounded-full p-1">
                   <button
                     onClick={() => setDisplayMode('list')}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                    className={`px-2 md:px-3 py-1.5 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${
                       displayMode === 'list' 
-                        ? 'bg-blue-600 text-white shadow-sm' 
+                        ? 'bg-primary-600 text-white shadow-sm' 
                         : 'text-gray-600 hover:bg-white/50'
                     }`}
                   >
@@ -294,9 +406,9 @@ export default function OverviewPage() {
                   </button>
                   <button
                     onClick={() => setDisplayMode('grid')}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
+                    className={`px-2 md:px-3 py-1.5 rounded-full text-xs md:text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
                       displayMode === 'grid' 
-                        ? 'bg-blue-600 text-white shadow-sm' 
+                        ? 'bg-primary-600 text-white shadow-sm' 
                         : 'text-gray-600 hover:bg-white/50'
                     }`}
                   >
@@ -306,155 +418,58 @@ export default function OverviewPage() {
                 </div>
 
                 {/* Focus Button */}
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2">
-                  <Focus className="w-4 h-4" />
-                  Focus
+                <button className="bg-primary-600 text-white px-3 md:px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                  <Focus className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Focus</span>
                 </button>
               </div>
             </div>
 
-            {/* Quick capture */}
-            <div className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 shadow-sm mb-6">
-              {!showAddForm ? (
-                <button 
-                  onClick={() => { 
-                    setNewTaskCategoryId(selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined); 
-                    setShowAddForm(true) 
-                  }} 
-                  className="w-full px-6 py-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-5 h-5" /> 新建任务
-                </button>
-              ) : (
-                <div className="space-y-4 p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input 
-                      type="text" 
-                      value={newTaskTitle} 
-                      onChange={(e) => setNewTaskTitle(e.target.value)} 
-                      onKeyDown={(e) => e.key === 'Enter' && addTask()} 
-                      placeholder="任务标题..." 
-                      className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm" 
-                    />
-                    <select 
-                      value={newTaskPriority} 
-                      onChange={(e) => setNewTaskPriority(e.target.value as any)} 
-                      className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm"
-                    >
-                      <option value="low">低优先级</option>
-                      <option value="medium">中优先级</option>
-                      <option value="high">高优先级</option>
-                      <option value="urgent">紧急</option>
-                    </select>
-                    <select 
-                      value={newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : '')} 
-                      onChange={(e) => setNewTaskCategoryId(e.target.value || undefined)} 
-                      className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm"
-                    >
-                      <option value="">无分类</option>
-                      {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
-                    </select>
-                  </div>
-                  <textarea 
-                    value={newTaskDescription} 
-                    onChange={(e) => setNewTaskDescription(e.target.value)} 
-                    placeholder="任务描述（可选）..." 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm" 
-                    rows={3} 
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-gray-500" />
-                      <input 
-                        type="datetime-local" 
-                        value={newTaskDueDate} 
-                        onChange={(e) => setNewTaskDueDate(e.target.value)} 
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm" 
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-gray-500" />
-                      <input 
-                        type="text" 
-                        value={newTaskTags} 
-                        onChange={(e) => setNewTaskTags(e.target.value)} 
-                        placeholder="标签（用英文逗号分隔）..." 
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm" 
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <button 
-                      onClick={addTask} 
-                      disabled={!newTaskTitle.trim()} 
-                      className="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
-                    >
-                      创建任务
-                    </button>
-                    <label className="inline-flex items-center gap-1 text-sm text-gray-600">
-                      <input 
-                        type="checkbox" 
-                        onChange={(e) => { 
-                          try { localStorage.setItem('zflow:quickCapture:joinAttention', e.target.checked ? '1':'0') } catch {}; 
-                          (window as any).__zflowJoinAttention = e.target.checked 
-                        }} 
-                      />
-                      <span>创建后加入注意力池（Pending）</span>
-                    </label>
-                    <button 
-                      onClick={() => { setShowAddForm(false); setNewTaskCategoryId(undefined) }} 
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors duration-200"
-                    >
-                      取消
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+
 
             {/* View content */}
             {view === 'current' && (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {getCurrentList().length === 0 ? (
-                  <div className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 p-8 text-center text-gray-500">
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
                     暂无当前任务
                   </div>
                 ) : (
-                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
                     {getCurrentList().map((task) => {
                       const c = task.content as TaskContent
                       return (
-                        <div key={task.id} className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 p-6 hover:shadow-md transition-all duration-200">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3 flex-1">
+                        <div key={task.id} className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200">
+                          <div className="flex items-start justify-between mb-3 md:mb-4">
+                            <div className="flex items-center gap-2 md:gap-3 flex-1">
                               <button 
                                 onClick={() => toggleComplete(task.id, c.status)} 
                                 className="flex-shrink-0"
                               >
                                 {c.status === 'completed' ? (
-                                  <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                                  <svg className="w-4 h-4 md:w-5 md:h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.5-1.5z"/>
                                   </svg>
                                 ) : (
-                                  <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                  <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
                                     <circle cx="12" cy="12" r="10"/>
                                   </svg>
                                 )}
                               </button>
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-medium text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                <h3 className={`font-medium text-base md:text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                                   {c.title}
                                 </h3>
                                 {c.description && (
-                                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">{c.description}</p>
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500 gap-1">
                             <span>创建于 {formatDate(task.created_at)}</span>
                             {c.due_date && (
                               <span className={`inline-flex items-center gap-1 ${isOverdue(c.due_date) ? 'text-red-600' : ''}`}>
@@ -473,41 +488,70 @@ export default function OverviewPage() {
             )}
 
             {view === 'future' && (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {getFutureList().length === 0 ? (
-                  <div className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 p-8 text-gray-500">
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
                     暂无待办事项
                   </div>
                 ) : (
-                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
                     {getFutureList().map((task) => {
                       const c = task.content as TaskContent
                       return (
-                        <div key={task.id} className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 p-6 hover:shadow-md transition-all duration-200">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className="w-5 h-5 flex-shrink-0">
-                                <ListTodo className="w-5 h-5 text-purple-500" />
+                        <div key={task.id} className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200">
+                          <div className="flex items-start justify-between mb-3 md:mb-4">
+                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                              <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
+                                <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-lg text-gray-900">{c.title}</h3>
+                                <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
                                 {c.description && (
-                                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">{c.description}</p>
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-2">
                             <span className="text-xs text-gray-500">创建于 {formatDate(task.created_at)}</span>
-                            <button 
-                              onClick={() => activate(task.id)} 
-                              className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200"
-                            >
-                              激活 → Pending
-                            </button>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              {/* Quick Category Change */}
+                              <select
+                                value={(task as any).category_id || (c as any).category_id || ''}
+                                onChange={(e) => handleUpdateCategory(task.id, e.target.value || undefined)}
+                                className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="">无分类</option>
+                                {categories.map((cat: any) => (
+                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                              </select>
+                              
+                              <div className="flex items-center gap-1">
+                                {/* Edit Button */}
+                                <button
+                                  onClick={() => handleEditTask(task)}
+                                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                                  title="编辑任务"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Activate Button */}
+                                <button 
+                                  onClick={() => activate(task.id)} 
+                                  className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors duration-200"
+                                >
+                                  激活
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )
@@ -518,47 +562,47 @@ export default function OverviewPage() {
             )}
 
             {view === 'archive' && (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {getArchiveList().length === 0 ? (
-                  <div className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 p-8 text-gray-500">
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
                     暂无归档任务
                   </div>
                 ) : (
-                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
                     {getArchiveList().map((task) => {
                       const c = task.content as TaskContent
                       return (
-                        <div key={task.id} className="bg-white/70 backdrop-blur-md rounded-xl border border-white/60 p-6 hover:shadow-md transition-all duration-200">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className="w-5 h-5 flex-shrink-0">
+                        <div key={task.id} className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200">
+                          <div className="flex items-start justify-between mb-3 md:mb-4">
+                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                              <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
                                 {c.status === 'completed' ? (
-                                  <CheckCircle className="w-5 h-5 text-green-500" />
+                                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
                                 ) : (
-                                  <Archive className="w-5 h-5 text-gray-500" />
+                                  <Archive className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-lg text-gray-900">{c.title}</h3>
+                                <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
                                 {c.description && (
-                                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">{c.description}</p>
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <span className="text-xs text-gray-500">
                               {c.status === 'completed' ? '完成于' : '取消于'} {formatDate(task.created_at)}
                             </span>
                             {c.status === 'completed' && (
                               <button 
                                 onClick={() => reopen(task.id)} 
-                                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
+                                className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
                               >
-                                重新打开 → Pending
+                                重新打开
                               </button>
                             )}
                           </div>
@@ -572,6 +616,132 @@ export default function OverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Add Button */}
+      <FloatingAddButton 
+        onClick={() => setShowAddModal(true)} 
+      />
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleAddTask}
+        categories={categories}
+        defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined}
+      />
+
+      {/* Task Editor */}
+      <TaskEditor
+        isOpen={showTaskEditor}
+        onClose={() => { setShowTaskEditor(false); setEditingTask(null) }}
+        task={editingTask}
+        categories={categories}
+        onSave={handleSaveTask}
+        title="编辑任务"
+      />
+
+      {/* Mobile Category Selector Modal */}
+      {showMobileCategorySelector && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowMobileCategorySelector(false)}
+          />
+          
+          {/* Modal */}
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">选择分类</h3>
+              <button
+                onClick={() => setShowMobileCategorySelector(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+              {/* All Categories */}
+              <button
+                onClick={() => { setSelectedCategory('all'); setShowMobileCategorySelector(false); }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  selectedCategory === 'all' 
+                    ? 'bg-primary-600 text-white shadow-sm' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span>全部</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  selectedCategory === 'all' 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-primary-50 text-primary-700'
+                }`}>
+                  {viewBasedCounts.total}
+                </span>
+              </button>
+              
+              {/* Uncategorized */}
+              <button
+                onClick={() => { setSelectedCategory('uncategorized'); setShowMobileCategorySelector(false); }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  selectedCategory === 'uncategorized' 
+                    ? 'bg-primary-600 text-white shadow-sm' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span>未分类</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  selectedCategory === 'uncategorized' 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-primary-50 text-primary-700'
+                }`}>
+                  {viewBasedCounts.uncategorized}
+                </span>
+              </button>
+              
+              {/* Divider */}
+              <div className="h-px bg-gray-200 my-3" />
+              
+              {/* Categories */}
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(cat.id); setShowMobileCategorySelector(false); }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    selectedCategory === cat.id 
+                      ? 'bg-primary-600 text-white shadow-sm' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: cat.color }} />
+                    <span className="truncate">{cat.name}</span>
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    selectedCategory === cat.id 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-primary-50 text-primary-700'
+                  }`}>
+                    {viewBasedCounts.byId[cat.id] || 0}
+                  </span>
+                </button>
+              ))}
+              
+              {/* Empty state */}
+              {categories.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Tag className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">暂无分类</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
