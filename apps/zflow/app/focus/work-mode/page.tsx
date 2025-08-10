@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../../hooks/useMemories'
+import { useCategories } from '../../../hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/LoginPage'
@@ -21,8 +22,8 @@ export default function WorkModePage() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
-  const [categories, setCategories] = useState<Category[]>([])
   const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [notes, setNotes] = useState('')
@@ -45,9 +46,7 @@ export default function WorkModePage() {
   })
 
   // Load categories
-  useEffect(() => {
-    categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
-  }, [])
+  // Categories are now loaded via useCategories hook
 
   // Auto-hide mobile sidebar when task is selected on mobile
   useEffect(() => {
@@ -105,14 +104,25 @@ export default function WorkModePage() {
   }, [filteredTasks, categories])
 
   // Auto-expand categories with tasks
+  const prevCategoryKeysRef = useRef<string>('')
+  
   useEffect(() => {
-    const newExpanded = new Set<string>()
-    Object.keys(tasksByCategory.grouped).forEach(categoryId => {
-      if (tasksByCategory.grouped[categoryId].length > 0) {
-        newExpanded.add(categoryId)
-      }
-    })
-    setExpandedCategories(newExpanded)
+    const categoryKeys = Object.keys(tasksByCategory.grouped)
+      .filter(categoryId => tasksByCategory.grouped[categoryId].length > 0)
+      .sort()
+      .join(',')
+    
+    // Only update if the categories with tasks actually changed
+    if (prevCategoryKeysRef.current !== categoryKeys) {
+      const newExpanded = new Set<string>()
+      Object.keys(tasksByCategory.grouped).forEach(categoryId => {
+        if (tasksByCategory.grouped[categoryId].length > 0) {
+          newExpanded.add(categoryId)
+        }
+      })
+      setExpandedCategories(newExpanded)
+      prevCategoryKeysRef.current = categoryKeys
+    }
   }, [tasksByCategory])
 
   // Load notes and task info when task is selected

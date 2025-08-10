@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
+import { useCategories } from '../../hooks/useCategories'
 import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/LoginPage'
@@ -48,8 +49,8 @@ export default function KanbanPage() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
-  const [categories, setCategories] = useState<any[]>([])
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -58,10 +59,7 @@ export default function KanbanPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
 
-  // Load categories
-  React.useEffect(() => {
-    categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
-  }, [])
+  // Categories are now loaded via useCategories hook
 
   // using shared prefs; local persistence handled by PrefsProvider
 

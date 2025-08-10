@@ -20,6 +20,7 @@ import {
   Pencil,
 } from 'lucide-react'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
 import CategorySidebar from './components/CategorySidebar'
 import { categoriesApi, tasksApi } from '../lib/api'
 import TaskEditor from './components/TaskEditor'
@@ -55,7 +56,7 @@ export default function ZFlowPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [editorOpen, setEditorOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<any>(null)
-  const [categories, setCategories] = useState<any[]>([])
+  // Categories managed by SWR hook
   const { selectedCategory, setSelectedCategory } = (usePrefs() as any)
   // hideCompleted unified in PrefsContext
   const [showOverdueOnly, setShowOverdueOnly] = useState(false)
@@ -100,13 +101,10 @@ export default function ZFlowPage() {
 
   // Use API hooks - only when authenticated
   const { tasks, isLoading, error, refetch } = useTasks(user ? {} : null)
-  
-  // Load categories - only when authenticated
-  React.useEffect(() => {
-    if (user) {
-      categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
-    }
-  }, [user])
+  const { categories, isLoading: categoriesLoading } = useCategories()
+  const { createCategory } = useCreateCategory()
+  const { updateCategory } = useUpdateCategory()
+  const { deleteCategory } = useDeleteCategory()
 
   // Count tasks by category (completed vs incomplete)
   const categoryCounts = React.useMemo(() => {
@@ -383,19 +381,13 @@ export default function ZFlowPage() {
           counts={categoryCounts}
           onSelect={(key) => setSelectedCategory(key as any)}
           onCreate={async (payload) => {
-            await categoriesApi.create({ name: payload.name, color: payload.color })
-            const next = await categoriesApi.getAll()
-            setCategories(next)
+            await createCategory({ name: payload.name, color: payload.color })
           }}
           onUpdate={async (id, payload) => {
-            await categoriesApi.update(id, payload)
-            const next = await categoriesApi.getAll()
-            setCategories(next)
+            await updateCategory(id, payload)
           }}
           onDelete={async (id) => {
-            await categoriesApi.delete(id)
-            const next = await categoriesApi.getAll()
-            setCategories(next)
+            await deleteCategory(id)
             // If the deleted category was selected, switch to 'all'
             if (selectedCategory === id) {
               setSelectedCategory('all')

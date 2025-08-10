@@ -12,6 +12,7 @@ import FloatingAddButton from '../components/FloatingAddButton'
 import AddTaskModal from '../components/AddTaskModal'
 import TaskEditor from '../components/TaskEditor'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hooks/useMemories'
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useCategories'
 import { categoriesApi, TaskMemory, TaskContent } from '../../lib/api'
 import { getPriorityIcon } from '../components/TaskIcons'
 import { isOverdue, formatDate } from '../utils/taskUtils'
@@ -29,10 +30,13 @@ function OverviewPageContent() {
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>('list')
 
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { categories } = useCategories()
   const { createTask } = useCreateTask()
   const { updateTask } = useUpdateTask()
   const { deleteTask } = useDeleteTask()
-  const [categories, setCategories] = React.useState<any[]>([])
+  const { createCategory } = useCreateCategory()
+  const { updateCategory } = useUpdateCategory()
+  const { deleteCategory } = useDeleteCategory()
 
   // Shared filters
   const [selectedCategory, setSelectedCategory] = React.useState<'all' | 'uncategorized' | string>('all')
@@ -50,9 +54,7 @@ function OverviewPageContent() {
   // Mobile category selector
   const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
 
-  React.useEffect(() => {
-    if (user) categoriesApi.getAll().then(setCategories).catch(() => setCategories([]))
-  }, [user])
+  // Categories are now loaded via useCategories hook
 
   const filteredByCommon = React.useMemo(() => {
     return tasks.filter((t) => {
@@ -272,9 +274,9 @@ function OverviewPageContent() {
             counts={viewBasedCounts}
             view={view}
             onSelect={(key) => setSelectedCategory(key as any)}
-            onCreate={async (payload) => { await categoriesApi.create({ name: payload.name, color: payload.color }); setCategories(await categoriesApi.getAll()) }}
-            onUpdate={async (id, payload) => { await categoriesApi.update(id, payload); setCategories(await categoriesApi.getAll()) }}
-            onDelete={async (id) => { await categoriesApi.delete(id); setCategories(await categoriesApi.getAll()); if (selectedCategory === id) setSelectedCategory('all') }}
+            onCreate={async (payload) => { await createCategory({ name: payload.name, color: payload.color }) }}
+            onUpdate={async (id, payload) => { await updateCategory(id, payload) }}
+            onDelete={async (id) => { await deleteCategory(id); if (selectedCategory === id) setSelectedCategory('all') }}
             className="hidden md:block rounded-lg"
           />
 

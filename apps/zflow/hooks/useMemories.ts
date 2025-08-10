@@ -1,5 +1,6 @@
 import useSWR, { mutate } from 'swr';
 import { apiClient, TaskMemory, CreateTaskRequest, UpdateTaskRequest } from '../lib/api';
+import { tasksConfig, taskDetailsConfig } from '../lib/swr-config';
 
 // Hook to get memory list
 export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0] | null) {
@@ -8,10 +9,7 @@ export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0] | nul
   const { data, error, isLoading, mutate: refetch } = useSWR(
     key,
     () => params !== null ? apiClient.getTasks(params) : null,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-    }
+    tasksConfig
   );
 
   return {
@@ -27,10 +25,7 @@ export function useTask(id: string) {
   const { data, error, isLoading, mutate: refetch } = useSWR(
     id ? `task-${id}` : null,
     () => apiClient.getTask(id),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-    }
+    taskDetailsConfig
   );
 
   return {
@@ -46,7 +41,9 @@ export function useCreateTask() {
   const createTask = async (data: CreateTaskRequest) => {
     try {
       const newTask = await apiClient.createTask(data);
-      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));
+      // Optimistically update all tasks queries
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), undefined, { revalidate: true });
+      console.log('✨ Task created and caches updated');
       return newTask;
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -63,8 +60,11 @@ export function useUpdateTask() {
     try {
       console.log('useUpdateTask called with:', id, JSON.stringify(data, null, 2));
       const updatedTask = await apiClient.updateTask(id, data);
+      // Update individual task cache
       await mutate(`task-${id}`, updatedTask, false);
-      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));
+      // Update all tasks queries
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), undefined, { revalidate: true });
+      console.log('🔄 Task updated and caches refreshed');
       return updatedTask;
     } catch (error) {
       console.error('Failed to update task:', error);
@@ -80,7 +80,11 @@ export function useDeleteTask() {
   const deleteTask = async (id: string) => {
     try {
       await apiClient.deleteTask(id);
-      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'));
+      // Remove from individual cache
+      await mutate(`task-${id}`, undefined, false);
+      // Update all tasks queries
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), undefined, { revalidate: true });
+      console.log('🗑️ Task deleted and caches updated');
       return { success: true };
     } catch (error) {
       console.error('Failed to delete task:', error);

@@ -3,7 +3,8 @@
 import { SWRConfig } from 'swr'
 import './globals.css'
 import React from 'react'
-import { supabase } from '../lib/supabase'
+import { authManager } from '../lib/auth-manager'
+import { globalSWRConfig } from '../lib/swr-config'
 import { AuthProvider } from '../contexts/AuthContext'
 import { PrefsProvider } from '../contexts/PrefsContext'
 import { LanguageProvider } from '../contexts/LanguageContext'
@@ -29,17 +30,16 @@ export default function RootLayout({
               <NavBar />
             <SWRConfig
             value={{
+              ...globalSWRConfig,
               fetcher: async (url: string) => {
-                const token = (await supabase?.auth.getSession())?.data.session?.access_token
+                const authHeaders = await authManager.getAuthHeaders()
                 const res = await fetch(url, {
                   credentials: 'include',
-                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                  headers: authHeaders,
                 })
                 if (!res.ok) throw new Error(`Request failed: ${res.status}`)
                 return res.json()
               },
-              revalidateOnFocus: false,
-              revalidateOnReconnect: true,
             }}
             >
               {children}
