@@ -237,7 +237,13 @@ function OverviewPageContent() {
 
   const toggleComplete = async (id: string, current: string) => {
     const newStatus = current === 'completed' ? 'pending' : 'completed'
-    await updateTask(id, { content: { status: newStatus } })
+    const now = new Date().toISOString()
+    await updateTask(id, { 
+      content: { 
+        status: newStatus,
+        completion_date: newStatus === 'completed' ? now : undefined
+      } 
+    })
   }
 
   const activate = async (id: string) => { await updateTask(id, { content: { status: 'pending' } }) }

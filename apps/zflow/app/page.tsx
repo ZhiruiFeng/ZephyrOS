@@ -154,14 +154,20 @@ export default function ZFlowPage() {
     let total = tasks.length
     let completed = 0
     let inProgress = 0
+    let pending = 0
+    let onHold = 0
+    let cancelled = 0
     let overdue = 0
     for (const t of tasks) {
       const c = t.content as Task
       if (c.status === 'completed') completed += 1
       if (c.status === 'in_progress') inProgress += 1
+      if (c.status === 'pending') pending += 1
+      if (c.status === 'on_hold') onHold += 1
+      if (c.status === 'cancelled') cancelled += 1
       if (c.due_date && isOverdue(c.due_date)) overdue += 1
     }
-    return { total, completed, inProgress, overdue }
+    return { total, completed, inProgress, pending, onHold, cancelled, overdue }
   }, [tasks])
 
   const addTask = async () => {
@@ -219,11 +225,13 @@ export default function ZFlowPage() {
   const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+      const now = new Date().toISOString()
       
       await updateTask(taskId, {
         content: {
           ...tasks.find(t => t.id === taskId)?.content,
-          status: newStatus
+          status: newStatus,
+          completion_date: newStatus === 'completed' ? now : undefined
         }
       })
     } catch (error) {
@@ -278,15 +286,15 @@ export default function ZFlowPage() {
         : selectedCategory === 'uncategorized'
           ? !catId
           : catId === selectedCategory
-      // Home: default attention cleanliness
-      // - If filterStatus === 'all', exclude on_hold and cancelled by default
-      // - Completed: if included, only show within 24h window
+      // Home page: show all tasks when filterStatus is 'all'
+      // - If filterStatus === 'all', show all statuses including on_hold and cancelled
+      // - Completed: show all completed tasks when filterStatus is 'completed'
       const now = Date.now()
       const windowMs = 24 * 60 * 60 * 1000
       const isCompletedWithinWindow = c.status === 'completed' && c.completion_date ? (now - new Date(c.completion_date).getTime()) <= windowMs : false
       const baseStatusInclude = filterStatus === 'all'
-        ? (c.status === 'pending' || c.status === 'in_progress' || isCompletedWithinWindow)
-        : (filterStatus === 'completed' ? isCompletedWithinWindow : c.status === filterStatus)
+        ? (c.status === 'pending' || c.status === 'in_progress' || c.status === 'on_hold' || c.status === 'cancelled' || isCompletedWithinWindow)
+        : (filterStatus === 'completed' ? c.status === 'completed' : c.status === filterStatus)
 
       const matchStatus = baseStatusInclude
       const matchPriority = filterPriority === 'all' || c.priority === filterPriority
@@ -430,10 +438,14 @@ export default function ZFlowPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <button onClick={() => { setFilterStatus('all'); setHideCompleted(false); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
                 <div className="text-xs text-gray-500">总任务</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.total}</div>
+              </button>
+              <button onClick={() => { setFilterStatus('pending'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
+                <div className="text-xs text-gray-500">计划中</div>
+                <div className="mt-1 text-2xl font-semibold">{quickStats.pending}</div>
               </button>
               <button onClick={() => { setFilterStatus('in_progress'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
                 <div className="text-xs text-gray-500">进行中</div>
@@ -443,9 +455,13 @@ export default function ZFlowPage() {
                 <div className="text-xs text-gray-500">已完成</div>
                 <div className="mt-1 text-2xl font-semibold">{quickStats.completed}</div>
               </button>
-              <button onClick={() => { setFilterStatus('all'); setHideCompleted(true); setShowOverdueOnly(true); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">逾期</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.overdue}</div>
+              <button onClick={() => { setFilterStatus('on_hold'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
+                <div className="text-xs text-gray-500">待办项</div>
+                <div className="mt-1 text-2xl font-semibold">{quickStats.onHold}</div>
+              </button>
+              <button onClick={() => { setFilterStatus('cancelled'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
+                <div className="text-xs text-gray-500">废弃</div>
+                <div className="mt-1 text-2xl font-semibold">{quickStats.cancelled}</div>
               </button>
             </div>
           </div>
