@@ -2,7 +2,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install --include=dev",
   "framework": "nextjs",
-  "outputDirectory": "apps/zflow/.next",
+  "outputDirectory": ".next",
   "functions": {
     "apps/zflow/app/api/**/*.ts": {
       "runtime": "nodejs18.x"
