@@ -21,9 +21,10 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 # 应用配置 (必需)
 NEXT_PUBLIC_APP_URL=https://your-vercel-domain.vercel.app
 NODE_ENV=production
-
-# API 配置
 NEXT_PUBLIC_API_URL=https://your-vercel-domain.vercel.app/api
+
+# OpenAI 配置 (可选，用于语音转文字功能)
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 ### 可选的环境变量

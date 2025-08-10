@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@zephyros/shared', '@zephyros/backend'],
+  transpilePackages: ['@zephyros/shared'],
   async headers() {
     return [
       {

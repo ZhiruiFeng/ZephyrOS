@@ -12,7 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.53.0",
     "@tailwindcss/typography": "^0.5.16",
-    "@zephyros/backend": "*",
+
     "@zephyros/shared": "*",
     "autoprefixer": "^10.4.14",
     "lucide-react": "^0.263.1",
