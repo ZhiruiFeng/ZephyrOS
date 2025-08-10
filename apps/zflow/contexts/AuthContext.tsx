@@ -76,10 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setLoading(true)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      const redirectUrl = appUrl && appUrl.length > 0 ? appUrl : (typeof window !== 'undefined' ? window.location.origin : '')
       const { error } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: redirectUrl,
         },
       })
       if (error) {
