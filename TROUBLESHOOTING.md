@@ -17,6 +17,7 @@ npm error path /vercel/path0/apps/zflow
 - 依赖包引用错误
 - TypeScript类型错误
 - 内存不足
+- TypeScript包未正确安装
 
 **解决方案：**
 
@@ -62,6 +63,21 @@ export async function GET(
 }
 ```
 
+#### 检查tsconfig.json配置
+确保tsconfig.json中没有引用不存在的包：
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"],
+      "@zephyros/shared": ["../../packages/shared/src"]
+      // 移除 "@zephyros/backend": ["../../packages/backend/src"]
+    }
+  }
+}
+```
+
 ### 2. 环境变量未定义错误
 
 **错误信息：**
@@ -88,7 +104,26 @@ npm ERR! path /vercel/path0/package-lock.json
 - 检查package.json语法是否正确
 - 清理node_modules并重新安装
 
-### 4. 内存不足错误
+### 4. TypeScript包未安装错误
+
+**错误信息：**
+```
+It looks like you're trying to use TypeScript but do not have the required package(s) installed.
+Please install typescript by running:
+	yarn add --dev typescript
+```
+
+**解决方案：**
+- 确保vercel.json中安装命令包含devDependencies：
+  ```json
+  {
+    "installCommand": "npm install --include=dev"
+  }
+  ```
+- 检查package.json中是否包含typescript依赖
+- 确保tsconfig.json配置正确
+
+### 5. 内存不足错误
 
 **错误信息：**
 ```
@@ -162,6 +197,27 @@ export async function GET(
 ) {
   const { id } = await params;
   // ...
+}
+```
+
+### 修复4：修复tsconfig.json配置
+```json
+// 移除不存在的包引用
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"],
+      "@zephyros/shared": ["../../packages/shared/src"]
+      // 移除 "@zephyros/backend": ["../../packages/backend/src"]
+    }
+  }
+}
+```
+
+### 修复5：修复vercel.json安装命令
+```json
+{
+  "installCommand": "npm install --include=dev"
 }
 ```
 
