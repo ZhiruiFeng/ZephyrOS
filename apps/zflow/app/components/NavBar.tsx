@@ -61,9 +61,9 @@ export default function NavBar() {
               ZFlow
             </Link>
             <div className="hidden sm:flex items-center gap-1 ml-2">
-              <NavLink href="/">
+              <NavLink href="/overview">
                 <span className="inline-flex items-center gap-1">
-                  <ListTodo className="w-4 h-4" /> Home
+                  <ListTodo className="w-4 h-4" /> Overview
                 </span>
               </NavLink>
               <NavLink href="/kanban">
@@ -76,16 +76,7 @@ export default function NavBar() {
                   <Mic className="w-4 h-4" /> Speech
                 </span>
               </NavLink>
-              <NavLink href="/backlog">
-                <span className="inline-flex items-center gap-1">
-                  <KanbanSquare className="w-4 h-4" /> Backlog
-                </span>
-              </NavLink>
-              <NavLink href="/archive">
-                <span className="inline-flex items-center gap-1">
-                  <ListTodo className="w-4 h-4" /> Archive
-                </span>
-              </NavLink>
+              {/* Focus 主入口保留 Kanban，Backlog/Archive 已整合到 Overview */}
             </div>
           </div>
 

@@ -425,7 +425,7 @@ export default function ZFlowPage() {
                   </button>
                 </div>
                 <Link href="/kanban" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90">
-                  <span className="inline-flex items-center gap-2"><KanbanSquare className="w-4 h-4" /> 看板视图</span>
+                  <span className="inline-flex items-center gap-2"><KanbanSquare className="w-4 h-4" /> Focus</span>
                 </Link>
               </div>
             </div>
