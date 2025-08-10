@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security';
 import { 
   CreateTaskSchema, 
   TaskQuerySchema, 
@@ -181,6 +182,12 @@ const generateMockTasks = (): TaskMemory[] => [
  */
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
     const { searchParams } = new URL(request.url);
     
     // Parse and validate query parameters
@@ -331,7 +338,8 @@ export async function GET(request: NextRequest) {
     return jsonWithCors(request, mapped);
   } catch (error) {
     console.error('API error:', error);
-    return jsonWithCors(request, { error: 'Internal server error' }, 500);
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
   }
 }
 
@@ -373,6 +381,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) { // Stricter limit for POST
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
     const body = await request.json();
     
     console.log('=== CREATE TASK API DEBUG ===');
@@ -485,32 +499,11 @@ export async function POST(request: NextRequest) {
     return jsonWithCors(request, mapped, 201);
   } catch (error) {
     console.error('API error:', error);
-    return jsonWithCors(request, { error: 'Internal server error' }, 500);
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
   }
 }
 
-// OPTIONS - Handle CORS preflight requests
-function jsonWithCors(request: NextRequest, body: any, status = 200) {
-  const origin = request.headers.get('origin') || '*';
-  const res = NextResponse.json(body, { status });
-  res.headers.set('Access-Control-Allow-Origin', origin);
-  res.headers.set('Vary', 'Origin');
-  res.headers.set('Access-Control-Allow-Credentials', 'true');
-  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return res;
-}
-
 export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get('origin') || '*';
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': origin,
-      'Vary': 'Origin',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+  return createOptionsResponse(request);
 }
