@@ -19,8 +19,9 @@ const MemoryUpdateSchema = z.object({
 // GET /api/memories/[id] - Get single memory
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
@@ -30,7 +31,7 @@ export async function GET(
     const { data, error } = await client
       .from('memories')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId)
       .single();
 
@@ -61,8 +62,9 @@ export async function GET(
 // PUT /api/memories/[id] - Update memory
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
     
@@ -80,7 +82,7 @@ export async function PUT(
         ...validatedData,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId)
       .select()
       .single();
@@ -119,8 +121,9 @@ export async function PUT(
 // DELETE /api/memories/[id] - Delete memory
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
@@ -130,7 +133,7 @@ export async function DELETE(
     const { error } = await client
       .from('memories')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId);
 
     if (error) {

@@ -14,14 +14,17 @@ const nextConfig = {
       },
     ];
   },
+  // 生产环境不需要本地代理，使用vercel.json的rewrites
   async rewrites() {
-    // 将前端同源下的 /api/* 代理到后端服务（zmemory）3001 端口
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
-      },
-    ];
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:3001/api/:path*',
+        },
+      ];
+    }
+    return [];
   },
 }
 

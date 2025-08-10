@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "outputDirectory": "apps/zflow/.next",
   "functions": {
     "apps/zflow/app/api/**/*.ts": {
       "runtime": "nodejs18.x"
@@ -12,12 +13,26 @@
   },
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/apps/zmemory/app/api/$1"
+    },
+    {
       "source": "/zflow/(.*)",
       "destination": "/apps/zflow/$1"
     },
     {
       "source": "/zmemory/(.*)",
       "destination": "/apps/zmemory/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
     }
   ]
 } 

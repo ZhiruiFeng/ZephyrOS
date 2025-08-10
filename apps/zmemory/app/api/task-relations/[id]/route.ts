@@ -30,8 +30,9 @@ import { cookies } from 'next/headers';
 // DELETE /api/task-relations/[id] - 删除任务关系
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
@@ -40,7 +41,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('task_relations')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId);
 
     if (error) {

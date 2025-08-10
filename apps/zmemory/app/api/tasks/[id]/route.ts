@@ -53,11 +53,10 @@ const supabase = supabaseUrl && supabaseKey
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: any }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolved = params?.then ? await params : params;
-    const { id } = resolved as { id: string };
+    const { id } = await params;
 
     // If Supabase is not configured, return mock data
     if (!supabase) {
@@ -189,11 +188,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: any }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const resolved = params?.then ? await params : params;
-    const { id } = resolved as { id: string };
     const body = await request.json();
     
     console.log('Received PUT request for task:', id);
@@ -395,11 +393,11 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: any }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const resolved = params?.then ? await params : params;
-    const { id } = resolved as { id: string };
+    const taskId = id;
 
     // If Supabase is not configured, return mock response
     if (!supabase) {
