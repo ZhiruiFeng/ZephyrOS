@@ -2,50 +2,31 @@
 import { getApiDocs } from '../../../lib/swagger';
 
 export async function GET() {
+  // In production, disable docs by default unless explicitly enabled
+  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_API_DOCS !== 'true') {
+    return new Response('API docs are disabled in production', { status: 404 });
+  }
+
   const spec = await getApiDocs();
-  
+
+  // Serve Swagger UI assets from local public folder (self-hosted)
+  const cssHref = '/swagger-ui/swagger-ui.css';
+  const bundleJs = '/swagger-ui/swagger-ui-bundle.js';
+  const presetJs = '/swagger-ui/swagger-ui-standalone-preset.js';
+  const initJs = '/swagger-ui/docs-init.js';
+
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
         <title>ZMemory API Documentation</title>
-        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.0.0/swagger-ui.css" />
-        <style>
-          html {
-            box-sizing: border-box;
-            overflow: -moz-scrollbars-vertical;
-            overflow-y: scroll;
-          }
-          *, *:before, *:after {
-            box-sizing: inherit;
-          }
-          body {
-            margin:0;
-            background: #fafafa;
-          }
-        </style>
+        <link rel="stylesheet" type="text/css" href="${cssHref}" />
       </head>
       <body>
         <div id="swagger-ui"></div>
-        <script src="https://unpkg.com/swagger-ui-dist@5.0.0/swagger-ui-bundle.js"></script>
-        <script src="https://unpkg.com/swagger-ui-dist@5.0.0/swagger-ui-standalone-preset.js"></script>
-        <script>
-          window.onload = function() {
-            const ui = SwaggerUIBundle({
-              url: '/api/docs/spec',
-              dom_id: '#swagger-ui',
-              deepLinking: true,
-              presets: [
-                SwaggerUIBundle.presets.apis,
-                SwaggerUIStandalonePreset
-              ],
-              plugins: [
-                SwaggerUIBundle.plugins.DownloadUrl
-              ],
-              layout: "StandaloneLayout"
-            });
-          };
-        </script>
+        <script src="${bundleJs}"></script>
+        <script src="${presetJs}"></script>
+        <script src="${initJs}"></script>
       </body>
     </html>
   `;
