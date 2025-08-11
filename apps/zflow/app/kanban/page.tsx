@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
+import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
@@ -9,25 +9,7 @@ import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
-import dynamicIconImports from 'lucide-react/dynamicIconImports'
-const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
-  <Suspense fallback={null}>
-    <Comp {...props} />
-  </Suspense>
-)
-const ListTodo = Lazy(React.lazy(dynamicIconImports['list-todo'] as any))
-const KanbanSquare = Lazy(React.lazy(dynamicIconImports['kanban-square'] as any))
-const ChevronLeft = Lazy(React.lazy(dynamicIconImports['chevron-left'] as any))
-const Clock = Lazy(React.lazy(dynamicIconImports['clock'] as any))
-const AlertCircle = Lazy(React.lazy(dynamicIconImports['alert-circle'] as any))
-const Circle = Lazy(React.lazy(dynamicIconImports['circle'] as any))
-const Tag = Lazy(React.lazy(dynamicIconImports['tag'] as any))
-const Calendar = Lazy(React.lazy(dynamicIconImports['calendar'] as any))
-const Pencil = Lazy(React.lazy(dynamicIconImports['pencil'] as any))
-const FileText = Lazy(React.lazy(dynamicIconImports['file-text'] as any))
-const Search = Lazy(React.lazy(dynamicIconImports['search'] as any))
-const Filter = Lazy(React.lazy(dynamicIconImports['filter'] as any))
-const Menu = Lazy(React.lazy(dynamicIconImports['menu'] as any))
+import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText } from 'lucide-react'
 import TaskEditor from '../components/TaskEditor'
 import { getPriorityIcon } from '../components/TaskIcons'
 import { 
@@ -406,7 +388,7 @@ export default function KanbanView() {
       </div>
 
       {/* Desktop: Multi Column Layout */}
-      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {getColumns(t).map((col) => (
           <div key={col.key} className="glass rounded-2xl p-3">
             <div className="flex items-center justify-between mb-2">
