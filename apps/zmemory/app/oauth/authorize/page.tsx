@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -10,7 +10,7 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
   auth: { persistSession: true, autoRefreshToken: true }
 }) : null
 
-export default function OAuthAuthorizePage() {
+function OAuthAuthorizeContent() {
   const params = useSearchParams()
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -119,6 +119,14 @@ export default function OAuthAuthorizePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function OAuthAuthorizePage() {
+  return (
+    <Suspense fallback={<div style={{ maxWidth: 520, margin: '4rem auto', padding: 24, textAlign: 'center' }}>Loading...</div>}>
+      <OAuthAuthorizeContent />
+    </Suspense>
   )
 }
 
