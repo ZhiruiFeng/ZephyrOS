@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
@@ -42,6 +42,16 @@ export default function KanbanView() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
   const router = useRouter()
+
+  // Mobile long-press drag state
+  const [touchDraggingId, setTouchDraggingId] = useState<string | null>(null)
+  const [touchDragTitle, setTouchDragTitle] = useState<string>('')
+  const [touchPos, setTouchPos] = useState<{ x: number; y: number } | null>(null)
+  const [hoveredStatus, setHoveredStatus] = useState<StatusKey | null>(null)
+  const longPressTimerRef = useRef<number | null>(null)
+  const startPosRef = useRef<{ x: number; y: number } | null>(null)
+  const isLongPressActiveRef = useRef(false)
+  const sectionRefs = useRef<Partial<Record<StatusKey, HTMLDivElement | null>>>({})
 
   const goToWork = (taskId: string) => {
     // Avoid navigating when currently dragging
@@ -140,6 +150,86 @@ export default function KanbanView() {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }
+
+  // --- Mobile long-press drag helpers ---
+  const beginTouchDrag = (task: TaskMemory, startX: number, startY: number) => {
+    setTouchDraggingId(task.id)
+    setTouchDragTitle((task.content as TaskContent).title)
+    setTouchPos({ x: startX, y: startY })
+    isLongPressActiveRef.current = true
+  }
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const cancelTouchDrag = () => {
+    setTouchDraggingId(null)
+    setTouchDragTitle('')
+    setTouchPos(null)
+    setHoveredStatus(null)
+    isLongPressActiveRef.current = false
+    startPosRef.current = null
+    clearLongPressTimer()
+  }
+
+  const onGlobalPointerMove = (e: PointerEvent) => {
+    if (!isLongPressActiveRef.current) return
+    setTouchPos({ x: e.clientX, y: e.clientY })
+    // Hit test which section is hovered
+    const statuses: StatusKey[] = ['pending', 'in_progress', 'completed']
+    let hovered: StatusKey | null = null
+    for (const s of statuses) {
+      const el = sectionRefs.current[s]
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        hovered = s
+        break
+      }
+    }
+    setHoveredStatus(hovered)
+    // Prevent page scroll while dragging
+    e.preventDefault()
+  }
+
+  const onGlobalPointerUp = async () => {
+    if (!isLongPressActiveRef.current) return cancelTouchDrag()
+    const currentId = touchDraggingId
+    const targetStatus = hoveredStatus
+    cancelTouchDrag()
+    if (!currentId || !targetStatus) return
+    const task = tasks.find((t) => t.id === currentId)
+    if (!task) return
+    const current = (task.content as TaskContent).status
+    if (current === targetStatus) return
+    try {
+      await updateTask(currentId, { content: { status: targetStatus } })
+    } catch (err) {
+      console.error('Failed to move task (touch):', err)
+      alert(t.messages.taskUpdateFailed)
+    }
+  }
+
+  useEffect(() => {
+    // Attach global listeners while dragging
+    const move = (e: PointerEvent) => onGlobalPointerMove(e)
+    const up = () => onGlobalPointerUp()
+    if (isLongPressActiveRef.current) {
+      window.addEventListener('pointermove', move, { passive: false })
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+    }
+    return () => {
+      window.removeEventListener('pointermove', move as any)
+      window.removeEventListener('pointerup', up as any)
+      window.removeEventListener('pointercancel', up as any)
+    }
+    // It's okay to re-run when state toggles via ref flag
+  }, [touchDraggingId])
 
   const openEditor = (taskMemory: TaskMemory) => {
     // Convert TaskMemory to Task format expected by TaskEditor
@@ -320,72 +410,187 @@ export default function KanbanView() {
         </div>
       )}
 
-      {/* Mobile: Single Column Layout */}
+      {/* Mobile: Three vertical sections, each with horizontal 2-row waterfall and long-press drag */}
       <div className="sm:hidden space-y-4">
-        {getColumns(t).map((col) => (
-          <div key={col.key} className="glass rounded-2xl p-3">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                <ListTodo className="w-4 h-4 text-primary-600" /> {col.title}
-              </h2>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                {byStatus[col.key]?.length || 0}
-              </span>
-            </div>
-
+        {getColumns(t).map((col) => {
+          const items = (byStatus[col.key] || [])
+          const rowA: TaskMemory[] = []
+          const rowB: TaskMemory[] = []
+          items.forEach((task, idx) => (idx % 2 === 0 ? rowA.push(task) : rowB.push(task)))
+          return (
             <div
-              onDragOver={allowDrop}
-              onDrop={(e) => onDropTo(col.key, e)}
-              className={`min-h-[200px] rounded-xl p-2 transition-colors ${draggingId ? 'bg-white/60' : 'bg-white/40'}`}
+              key={col.key}
+              ref={(el) => {
+                sectionRefs.current[col.key] = el
+              }}
+              className={`glass rounded-2xl p-3 transition ring-offset-2 ${hoveredStatus === col.key ? 'ring-2 ring-primary-500' : ''}`}
             >
-              {(byStatus[col.key] || []).map((task) => {
-                const c = task.content as TaskContent
-                return (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => onDragStart(task.id, e)}
-                    onDragEnd={onDragEnd}
-                    onClick={() => goToWork(task.id)}
-                    className="card card-hover mb-3 cursor-pointer active:cursor-grabbing select-none rounded-xl p-3"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-medium text-gray-900 text-sm leading-tight flex-1 pr-2">
-                          {c.title}
-                        </h3>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditor(task)
-                          }}
-                          className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
-                        >
-                          <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
-                        </button>
-                      </div>
-                      {c.description && (
-                        <div className="text-xs text-gray-600 line-clamp-2">{c.description}</div>
-                      )}
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center gap-2">
-                          {getPriorityIcon(c.priority)}
-                          {c.due_date && (
-                            <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
-                              <Calendar className="w-3.5 h-3.5" />
-                              {formatDate(c.due_date)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <ListTodo className="w-4 h-4 text-primary-600" /> {col.title}
+                </h2>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  {items.length}
+                </span>
+              </div>
+
+              <div className={`rounded-xl p-2 bg-white/40`}>
+                <div className="overflow-x-auto overflow-y-hidden">
+                  <div className="flex flex-col gap-3 h-[28vh]">
+                    <div className="inline-flex items-stretch gap-3 pr-4">
+                      {rowA.map((task) => {
+                        const c = task.content as TaskContent
+                        return (
+                          <div
+                            key={task.id}
+                            onPointerDown={(e) => {
+                              // Start long-press detection for touch drag
+                              if ((e.pointerType === 'touch' || e.pointerType === 'pen')) {
+                                startPosRef.current = { x: e.clientX, y: e.clientY }
+                                clearLongPressTimer()
+                                longPressTimerRef.current = window.setTimeout(() => {
+                                  beginTouchDrag(task, e.clientX, e.clientY)
+                                }, 350)
+                              }
+                            }}
+                            onPointerUp={() => {
+                              clearLongPressTimer()
+                              if (!isLongPressActiveRef.current) {
+                                // treat as tap
+                                goToWork(task.id)
+                              }
+                            }}
+                            onPointerMove={(e) => {
+                              const start = startPosRef.current
+                              if (!start || isLongPressActiveRef.current) return
+                              const dx = Math.abs(e.clientX - start.x)
+                              const dy = Math.abs(e.clientY - start.y)
+                              if (dx > 8 || dy > 8) {
+                                // cancel long press if user moves
+                                clearLongPressTimer()
+                              }
+                            }}
+                            className="card card-hover select-none rounded-xl p-3 min-w-[15rem] max-w-[16rem] active:cursor-grabbing touch-none"
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between">
+                                <h3 className="font-medium text-gray-900 text-sm leading-tight pr-2 line-clamp-2">
+                                  {c.title}
+                                </h3>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openEditor(task)
+                                  }}
+                                  className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
+                                </button>
+                              </div>
+                              {c.description && (
+                                <div className="text-xs text-gray-600 line-clamp-2">{c.description}</div>
+                              )}
+                              <div className="flex items-center justify-between text-xs text-gray-500">
+                                <div className="flex items-center gap-2">
+                                  {getPriorityIcon(c.priority)}
+                                  {c.due_date && (
+                                    <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                                      <Calendar className="w-3.5 h-3.5" />
+                                      {formatDate(c.due_date)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="inline-flex items-stretch gap-3 pr-4">
+                      {rowB.map((task) => {
+                        const c = task.content as TaskContent
+                        return (
+                          <div
+                            key={task.id}
+                            onPointerDown={(e) => {
+                              if ((e.pointerType === 'touch' || e.pointerType === 'pen')) {
+                                startPosRef.current = { x: e.clientX, y: e.clientY }
+                                clearLongPressTimer()
+                                longPressTimerRef.current = window.setTimeout(() => {
+                                  beginTouchDrag(task, e.clientX, e.clientY)
+                                }, 350)
+                              }
+                            }}
+                            onPointerUp={() => {
+                              clearLongPressTimer()
+                              if (!isLongPressActiveRef.current) {
+                                goToWork(task.id)
+                              }
+                            }}
+                            onPointerMove={(e) => {
+                              const start = startPosRef.current
+                              if (!start || isLongPressActiveRef.current) return
+                              const dx = Math.abs(e.clientX - start.x)
+                              const dy = Math.abs(e.clientY - start.y)
+                              if (dx > 8 || dy > 8) {
+                                clearLongPressTimer()
+                              }
+                            }}
+                            className="card card-hover select-none rounded-xl p-3 min-w-[15rem] max-w-[16rem] active:cursor-grabbing touch-none"
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between">
+                                <h3 className="font-medium text-gray-900 text-sm leading-tight pr-2 line-clamp-2">
+                                  {c.title}
+                                </h3>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openEditor(task)
+                                  }}
+                                  className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
+                                </button>
+                              </div>
+                              {c.description && (
+                                <div className="text-xs text-gray-600 line-clamp-2">{c.description}</div>
+                              )}
+                              <div className="flex items-center justify-between text-xs text-gray-500">
+                                <div className="flex items-center gap-2">
+                                  {getPriorityIcon(c.priority)}
+                                  {c.due_date && (
+                                    <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                                      <Calendar className="w-3.5 h-3.5" />
+                                      {formatDate(c.due_date)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {/* Mobile: drag overlay */}
+      {touchDraggingId && touchPos && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{ left: 0, top: 0, transform: `translate(${touchPos.x + 8}px, ${touchPos.y + 8}px)` }}
+        >
+          <div className="rounded-lg bg-white shadow-lg border border-gray-200 px-3 py-2 text-xs text-gray-700 max-w-[14rem]">
+            {touchDragTitle}
+          </div>
+        </div>
+      )}
 
       {/* Desktop: Multi Column Layout */}
       <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
