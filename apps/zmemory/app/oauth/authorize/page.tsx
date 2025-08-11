@@ -1,0 +1,125 @@
+"use client"
+
+import React from 'react'
+import { useSearchParams } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: true, autoRefreshToken: true }
+}) : null
+
+export default function OAuthAuthorizePage() {
+  const params = useSearchParams()
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [email, setEmail] = React.useState<string | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false)
+
+  const client_id = params.get('client_id') || ''
+  const redirect_uri = params.get('redirect_uri') || ''
+  const scope = params.get('scope') || ''
+  const state = params.get('state') || ''
+  const code_challenge = params.get('code_challenge') || undefined
+  const code_challenge_method = (params.get('code_challenge_method') as 'S256' | 'plain' | null) || undefined
+
+  React.useEffect(() => {
+    let mounted = true
+    async function checkSession() {
+      if (!supabase) return
+      const { data } = await supabase.auth.getSession()
+      const user = data.session?.user
+      if (!mounted) return
+      setIsLoggedIn(Boolean(user))
+      setEmail(user?.email ?? null)
+    }
+    checkSession()
+    const { data: sub } = supabase?.auth.onAuthStateChange(() => checkSession()) || { data: { subscription: null } as any }
+    return () => {
+      mounted = false
+      sub?.subscription?.unsubscribe?.()
+    }
+  }, [])
+
+  async function handleLogin() {
+    if (!supabase) return
+    setLoading(true)
+    setError(null)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
+      if (error) setError(error.message)
+    } catch (e: any) {
+      setError(String(e?.message || e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleApprove() {
+    if (!supabase) return
+    setLoading(true)
+    setError(null)
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      const refreshToken = data.session?.refresh_token
+      if (!token) throw new Error('未登录')
+
+      const res = await fetch(`/oauth/authorize/issue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ client_id, redirect_uri, scope, state, code_challenge, code_challenge_method, refresh_token: refreshToken })
+      })
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(`Issue code failed: ${res.status} ${txt}`)
+      }
+      const payload = await res.json()
+      window.location.href = payload.redirect
+    } catch (e: any) {
+      setError(String(e?.message || e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 520, margin: '4rem auto', padding: 24, border: '1px solid #e5e7eb', borderRadius: 12, fontFamily: 'system-ui, -apple-system' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>授权访问 ZephyrOS</h1>
+      <div style={{ color: '#374151', fontSize: 14, marginBottom: 12 }}>
+        客户端请求：<strong>{client_id}</strong>
+      </div>
+      <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 4 }}>回调地址：</div>
+      <div style={{ color: '#111827', fontSize: 13, wordBreak: 'break-all', marginBottom: 12 }}>{redirect_uri}</div>
+      {scope && (
+        <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 12 }}>请求权限：{scope}</div>
+      )}
+
+      {!isLoggedIn ? (
+        <div>
+          <div style={{ color: '#ef4444', fontSize: 13, minHeight: 20 }}>{error}</div>
+          <button onClick={handleLogin} disabled={loading} style={{ padding: '8px 12px', background: '#111827', color: '#fff', borderRadius: 8 }}>
+            使用 Google 登录
+          </button>
+        </div>
+      ) : (
+        <div>
+          <div style={{ color: '#16a34a', fontSize: 13, marginBottom: 8 }}>已登录：{email}</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={handleApprove} disabled={loading} style={{ padding: '8px 12px', background: '#111827', color: '#fff', borderRadius: 8 }}>
+              同意并继续
+            </button>
+            <a href={redirect_uri} style={{ padding: '8px 12px', background: '#e5e7eb', color: '#111827', borderRadius: 8 }}>拒绝</a>
+          </div>
+          <div style={{ color: '#ef4444', fontSize: 13, minHeight: 20, marginTop: 8 }}>{error}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
