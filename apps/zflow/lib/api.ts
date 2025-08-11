@@ -4,6 +4,7 @@ import { authManager } from './auth-manager'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
 const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
+const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
 
 // Compatible type definitions (for hooks and page references)
 export interface TaskContent {
@@ -63,7 +64,7 @@ export const categoriesApi = {
   async getAll(): Promise<Category[]> {
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/categories`, {
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to fetch categories')
@@ -80,7 +81,7 @@ export const categoriesApi = {
         ...authHeaders,
       },
       body: JSON.stringify(category),
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
     if (!response.ok) throw new Error('Failed to create category')
     const data = await response.json()
@@ -96,7 +97,7 @@ export const categoriesApi = {
         ...authHeaders,
       },
       body: JSON.stringify(category),
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
     if (!response.ok) throw new Error('Failed to update category')
     const data = await response.json()
@@ -107,7 +108,7 @@ export const categoriesApi = {
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/categories/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to delete category')
@@ -119,7 +120,7 @@ export const taskRelationsApi = {
   async getByTask(taskId: string): Promise<any[]> {
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/task-relations?task_id=${taskId}`, {
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to fetch task relations')
@@ -136,7 +137,7 @@ export const taskRelationsApi = {
         ...authHeaders,
       },
       body: JSON.stringify(relation),
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
     if (!response.ok) throw new Error('Failed to create task relation')
     const data = await response.json()
@@ -147,7 +148,7 @@ export const taskRelationsApi = {
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/task-relations/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to delete task relation')
@@ -173,7 +174,7 @@ export const tasksApi = {
     
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/tasks?${searchParams}`, {
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to fetch tasks')
@@ -184,7 +185,7 @@ export const tasksApi = {
   async getById(id: string): Promise<TaskMemory> {
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to fetch task')
@@ -217,7 +218,7 @@ export const tasksApi = {
         content: task,
         tags: task.tags || []
       }),
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
     if (!response.ok) throw new Error('Failed to create task')
     const data = await response.json()
@@ -252,7 +253,7 @@ export const tasksApi = {
         ...authHeaders,
       },
       body: JSON.stringify(payload),
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
     
     if (!response.ok) {
@@ -270,7 +271,7 @@ export const tasksApi = {
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
     if (!response.ok) throw new Error('Failed to delete task')
