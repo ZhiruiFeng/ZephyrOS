@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useMemo as useReactMemo, Suspense } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
 import { useCategories } from '../../hooks/useCategories'
 import { usePrefs } from '../../contexts/PrefsContext'
@@ -45,7 +46,7 @@ const getColumns = (t: any): Array<{ key: StatusKey; title: string; hint?: strin
   { key: 'completed', title: t.ui.done24h },
 ]
 
-export default function KanbanPage() {
+export default function KanbanView() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
@@ -58,6 +59,13 @@ export default function KanbanPage() {
   const { filterPriority, setFilterPriority, hideCompleted, setHideCompleted, selectedCategory, setSelectedCategory, sortMode } = (usePrefs() as any)
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
+  const router = useRouter()
+
+  const goToWork = (taskId: string) => {
+    // Avoid navigating when currently dragging
+    if (draggingId) return
+    router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
+  }
 
   // Categories are now loaded via useCategories hook
 
@@ -356,7 +364,8 @@ export default function KanbanPage() {
                     draggable
                     onDragStart={(e) => onDragStart(task.id, e)}
                     onDragEnd={onDragEnd}
-                    className="card card-hover mb-3 cursor-grab active:cursor-grabbing select-none rounded-xl p-3"
+                    onClick={() => goToWork(task.id)}
+                    className="card card-hover mb-3 cursor-pointer active:cursor-grabbing select-none rounded-xl p-3"
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between">
@@ -420,7 +429,8 @@ export default function KanbanPage() {
                     draggable
                     onDragStart={(e) => onDragStart(task.id, e)}
                     onDragEnd={onDragEnd}
-                    className="card card-hover mb-2 cursor-grab active:cursor-grabbing select-none rounded-xl"
+                    onClick={() => goToWork(task.id)}
+                    className="card card-hover mb-2 cursor-pointer active:cursor-grabbing select-none rounded-xl"
                   >
                     <div className="flex items-start justify-between">
                       <div className="pr-2 min-w-0">

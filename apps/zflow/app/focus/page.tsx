@@ -1,12 +1,11 @@
 'use client'
 
 import React, { useState, useEffect, Suspense } from 'react'
-import { KanbanSquare, FileText, Target, Menu, X } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useTranslation } from '../../contexts/LanguageContext'
 
-const KanbanPage = dynamic(() => import('../kanban/page'), { 
+const KanbanPage = dynamic(() => import('../kanban/KanbanView'), { 
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-64">
@@ -14,7 +13,7 @@ const KanbanPage = dynamic(() => import('../kanban/page'), {
     </div>
   )
 })
-const WorkModePage = dynamic(() => import('./work-mode/page'), { 
+const WorkModePage = dynamic(() => import('./work-mode/WorkModeView'), { 
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-64">
@@ -30,7 +29,6 @@ function FocusPageContent() {
   const searchParams = useSearchParams()
   const [viewMode, setViewMode] = useState<ViewMode>('kanban')
   const [isClient, setIsClient] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   // Ensure we're on the client side
   useEffect(() => {
@@ -64,74 +62,8 @@ function FocusPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-            >
-              {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900">{t.nav.focusMode}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setViewMode(viewMode === 'kanban' ? 'work' : 'kanban')}
-              className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm"
-            >
-              {viewMode === 'kanban' ? (
-                <>
-                  <FileText className="w-4 h-4" />
-                  {t.nav.workMode}
-                </>
-              ) : (
-                <>
-                  <KanbanSquare className="w-4 h-4" />
-                  {t.nav.kanban}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        
-        {/* Mobile View Mode Tabs */}
-        <div className="mt-3">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'kanban'
-                  ? 'bg-white text-primary-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <KanbanSquare className="w-4 h-4" />
-              {t.nav.kanban}
-            </button>
-            <button
-              onClick={() => setViewMode('work')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'work'
-                  ? 'bg-white text-primary-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              {t.nav.workMode}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {viewMode === 'kanban' ? (
-          <KanbanPage />
-        ) : (
-          <WorkModePage />
-        )}
+        {viewMode === 'kanban' ? <KanbanPage /> : <WorkModePage />}
       </div>
     </div>
   )

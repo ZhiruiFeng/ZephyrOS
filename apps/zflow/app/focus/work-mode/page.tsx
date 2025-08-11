@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../../hooks/useMemories'
 import { useCategories } from '../../../hooks/useCategories'
@@ -18,12 +19,13 @@ interface TaskWithCategory extends TaskMemory {
   category_id?: string
 }
 
-export default function WorkModePage() {
+function WorkModeViewInner() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
   const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
+  const searchParams = useSearchParams()
   const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [notes, setNotes] = useState('')
@@ -156,6 +158,16 @@ export default function WorkModePage() {
     }
   }, [selectedTask])
 
+  // Auto-select task from query param taskId
+  useEffect(() => {
+    const id = searchParams.get('taskId')
+    if (!id || !tasks.length) return
+    const found = tasks.find(t => t.id === id)
+    if (found) {
+      setSelectedTask(found as TaskWithCategory)
+    }
+  }, [searchParams, tasks])
+
   const toggleCategory = (categoryId: string) => {
     const newExpanded = new Set(expandedCategories)
     if (newExpanded.has(categoryId)) {
@@ -272,6 +284,7 @@ export default function WorkModePage() {
         fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto
         w-80 border-r border-gray-200 flex flex-col bg-white
         transition-transform duration-300 ease-in-out lg:transition-none
+        ${!sidebarVisible ? 'lg:hidden' : ''}
       `}>
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between lg:hidden">
@@ -732,17 +745,22 @@ export default function WorkModePage() {
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">{t.ui.selectTaskToStart}</h3>
               <p className="text-gray-600">{t.ui.selectTaskFromLeft}</p>
-              <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="lg:hidden mt-4 flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                <Menu className="w-4 h-4" />
-                {t.ui.openTaskList}
-              </button>
             </div>
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+export default function WorkModeView() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    }>
+      <WorkModeViewInner />
+    </Suspense>
   )
 }
