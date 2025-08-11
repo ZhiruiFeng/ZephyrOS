@@ -627,10 +627,12 @@ function OverviewPageContent() {
         </div>
       </div>
 
-      {/* Floating Add Button */}
-      <FloatingAddButton 
-        onClick={() => setShowAddModal(true)} 
-      />
+      {/* Floating Add Button (desktop only) */}
+      <div className="hidden sm:block">
+        <FloatingAddButton 
+          onClick={() => setShowAddModal(true)} 
+        />
+      </div>
 
       {/* Add Task Modal */}
       <AddTaskModal

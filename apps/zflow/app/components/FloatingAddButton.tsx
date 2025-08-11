@@ -7,12 +7,14 @@ import { useTranslation } from '../../contexts/LanguageContext'
 interface FloatingAddButtonProps {
   onClick: () => void
   className?: string
+  containerClassName?: string
   showKeyboardHint?: boolean
 }
 
 export default function FloatingAddButton({ 
   onClick, 
   className = '', 
+  containerClassName = '',
   showKeyboardHint = true 
 }: FloatingAddButtonProps) {
   const { t } = useTranslation()
@@ -32,7 +34,7 @@ export default function FloatingAddButton({
   }, [onClick])
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+    <div className={`fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 ${containerClassName}`}>
       {/* 键盘快捷键提示 */}
       {showKeyboardHint && (
         <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none">
@@ -45,7 +47,7 @@ export default function FloatingAddButton({
         onClick={onClick}
         className={`
           w-14 h-14 
-          bg-blue-600 hover:bg-blue-700 
+          bg-primary-600 hover:bg-primary-700 
           text-white 
           rounded-full 
           shadow-lg hover:shadow-xl

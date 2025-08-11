@@ -30,6 +30,7 @@ export interface TranslationKeys {
 
   // Navigation
   nav: {
+    home: string;
     focus: string;
     overview: string;
     speech: string;
@@ -291,6 +292,7 @@ const translations: Record<Language, TranslationKeys> = {
       previous: 'Previous',
     },
     nav: {
+      home: 'Home',
       focus: 'Focus',
       overview: 'Overview',
       speech: 'Speech',
@@ -531,6 +533,7 @@ const translations: Record<Language, TranslationKeys> = {
       previous: '上一步',
     },
     nav: {
+      home: '首页',
       focus: '专注',
       overview: '概览',
       speech: '语音',

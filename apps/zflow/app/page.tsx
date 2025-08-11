@@ -34,6 +34,8 @@ import {
 } from './utils/taskUtils'
 import { Task, FilterStatus, FilterPriority, ViewMode } from './types/task'
 import AuthButton from './components/AuthButton'
+import FloatingAddButton from './components/FloatingAddButton'
+import AddTaskModal from './components/AddTaskModal'
 import LoginPage from './components/LoginPage'
 import { useAuth } from '../contexts/AuthContext'
 import { usePrefs } from '../contexts/PrefsContext'
@@ -50,6 +52,7 @@ export default function ZFlowPage() {
   const [newTaskTags, setNewTaskTags] = useState('')
   const [newTaskCategoryId, setNewTaskCategoryId] = useState<string | undefined>(undefined)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   // filterPriority unified in PrefsContext
   const [search, setSearch] = useState('')
@@ -215,7 +218,8 @@ export default function ZFlowPage() {
       setNewTaskDueDate('')
       setNewTaskTags('')
       setNewTaskCategoryId(undefined)
-      setShowAddForm(false)
+       setShowAddForm(false)
+       setShowAddModal(false)
     } catch (error) {
       console.error('Failed to create task:', error)
       alert(t.messages.taskCreateFailed)
@@ -432,31 +436,29 @@ export default function ZFlowPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <button onClick={() => { setFilterStatus('all'); setHideCompleted(false); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">{t.ui.totalTasks}</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.total}</div>
-              </button>
-              <button onClick={() => { setFilterStatus('pending'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">{t.ui.planned}</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.pending}</div>
-              </button>
-              <button onClick={() => { setFilterStatus('in_progress'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">{t.ui.inProgress}</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.inProgress}</div>
-              </button>
-              <button onClick={() => { setFilterStatus('completed'); setHideCompleted(false); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">{t.ui.completed}</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.completed}</div>
-              </button>
-              <button onClick={() => { setFilterStatus('on_hold'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">{t.ui.backlog}</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.onHold}</div>
-              </button>
-              <button onClick={() => { setFilterStatus('cancelled'); setHideCompleted(true); setShowOverdueOnly(false); setSearch(''); }} className="glass rounded-xl p-4 text-left text-gray-800 card-hover">
-                <div className="text-xs text-gray-500">{t.ui.abandoned}</div>
-                <div className="mt-1 text-2xl font-semibold">{quickStats.cancelled}</div>
-              </button>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {[
+                { key: 'all', label: t.ui.totalTasks, value: quickStats.total },
+                { key: 'pending', label: t.ui.planned, value: quickStats.pending },
+                { key: 'in_progress', label: t.ui.inProgress, value: quickStats.inProgress },
+                { key: 'completed', label: t.ui.completed, value: quickStats.completed },
+                { key: 'on_hold', label: t.ui.backlog, value: quickStats.onHold },
+                { key: 'cancelled', label: t.ui.abandoned, value: quickStats.cancelled },
+              ].map(({ key, label, value }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setFilterStatus(key as any)
+                    setHideCompleted(key !== 'completed')
+                    setShowOverdueOnly(false)
+                    setSearch('')
+                  }}
+                  className="glass rounded-lg p-3 text-left text-gray-800 card-hover"
+                >
+                  <div className="text-[11px] text-gray-500 truncate">{label}</div>
+                  <div className="mt-0.5 text-xl font-semibold">{value}</div>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -506,120 +508,17 @@ export default function ZFlowPage() {
         </div>
       </div>
 
-      {/* Add task (Quick Capture: default on_hold, optional join attention pool) */}
-      <div className="card glass card-hover rounded-2xl mb-6">
-        {!showAddForm ? (
-          <button
-            onClick={() => {
-              setNewTaskCategoryId(selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined)
-              setShowAddForm(true)
-            }}
-            className="w-full px-4 py-3 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {selectedCategory !== 'all' && selectedCategory !== 'uncategorized' && categories.find(cat => cat.id === selectedCategory) 
-              ? `${t.task.addToCategory}「${categories.find(cat => cat.id === selectedCategory)?.name}」`
-              : t.task.addTask
-            }
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                placeholder={t.task.taskTitle}
-                className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <select
-                value={newTaskPriority}
-                onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}
-                className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="low">{t.task.priorityLow} Priority</option>
-                <option value="medium">{t.task.priorityMedium} Priority</option>
-                <option value="high">{t.task.priorityHigh} Priority</option>
-                <option value="urgent">{t.task.priorityUrgent}</option>
-              </select>
-              <select
-                value={newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : '')}
-                onChange={(e) => setNewTaskCategoryId(e.target.value || undefined)}
-                className="px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">{t.ui.noCategory}</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <textarea
-              value={newTaskDescription}
-              onChange={(e) => setNewTaskDescription(e.target.value)}
-              placeholder={t.task.taskDescription}
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              rows={3}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <input
-                  type="datetime-local"
-                  value={newTaskDueDate}
-                  onChange={(e) => setNewTaskDueDate(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  value={newTaskTags}
-                  onChange={(e) => setNewTaskTags(e.target.value)}
-                  placeholder={t.ui.tagsPlaceholder}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <button
-                onClick={addTask}
-                disabled={!newTask.trim()}
-                className="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50"
-              >
-                {t.task.createTask}
-              </button>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <label className="inline-flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    onChange={(e) => {
-                      // When checked, default new tasks to pending; otherwise on_hold
-                      setNewTaskPriority((p) => p)
-                      // store choice in localStorage for persistence
-                      try { localStorage.setItem('zflow:quickCapture:joinAttention', e.target.checked ? '1' : '0') } catch {}
-                      ;(window as any).__zflowJoinAttention = e.target.checked
-                    }}
-                  />
-                  <span>{t.task.joinAttentionPool}</span>
-                </label>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAddForm(false)
-                  setNewTaskCategoryId(undefined)
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors duration-200"
-              >
-                {t.common.cancel}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Add task: use modal like overview; trigger via floating button on desktop or bottom nav on mobile */}
+      <AddTaskModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={async (payload) => {
+          await createTask(payload)
+          setShowAddModal(false)
+        }}
+        categories={categories}
+        defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? (selectedCategory as string) : undefined}
+      />
 
       {/* Task list */}
       <div className="space-y-4">
@@ -725,6 +624,12 @@ export default function ZFlowPage() {
             onSave={handleSaveTask}
             title={t.ui.editTaskTitle}
           />
+          {/* Desktop floating add button (same pattern as overview) */}
+          <div className="hidden sm:block">
+            <FloatingAddButton
+              onClick={() => setShowAddModal(true)}
+            />
+          </div>
         </div>
       </div>
     </div>
