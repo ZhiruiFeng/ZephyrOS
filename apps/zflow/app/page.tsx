@@ -18,6 +18,7 @@ import {
   KanbanSquare,
   Tag,
   Pencil,
+  Folder,
 } from 'lucide-react'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
@@ -40,6 +41,7 @@ import LoginPage from './components/LoginPage'
 import { useAuth } from '../contexts/AuthContext'
 import { usePrefs } from '../contexts/PrefsContext'
 import { useTranslation } from '../contexts/LanguageContext'
+import MobileCategorySheet from './components/MobileCategorySheet'
 
 export default function ZFlowPage() {
   const { user, loading: authLoading } = useAuth()
@@ -63,6 +65,7 @@ export default function ZFlowPage() {
   const { selectedCategory, setSelectedCategory } = (usePrefs() as any)
   // hideCompleted unified in PrefsContext
   const [showOverdueOnly, setShowOverdueOnly] = useState(false)
+  const [showCategorySheet, setShowCategorySheet] = useState(false)
 
   // Persist user preferences (hideCompleted + filterPriority + selectedCategory) with unified keys
   React.useEffect(() => {
@@ -400,7 +403,8 @@ export default function ZFlowPage() {
           className="hidden md:block rounded-lg"
         />
 
-        {/* Right main content */}
+        {/* Right main content */
+        }
         <div className="flex-1">
           
       <div className="mb-8">
@@ -462,6 +466,30 @@ export default function ZFlowPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile category entry */}
+      <div className="md:hidden mb-3">
+        <button
+          onClick={() => setShowCategorySheet(true)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-gray-200 shadow-sm"
+        >
+          <span className="inline-flex items-center gap-2 text-gray-700">
+            <Folder className="w-4 h-4 text-gray-500" />
+            {(() => {
+              if (selectedCategory === 'all') return t.common.all
+              if (selectedCategory === 'uncategorized') return t.ui.uncategorized
+              const cat = categories.find((c: any) => c.id === selectedCategory)
+              return cat ? cat.name : t.ui.categories
+            })()}
+          </span>
+          <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+            <span className="px-2 py-1 rounded-full bg-primary-50 text-primary-700">
+              {selectedCategory === 'all' ? categoryCounts.total : selectedCategory === 'uncategorized' ? categoryCounts.uncategorized : (categoryCounts.byId as any)[selectedCategory] || 0}
+            </span>
+            <ChevronDown className="w-4 h-4" />
+          </span>
+        </button>
       </div>
 
       {/* Filters */}
@@ -632,6 +660,25 @@ export default function ZFlowPage() {
           </div>
         </div>
       </div>
+      {/* Mobile category sheet */}
+      <MobileCategorySheet
+        open={showCategorySheet}
+        onClose={() => setShowCategorySheet(false)}
+        categories={categories}
+        counts={categoryCounts as any}
+        selected={selectedCategory as any}
+        onSelect={(key) => setSelectedCategory(key as any)}
+        onCreate={async (payload) => {
+          await createCategory({ name: payload.name, color: payload.color })
+        }}
+        onUpdate={async (id, payload) => {
+          await updateCategory(id, payload)
+        }}
+        onDelete={async (id) => {
+          await deleteCategory(id)
+          if (selectedCategory === id) setSelectedCategory('all')
+        }}
+      />
     </div>
     </div>
   )
