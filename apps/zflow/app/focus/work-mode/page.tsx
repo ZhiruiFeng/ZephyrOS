@@ -137,7 +137,7 @@ function WorkModeViewInner() {
         status: selectedTask.content.status || 'pending',
         priority: selectedTask.content.priority || 'medium',
         progress: selectedTask.content.progress || 0,
-        due_date: selectedTask.content.due_date || '',
+        due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
         estimated_duration: selectedTask.content.estimated_duration || 0,
         assignee: selectedTask.content.assignee || '',
         tags: selectedTask.tags || []
@@ -184,11 +184,13 @@ function WorkModeViewInner() {
     setIsSaving(true)
     try {
       // 只更新notes字段，避免传递错误的category字段
-      await updateTask(selectedTask.id, { 
+      const updatedTask = await updateTask(selectedTask.id, { 
         content: { 
           notes 
         } 
       })
+      // Update the selectedTask state with the updated task data
+      setSelectedTask(updatedTask as TaskWithCategory)
     } catch (error) {
       console.error('Failed to save notes:', error)
     } finally {
@@ -201,19 +203,21 @@ function WorkModeViewInner() {
     
     setIsSaving(true)
     try {
-      await updateTask(selectedTask.id, { 
+      const updatedTask = await updateTask(selectedTask.id, { 
         content: {
           title: taskInfo.title,
           description: taskInfo.description,
           status: taskInfo.status,
           priority: taskInfo.priority,
           progress: taskInfo.progress,
-          due_date: taskInfo.due_date || undefined,
+          due_date: taskInfo.due_date && taskInfo.due_date.trim() ? new Date(taskInfo.due_date).toISOString() : undefined,
           estimated_duration: taskInfo.estimated_duration || undefined,
-          assignee: taskInfo.assignee || undefined
+          assignee: taskInfo.assignee && taskInfo.assignee.trim() ? taskInfo.assignee : undefined
         },
         tags: taskInfo.tags
       })
+      // Update the selectedTask state with the updated task data
+      setSelectedTask(updatedTask as TaskWithCategory)
       setEditingTaskInfo(false)
     } catch (error) {
       console.error('Failed to save task info:', error)
@@ -525,7 +529,7 @@ function WorkModeViewInner() {
                                 status: selectedTask.content.status || 'pending',
                                 priority: selectedTask.content.priority || 'medium',
                                 progress: selectedTask.content.progress || 0,
-                                due_date: selectedTask.content.due_date || '',
+                                due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
                                 estimated_duration: selectedTask.content.estimated_duration || 0,
                                 assignee: selectedTask.content.assignee || '',
                                 tags: selectedTask.tags || []

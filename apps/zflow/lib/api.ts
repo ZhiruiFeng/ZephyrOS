@@ -238,8 +238,17 @@ export const tasksApi = {
     notes?: string;
     tags?: string[];
   }): Promise<TaskMemory> {
+    // Clean up the content object to remove empty strings and undefined values
+    const cleanContent: any = {}
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key === 'tags') return // Skip tags as it's handled separately
+      if (value !== undefined && value !== null && value !== '') {
+        cleanContent[key] = value
+      }
+    })
+    
     const payload = {
-      content: updates,
+      content: cleanContent,
       tags: updates.tags
     };
     
