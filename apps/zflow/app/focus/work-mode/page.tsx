@@ -11,7 +11,7 @@ import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
 import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu } from 'lucide-react'
-import MarkdownEditor from './MarkdownEditor'
+import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 

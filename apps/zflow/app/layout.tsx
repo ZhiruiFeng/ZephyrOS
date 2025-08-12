@@ -2,6 +2,7 @@
 
 import { SWRConfig } from 'swr'
 import './globals.css'
+// removed markdown editor styles
 import React from 'react'
 import { useEffect } from 'react'
 import { authManager } from '../lib/auth-manager'
