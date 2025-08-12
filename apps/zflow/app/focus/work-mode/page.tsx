@@ -224,8 +224,10 @@ function WorkModeViewInner() {
   useEffect(() => {
     const id = searchParams.get('taskId')
     if (!id || !tasks.length) return
+    
+    // Find the task and only select it if it's different from current selection
     const found = tasks.find(t => t.id === id)
-    if (found) {
+    if (found && !selectedTask) {
       setSelectedTask(found as TaskWithCategory)
     }
   }, [searchParams, tasks])
