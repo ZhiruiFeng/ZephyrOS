@@ -194,9 +194,6 @@ export async function PUT(
   try {
     const body = await request.json();
     
-    console.log('Received PUT request for task:', id);
-    console.log('Request body:', JSON.stringify(body, null, 2));
-    
     // Validate request body
     const validationResult = UpdateTaskSchema.safeParse(body);
     if (!validationResult.success) {
@@ -301,8 +298,6 @@ export async function PUT(
     if (updateData.tags !== undefined) {
       updateObject.tags = updateData.tags;
     }
-
-    console.log('Updating with object:', JSON.stringify(updateObject, null, 2));
     
     const { data, error } = await client
       .from('tasks')

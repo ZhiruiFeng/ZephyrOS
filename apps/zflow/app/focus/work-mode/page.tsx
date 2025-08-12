@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef, Suspense } from 'react'
+import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../../hooks/useMemories'
+import { useAutoSave } from '../../../hooks/useAutoSave'
 import { useCategories } from '../../../hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
@@ -24,12 +25,13 @@ function WorkModeViewInner() {
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {} : null)
   const { categories } = useCategories()
-  const { updateTask } = useUpdateTask()
+  const { updateTask, updateTaskSilent } = useUpdateTask()
   const searchParams = useSearchParams()
   const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [notes, setNotes] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [originalNotes, setOriginalNotes] = useState('')
   const [viewMode, setViewMode] = useState<'current' | 'backlog'>('current')
   const [showTaskInfo, setShowTaskInfo] = useState(false)
   const [editingTaskInfo, setEditingTaskInfo] = useState(false)
@@ -46,6 +48,58 @@ function WorkModeViewInner() {
     assignee: '',
     tags: [] as string[]
   })
+
+  // Auto-save functionality for notes
+  const autoSaveNotes = useCallback(async () => {
+    if (!selectedTask) return
+    
+    try {
+      const updatedTask = await updateTaskSilent(selectedTask.id, { 
+        content: { 
+          notes 
+        } 
+      })
+      // Preserve the category information from the original selectedTask
+      const taskWithCategory = {
+        ...updatedTask,
+        category: selectedTask.category,
+        category_id: selectedTask.category_id || selectedTask.content.category_id
+      } as TaskWithCategory
+      
+      setSelectedTask(taskWithCategory)
+      setOriginalNotes(notes)
+    } catch (error) {
+      throw error
+    }
+  }, [selectedTask, notes, updateTaskSilent])
+
+  const autoSave = useAutoSave({
+    delay: 5000, // 5 seconds after user stops typing - less sensitive
+    enabled: !!selectedTask,
+    onSave: autoSaveNotes,
+    hasChanges: () => {
+      // Only save if there's meaningful change
+      const trimmedNotes = notes.trim()
+      const trimmedOriginal = originalNotes.trim()
+      
+      if (trimmedNotes === trimmedOriginal) return false
+      
+      // Only trigger if substantial change (at least 20 characters difference or significant content change)
+      const lengthDiff = Math.abs(trimmedNotes.length - trimmedOriginal.length)
+      const minLength = Math.min(trimmedNotes.length, trimmedOriginal.length)
+      const changeRatio = minLength > 0 ? lengthDiff / minLength : 1
+      
+      // More conservative: require at least 20 chars change OR 30% content change
+      return lengthDiff >= 20 || changeRatio >= 0.3
+    }
+  })
+
+  // Trigger auto-save when notes change
+  useEffect(() => {
+    if (selectedTask && notes !== originalNotes) {
+      autoSave.triggerAutoSave()
+    }
+  }, [notes, selectedTask, originalNotes])
 
   // Load categories
   // Categories are now loaded via useCategories hook
@@ -130,7 +184,9 @@ function WorkModeViewInner() {
   // Load notes and task info when task is selected
   useEffect(() => {
     if (selectedTask) {
-      setNotes(selectedTask.content.notes || '')
+      const taskNotes = selectedTask.content.notes || ''
+      setNotes(taskNotes)
+      setOriginalNotes(taskNotes)
       setTaskInfo({
         title: selectedTask.content.title || '',
         description: selectedTask.content.description || '',
@@ -144,6 +200,7 @@ function WorkModeViewInner() {
       })
     } else {
       setNotes('')
+      setOriginalNotes('')
       setTaskInfo({
         title: '',
         description: '',
@@ -157,6 +214,11 @@ function WorkModeViewInner() {
       })
     }
   }, [selectedTask])
+
+  // Reset auto-save state when switching tasks
+  useEffect(() => {
+    autoSave.resetAutoSave()
+  }, [selectedTask?.id])
 
   // Auto-select task from query param taskId
   useEffect(() => {
@@ -181,6 +243,9 @@ function WorkModeViewInner() {
   const handleSaveNotes = async () => {
     if (!selectedTask) return
     
+    // Cancel any pending auto-save
+    autoSave.cancelAutoSave()
+    
     setIsSaving(true)
     try {
       // 只更新notes字段，避免传递错误的category字段
@@ -191,6 +256,7 @@ function WorkModeViewInner() {
       })
       // Update the selectedTask state with the updated task data
       setSelectedTask(updatedTask as TaskWithCategory)
+      setOriginalNotes(notes)
     } catch (error) {
       console.error('Failed to save notes:', error)
     } finally {
@@ -487,15 +553,32 @@ function WorkModeViewInner() {
                     <span className="hidden sm:inline">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
                     <span className="sm:hidden">{showTaskInfo ? t.common.hide : t.ui.taskInfo}</span>
                   </button>
-                  <button
-                    onClick={handleSaveNotes}
-                    disabled={isSaving}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span className="hidden sm:inline">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
-                    <span className="sm:hidden">{isSaving ? t.common.loading : t.common.save}</span>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {/* Subtle auto-save indicator */}
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      {autoSave.lastSaved && (
+                        <span className="hidden sm:inline">
+                          Auto-saved at {autoSave.lastSaved.toLocaleTimeString()}
+                        </span>
+                      )}
+                      {autoSave.status === 'error' && (
+                        <span className="flex items-center gap-1 text-red-500">
+                          <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                          <span className="hidden sm:inline">Save failed</span>
+                        </span>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={handleSaveNotes}
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span className="hidden sm:inline">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
+                      <span className="sm:hidden">{isSaving ? t.common.loading : t.common.save}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

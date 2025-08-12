@@ -252,8 +252,6 @@ export const tasksApi = {
       tags: updates.tags
     };
     
-    console.log('Updating task:', id, 'with payload:', JSON.stringify(payload, null, 2));
-    
     const authHeaders = await authManager.getAuthHeaders()
     const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
       method: 'PUT',
@@ -272,7 +270,6 @@ export const tasksApi = {
     }
     
     const data = await response.json()
-    console.log('Update successful:', data);
     return data as TaskMemory
   },
 

@@ -43,7 +43,6 @@ export function useCreateTask() {
       const newTask = await apiClient.createTask(data);
       // Optimistically update all tasks queries
       await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), undefined, { revalidate: true });
-      console.log('✨ Task created and caches updated');
       return newTask;
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -58,13 +57,11 @@ export function useCreateTask() {
 export function useUpdateTask() {
   const updateTask = async (id: string, data: UpdateTaskRequest) => {
     try {
-      console.log('useUpdateTask called with:', id, JSON.stringify(data, null, 2));
       const updatedTask = await apiClient.updateTask(id, data);
       // Update individual task cache
       await mutate(`task-${id}`, updatedTask, false);
       // Update all tasks queries
       await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), undefined, { revalidate: true });
-      console.log('🔄 Task updated and caches refreshed');
       return updatedTask;
     } catch (error) {
       console.error('Failed to update task:', error);
@@ -72,7 +69,35 @@ export function useUpdateTask() {
     }
   };
 
-  return { updateTask };
+  // Silent update for auto-save that doesn't revalidate caches
+  const updateTaskSilent = async (id: string, data: UpdateTaskRequest) => {
+    try {
+      const updatedTask = await apiClient.updateTask(id, data);
+      // Update individual task cache without revalidation
+      await mutate(`task-${id}`, updatedTask, false);
+      // Update tasks list cache silently without revalidation
+      await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), (currentData) => {
+        if (!Array.isArray(currentData)) return currentData;
+        return currentData.map(task => {
+          if (task.id === id) {
+            // Preserve category information when updating
+            return {
+              ...updatedTask,
+              category: task.category,
+              category_id: task.category_id || task.content.category_id
+            };
+          }
+          return task;
+        });
+      }, { revalidate: false });
+      return updatedTask;
+    } catch (error) {
+      console.error('Failed to update task silently:', error);
+      throw error;
+    }
+  };
+
+  return { updateTask, updateTaskSilent };
 }
 
 // Hook to delete memory
@@ -84,7 +109,6 @@ export function useDeleteTask() {
       await mutate(`task-${id}`, undefined, false);
       // Update all tasks queries
       await mutate((key) => typeof key === 'string' && key.startsWith('tasks'), undefined, { revalidate: true });
-      console.log('🗑️ Task deleted and caches updated');
       return { success: true };
     } catch (error) {
       console.error('Failed to delete task:', error);

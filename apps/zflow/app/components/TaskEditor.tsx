@@ -33,7 +33,6 @@ export default function TaskEditor({
 
   // Update form when task data changes
   useEffect(() => {
-    console.log('TaskEditor received task:', task);
     if (task) {
       setForm({
         title: task.title || '',
@@ -80,8 +79,6 @@ export default function TaskEditor({
         },
         tags: ['zflow', 'task', ...tagsArray]
       };
-
-      console.log('TaskEditor saving with data:', JSON.stringify(saveData, null, 2));
 
       await onSave(task.id, saveData)
       onClose()
