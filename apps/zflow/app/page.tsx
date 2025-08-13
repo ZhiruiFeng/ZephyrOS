@@ -31,7 +31,9 @@ import {
   getPriorityColor, 
   isOverdue, 
   formatDate,
-  formatTagsString
+  formatTagsString,
+  getTaskDisplayDate,
+  shouldShowOverdue
 } from './utils/taskUtils'
 import { Task, FilterStatus, FilterPriority, ViewMode } from './types/task'
 import AuthButton from './components/AuthButton'
@@ -628,11 +630,11 @@ export default function ZFlowPage() {
                   {/* Time information */}
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
-                    {taskContent.due_date && (
-                      <span className={`inline-flex items-center gap-1 ${isOverdue(taskContent.due_date) ? 'text-red-600' : ''}`}>
+                    {getTaskDisplayDate(taskContent.status, taskContent.due_date, taskContent.completion_date) && (
+                      <span className={`inline-flex items-center gap-1 ${shouldShowOverdue(taskContent.status, taskContent.due_date) ? 'text-red-600' : ''}`}>
                         <Calendar className="w-3 h-3" />
-                        {formatDate(taskContent.due_date)}
-                        {isOverdue(taskContent.due_date) && t.ui.overdue}
+                        {formatDate(getTaskDisplayDate(taskContent.status, taskContent.due_date, taskContent.completion_date)!)}
+                        {shouldShowOverdue(taskContent.status, taskContent.due_date) && t.ui.overdue}
                       </span>
                     )}
                   </div>

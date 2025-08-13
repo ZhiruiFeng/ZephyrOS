@@ -40,6 +40,20 @@ export const isOverdue = (dueDate?: string) => {
   return due < now
 }
 
+// Get display date for a task (completion_date for completed tasks, due_date for others)
+export const getTaskDisplayDate = (status: string, dueDate?: string, completionDate?: string) => {
+  if (status === 'completed' && completionDate) {
+    return completionDate
+  }
+  return dueDate
+}
+
+// Check if task should show overdue indicator (never for completed tasks)
+export const shouldShowOverdue = (status: string, dueDate?: string) => {
+  if (status === 'completed') return false
+  return isOverdue(dueDate)
+}
+
 // Format date
 export const formatDate = (date: string, locale: string = 'en-US') => {
   return new Date(date).toLocaleDateString(locale)

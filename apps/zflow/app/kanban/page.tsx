@@ -15,7 +15,9 @@ import { getPriorityIcon } from '../components/TaskIcons'
 import { 
   isOverdue, 
   formatDate,
-  formatTagsString
+  formatTagsString,
+  getTaskDisplayDate,
+  shouldShowOverdue
 } from '../utils/taskUtils'
 import { useTranslation } from '../../contexts/LanguageContext'
 
@@ -493,10 +495,10 @@ export default function KanbanView() {
                               <div className="flex items-center justify-between text-xs text-gray-500">
                                 <div className="flex items-center gap-2">
                                   {getPriorityIcon(c.priority)}
-                                  {c.due_date && (
-                                    <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                                  {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
+                                    <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
                                       <Calendar className="w-3.5 h-3.5" />
-                                      {formatDate(c.due_date)}
+                                      {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
                                     </span>
                                   )}
                                 </div>
@@ -559,10 +561,10 @@ export default function KanbanView() {
                               <div className="flex items-center justify-between text-xs text-gray-500">
                                 <div className="flex items-center gap-2">
                                   {getPriorityIcon(c.priority)}
-                                  {c.due_date && (
-                                    <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                                  {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
+                                    <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
                                       <Calendar className="w-3.5 h-3.5" />
-                                      {formatDate(c.due_date)}
+                                      {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
                                     </span>
                                   )}
                                 </div>
@@ -630,10 +632,10 @@ export default function KanbanView() {
                         <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                           <div className="flex items-center gap-2">
                             {getPriorityIcon(c.priority)}
-                            {c.due_date && (
-                              <span className={`${isOverdue(c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
+                            {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
+                              <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
                                 <Calendar className="w-3.5 h-3.5" />
-                                {formatDate(c.due_date)}
+                                {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
                               </span>
                             )}
                           </div>

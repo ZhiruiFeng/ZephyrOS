@@ -124,10 +124,10 @@ function WorkModeViewInner() {
       const dueDate = content.due_date ? new Date(content.due_date) : null
       
       if (viewMode === 'current') {
-        // Current: tasks due today or overdue, or in progress
+        // Current: tasks due today or overdue, or in progress (excluding completed tasks)
         return content.status === 'in_progress' || 
-               (dueDate && dueDate <= today) ||
-               content.status === 'pending'
+               (content.status === 'pending' && dueDate && dueDate <= today) ||
+               (content.status === 'pending' && !dueDate)
       } else {
         // Backlog: tasks on hold
         return content.status === 'on_hold'

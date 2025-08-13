@@ -15,7 +15,7 @@ import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hoo
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useCategories'
 import { categoriesApi, TaskMemory, TaskContent } from '../../lib/api'
 import { getPriorityIcon } from '../components/TaskIcons'
-import { isOverdue, formatDate } from '../utils/taskUtils'
+import { isOverdue, formatDate, getTaskDisplayDate, shouldShowOverdue } from '../utils/taskUtils'
 
 type ViewKey = 'current' | 'future' | 'archive'
 type DisplayMode = 'list' | 'grid'
@@ -481,11 +481,11 @@ function OverviewPageContent() {
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500 gap-1">
                             <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
-                            {c.due_date && (
-                              <span className={`inline-flex items-center gap-1 ${isOverdue(c.due_date) ? 'text-red-600' : ''}`}>
+                            {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
+                              <span className={`inline-flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
                                 <Calendar className="w-3 h-3" />
-                                {formatDate(c.due_date)}
-                                {isOverdue(c.due_date) && t.ui.overdue}
+                                {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
+                                {shouldShowOverdue(c.status, c.due_date) && t.ui.overdue}
                               </span>
                             )}
                           </div>
@@ -605,7 +605,7 @@ function OverviewPageContent() {
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <span className="text-xs text-gray-500">
-                              {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(task.created_at)}
+                              {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
                             </span>
                             {c.status === 'completed' && (
                               <button 
