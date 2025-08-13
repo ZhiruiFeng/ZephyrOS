@@ -151,10 +151,10 @@ function OAuthAuthorizeContent() {
     <div style={{ maxWidth: 520, margin: '4rem auto', padding: 24, border: '1px solid #e5e7eb', borderRadius: 12, fontFamily: 'system-ui, -apple-system' }}>
       <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>授权访问 ZephyrOS</h1>
       <div style={{ color: '#374151', fontSize: 14, marginBottom: 12 }}>
-        客户端请求：<strong>{client_id}</strong>
+        客户端请求：<strong>{clientId}</strong>
       </div>
       <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 4 }}>回调地址：</div>
-      <div style={{ color: '#111827', fontSize: 13, wordBreak: 'break-all', marginBottom: 12 }}>{redirect_uri}</div>
+      <div style={{ color: '#111827', fontSize: 13, wordBreak: 'break-all', marginBottom: 12 }}>{redirectUri}</div>
       {scope && (
         <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 12 }}>请求权限：{scope}</div>
       )}
@@ -173,7 +173,7 @@ function OAuthAuthorizeContent() {
             <button onClick={handleApprove} disabled={loading} style={{ padding: '8px 12px', background: '#111827', color: '#fff', borderRadius: 8 }}>
               同意并继续
             </button>
-            <a href={redirect_uri} style={{ padding: '8px 12px', background: '#e5e7eb', color: '#111827', borderRadius: 8 }}>拒绝</a>
+            <a href={redirectUri} style={{ padding: '8px 12px', background: '#e5e7eb', color: '#111827', borderRadius: 8 }}>拒绝</a>
           </div>
           <div style={{ color: '#ef4444', fontSize: 13, minHeight: 20, marginTop: 8 }}>{error}</div>
         </div>
