@@ -2,10 +2,10 @@
 
 ### 背景与目标
 - 将“创建任务”API 接入 ChatGPT 的 Actions，让 ChatGPT 以真实用户（Supabase 用户）身份创建任务。
-- 采用 OAuth 2.0 授权码模式（支持 PKCE）。登录复用 Supabase（含 Google 登录），OAuth 网关托管在后端域 `zmemory.vercel.app`。
+- 采用 OAuth 2.0 授权码模式（支持 PKCE）。登录复用 Supabase（含 Google 登录），OAuth 网关托管在后端域 `<BACKEND_DOMAIN>`。
 
 ### 架构与职责边界
-- 授权页与 OAuth 网关：`https://zmemory.vercel.app/oauth/*`
+- 授权页与 OAuth 网关：`<BACKEND_DOMAIN>/oauth/*`
 - Supabase 登录回跳（redirect_to）→ 回到授权页 `.../oauth/authorize`
 - OAuth 客户端回调（redirect_uri）→ 回到 ChatGPT 专属回调 `https://chatgpt.com/aip/g-.../oauth/callback` 或 `https://chat.openai.com/aip/g-.../oauth/callback`
 - ChatGPT 用获取到的 Supabase JWT 调你的 API：`POST /api/tasks`；后端用该 JWT 解析用户并写入 `tasks.user_id`
@@ -22,10 +22,10 @@
 
 ### Supabase（与运行时项目一致）
 - Auth → URL Configuration
-  - Site URL：可保留前端域 `https://zephyr-os.vercel.app`（兜底）
+  - Site URL：可保留前端域 `<FRONTEND_DOMAIN>`（兜底）
   - Additional Redirect URLs（生产必需）：
-    - `https://zmemory.vercel.app`
-    - `https://zmemory.vercel.app/oauth/authorize`
+    - `<BACKEND_DOMAIN>`
+    - `<BACKEND_DOMAIN>/oauth/authorize`
   - 本地（可选）：
     - `http://localhost:3001`
     - `http://localhost:3001/oauth/authorize`
@@ -36,23 +36,23 @@
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - 新增（登记 ChatGPT 为 OAuth 客户端；必须精确包含 GPT 的专属回调，含两个域）：
 ```env
-OAUTH_CLIENTS=[{"client_id":"chatgpt-zephyros","redirect_uris":["https://chatgpt.com/aip/g-<你的GPTID>/oauth/callback","https://chat.openai.com/aip/g-<你的GPTID>/oauth/callback"],"scopes":["tasks.write"]}]
+OAUTH_CLIENTS=[{"client_id":"<GPT_CLIENT_ID>","redirect_uris":["https://chatgpt.com/aip/g-<你的GPTID>/oauth/callback","https://chat.openai.com/aip/g-<你的GPTID>/oauth/callback"],"scopes":["tasks.write"]}]
 ```
 - 注意：复制/克隆 GPT 后 g-... 会变；需同步更新并重新部署。
 
 ### GPT Actions
 - Authentication: OAuth 2（Authorization Code）
-- Authorization URL: `https://zmemory.vercel.app/oauth/authorize`
-- Token URL: `https://zmemory.vercel.app/oauth/token`
+- Authorization URL: `<BACKEND_DOMAIN>/oauth/authorize`
+- Token URL: `<BACKEND_DOMAIN>/oauth/token`
 - Scopes: `tasks.write`
-- Client ID: `chatgpt-zephyros`（与 `OAUTH_CLIENTS` 一致）
+- Client ID: `<GPT_CLIENT_ID>`（与 `OAUTH_CLIENTS` 一致）
 - Client Secret: 留空
 - Token exchange method: Default（POST request）
 - Redirect URL: 使用 Actions 面板显示的“专属回调”（`.../aip/g-.../oauth/callback`），并加入 `OAUTH_CLIENTS.redirect_uris`
 
 ## 授权流程（闭环）
 1. ChatGPT 打开授权页  
-   `GET https://zmemory.vercel.app/oauth/authorize?...&client_id=chatgpt-zephyros&redirect_uri=https://chatgpt.com/aip/g-.../oauth/callback&state=...&scope=tasks.write`
+   `GET <BACKEND_DOMAIN>/oauth/authorize?...&client_id=<GPT_CLIENT_ID>&redirect_uri=https://chatgpt.com/aip/g-.../oauth/callback&state=...&scope=tasks.write`
 2. 授权页“使用 Google 登录” → 调 Supabase OAuth，redirectTo 固定为“干净路径”`/oauth/authorize`
 3. Google 登录成功 → 回到授权页（可能短暂出现 `#access_token=...`，页面自动解析并清除）
 4. 授权页“同意并继续” → `POST /oauth/authorize/issue` 签发授权码 → 302 到 ChatGPT 回调携带 `code`
@@ -62,25 +62,25 @@ OAUTH_CLIENTS=[{"client_id":"chatgpt-zephyros","redirect_uris":["https://chatgpt
 ## 手动调试（可选）
 - 换令牌（推荐 x-www-form-urlencoded）：
 ```bash
-curl -X POST https://zmemory.vercel.app/oauth/token \
+curl -X POST <BACKEND_DOMAIN>/oauth/token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=authorization_code&code=<code>&redirect_uri=https://chatgpt.com/aip/g-<你的GPTID>/oauth/callback&client_id=chatgpt-zephyros'
+  -d 'grant_type=authorization_code&code=<code>&redirect_uri=https://chatgpt.com/aip/g-<你的GPTID>/oauth/callback&client_id=<GPT_CLIENT_ID>'
 ```
 - 创建任务：
 ```bash
-curl -X POST https://zmemory.vercel.app/api/tasks \
+curl -X POST <BACKEND_DOMAIN>/api/tasks \
   -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
   -d '{"type":"task","content":{"title":"From OAuth","status":"pending","priority":"high"},"tags":["oauth"]}'
 ```
 - 查询用户信息（调试）：
 ```bash
-curl -H "Authorization: Bearer <access_token>" https://zmemory.vercel.app/oauth/userinfo
+curl -H "Authorization: Bearer <access_token>" <BACKEND_DOMAIN>/oauth/userinfo
 ```
 
 ## 我们踩过的坑与修复
-- 登录后回到前端域（非授权页）：Supabase 未允许 zmemory 授权页域/路径，或 redirectTo 太复杂  
-  → 白名单加入 `https://zmemory.vercel.app` 与 `/oauth/authorize`；授权页固定 `redirectTo` 为干净路径，授权参数存 `localStorage` 并恢复。
+- 登录后回到前端域（非授权页）：Supabase 未允许授权页域/路径，或 redirectTo 太复杂  
+  → 白名单加入 `<BACKEND_DOMAIN>` 与 `/oauth/authorize`；授权页固定 `redirectTo` 为干净路径，授权参数存 `localStorage` 并恢复。
 - 回调 URL 与 GPT ID 不一致：以 Actions 面板的回调为准，加入两个域的专属回调（chatgpt.com/chat.openai.com），重新部署后 Disconnect→Connect。
 - invalid_grant：授权码一次性、10 分钟有效；或参数不一致；或重启导致内存 code 丢失  
   → 重新授权，立刻换码，用表单编码，参数一字不差，发码/换码之间不要重启。
