@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: true, autoRefreshToken: true }
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 }) : null
 
 function OAuthAuthorizeContent() {
@@ -17,12 +17,14 @@ function OAuthAuthorizeContent() {
   const [email, setEmail] = React.useState<string | null>(null)
   const [isLoggedIn, setIsLoggedIn] = React.useState(false)
 
-  const client_id = params.get('client_id') || ''
-  const redirect_uri = params.get('redirect_uri') || ''
-  const scope = params.get('scope') || ''
-  const state = params.get('state') || ''
-  const code_challenge = params.get('code_challenge') || undefined
-  const code_challenge_method = (params.get('code_challenge_method') as 'S256' | 'plain' | null) || undefined
+  // Persist/restore OAuth query params to avoid losing them when redirectTo uses a clean path
+  const storageKey = 'oauth_authorize_params'
+  const [clientId, setClientId] = React.useState('')
+  const [redirectUri, setRedirectUri] = React.useState('')
+  const [scope, setScope] = React.useState('')
+  const [state, setState] = React.useState('')
+  const [codeChallenge, setCodeChallenge] = React.useState<string | undefined>(undefined)
+  const [codeChallengeMethod, setCodeChallengeMethod] = React.useState<'S256' | 'plain' | undefined>(undefined)
 
   React.useEffect(() => {
     let mounted = true
@@ -36,6 +38,40 @@ function OAuthAuthorizeContent() {
     }
     checkSession()
     const { data: sub } = supabase?.auth.onAuthStateChange(() => checkSession()) || { data: { subscription: null } as any }
+    
+    // Initialize query params from URL or from localStorage fallback
+    const init = () => {
+      const fromUrl = {
+        client_id: params.get('client_id') || '',
+        redirect_uri: params.get('redirect_uri') || '',
+        scope: params.get('scope') || '',
+        state: params.get('state') || '',
+        code_challenge: params.get('code_challenge') || undefined,
+        code_challenge_method: (params.get('code_challenge_method') as 'S256' | 'plain' | null) || undefined,
+      }
+      if (fromUrl.client_id || fromUrl.redirect_uri) {
+        setClientId(fromUrl.client_id)
+        setRedirectUri(fromUrl.redirect_uri)
+        setScope(fromUrl.scope)
+        setState(fromUrl.state)
+        setCodeChallenge(fromUrl.code_challenge)
+        setCodeChallengeMethod(fromUrl.code_challenge_method)
+      } else {
+        try {
+          const saved = localStorage.getItem(storageKey)
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            setClientId(parsed.client_id || '')
+            setRedirectUri(parsed.redirect_uri || '')
+            setScope(parsed.scope || '')
+            setState(parsed.state || '')
+            setCodeChallenge(parsed.code_challenge)
+            setCodeChallengeMethod(parsed.code_challenge_method)
+          }
+        } catch {}
+      }
+    }
+    init()
     return () => {
       mounted = false
       sub?.subscription?.unsubscribe?.()
@@ -47,7 +83,23 @@ function OAuthAuthorizeContent() {
     setLoading(true)
     setError(null)
     try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
+      // Save current query params for restoration after redirect
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          scope,
+          state,
+          code_challenge: codeChallenge,
+          code_challenge_method: codeChallengeMethod,
+        }))
+      } catch {}
+
+      const cleanAuthorizeUrl = `${window.location.origin}/oauth/authorize`
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: cleanAuthorizeUrl }
+      })
       if (error) setError(error.message)
     } catch (e: any) {
       setError(String(e?.message || e))
@@ -72,7 +124,15 @@ function OAuthAuthorizeContent() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ client_id, redirect_uri, scope, state, code_challenge, code_challenge_method, refresh_token: refreshToken })
+        body: JSON.stringify({
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          scope,
+          state,
+          code_challenge: codeChallenge,
+          code_challenge_method: codeChallengeMethod,
+          refresh_token: refreshToken
+        })
       })
       if (!res.ok) {
         const txt = await res.text()
