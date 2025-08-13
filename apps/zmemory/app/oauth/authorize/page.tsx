@@ -39,6 +39,17 @@ function OAuthAuthorizeContent() {
     checkSession()
     const { data: sub } = supabase?.auth.onAuthStateChange(() => checkSession()) || { data: { subscription: null } as any }
     
+    // If coming back with hash fragment (access_token=...), let Supabase parse it, then clean the URL
+    const hash = typeof window !== 'undefined' ? window.location.hash || '' : ''
+    if (hash.includes('access_token=')) {
+      supabase?.auth.getSession().finally(() => {
+        try {
+          const cleanAuthorizeUrl = `${window.location.origin}/oauth/authorize`
+          window.history.replaceState(null, '', cleanAuthorizeUrl)
+        } catch {}
+      })
+    }
+
     // Initialize query params from URL or from localStorage fallback
     const init = () => {
       const fromUrl = {
