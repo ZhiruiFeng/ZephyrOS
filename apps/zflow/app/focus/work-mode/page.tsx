@@ -10,10 +10,11 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
-import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu } from 'lucide-react'
+import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square } from 'lucide-react'
 import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTimer } from '../../../hooks/useTimer'
 
 interface TaskWithCategory extends TaskMemory {
   category?: Category
@@ -48,6 +49,9 @@ function WorkModeViewInner() {
     assignee: '',
     tags: [] as string[]
   })
+
+  // Time tracking
+  const timer = useTimer(5000)
 
   // Auto-save functionality for notes
   const autoSaveNotes = useCallback(async () => {
@@ -547,6 +551,38 @@ function WorkModeViewInner() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Minimal Timer UI */}
+                  {selectedTask && (
+                    <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded-md text-sm">
+                      <Clock className="w-4 h-4 text-gray-600" />
+                      {timer.isRunning && timer.runningTaskId === selectedTask.id ? (
+                        <span className="text-gray-700">
+                          {Math.floor(timer.elapsedMs / 60000)}m {Math.floor((timer.elapsedMs % 60000) / 1000)}s
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">{t.ui.idle}</span>
+                      )}
+                    </div>
+                  )}
+                  {selectedTask && (
+                    timer.isRunning && timer.runningTaskId === selectedTask.id ? (
+                      <button
+                        onClick={() => timer.stop(selectedTask.id)}
+                        className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+                      >
+                        <Square className="w-4 h-4" />
+                        {t.common.stop}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => timer.start(selectedTask.id, { autoSwitch: true })}
+                        className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                      >
+                        <Play className="w-4 h-4" />
+                        {t.common.start}
+                      </button>
+                    )
+                  )}
                   <button
                     onClick={() => setShowTaskInfo(!showTaskInfo)}
                     className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors text-sm"

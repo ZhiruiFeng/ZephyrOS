@@ -59,6 +59,20 @@ export interface UpdateTaskRequest {
   metadata?: Record<string, any>
 }
 
+// ===== Time Tracking API types =====
+export interface TimeEntry {
+  id: string
+  task_id: string
+  start_at: string
+  end_at?: string | null
+  duration_minutes?: number | null
+  note?: string | null
+  source: 'timer' | 'manual' | 'import'
+}
+
+export interface StartTimerOptions { autoSwitch?: boolean }
+export interface StopTimerOptions { overrideEndAt?: string }
+
 // Categories API
 export const categoriesApi = {
   async getAll(): Promise<Category[]> {
@@ -287,6 +301,104 @@ export const tasksApi = {
       return
     }
   }
+}
+
+// Time tracking API client
+export const timeTrackingApi = {
+  async getRunning(): Promise<{ entry: Pick<TimeEntry, 'id' | 'task_id' | 'start_at'> | null }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/time-entries/running`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to fetch running timer')
+    return res.json()
+  },
+
+  async start(taskId: string, options?: StartTimerOptions): Promise<{ entry: Pick<TimeEntry, 'id' | 'task_id' | 'start_at'> } > {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/tasks/${taskId}/timer/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ autoSwitch: options?.autoSwitch ?? false }),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to start timer')
+    return res.json()
+  },
+
+  async stop(taskId: string, options?: StopTimerOptions): Promise<{ entry: TimeEntry | null }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/tasks/${taskId}/timer/stop`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ overrideEndAt: options?.overrideEndAt }),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to stop timer')
+    return res.json()
+  },
+
+  async list(taskId: string, params?: { from?: string; to?: string; limit?: number; offset?: number }): Promise<{ entries: TimeEntry[] }> {
+    const sp = new URLSearchParams()
+    if (params?.from) sp.set('from', params.from)
+    if (params?.to) sp.set('to', params.to)
+    if (params?.limit !== undefined) sp.set('limit', String(params.limit))
+    if (params?.offset !== undefined) sp.set('offset', String(params.offset))
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/tasks/${taskId}/time-entries?${sp.toString()}`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to fetch time entries')
+    return res.json()
+  },
+
+  async create(taskId: string, body: { start_at: string; end_at?: string; note?: string }): Promise<{ entry: TimeEntry }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/tasks/${taskId}/time-entries`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ ...body, source: 'manual' }),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to create time entry')
+    return res.json()
+  },
+
+  async update(entryId: string, body: { start_at?: string; end_at?: string; note?: string }): Promise<{ entry: TimeEntry }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/time-entries/${entryId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify(body),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to update time entry')
+    return res.json()
+  },
+
+  async remove(entryId: string): Promise<void> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/time-entries/${entryId}`, {
+      method: 'DELETE',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to delete time entry')
+  },
 }
 
 // Compatible export: maintain apiClient interface for legacy hooks

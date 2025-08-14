@@ -237,9 +237,21 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, tasks);
     }
 
-    // Enforce auth
+    // Enforce auth (dev fallback to mock when not authenticated)
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
+      if (process.env.NODE_ENV !== 'production') {
+        // In development, allow UI to work without auth
+        let tasks = generateMockTasks()
+        // Apply minimal filtering for better UX
+        if (query.status) tasks = tasks.filter(t => t.content.status === query.status)
+        if (query.priority) tasks = tasks.filter(t => t.content.priority === query.priority)
+        if (query.category) tasks = tasks.filter(t => t.content.category === query.category)
+        const start = query.offset
+        const end = start + query.limit
+        tasks = tasks.slice(start, end)
+        return jsonWithCors(request, tasks)
+      }
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
