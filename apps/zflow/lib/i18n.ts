@@ -238,6 +238,10 @@ export interface TranslationKeys {
     timelineView: string;
     timeListView: string;
     weekdays: string[];
+    startTime?: string;
+    endTime?: string;
+    note?: string;
+    addTimeEntry?: string;
   };
 
   // Messages and notifications
@@ -468,6 +472,10 @@ const translations: Record<Language, TranslationKeys> = {
       timelineView: 'Timeline View',
       timeListView: 'List View',
       weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      startTime: 'Start time',
+      endTime: 'End time',
+      note: 'Note',
+      addTimeEntry: 'Add time entry',
       // FloatingAddButton
       newTask: 'New Task',
       newTaskShortcut: 'New Task (Shortcut: Ctrl+N)',
@@ -725,6 +733,10 @@ const translations: Record<Language, TranslationKeys> = {
       timelineView: '日历视图',
       timeListView: '列表视图',
       weekdays: ['日', '一', '二', '三', '四', '五', '六'],
+      startTime: '开始时间',
+      endTime: '结束时间',
+      note: '备注',
+      addTimeEntry: '新增时间段',
       // FloatingAddButton
       newTask: '新建任务',
       newTaskShortcut: '新建任务 (快捷键: Ctrl+N)',

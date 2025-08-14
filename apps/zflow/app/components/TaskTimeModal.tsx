@@ -397,8 +397,9 @@ function DayTimeline({
 
       {selectedDay && mode === 'list' && (
         <div className="space-y-2 max-h-[32rem] overflow-auto pr-1">
+          <CreateItem taskId={''} dateKey={selectedDay} onCreated={refreshEntries} />
           {dayEvents.map((ev) => (
-            <ListItem key={ev.id} entryId={ev.id} label={ev.label} note={ev.note} onDeleted={refreshEntries} />
+            <ListItem key={ev.id} entryId={ev.id} label={ev.label} note={ev.note} onChanged={refreshEntries} />
           ))}
         </div>
       )}
@@ -406,15 +407,36 @@ function DayTimeline({
   )
 }
 
-function ListItem({ entryId, label, note, onDeleted }: { entryId: string; label: string; note?: string | null; onDeleted: () => void }) {
+function ListItem({ entryId, label, note, onChanged }: { entryId: string; label: string; note?: string | null; onChanged: () => void }) {
   const { t } = useTranslation()
   const [busy, setBusy] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
+  const [start, setStart] = React.useState<string>('')
+  const [end, setEnd] = React.useState<string>('')
+  const [memo, setMemo] = React.useState<string>(note || '')
+
   const onDelete = async () => {
     if (busy) return
     setBusy(true)
     try {
       await timeTrackingApi.remove(entryId)
-      onDeleted()
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+  const onSave = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const payload: any = {}
+      if (start) payload.start_at = new Date(start).toISOString()
+      if (end) payload.end_at = new Date(end).toISOString()
+      if (memo !== note) payload.note = memo
+      if (Object.keys(payload).length === 0) { setEditing(false); setBusy(false); return }
+      await timeTrackingApi.update(entryId, payload)
+      setEditing(false)
+      onChanged()
     } finally {
       setBusy(false)
     }
@@ -423,9 +445,73 @@ function ListItem({ entryId, label, note, onDeleted }: { entryId: string; label:
     <div className="p-2 border border-gray-200 rounded-md">
       <div className="flex items-center justify-between text-sm text-gray-700">
         <span>{label}</span>
-        <button onClick={onDelete} disabled={busy} className="px-2 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">{t.common.delete}</button>
+        <div className="flex items-center gap-2">
+          {!editing && (
+            <button onClick={() => setEditing(true)} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">{t.common.edit}</button>
+          )}
+          <button onClick={onDelete} disabled={busy} className="px-2 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">{t.common.delete}</button>
+        </div>
       </div>
-      {note && <div className="mt-1 text-xs text-gray-500">{note}</div>}
+      {!editing ? (
+        note ? <div className="mt-1 text-xs text-gray-500">{note}</div> : null
+      ) : (
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder={t.ui.startTime} />
+          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder={t.ui.endTime} />
+          <div className="flex items-center gap-2">
+            <button onClick={onSave} disabled={busy} className="px-2 py-1 text-xs rounded-md border bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">{t.common.save}</button>
+            <button onClick={() => { setEditing(false); setStart(''); setEnd(''); setMemo(note || '') }} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">{t.common.cancel}</button>
+          </div>
+          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={2} className="sm:col-span-3 px-2 py-1 text-xs border rounded" placeholder={t.ui.note} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CreateItem({ taskId, dateKey, onCreated }: { taskId: string; dateKey: string; onCreated: () => void }) {
+  const { t } = useTranslation()
+  const [busy, setBusy] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
+  const [start, setStart] = React.useState<string>('')
+  const [end, setEnd] = React.useState<string>('')
+  const [memo, setMemo] = React.useState<string>('')
+
+  const onSave = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      if (!start) return
+      const s = new Date(start).toISOString()
+      const payload: any = { start_at: s }
+      if (end) payload.end_at = new Date(end).toISOString()
+      if (memo) payload.note = memo
+      await timeTrackingApi.create(taskId, payload)
+      setOpen(false)
+      setStart(''); setEnd(''); setMemo('')
+      onCreated()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const datePrefix = dateKey ? `${dateKey}T` : ''
+
+  return (
+    <div className="p-2 border border-dashed border-gray-300 rounded-md">
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">+ {t.ui.addTimeEntry}</button>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder={t.ui.startTime} min={`${datePrefix}00:00`} max={`${datePrefix}23:59`} />
+          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder={t.ui.endTime} min={`${datePrefix}00:00`} max={`${datePrefix}23:59`} />
+          <div className="flex items-center gap-2">
+            <button onClick={onSave} disabled={busy} className="px-2 py-1 text-xs rounded-md border bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">{t.common.save}</button>
+            <button onClick={() => { setOpen(false); setStart(''); setEnd(''); setMemo('') }} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">{t.common.cancel}</button>
+          </div>
+          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={2} className="sm:col-span-3 px-2 py-1 text-xs border rounded" placeholder={t.ui.note} />
+        </div>
+      )}
     </div>
   )
 }
