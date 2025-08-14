@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X } from 'lucide-react'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X, Timer } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/LoginPage'
@@ -11,6 +11,7 @@ import CategorySidebar from '../components/CategorySidebar'
 import FloatingAddButton from '../components/FloatingAddButton'
 import AddTaskModal from '../components/AddTaskModal'
 import TaskEditor from '../components/TaskEditor'
+import TaskTimeModal from '../components/TaskTimeModal'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useCategories'
 import { categoriesApi, TaskMemory, TaskContent } from '../../lib/api'
@@ -53,6 +54,7 @@ function OverviewPageContent() {
 
   // Mobile category selector
   const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
+  const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
 
   // Categories are now loaded via useCategories hook
 
@@ -475,8 +477,15 @@ function OverviewPageContent() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 md:gap-2">
+                          <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                title="查看专注时间"
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500 gap-1">
@@ -521,8 +530,15 @@ function OverviewPageContent() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 md:gap-2">
+                          <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                title="查看专注时间"
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                           <div className="flex flex-col gap-2">
@@ -601,6 +617,13 @@ function OverviewPageContent() {
                             </div>
                             <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                title="查看专注时间"
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -651,6 +674,14 @@ function OverviewPageContent() {
         categories={categories}
         onSave={handleSaveTask}
         title={t.task.editTask}
+      />
+
+      {/* Task Time Modal */}
+      <TaskTimeModal
+        isOpen={!!timeModalTask}
+        onClose={() => setTimeModalTask(null)}
+        taskId={timeModalTask?.id || ''}
+        taskTitle={timeModalTask?.title}
       />
 
       {/* Mobile Category Selector Modal */}

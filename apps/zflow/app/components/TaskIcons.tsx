@@ -1,17 +1,7 @@
 'use client'
 
-import React, { Suspense } from 'react'
-import dynamicIconImports from 'lucide-react/dynamicIconImports'
-
-const Lazy = (Comp: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
-  <Suspense fallback={null}>
-    <Comp {...props} />
-  </Suspense>
-)
-
-const AlertCircle = Lazy(React.lazy(dynamicIconImports['alert-circle'] as any))
-const Clock = Lazy(React.lazy(dynamicIconImports['clock'] as any))
-const Circle = Lazy(React.lazy(dynamicIconImports['circle'] as any))
+import React from 'react'
+import { AlertCircle, Clock, Circle } from 'lucide-react'
 
 // 获取优先级图标
 export const getPriorityIcon = (priority: string) => {
