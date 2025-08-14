@@ -1,14 +1,20 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '../../../../../../lib/auth'
-import { supabase as serviceClient } from '../../../../../../lib/supabase'
-import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '../../../../../../lib/validators'
-import { createOptionsResponse, jsonWithCors } from '../../../../../../lib/security'
+import { createClientForRequest, getUserIdFromRequest } from '../../../../../lib/auth'
+import { supabase as serviceClient } from '../../../../../lib/supabase'
+import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '../../../../../lib/validators'
+import { createOptionsResponse, jsonWithCors } from '../../../../../lib/security'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: taskId } = await params
   try {
     const userId = await getUserIdFromRequest(request)
-    if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    if (!userId) {
+      if (process.env.NODE_ENV !== 'production') {
+        // Dev fallback: allow UI to open modal without auth and show empty entries
+        return jsonWithCors(request, { entries: [] })
+      }
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    }
     const client = createClientForRequest(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
@@ -29,8 +35,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (to) query = query.lte('start_at', to)
 
     const { data, error } = await query
-    if (error) return jsonWithCors(request, { error: 'Failed to fetch entries' }, 500)
-    return jsonWithCors(request, { entries: data })
+    if (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('time-entries GET error (dev fallback):', error)
+        return jsonWithCors(request, { entries: [] })
+      }
+      return jsonWithCors(request, { error: 'Failed to fetch entries' }, 500)
+    }
+    return jsonWithCors(request, { entries: data || [] })
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
