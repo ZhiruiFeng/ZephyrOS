@@ -225,6 +225,19 @@ export interface TranslationKeys {
     assignee: string;
     minutes: string;
     idle: string;
+    // Time tracking
+    focusTime: string;
+    viewTimeSegmentsByDay: string;
+    year: string;
+    month: string;
+    pleaseSelectDate: string;
+    calendar: string;
+    zoomOut: string;
+    zoomIn: string;
+    noTimeSegments: string;
+    timelineView: string;
+    timeListView: string;
+    weekdays: string[];
   };
 
   // Messages and notifications
@@ -442,6 +455,19 @@ const translations: Record<Language, TranslationKeys> = {
       assignee: 'Assignee',
       minutes: 'minutes',
       idle: 'Idle',
+      // Time tracking
+      focusTime: 'Focus Time',
+      viewTimeSegmentsByDay: 'View task focus time segments by day',
+      year: 'Year',
+      month: 'Month', 
+      pleaseSelectDate: 'Please select date',
+      calendar: 'Calendar',
+      zoomOut: 'Zoom out',
+      zoomIn: 'Zoom in',
+      noTimeSegments: 'No time segments',
+      timelineView: 'Timeline View',
+      timeListView: 'List View',
+      weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       // FloatingAddButton
       newTask: 'New Task',
       newTaskShortcut: 'New Task (Shortcut: Ctrl+N)',
@@ -686,6 +712,19 @@ const translations: Record<Language, TranslationKeys> = {
       assignee: '负责人',
       minutes: '分钟',
       idle: '空闲',
+      // Time tracking
+      focusTime: '专注时间',
+      viewTimeSegmentsByDay: '按日查看该任务的专注时间段',
+      year: '年',
+      month: '月',
+      pleaseSelectDate: '请选择日期',
+      calendar: '日历',
+      zoomOut: '缩小',
+      zoomIn: '放大',
+      noTimeSegments: '无时间段',
+      timelineView: '日历视图',
+      timeListView: '列表视图',
+      weekdays: ['日', '一', '二', '三', '四', '五', '六'],
       // FloatingAddButton
       newTask: '新建任务',
       newTaskShortcut: '新建任务 (快捷键: Ctrl+N)',

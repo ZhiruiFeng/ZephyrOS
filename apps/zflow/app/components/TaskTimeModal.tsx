@@ -4,6 +4,7 @@ import React from 'react'
 import useSWR from 'swr'
 import { X, ChevronLeft, ChevronRight, Clock, List, Calendar as CalendarIcon, Minus, Plus } from 'lucide-react'
 import { timeTrackingApi, TimeEntry } from '../../lib/api'
+import { useTranslation } from '../../lib/i18n'
 
 interface TaskTimeModalProps {
   isOpen: boolean
@@ -42,6 +43,7 @@ function minutesOf(entries: TimeEntry[]) {
 }
 
 export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: TaskTimeModalProps) {
+  const { t } = useTranslation()
   const [month, setMonth] = React.useState<Date>(() => startOfMonth(new Date()))
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null)
   const [viewMode, setViewMode] = React.useState<'timeline' | 'list'>('timeline')
@@ -95,8 +97,8 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-primary-600" />
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">专注时间 · {taskTitle || ''}</h3>
-              <p className="text-xs text-gray-500">按日查看该任务的专注时间段</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t.ui.focusTime} · {taskTitle || ''}</h3>
+              <p className="text-xs text-gray-500">{t.ui.viewTimeSegmentsByDay}</p>
             </div>
           </div>
           <button onClick={close} className="p-2 text-gray-500 hover:text-gray-700 rounded-md">
@@ -112,14 +114,14 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
             <div className="flex items-center justify-between mb-2">
               <button onClick={prevMonth} className="p-2 rounded-md hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
               <div className="text-sm font-medium text-gray-700">
-                {month.getFullYear()} 年 {month.getMonth() + 1} 月
+                {month.getFullYear()} {t.ui.year} {month.getMonth() + 1} {t.ui.month}
               </div>
               <button onClick={nextMonth} className="p-2 rounded-md hover:bg-gray-100"><ChevronRight className="w-4 h-4" /></button>
             </div>
 
             {/* Weekday headers */}
             <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
-              {['日','一','二','三','四','五','六'].map((w) => (
+              {t.ui.weekdays.map((w) => (
                 <div key={w} className="py-1">{w}</div>
               ))}
             </div>
@@ -216,6 +218,7 @@ function DayTimeline({
   className?: string
   refreshEntries: () => void
 }) {
+  const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const [hover, setHover] = React.useState<{ x: number; y: number } | null>(null)
 
@@ -281,42 +284,42 @@ function DayTimeline({
   return (
     <div className={`p-4 ${className || ''}`}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-medium text-gray-700">{selectedDay || '请选择日期'}</div>
+        <div className="text-sm font-medium text-gray-700">{selectedDay || t.ui.pleaseSelectDate}</div>
         <div className="flex items-center gap-2">
           {/* View toggle */}
           <div className="flex items-center rounded-md border border-gray-200 overflow-hidden">
             <button
               onClick={() => onModeChange('timeline')}
               className={`px-2 py-1 text-xs flex items-center gap-1 ${mode === 'timeline' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-              title="日历视图"
+              title={t.ui.timelineView}
             >
-              <CalendarIcon className="w-3.5 h-3.5" /> 日历
+              <CalendarIcon className="w-3.5 h-3.5" /> {t.ui.calendar}
             </button>
             <button
               onClick={() => onModeChange('list')}
               className={`px-2 py-1 text-xs flex items-center gap-1 ${mode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-              title="列表视图"
+              title={t.ui.timeListView}
             >
-              <List className="w-3.5 h-3.5" /> 列表
+              <List className="w-3.5 h-3.5" /> {t.ui.listView}
             </button>
           </div>
           {/* Zoom controls for timeline */}
           {mode === 'timeline' && (
             <div className="flex items-center rounded-md border border-gray-200 overflow-hidden ml-1">
-              <button onClick={onZoomOut} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title="缩小">
+              <button onClick={onZoomOut} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title={t.ui.zoomOut}>
                 <Minus className="w-3.5 h-3.5" />
               </button>
-              <button onClick={onZoomIn} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title="放大">
+              <button onClick={onZoomIn} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title={t.ui.zoomIn}>
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
         </div>
       </div>
-      {isLoading && <div className="text-sm text-gray-500">加载中...</div>}
-      {error && <div className="text-sm text-red-600">加载失败</div>}
+      {isLoading && <div className="text-sm text-gray-500">{t.common.loading}...</div>}
+      {error && <div className="text-sm text-red-600">{t.messages.failedToLoadTasks}</div>}
       {!isLoading && !error && (!selectedDay || dayEvents.length === 0) && (
-        <div className="text-sm text-gray-400">无时间段</div>
+        <div className="text-sm text-gray-400">{t.ui.noTimeSegments}</div>
       )}
       {/* Content */}
       {selectedDay && mode === 'timeline' && (
@@ -404,6 +407,7 @@ function DayTimeline({
 }
 
 function ListItem({ entryId, label, note, onDeleted }: { entryId: string; label: string; note?: string | null; onDeleted: () => void }) {
+  const { t } = useTranslation()
   const [busy, setBusy] = React.useState(false)
   const onDelete = async () => {
     if (busy) return
@@ -419,7 +423,7 @@ function ListItem({ entryId, label, note, onDeleted }: { entryId: string; label:
     <div className="p-2 border border-gray-200 rounded-md">
       <div className="flex items-center justify-between text-sm text-gray-700">
         <span>{label}</span>
-        <button onClick={onDelete} disabled={busy} className="px-2 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">删除</button>
+        <button onClick={onDelete} disabled={busy} className="px-2 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">{t.common.delete}</button>
       </div>
       {note && <div className="mt-1 text-xs text-gray-500">{note}</div>}
     </div>
