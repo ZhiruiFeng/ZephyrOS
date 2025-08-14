@@ -66,10 +66,10 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
       map.set(dayKey, arr)
     }
     // sort entries per day by start_at asc
-    for (const [k, arr] of map.entries()) {
+    map.forEach((arr, k) => {
       arr.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
       map.set(k, arr)
-    }
+    })
     return map
   }, [entries])
 
