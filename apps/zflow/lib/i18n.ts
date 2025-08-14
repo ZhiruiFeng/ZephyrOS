@@ -26,6 +26,8 @@ export interface TranslationKeys {
     back: string;
     next: string;
     previous: string;
+    start: string;
+    stop: string;
   };
 
   // Navigation
@@ -222,6 +224,7 @@ export interface TranslationKeys {
     estimatedDurationMinutes: string;
     assignee: string;
     minutes: string;
+    idle: string;
   };
 
   // Messages and notifications
@@ -290,6 +293,8 @@ const translations: Record<Language, TranslationKeys> = {
       back: 'Back',
       next: 'Next',
       previous: 'Previous',
+      start: 'Start',
+      stop: 'Stop',
     },
     nav: {
       home: 'Home',
@@ -436,6 +441,7 @@ const translations: Record<Language, TranslationKeys> = {
       estimatedDurationMinutes: 'Estimated Duration (minutes)',
       assignee: 'Assignee',
       minutes: 'minutes',
+      idle: 'Idle',
       // FloatingAddButton
       newTask: 'New Task',
       newTaskShortcut: 'New Task (Shortcut: Ctrl+N)',
@@ -531,6 +537,8 @@ const translations: Record<Language, TranslationKeys> = {
       back: '返回',
       next: '下一步',
       previous: '上一步',
+      start: '开始',
+      stop: '停止',
     },
     nav: {
       home: '首页',
@@ -677,6 +685,7 @@ const translations: Record<Language, TranslationKeys> = {
       estimatedDurationMinutes: '预估时长 (分钟)',
       assignee: '负责人',
       minutes: '分钟',
+      idle: '空闲',
       // FloatingAddButton
       newTask: '新建任务',
       newTaskShortcut: '新建任务 (快捷键: Ctrl+N)',
