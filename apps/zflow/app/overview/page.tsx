@@ -12,6 +12,7 @@ import FloatingAddButton from '../components/FloatingAddButton'
 import AddTaskModal from '../components/AddTaskModal'
 import TaskEditor from '../components/TaskEditor'
 import TaskTimeModal from '../components/TaskTimeModal'
+import DailyTimeModal from '../components/DailyTimeModal'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useCategories'
 import { categoriesApi, TaskMemory, TaskContent } from '../../lib/api'
@@ -55,6 +56,7 @@ function OverviewPageContent() {
   // Mobile category selector
   const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
   const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
+  const [showDailyModal, setShowDailyModal] = React.useState(false)
 
   // Categories are now loaded via useCategories hook
 
@@ -434,6 +436,15 @@ function OverviewPageContent() {
                   <Focus className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="hidden sm:inline">Focus</span>
                 </Link>
+
+                {/* Daily time overview */}
+                <button
+                  onClick={() => setShowDailyModal(true)}
+                  className="glass px-3 md:px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm hover:shadow-sm hover:-translate-y-0.5"
+                >
+                  <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Time</span>
+                </button>
               </div>
             </div>
 
@@ -683,6 +694,9 @@ function OverviewPageContent() {
         taskId={timeModalTask?.id || ''}
         taskTitle={timeModalTask?.title}
       />
+
+      {/* Daily Time Overview Modal */}
+      <DailyTimeModal isOpen={showDailyModal} onClose={() => setShowDailyModal(false)} />
 
       {/* Mobile Category Selector Modal */}
       {showMobileCategorySelector && (

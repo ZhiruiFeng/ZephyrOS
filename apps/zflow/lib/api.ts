@@ -399,6 +399,17 @@ export const timeTrackingApi = {
     })
     if (!res.ok) throw new Error('Failed to delete time entry')
   },
+
+  async listDay(params: { from: string; to: string }): Promise<{ entries: (TimeEntry & { category?: { id: string; name: string; color: string } | null })[] }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const sp = new URLSearchParams({ from: params.from, to: params.to })
+    const res = await fetch(`${API_BASE}/api/time-entries/day?${sp.toString()}`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to fetch day entries')
+    return res.json()
+  },
 }
 
 // Compatible export: maintain apiClient interface for legacy hooks
