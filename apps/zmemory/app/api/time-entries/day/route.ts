@@ -52,12 +52,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Map data to include joined fields
-    const mappedEntries = (data || []).map(entry => ({
-      ...entry,
-      task_title: entry.task?.title,
-      category_name: entry.category?.name,
-      category_color: entry.category?.color,
-    }))
+    const mappedEntries = (data || []).map((entry: any) => {
+      const task = Array.isArray(entry.task) ? entry.task[0] : entry.task
+      const category = Array.isArray(entry.category) ? entry.category[0] : entry.category
+      return {
+        ...entry,
+        task_title: task?.title,
+        category_name: category?.name,
+        category_color: category?.color,
+      }
+    })
 
     return jsonWithCors(request, { entries: mappedEntries })
   } catch (e) {
