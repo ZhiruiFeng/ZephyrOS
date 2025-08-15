@@ -345,7 +345,7 @@ function WorkModeViewInner() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-200px)] lg:h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="flex min-h-[calc(100vh-200px)] lg:min-h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Mobile Sidebar Overlay */}
       {mobileSidebarOpen && (
         <div 
@@ -856,7 +856,7 @@ function WorkModeViewInner() {
             )}
 
             {/* Markdown Editor */}
-            <div className="flex-1 p-4 lg:p-6">
+            <div className="flex-1 min-h-0 p-4 lg:p-6">
               <MarkdownEditor
                 value={notes}
                 onChange={setNotes}

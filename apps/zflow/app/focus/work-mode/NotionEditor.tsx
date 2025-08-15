@@ -68,7 +68,7 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose base-content focus:outline-none min-h-[300px] max-w-none',
+        class: 'prose prose-sm sm:prose base-content focus:outline-none min-h-[300px] max-w-none w-full',
       },
     },
   })
@@ -89,7 +89,7 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
   }, [value, editor])
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col min-h-full">
       {/* 工具栏（简洁 Notion 风格） */}
       <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 p-2">
         <button onClick={() => editor?.chain().focus().toggleBold().run()} className="px-2 py-1 text-sm hover:bg-gray-200 rounded">B</button>
@@ -109,8 +109,8 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
         <button onClick={() => editor?.chain().focus().setHorizontalRule().run()} className="px-2 py-1 text-sm hover:bg-gray-200 rounded">— HR</button>
         <button onClick={() => editor?.chain().focus().toggleCodeBlock().run()} className="px-2 py-1 text-sm hover:bg-gray-200 rounded">{'</>'} Code</button>
       </div>
-      <div className="flex-1 p-3 lg:p-4 overflow-y-auto">
-        <EditorContent editor={editor} className="min-h-[50vh]" />
+      <div className="flex-1 p-3 lg:p-4">
+        <EditorContent editor={editor} className="min-h-[300px] w-full" />
       </div>
     </div>
   )
