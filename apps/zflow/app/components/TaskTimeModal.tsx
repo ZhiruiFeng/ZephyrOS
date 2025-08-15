@@ -184,6 +184,7 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
             onZoomOut={() => setMinuteHeight((v) => Math.max(0.4, +(v - 0.1).toFixed(2)))}
             className="md:col-span-5"
             refreshEntries={() => mutate()}
+            taskTitle={taskTitle}
           />
         </div>
       </div>
@@ -204,6 +205,7 @@ function DayTimeline({
   onZoomOut,
   className,
   refreshEntries,
+  taskTitle,
 }: {
   selectedDay: string | null
   isLoading: boolean
@@ -217,6 +219,7 @@ function DayTimeline({
   onZoomOut: () => void
   className?: string
   refreshEntries: () => void
+  taskTitle?: string
 }) {
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement | null>(null)
@@ -233,6 +236,7 @@ function DayTimeline({
       laneCount: number
       label: string
       note?: string | null
+      taskTitle?: string
     }>
     const list = entries.get(selectedDay) || []
     // Normalize to local day bounds
@@ -249,7 +253,7 @@ function DayTimeline({
       const minutes = Math.max(1, Math.round((ee.getTime() - s.getTime()) / 60000))
       const height = Math.max(6, minutes * minuteHeight)
       const label = `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${ee.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      return { id: e.id, start: s, end: ee, top, height, lane: 0, laneCount: 1, label, note: e.note }
+      return { id: e.id, start: s, end: ee, top, height, lane: 0, laneCount: 1, label, note: e.note, taskTitle: e.task_title }
     })
     // Sort by start
     normalized.sort((a, b) => a.start.getTime() - b.start.getTime())
@@ -365,10 +369,16 @@ function DayTimeline({
                   width: `calc(${width}% - 8px)`,
                   height: `${ev.height}px`,
                 }}
-                title={ev.label}
+                title={`${ev.taskTitle || taskTitle || '任务'} - ${ev.label}`}
               >
-                <div className="text-[11px] font-medium truncate">{ev.label}</div>
-                {ev.note && <div className="text-[10px] text-primary-700 truncate">{ev.note}</div>}
+                {/* 任务标题 - 显示在中间 */}
+                {ev.taskTitle && (
+                  <div className="text-[11px] font-semibold truncate text-primary-800 mb-1">{ev.taskTitle}</div>
+                )}
+                {/* 时间标签 */}
+                <div className="text-[10px] font-medium truncate text-primary-700">{ev.label}</div>
+                {/* 备注 */}
+                {ev.note && <div className="text-[9px] text-primary-600 truncate mt-0.5">{ev.note}</div>}
               </div>
             )
           })}

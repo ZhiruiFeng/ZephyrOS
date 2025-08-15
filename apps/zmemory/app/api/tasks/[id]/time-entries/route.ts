@@ -25,7 +25,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     let query = client
       .from('task_time_entries')
-      .select('id, task_id, start_at, end_at, duration_minutes, note, source')
+      .select(`
+        id, task_id, start_at, end_at, duration_minutes, note, source,
+        task:tasks(title),
+        category:categories(name, color)
+      `)
       .eq('user_id', userId)
       .eq('task_id', taskId)
       .order('start_at', { ascending: false })
@@ -42,7 +46,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
       return jsonWithCors(request, { error: 'Failed to fetch entries' }, 500)
     }
-    return jsonWithCors(request, { entries: data || [] })
+
+    // Map data to include joined fields
+    const mappedEntries = (data || []).map(entry => ({
+      ...entry,
+      task_title: entry.task?.title,
+      category_name: entry.category?.name,
+      category_color: entry.category?.color,
+    }))
+
+    return jsonWithCors(request, { entries: mappedEntries })
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
@@ -77,10 +90,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         note: note || null,
         source: 'manual',
       })
-      .select('id, task_id, start_at, end_at, duration_minutes, note, source')
+      .select(`
+        id, task_id, start_at, end_at, duration_minutes, note, source,
+        task:tasks(title),
+        category:categories(name, color)
+      `)
       .single()
     if (error) return jsonWithCors(request, { error: 'Failed to create entry' }, 500)
-    return jsonWithCors(request, { entry: data }, 201)
+    
+    // Map entry to include joined fields
+    const mappedEntry = {
+      ...data,
+      task_title: data.task?.title,
+      category_name: data.category?.name,
+      category_color: data.category?.color,
+    }
+    
+    return jsonWithCors(request, { entry: mappedEntry }, 201)
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }

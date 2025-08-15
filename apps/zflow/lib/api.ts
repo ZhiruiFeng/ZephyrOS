@@ -68,6 +68,10 @@ export interface TimeEntry {
   duration_minutes?: number | null
   note?: string | null
   source: 'timer' | 'manual' | 'import'
+  // Joined fields for display
+  task_title?: string
+  category_name?: string
+  category_color?: string
 }
 
 export interface StartTimerOptions { autoSwitch?: boolean }

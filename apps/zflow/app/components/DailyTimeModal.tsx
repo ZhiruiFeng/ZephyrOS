@@ -25,6 +25,7 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
     category_color: (e as any).category?.color || '#CBD5E1',
     category_id: (e as any).category?.id || (e as any).category_id_snapshot || 'uncategorized',
     category_name: (e as any).category?.name || '未分类',
+    task_title: (e as any).task?.title || (e as any).task_title || '未知任务',
   }))
 
   const byCat = new Map<string, { id: string; name: string; color: string; minutes: number }>()
@@ -106,7 +107,8 @@ function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: any[
       const top = (s.getHours() * 60 + s.getMinutes()) * minuteHeight
       const minutes = Math.max(1, Math.round((ee.getTime() - s.getTime()) / 60000))
       const height = Math.max(6, minutes * minuteHeight)
-      return { id: e.id, start: s, end: ee, top, height, color: e.category_color, category_id: e.category_id, label: `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${ee.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` }
+      const timeLabel = `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${ee.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      return { id: e.id, start: s, end: ee, top, height, color: e.category_color, category_id: e.category_id, label: timeLabel, task_title: e.task_title, note: e.note }
     })
     norm.forEach((ev) => {
       let placed = false
@@ -161,9 +163,16 @@ function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: any[
               borderColor: ev.color,
               color: '#1f2937',
             }}
-            title={ev.label}
+            title={`${ev.task_title} - ${ev.label}`}
           >
-            <div className="text-[11px] font-medium truncate">{ev.label}</div>
+            {/* 任务标题 - 显示在上方 */}
+            {ev.task_title && (
+              <div className="text-[11px] font-semibold truncate mb-1" style={{ color: '#1f2937' }}>{ev.task_title}</div>
+            )}
+            {/* 时间标签 */}
+            <div className="text-[10px] font-medium truncate" style={{ color: '#4b5563' }}>{ev.label}</div>
+            {/* 备注 */}
+            {ev.note && <div className="text-[9px] truncate mt-0.5" style={{ color: '#6b7280' }}>{ev.note}</div>}
           </div>
         )
       })}

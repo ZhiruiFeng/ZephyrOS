@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         note,
         source,
         category_id_snapshot,
+        task:tasks(title),
         category:categories(id, name, color)
       `)
       .eq('user_id', userId)
@@ -50,7 +51,15 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Failed to fetch day entries' }, 500)
     }
 
-    return jsonWithCors(request, { entries: data || [] })
+    // Map data to include joined fields
+    const mappedEntries = (data || []).map(entry => ({
+      ...entry,
+      task_title: entry.task?.title,
+      category_name: entry.category?.name,
+      category_color: entry.category?.color,
+    }))
+
+    return jsonWithCors(request, { entries: mappedEntries })
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
