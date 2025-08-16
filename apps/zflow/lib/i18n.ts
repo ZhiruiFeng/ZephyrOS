@@ -244,6 +244,13 @@ export interface TranslationKeys {
     endTime?: string;
     note?: string;
     addTimeEntry?: string;
+    // Daily Time Modal
+    unknownTask: string;
+    summaryByCategory: string;
+    dailyTimeDistribution: string;
+    crossDaySegment: string;
+    loadFailed: string;
+    noData: string;
   };
 
   // Messages and notifications
@@ -480,6 +487,13 @@ const translations: Record<Language, TranslationKeys> = {
       endTime: 'End time',
       note: 'Note',
       addTimeEntry: 'Add time entry',
+      // Daily Time Modal
+      unknownTask: 'Unknown Task',
+      summaryByCategory: 'Summary by Category',
+      dailyTimeDistribution: 'Daily Time Distribution',
+      crossDaySegment: 'Cross-day Task Segment',
+      loadFailed: 'Load Failed',
+      noData: 'No Data',
       // FloatingAddButton
       newTask: 'New Task',
       newTaskShortcut: 'New Task (Shortcut: Ctrl+N)',
@@ -743,6 +757,13 @@ const translations: Record<Language, TranslationKeys> = {
       endTime: '结束时间',
       note: '备注',
       addTimeEntry: '新增时间段',
+      // Daily Time Modal
+      unknownTask: '未知任务',
+      summaryByCategory: '按类别汇总',
+      dailyTimeDistribution: '每日时间分布',
+      crossDaySegment: '跨天任务片段',
+      loadFailed: '加载失败',
+      noData: '无数据',
       // FloatingAddButton
       newTask: '新建任务',
       newTaskShortcut: '新建任务 (快捷键: Ctrl+N)',

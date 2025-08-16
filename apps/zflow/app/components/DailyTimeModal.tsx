@@ -2,6 +2,7 @@ import React from 'react'
 import useSWR from 'swr'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { timeTrackingApi } from '../../lib/api'
+import { useTranslation } from '../../contexts/LanguageContext'
 import { 
   processDayEntries, 
   calculateTotalMinutes, 
@@ -14,6 +15,7 @@ function endOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.ge
 function fmtISO(d: Date) { return new Date(d).toISOString() }
 
 export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boolean; onClose: () => void; day?: Date }) {
+  const { t } = useTranslation()
   const [current, setCurrent] = React.useState<Date>(() => startOfDay(day || new Date()))
   const [hoverCategory, setHoverCategory] = React.useState<string | null>(null)
   const [minuteHeight, setMinuteHeight] = React.useState<number>(0.8)
@@ -30,8 +32,8 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
     ...e,
     category_color: (e as any).category?.color || '#CBD5E1',
     category_id: (e as any).category?.id || (e as any).category_id_snapshot || 'uncategorized',
-    category_name: (e as any).category?.name || '未分类',
-    task_title: (e as any).task?.title || (e as any).task_title || '未知任务',
+    category_name: (e as any).category?.name || t.ui.uncategorized,
+    task_title: (e as any).task?.title || (e as any).task_title || t.ui.unknownTask,
   }))
 
   // 使用跨天处理逻辑处理当天的任务条目
@@ -43,7 +45,7 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
     const prev = byCat.get(key)
     const add = Math.max(0, e.duration_minutes || 0)
     if (prev) byCat.set(key, { ...prev, minutes: prev.minutes + add })
-    else byCat.set(key, { id: key, name: e.category_name || '未分类', color: e.category_color || '#CBD5E1', minutes: add })
+    else byCat.set(key, { id: key, name: e.category_name || t.ui.uncategorized, color: e.category_color || '#CBD5E1', minutes: add })
   })
   const cats = Array.from(byCat.values()).sort((a, b) => b.minutes - a.minutes)
 
@@ -63,10 +65,10 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
         <div className="grid grid-cols-1 md:grid-cols-10">
           {/* Left: category summary */}
           <div className="md:col-span-5 p-4 border-r border-gray-200">
-            <div className="text-sm font-medium text-gray-700 mb-2">按类别汇总</div>
-            {isLoading && <div className="text-sm text-gray-500">加载中...</div>}
-            {error && <div className="text-sm text-red-600">加载失败</div>}
-            {!isLoading && !error && cats.length === 0 && <div className="text-sm text-gray-400">无数据</div>}
+            <div className="text-sm font-medium text-gray-700 mb-2">{t.ui.summaryByCategory}</div>
+            {isLoading && <div className="text-sm text-gray-500">{t.common.loading}</div>}
+            {error && <div className="text-sm text-red-600">{t.ui.loadFailed}</div>}
+            {!isLoading && !error && cats.length === 0 && <div className="text-sm text-gray-400">{t.ui.noData}</div>}
             <div className="space-y-2">
               {cats.map((c) => (
                 <div key={c.id}
@@ -86,7 +88,7 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
           {/* Right: day timeline calendar */}
           <div className="md:col-span-5 p-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-gray-700">每日时间分布</div>
+              <div className="text-sm font-medium text-gray-700">{t.ui.dailyTimeDistribution}</div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setMinuteHeight((v) => Math.max(0.5, +(v - 0.1).toFixed(2)))} className="px-2 py-1 text-xs border rounded">-</button>
                 <button onClick={() => setMinuteHeight((v) => Math.min(1.2, +(v + 0.1).toFixed(2)))} className="px-2 py-1 text-xs border rounded">+</button>
@@ -96,6 +98,7 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
               entries={entries}
               minuteHeight={minuteHeight}
               highlightCategory={hoverCategory}
+              t={t}
             />
           </div>
         </div>
@@ -104,7 +107,7 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
   )
 }
 
-function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: TimeEntryWithCrossDay[]; minuteHeight: number; highlightCategory: string | null }) {
+function DayCanvas({ entries, minuteHeight, highlightCategory, t }: { entries: TimeEntryWithCrossDay[]; minuteHeight: number; highlightCategory: string | null; t: any }) {
   const ref = React.useRef<HTMLDivElement | null>(null)
   const [hover, setHover] = React.useState<number | null>(null)
   const evs = React.useMemo(() => {
@@ -185,7 +188,7 @@ function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: Time
               borderColor: ev.color,
               color: '#1f2937',
             }}
-            title={`${ev.task_title} - ${ev.label}${ev.isCrossDaySegment ? ' (跨天任务片段)' : ''}`}
+            title={`${ev.task_title} - ${ev.label}${ev.isCrossDaySegment ? ` (${t.ui.crossDaySegment})` : ''}`}
           >
             {/* 任务标题 */}
             {ev.task_title && (
