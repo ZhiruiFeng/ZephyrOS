@@ -37,70 +37,97 @@ export default function BatchTranscriber() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 text-left">
       {!isSupported && (
-        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 shadow-sm">
           {t.speech.notSupported}
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        {!isRecording ? (
+      {/* Controls Section */}
+      <div className="flex flex-col gap-4">
+        {/* Main Controls */}
+        <div className="flex items-center justify-center gap-4">
+          {!isRecording ? (
+            <button
+              type="button"
+              onClick={start}
+              className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-3 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+            >
+              <Mic size={20} /> {t.speech.startRecording}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStopAndTranscribe}
+              className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 px-6 py-3 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+            >
+              <Square size={20} /> {t.speech.stopRecording}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={start}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
+            onClick={reset}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-700 font-medium shadow-sm hover:bg-gray-50 hover:shadow-md transition-all duration-200"
           >
-            <Mic size={18} /> {t.speech.startRecording}
+            <RotateCcw size={18} /> {t.speech.reset}
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleStopAndTranscribe}
-            className="inline-flex items-center gap-2 rounded-md bg-gray-700 px-3 py-2 text-white hover:bg-gray-800"
-          >
-            <Square size={18} /> {t.speech.stopRecording}
-          </button>
-        )}
+        </div>
 
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
-        >
-          <RotateCcw size={18} /> {t.speech.reset}
-        </button>
-
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          <label className="text-gray-600">{t.speech.language}</label>
-          <select value={language} onChange={(e) => setLanguage(e.target.value)} className="border rounded-md px-2 py-1">
-            <option value="zh">{t.speech.chinese}</option>
-            <option value="en">{t.speech.english}</option>
-            <option value="auto">{t.speech.auto}</option>
-          </select>
-          <label className="text-gray-600 ml-3">{t.speech.model}</label>
-          <select value={model} onChange={(e) => setModel(e.target.value)} className="border rounded-md px-2 py-1">
-            <option value="whisper-1">whisper-1</option>
-            <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</option>
-          </select>
+        {/* Settings Controls */}
+        <div className="flex flex-wrap items-center justify-center gap-4 p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">{t.speech.language}</label>
+            <select 
+              value={language} 
+              onChange={(e) => setLanguage(e.target.value)} 
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="zh">{t.speech.chinese}</option>
+              <option value="en">{t.speech.english}</option>
+              <option value="auto">{t.speech.auto}</option>
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">{t.speech.model}</label>
+            <select 
+              value={model} 
+              onChange={(e) => setModel(e.target.value)} 
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="whisper-1">whisper-1</option>
+              <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-md border p-3 text-sm text-gray-800 min-h-[100px] whitespace-pre-wrap">
-        {isRecording ? (
-          <span className="text-gray-500">{t.speech.recording}</span>
-        ) : isUploading ? (
-          <span className="text-gray-500">{t.speech.transcribing}</span>
-        ) : transcript ? (
-          transcript
-        ) : (
-          <span className="text-gray-400">{t.speech.clickToStart}</span>
-        )}
+      {/* Transcript Display */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm min-h-[150px]">
+        <div className="whitespace-pre-wrap text-gray-800">
+          {isRecording ? (
+            <div className="flex items-center gap-2 text-blue-600">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="font-medium">{t.speech.recording}</span>
+            </div>
+          ) : isUploading ? (
+            <div className="flex items-center gap-2 text-indigo-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+              <span className="font-medium">{t.speech.transcribing}</span>
+            </div>
+          ) : transcript ? (
+            <div className="text-gray-900 leading-relaxed">{transcript}</div>
+          ) : (
+            <span className="text-gray-400 italic">{t.speech.clickToStart}</span>
+          )}
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-800">
-          {t.speech.recordingError}: {error}
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm">
+          <strong>{t.speech.recordingError}:</strong> {error}
         </div>
       )}
     </div>
