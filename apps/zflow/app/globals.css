@@ -365,4 +365,43 @@
       background: rgba(0, 0, 0, 0.3);
     }
   }
+
+  /* TipTap TaskList styles - fix alignment issues with prose classes */
+  .notion-editor ul[data-type="taskList"] {
+    @apply list-none pl-0 ml-0 my-0;
+  }
+  
+  .notion-editor li[data-type="taskItem"] {
+    @apply flex items-start my-1 p-0;
+  }
+  
+  .notion-editor li[data-type="taskItem"] > label {
+    @apply mr-2 mt-0.5 flex-shrink-0;
+  }
+  
+  .notion-editor li[data-type="taskItem"] > div {
+    @apply flex-1 min-w-0;
+  }
+  
+  .notion-editor li[data-type="taskItem"] input[type="checkbox"] {
+    @apply m-0 cursor-pointer;
+  }
+  
+  .notion-editor li[data-type="taskItem"] p {
+    @apply m-0 leading-normal;
+  }
+  
+  /* Override prose styles that interfere with task lists */
+  .notion-editor.prose ul[data-type="taskList"] {
+    @apply mt-0 mb-0 pl-0;
+  }
+  
+  .notion-editor.prose li[data-type="taskItem"] {
+    @apply mt-0 mb-0 pl-0;
+  }
+
+  /* Ensure nested task lists work properly */
+  .notion-editor ul[data-type="taskList"] ul[data-type="taskList"] {
+    @apply ml-6 mt-1;
+  }
 } 
