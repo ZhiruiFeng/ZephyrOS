@@ -2,6 +2,12 @@ import React from 'react'
 import useSWR from 'swr'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { timeTrackingApi } from '../../lib/api'
+import { 
+  processDayEntries, 
+  calculateTotalMinutes, 
+  getCrossDayBorderClass,
+  type TimeEntryWithCrossDay 
+} from '../utils/crossDayUtils'
 
 function startOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0) }
 function endOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999) }
@@ -20,7 +26,7 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
 
   if (!isOpen) return null
 
-  const entries = (data?.entries || []).map((e) => ({
+  const rawEntries = (data?.entries || []).map((e) => ({
     ...e,
     category_color: (e as any).category?.color || '#CBD5E1',
     category_id: (e as any).category?.id || (e as any).category_id_snapshot || 'uncategorized',
@@ -28,13 +34,16 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
     task_title: (e as any).task?.title || (e as any).task_title || '未知任务',
   }))
 
+  // 使用跨天处理逻辑处理当天的任务条目
+  const entries = processDayEntries(rawEntries, current)
+
   const byCat = new Map<string, { id: string; name: string; color: string; minutes: number }>()
-  entries.forEach((e: any) => {
-    const key = e.category_id
+  entries.forEach((e: TimeEntryWithCrossDay) => {
+    const key = e.category_id || 'uncategorized'
     const prev = byCat.get(key)
     const add = Math.max(0, e.duration_minutes || 0)
     if (prev) byCat.set(key, { ...prev, minutes: prev.minutes + add })
-    else byCat.set(key, { id: key, name: e.category_name, color: e.category_color, minutes: add })
+    else byCat.set(key, { id: key, name: e.category_name || '未分类', color: e.category_color || '#CBD5E1', minutes: add })
   })
   const cats = Array.from(byCat.values()).sort((a, b) => b.minutes - a.minutes)
 
@@ -95,20 +104,33 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
   )
 }
 
-function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: any[]; minuteHeight: number; highlightCategory: string | null }) {
+function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: TimeEntryWithCrossDay[]; minuteHeight: number; highlightCategory: string | null }) {
   const ref = React.useRef<HTMLDivElement | null>(null)
   const [hover, setHover] = React.useState<number | null>(null)
   const evs = React.useMemo(() => {
     const sorted = [...entries].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
     const lanes: Array<{ end: Date }> = []
     const norm = sorted.map((e) => {
+      // 由于processDayEntries已经处理了跨天截断，这里直接使用条目的时间
       const s = new Date(e.start_at)
       const ee = e.end_at ? new Date(e.end_at) : new Date()
       const top = (s.getHours() * 60 + s.getMinutes()) * minuteHeight
-      const minutes = Math.max(1, Math.round((ee.getTime() - s.getTime()) / 60000))
+      const minutes = Math.max(1, e.duration_minutes || 1)
       const height = Math.max(6, minutes * minuteHeight)
       const timeLabel = `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${ee.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      return { id: e.id, start: s, end: ee, top, height, color: e.category_color, category_id: e.category_id, label: timeLabel, task_title: e.task_title, note: e.note }
+      return { 
+        id: e.id, 
+        start: s, 
+        end: ee, 
+        top, 
+        height, 
+        color: e.category_color || '#CBD5E1', 
+        category_id: e.category_id || 'uncategorized', 
+        label: timeLabel, 
+        task_title: e.task_title, 
+        note: e.note,
+        isCrossDaySegment: e.isCrossDaySegment || false
+      }
     })
     norm.forEach((ev) => {
       let placed = false
@@ -153,7 +175,7 @@ function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: any[
         return (
           <div
             key={ev.id}
-            className={`absolute rounded-md px-2 py-1 shadow-sm overflow-hidden border ${dim ? 'opacity-30' : ''}`}
+            className={`absolute rounded-md px-2 py-1 shadow-sm overflow-hidden border ${dim ? 'opacity-30' : ''} ${getCrossDayBorderClass(ev.isCrossDaySegment)}`}
             style={{
               top: `${ev.top}px`,
               left: `calc(${left}% + 8px)`,
@@ -163,16 +185,24 @@ function DayCanvas({ entries, minuteHeight, highlightCategory }: { entries: any[
               borderColor: ev.color,
               color: '#1f2937',
             }}
-            title={`${ev.task_title} - ${ev.label}`}
+            title={`${ev.task_title} - ${ev.label}${ev.isCrossDaySegment ? ' (跨天任务片段)' : ''}`}
           >
-            {/* 任务标题 - 显示在上方 */}
+            {/* 任务标题 */}
             {ev.task_title && (
-              <div className="text-[11px] font-semibold truncate mb-1" style={{ color: '#1f2937' }}>{ev.task_title}</div>
+              <div className="text-[11px] font-semibold truncate mb-1" style={{ color: '#1f2937' }}>
+                {ev.task_title}
+              </div>
             )}
             {/* 时间标签 */}
-            <div className="text-[10px] font-medium truncate" style={{ color: '#4b5563' }}>{ev.label}</div>
+            <div className="text-[10px] font-medium truncate" style={{ color: '#4b5563' }}>
+              {ev.label}
+            </div>
             {/* 备注 */}
-            {ev.note && <div className="text-[9px] truncate mt-0.5" style={{ color: '#6b7280' }}>{ev.note}</div>}
+            {ev.note && (
+              <div className="text-[9px] truncate mt-0.5" style={{ color: '#6b7280' }}>
+                {ev.note}
+              </div>
+            )}
           </div>
         )
       })}

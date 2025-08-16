@@ -2,9 +2,15 @@
 
 import React from 'react'
 import useSWR from 'swr'
-import { X, ChevronLeft, ChevronRight, Clock, List, Calendar as CalendarIcon, Minus, Plus } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Clock, List, Calendar as CalendarIcon, Minus, Plus, ArrowLeft } from 'lucide-react'
 import { timeTrackingApi, TimeEntry } from '../../lib/api'
 import { useTranslation } from '../../lib/i18n'
+import { 
+  splitCrossDayEntries, 
+  calculateTotalMinutes, 
+  getCrossDayBorderClass,
+  type TimeEntryWithCrossDay 
+} from '../utils/crossDayUtils'
 
 interface TaskTimeModalProps {
   isOpen: boolean
@@ -42,17 +48,37 @@ function minutesOf(entries: TimeEntry[]) {
   return entries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0)
 }
 
+// Custom hook to detect mobile device
+function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState(false)
+  
+  React.useEffect(() => {
+    const checkDevice = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
+    
+    checkDevice()
+    window.addEventListener('resize', checkDevice)
+    return () => window.removeEventListener('resize', checkDevice)
+  }, [])
+  
+  return isMobile
+}
+
 export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: TaskTimeModalProps) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
   const [month, setMonth] = React.useState<Date>(() => startOfMonth(new Date()))
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null)
   const [viewMode, setViewMode] = React.useState<'timeline' | 'list'>('timeline')
   const [minuteHeight, setMinuteHeight] = React.useState<number>(0.75) // px per minute
+  const [mobileView, setMobileView] = React.useState<'calendar' | 'day'>('calendar') // Mobile-specific state
 
   React.useEffect(() => {
     if (isOpen) {
       setMonth(startOfMonth(new Date()))
       setSelectedDay(null)
+      setMobileView('calendar')
     }
   }, [isOpen])
 
@@ -62,19 +88,7 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
 
   const entries: TimeEntry[] = data?.entries || []
   const grouped = React.useMemo(() => {
-    const map = new Map<string, TimeEntry[]>()
-    for (const e of entries) {
-      const dayKey = ymd(new Date(e.start_at))
-      const arr = map.get(dayKey) || []
-      arr.push(e)
-      map.set(dayKey, arr)
-    }
-    // sort entries per day by start_at asc
-    map.forEach((arr, k) => {
-      arr.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-      map.set(k, arr)
-    })
-    return map
+    return splitCrossDayEntries(entries)
   }, [entries])
 
   const days = getDaysInMonth(month)
@@ -84,8 +98,92 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
   const prevMonth = () => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
   const nextMonth = () => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
 
+  const handleDaySelect = (dayKey: string) => {
+    setSelectedDay(dayKey)
+    if (isMobile) {
+      setMobileView('day')
+    }
+  }
+
+  const handleBackToCalendar = () => {
+    setMobileView('calendar')
+    setSelectedDay(null)
+  }
+
   if (!isOpen) return null
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 z-50">
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/40" onClick={close} />
+        {/* Mobile Modal */}
+        <div className="absolute inset-0 bg-white flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+            <div className="flex items-center gap-3">
+              {mobileView === 'day' && (
+                <button onClick={handleBackToCalendar} className="p-2 text-gray-500 hover:text-gray-700 rounded-md">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              )}
+              <Clock className="w-5 h-5 text-primary-600" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {mobileView === 'calendar' ? t.ui.focusTime : selectedDay}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {mobileView === 'calendar' ? taskTitle || '' : t.ui.viewTimeSegmentsByDay}
+                </p>
+              </div>
+            </div>
+            <button onClick={close} className="p-2 text-gray-500 hover:text-gray-700 rounded-md">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Mobile Content */}
+          <div className="flex-1 overflow-hidden">
+            {mobileView === 'calendar' ? (
+              <MobileCalendarView
+                month={month}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+                days={days}
+                firstWeekday={firstWeekday}
+                grouped={grouped}
+                onDaySelect={handleDaySelect}
+                selectedDay={selectedDay}
+              />
+            ) : (
+              <div className="h-full overflow-auto">
+                <DayTimeline
+                  selectedDay={selectedDay}
+                  isLoading={isLoading}
+                  error={error}
+                  entries={grouped}
+                  onClearDay={() => setSelectedDay(null)}
+                  mode={viewMode}
+                  onModeChange={setViewMode}
+                  minuteHeight={minuteHeight}
+                  onZoomIn={() => setMinuteHeight((v) => Math.min(1.2, +(v + 0.1).toFixed(2)))}
+                  onZoomOut={() => setMinuteHeight((v) => Math.max(0.4, +(v - 0.1).toFixed(2)))}
+                  className=""
+                  refreshEntries={() => mutate()}
+                  taskTitle={taskTitle}
+                  isMobile={true}
+                  taskId={taskId}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Desktop layout (original)
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
@@ -135,12 +233,13 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
               {days.map((d) => {
                 const key = ymd(d)
                 const list = grouped.get(key) || []
-                const minutes = minutesOf(list)
+                // 使用每个条目的duration_minutes字段，这已经在splitCrossDayEntries中正确计算
+                const minutes = list.reduce((sum, e) => sum + (e.duration_minutes || 0), 0)
                 const isSelected = selectedDay === key
                 return (
                   <button
                     key={key}
-                    onClick={() => setSelectedDay(key)}
+                    onClick={() => handleDaySelect(key)}
                     className={`h-14 rounded-md border text-left p-1 transition-colors ${
                       isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:bg-gray-50'
                     }`}
@@ -185,8 +284,109 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
             className="md:col-span-5"
             refreshEntries={() => mutate()}
             taskTitle={taskTitle}
+            isMobile={false}
+            taskId={taskId}
           />
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Mobile Calendar View Component
+function MobileCalendarView({
+  month,
+  onPrevMonth,
+  onNextMonth,
+  days,
+  firstWeekday,
+  grouped,
+  onDaySelect,
+  selectedDay
+}: {
+  month: Date
+  onPrevMonth: () => void
+  onNextMonth: () => void
+  days: Date[]
+  firstWeekday: number
+  grouped: Map<string, TimeEntry[]>
+  onDaySelect: (day: string) => void
+  selectedDay: string | null
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex-1 p-4 overflow-auto">
+      {/* Month Navigator */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onPrevMonth} className="p-3 rounded-md hover:bg-gray-100">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div className="text-lg font-medium text-gray-700">
+          {month.getFullYear()} {t.ui.year} {month.getMonth() + 1} {t.ui.month}
+        </div>
+        <button onClick={onNextMonth} className="p-3 rounded-md hover:bg-gray-100">
+          <ChevronRight className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-500 mb-2">
+        {t.ui.weekdays.map((w) => (
+          <div key={w} className="py-2">{w}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {/* Leading blanks */}
+        {Array.from({ length: firstWeekday }).map((_, i) => (
+          <div key={`blank-${i}`} className="h-16 bg-transparent" />
+        ))}
+        {days.map((d) => {
+          const key = ymd(d)
+          const list = grouped.get(key) || []
+          // 使用每个条目的duration_minutes字段，这已经在splitCrossDayEntries中正确计算
+          const minutes = list.reduce((sum, e) => sum + (e.duration_minutes || 0), 0)
+          const isSelected = selectedDay === key
+          const hasEntries = list.length > 0
+          
+          return (
+            <button
+              key={key}
+              onClick={() => onDaySelect(key)}
+              className={`h-16 rounded-lg border text-left p-2 transition-colors ${
+                isSelected 
+                  ? 'border-primary-500 bg-primary-50' 
+                  : hasEntries 
+                    ? 'border-primary-200 bg-primary-25 hover:bg-primary-50'
+                    : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-700">{d.getDate()}</span>
+                {minutes > 0 && (
+                  <span className="px-2 py-1 rounded text-xs bg-primary-100 text-primary-700">
+                    {minutes}m
+                  </span>
+                )}
+              </div>
+              {/* Visual indicators */}
+              <div className="mt-1 space-y-1 overflow-hidden">
+                {list.slice(0, 2).map((e) => {
+                  const dur = e.duration_minutes || 0
+                  const width = Math.max(20, Math.min(100, Math.round((dur / 120) * 100)))
+                  return (
+                    <div key={e.id} className="h-1 rounded bg-primary-300" style={{ width: `${width}%` }} />
+                  )
+                })}
+                {list.length > 2 && (
+                  <div className="text-xs text-gray-400">+{list.length - 2}</div>
+                )}
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -206,6 +406,8 @@ function DayTimeline({
   className,
   refreshEntries,
   taskTitle,
+  isMobile = false,
+  taskId,
 }: {
   selectedDay: string | null
   isLoading: boolean
@@ -220,6 +422,8 @@ function DayTimeline({
   className?: string
   refreshEntries: () => void
   taskTitle?: string
+  isMobile?: boolean
+  taskId: string
 }) {
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement | null>(null)
@@ -237,24 +441,32 @@ function DayTimeline({
       label: string
       note?: string | null
       taskTitle?: string
+      isCrossDaySegment?: boolean
     }>
     const list = entries.get(selectedDay) || []
-    // Normalize to local day bounds
-    const [y, m, d] = selectedDay.split('-').map((v) => parseInt(v, 10))
-    const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0)
-    const dayEnd = new Date(y, m - 1, d, 23, 59, 59, 999)
 
-    const normalized = list.map((e) => {
-      const start = new Date(e.start_at)
-      const end = e.end_at ? new Date(e.end_at) : new Date()
-      const s = start < dayStart ? dayStart : start
-      const ee = end > dayEnd ? dayEnd : end
-      const top = ((s.getHours() * 60 + s.getMinutes()) * minuteHeight)
-      const minutes = Math.max(1, Math.round((ee.getTime() - s.getTime()) / 60000))
-      const height = Math.max(6, minutes * minuteHeight)
-      const label = `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${ee.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      return { id: e.id, start: s, end: ee, top, height, lane: 0, laneCount: 1, label, note: e.note, taskTitle: e.task_title }
-    })
+          const normalized = list.map((e) => {
+        // 由于splitCrossDayEntries已经处理了跨天截断，这里直接使用条目的时间
+        const start = new Date(e.start_at)
+        const end = e.end_at ? new Date(e.end_at) : new Date()
+        const top = ((start.getHours() * 60 + start.getMinutes()) * minuteHeight)
+        const minutes = Math.max(1, e.duration_minutes || 1)
+        const height = Math.max(6, minutes * minuteHeight)
+        const label = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        return { 
+          id: e.id, 
+          start, 
+          end, 
+          top, 
+          height, 
+          lane: 0, 
+          laneCount: 1, 
+          label, 
+          note: e.note, 
+          taskTitle: e.task_title,
+          isCrossDaySegment: (e as any).isCrossDaySegment || false
+        }
+      })
     // Sort by start
     normalized.sort((a, b) => a.start.getTime() - b.start.getTime())
     // Simple lane assignment for overlaps
@@ -286,35 +498,46 @@ function DayTimeline({
   }, [selectedDay, dayEvents, minuteHeight])
 
   return (
-    <div className={`p-4 ${className || ''}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-medium text-gray-700">{selectedDay || t.ui.pleaseSelectDate}</div>
-        <div className="flex items-center gap-2">
+    <div className={`${isMobile ? 'p-4' : 'p-4'} ${className || ''}`}>
+      {/* Header controls */}
+      <div className={`flex items-center justify-between mb-3 ${isMobile ? 'flex-col gap-3' : ''}`}>
+        <div className={`text-sm font-medium text-gray-700 ${isMobile ? 'text-center' : ''}`}>
+          {selectedDay || t.ui.pleaseSelectDate}
+        </div>
+        <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-center' : ''}`}>
           {/* View toggle */}
           <div className="flex items-center rounded-md border border-gray-200 overflow-hidden">
             <button
               onClick={() => onModeChange('timeline')}
-              className={`px-2 py-1 text-xs flex items-center gap-1 ${mode === 'timeline' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`${isMobile ? 'px-3 py-2' : 'px-2 py-1'} text-xs flex items-center gap-1 ${mode === 'timeline' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
               title={t.ui.timelineView}
             >
-              <CalendarIcon className="w-3.5 h-3.5" /> {t.ui.calendar}
+              <CalendarIcon className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} /> {t.ui.calendar}
             </button>
             <button
               onClick={() => onModeChange('list')}
-              className={`px-2 py-1 text-xs flex items-center gap-1 ${mode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`${isMobile ? 'px-3 py-2' : 'px-2 py-1'} text-xs flex items-center gap-1 ${mode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
               title={t.ui.timeListView}
             >
-              <List className="w-3.5 h-3.5" /> {t.ui.listView}
+              <List className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} /> {t.ui.listView}
             </button>
           </div>
           {/* Zoom controls for timeline */}
           {mode === 'timeline' && (
             <div className="flex items-center rounded-md border border-gray-200 overflow-hidden ml-1">
-              <button onClick={onZoomOut} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title={t.ui.zoomOut}>
-                <Minus className="w-3.5 h-3.5" />
+              <button 
+                onClick={onZoomOut} 
+                className={`${isMobile ? 'px-3 py-2' : 'px-2 py-1'} text-xs text-gray-600 hover:bg-gray-50`} 
+                title={t.ui.zoomOut}
+              >
+                <Minus className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
               </button>
-              <button onClick={onZoomIn} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title={t.ui.zoomIn}>
-                <Plus className="w-3.5 h-3.5" />
+              <button 
+                onClick={onZoomIn} 
+                className={`${isMobile ? 'px-3 py-2' : 'px-2 py-1'} text-xs text-gray-600 hover:bg-gray-50`} 
+                title={t.ui.zoomIn}
+              >
+                <Plus className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
               </button>
             </div>
           )}
@@ -329,7 +552,9 @@ function DayTimeline({
       {selectedDay && mode === 'timeline' && (
         <div
           ref={containerRef}
-          className="relative border border-gray-200 rounded-md h-[36rem] overflow-auto bg-white"
+          className={`relative border border-gray-200 rounded-md overflow-auto bg-white ${
+            isMobile ? 'h-[calc(100vh-200px)]' : 'h-[36rem]'
+          }`}
           onMouseMove={(e) => {
             if (!containerRef.current) return
             const rect = containerRef.current.getBoundingClientRect()
@@ -362,23 +587,31 @@ function DayTimeline({
             return (
               <div
                 key={ev.id}
-                className="absolute bg-primary-100 border border-primary-300 text-primary-900 rounded-md px-2 py-1 shadow-sm overflow-hidden"
+                className={`absolute border text-primary-900 rounded-md px-2 py-1 shadow-sm overflow-hidden bg-primary-100 border-primary-300 ${getCrossDayBorderClass(ev.isCrossDaySegment || false)}`}
                 style={{
                   top: `${ev.top}px`,
                   left: `calc(${left}% + 8px)`,
                   width: `calc(${width}% - 8px)`,
                   height: `${ev.height}px`,
                 }}
-                title={`${ev.taskTitle || taskTitle || '任务'} - ${ev.label}`}
+                title={`${ev.taskTitle || taskTitle || '任务'} - ${ev.label}${ev.isCrossDaySegment ? ' (跨天任务片段)' : ''}`}
               >
-                {/* 任务标题 - 显示在中间 */}
+                {/* 任务标题 */}
                 {ev.taskTitle && (
-                  <div className="text-[11px] font-semibold truncate text-primary-800 mb-1">{ev.taskTitle}</div>
+                  <div className="text-[11px] font-semibold truncate text-primary-800 mb-1">
+                    {ev.taskTitle}
+                  </div>
                 )}
                 {/* 时间标签 */}
-                <div className="text-[10px] font-medium truncate text-primary-700">{ev.label}</div>
+                <div className="text-[10px] font-medium truncate text-primary-700">
+                  {ev.label}
+                </div>
                 {/* 备注 */}
-                {ev.note && <div className="text-[9px] text-primary-600 truncate mt-0.5">{ev.note}</div>}
+                {ev.note && (
+                  <div className="text-[9px] truncate mt-0.5 text-primary-600">
+                    {ev.note}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -406,8 +639,10 @@ function DayTimeline({
       )}
 
       {selectedDay && mode === 'list' && (
-        <div className="space-y-2 max-h-[32rem] overflow-auto pr-1">
-          <CreateItem taskId={''} dateKey={selectedDay} onCreated={refreshEntries} />
+        <div className={`space-y-2 overflow-auto pr-1 ${
+          isMobile ? 'max-h-[calc(100vh-200px)]' : 'max-h-[32rem]'
+        }`}>
+          <CreateItem taskId={taskId} dateKey={selectedDay} onCreated={refreshEntries} />
           {dayEvents.map((ev) => (
             <ListItem key={ev.id} entryId={ev.id} label={ev.label} note={ev.note} onChanged={refreshEntries} />
           ))}
@@ -488,7 +723,7 @@ function CreateItem({ taskId, dateKey, onCreated }: { taskId: string; dateKey: s
   const [memo, setMemo] = React.useState<string>('')
 
   const onSave = async () => {
-    if (busy) return
+    if (busy || !taskId) return
     setBusy(true)
     try {
       if (!start) return
