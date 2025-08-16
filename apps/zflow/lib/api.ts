@@ -256,11 +256,17 @@ export const tasksApi = {
     notes?: string;
     tags?: string[];
   }): Promise<TaskMemory> {
-    // Clean up the content object to remove empty strings and undefined values
+    // Clean up the content object to remove undefined and null values
+    // Allow empty strings for fields that can be cleared (description, notes, assignee)
+    const fieldsAllowingEmpty = ['description', 'notes', 'assignee']
     const cleanContent: any = {}
     Object.entries(updates).forEach(([key, value]) => {
       if (key === 'tags') return // Skip tags as it's handled separately
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null) {
+        // Allow empty strings for specific fields, reject them for others
+        if (value === '' && !fieldsAllowingEmpty.includes(key)) {
+          return
+        }
         cleanContent[key] = value
       }
     })
