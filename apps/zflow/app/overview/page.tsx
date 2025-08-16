@@ -13,6 +13,7 @@ import AddTaskModal from '../components/AddTaskModal'
 import TaskEditor from '../components/TaskEditor'
 import TaskTimeModal from '../components/TaskTimeModal'
 import DailyTimeModal from '../components/DailyTimeModal'
+import MobileCategorySheet from '../components/MobileCategorySheet'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useCategories'
 import { useTimer } from '../../hooks/useTimer'
@@ -901,107 +902,25 @@ function OverviewPageContent() {
       {/* Daily Time Overview Modal */}
       <DailyTimeModal isOpen={showDailyModal} onClose={() => setShowDailyModal(false)} />
 
-      {/* Mobile Category Selector Modal */}
-      {showMobileCategorySelector && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowMobileCategorySelector(false)}
-          />
-          
-          {/* Modal */}
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">{t.ui.selectCategory}</h3>
-              <button
-                onClick={() => setShowMobileCategorySelector(false)}
-                className="p-2 text-gray-500 hover:text-gray-700 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Content */}
-            <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
-              {/* All Categories */}
-              <button
-                onClick={() => { setSelectedCategory('all'); setShowMobileCategorySelector(false); }}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  selectedCategory === 'all' 
-                    ? 'bg-primary-600 text-white shadow-sm' 
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <span>{t.common.all}</span>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  selectedCategory === 'all' 
-                    ? 'bg-white/20 text-white' 
-                    : 'bg-primary-50 text-primary-700'
-                }`}>
-                  {viewBasedCounts.total}
-                </span>
-              </button>
-              
-              {/* Uncategorized */}
-              <button
-                onClick={() => { setSelectedCategory('uncategorized'); setShowMobileCategorySelector(false); }}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  selectedCategory === 'uncategorized' 
-                    ? 'bg-primary-600 text-white shadow-sm' 
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <span>{t.ui.uncategorized}</span>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  selectedCategory === 'uncategorized' 
-                    ? 'bg-white/20 text-white' 
-                    : 'bg-primary-50 text-primary-700'
-                }`}>
-                  {viewBasedCounts.uncategorized}
-                </span>
-              </button>
-              
-              {/* Divider */}
-              <div className="h-px bg-gray-200 my-3" />
-              
-              {/* Categories */}
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); setShowMobileCategorySelector(false); }}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    selectedCategory === cat.id 
-                      ? 'bg-primary-600 text-white shadow-sm' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: cat.color }} />
-                    <span className="truncate">{cat.name}</span>
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    selectedCategory === cat.id 
-                      ? 'bg-white/20 text-white' 
-                      : 'bg-primary-50 text-primary-700'
-                  }`}>
-                    {viewBasedCounts.byId[cat.id] || 0}
-                  </span>
-                </button>
-              ))}
-              
-              {/* Empty state */}
-              {categories.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Tag className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No categories</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Mobile Category Selector Sheet */}
+      <MobileCategorySheet
+        open={showMobileCategorySelector}
+        onClose={() => setShowMobileCategorySelector(false)}
+        categories={categories}
+        counts={viewBasedCounts}
+        selected={selectedCategory}
+        onSelect={(key) => setSelectedCategory(key as any)}
+        onCreate={async (payload) => {
+          await createCategory({ name: payload.name, color: payload.color })
+        }}
+        onUpdate={async (id, payload) => {
+          await updateCategory(id, payload)
+        }}
+        onDelete={async (id) => {
+          await deleteCategory(id)
+          if (selectedCategory === id) setSelectedCategory('all')
+        }}
+      />
     </div>
   )
 }
