@@ -4,6 +4,10 @@ A modern, modular task management and productivity platform built with Next.js, 
 
 ## Architecture Overview
 
+### Vision for ZephyrOS
+
+![](./statics/ZephyrOS-v1.png)
+
 ZephyrOS 现在包含三个核心组件：Web界面、AI记忆服务和MCP集成，为现代AI工作流提供完整的记忆管理解决方案。
 
 ```
@@ -41,7 +45,6 @@ ZephyrOS/
 │   └── shared/          # Shared types and utilities
 ├── supabase/            # Database schema
 ├── guidance/            # Development and deployment guides
-├── docs/                # Technical documentation
 └── scripts/             # Setup and utility scripts
 ```
 
