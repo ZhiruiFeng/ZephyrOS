@@ -1,254 +1,72 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { Suspense } from 'react'
 import Link from 'next/link'
-import {
-  Plus,
-  CheckCircle,
-  Circle,
-  Clock,
-  AlertCircle,
-  Trash2,
-  ChevronDown,
-  Filter,
-  BarChart3,
-  Calendar,
-  User,
-  ListTodo,
-  KanbanSquare,
-  Tag,
-  Pencil,
-  Folder,
-} from 'lucide-react'
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
-import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X, Timer, Pencil, Trash2 } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useTranslation } from '../contexts/LanguageContext'
+import LoginPage from './components/LoginPage'
 import CategorySidebar from './components/CategorySidebar'
-import { categoriesApi, tasksApi } from '../lib/api'
-import TaskEditor from './components/TaskEditor'
-import { getPriorityIcon } from './components/TaskIcons'
-import { 
-  getStatusColor, 
-  getPriorityColor, 
-  isOverdue, 
-  formatDate,
-  formatTagsString,
-  getTaskDisplayDate,
-  shouldShowOverdue
-} from './utils/taskUtils'
-import { Task, FilterStatus, FilterPriority, ViewMode } from './types/task'
-import AuthButton from './components/AuthButton'
 import FloatingAddButton from './components/FloatingAddButton'
 import AddTaskModal from './components/AddTaskModal'
-import LoginPage from './components/LoginPage'
-import { useAuth } from '../contexts/AuthContext'
-import { usePrefs } from '../contexts/PrefsContext'
-import { useTranslation } from '../contexts/LanguageContext'
+import TaskEditor from './components/TaskEditor'
+import TaskTimeModal from './components/TaskTimeModal'
+import DailyTimeModal from './components/DailyTimeModal'
 import MobileCategorySheet from './components/MobileCategorySheet'
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
+import { useTimer } from '../hooks/useTimer'
+import { categoriesApi, TaskMemory, TaskContent } from '../lib/api'
+import { getPriorityIcon } from './components/TaskIcons'
+import { isOverdue, formatDate, getTaskDisplayDate, shouldShowOverdue } from './utils/taskUtils'
 
-export default function ZFlowPage() {
+type ViewKey = 'current' | 'future' | 'archive'
+type DisplayMode = 'list' | 'grid'
+
+function ZFlowPageContent() {
   const { user, loading: authLoading } = useAuth()
-  const { hideCompleted, setHideCompleted, filterPriority, setFilterPriority, sortMode } = (usePrefs() as any)
   const { t } = useTranslation()
-  const [newTask, setNewTask] = useState('')
-  const [newTaskDescription, setNewTaskDescription] = useState('')
-  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
-  const [newTaskDueDate, setNewTaskDueDate] = useState<string>('')
-  const [newTaskTags, setNewTaskTags] = useState('')
-  const [newTaskCategoryId, setNewTaskCategoryId] = useState<string | undefined>(undefined)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
-  // filterPriority unified in PrefsContext
-  const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [editorOpen, setEditorOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<any>(null)
-  // Categories managed by SWR hook
-  const { selectedCategory, setSelectedCategory } = (usePrefs() as any)
-  // hideCompleted unified in PrefsContext
-  const [showOverdueOnly, setShowOverdueOnly] = useState(false)
-  const [showCategorySheet, setShowCategorySheet] = useState(false)
+  const router = useRouter()
+  const params = useSearchParams()
+  const view = (params.get('view') as ViewKey) || 'current'
+  const setView = (v: ViewKey) => router.push(`/?view=${v}`)
+  const [displayMode, setDisplayMode] = React.useState<DisplayMode>('list')
 
-  // Persist user preferences (hideCompleted + filterPriority + selectedCategory) with unified keys
-  React.useEffect(() => {
-    try {
-      const storedHide = localStorage.getItem('zflow:prefs:hideCompleted')
-      const storedPriority = localStorage.getItem('zflow:prefs:filterPriority') as FilterPriority | null
-      const storedCategory = localStorage.getItem('zflow:prefs:selectedCategory')
-      // Backward compatibility with older keys
-      const legacyHide = localStorage.getItem('zflow:hideCompleted')
-      const legacyPriority = localStorage.getItem('zflow:filterPriority') as FilterPriority | null
-
-      if (storedHide != null) setHideCompleted(storedHide === '1')
-      else if (legacyHide != null) setHideCompleted(legacyHide === '1')
-
-      if (storedPriority) setFilterPriority(storedPriority)
-      else if (legacyPriority) setFilterPriority(legacyPriority)
-
-      if (storedCategory) setSelectedCategory(storedCategory as any)
-    } catch {}
-  }, [])
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('zflow:prefs:hideCompleted', hideCompleted ? '1' : '0')
-    } catch {}
-  }, [hideCompleted])
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('zflow:prefs:filterPriority', filterPriority)
-    } catch {}
-  }, [filterPriority])
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('zflow:prefs:selectedCategory', String(selectedCategory))
-    } catch {}
-  }, [selectedCategory])
-
-  // Use API hooks - only when authenticated
-  const { tasks, isLoading, error, refetch } = useTasks(user ? {} : null)
-  const { categories, isLoading: categoriesLoading } = useCategories()
-  const { createCategory } = useCreateCategory()
-  const { updateCategory } = useUpdateCategory()
-  const { deleteCategory } = useDeleteCategory()
-
-  // Count tasks by category (completed vs incomplete)
-  const categoryCounts = React.useMemo(() => {
-    const byId: Record<string, number> = {}
-    const byIdCompleted: Record<string, number> = {}
-    const byIdIncomplete: Record<string, number> = {}
-    let uncategorized = 0
-    let uncategorizedCompleted = 0
-    let uncategorizedIncomplete = 0
-    let totalCompleted = 0
-    let totalIncomplete = 0
-
-    tasks.forEach((t: any) => {
-      const c = t.content as Task
-      const isCompleted = c.status === 'completed'
-      const catId = (t as any).category_id || (t as any).content?.category_id
-      if (catId) {
-        byId[catId] = (byId[catId] || 0) + 1
-        if (isCompleted) byIdCompleted[catId] = (byIdCompleted[catId] || 0) + 1
-        else byIdIncomplete[catId] = (byIdIncomplete[catId] || 0) + 1
-      } else {
-        uncategorized += 1
-        if (isCompleted) uncategorizedCompleted += 1
-        else uncategorizedIncomplete += 1
-      }
-      if (isCompleted) totalCompleted += 1
-      else totalIncomplete += 1
-    })
-    return {
-      byId,
-      byIdCompleted,
-      byIdIncomplete,
-      uncategorized,
-      uncategorizedCompleted,
-      uncategorizedIncomplete,
-      total: tasks.length,
-      totalCompleted,
-      totalIncomplete,
-    }
-  }, [tasks])
+  const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { categories } = useCategories()
   const { createTask } = useCreateTask()
   const { updateTask } = useUpdateTask()
   const { deleteTask } = useDeleteTask()
+  const { createCategory } = useCreateCategory()
+  const { updateCategory } = useUpdateCategory()
+  const { deleteCategory } = useDeleteCategory()
+  const { isRunning, runningTaskId, runningSince, elapsedMs } = useTimer()
 
-  // Quick stats for header
-  const quickStats = useMemo(() => {
-    let total = tasks.length
-    let completed = 0
-    let inProgress = 0
-    let pending = 0
-    let onHold = 0
-    let cancelled = 0
-    let overdue = 0
-    for (const t of tasks) {
-      const c = t.content as Task
-      if (c.status === 'completed') completed += 1
-      if (c.status === 'in_progress') inProgress += 1
-      if (c.status === 'pending') pending += 1
-      if (c.status === 'on_hold') onHold += 1
-      if (c.status === 'cancelled') cancelled += 1
-      if (c.due_date && isOverdue(c.due_date)) overdue += 1
-    }
-    return { total, completed, inProgress, pending, onHold, cancelled, overdue }
-  }, [tasks])
+  // Shared filters
+  const [selectedCategory, setSelectedCategory] = React.useState<'all' | 'uncategorized' | string>('all')
+  const [filterPriority, setFilterPriority] = React.useState<'all' | 'low' | 'medium' | 'high' | 'urgent'>('all')
+  const [search, setSearch] = React.useState('')
+  const [sortMode, setSortMode] = React.useState<'none' | 'priority' | 'due_date'>('none')
 
-  const addTask = async () => {
-    if (!newTask.trim()) return
+  // Add task modal
+  const [showAddModal, setShowAddModal] = React.useState(false)
+  
+  // Task editor
+  const [editingTask, setEditingTask] = React.useState<any>(null)
+  const [showTaskEditor, setShowTaskEditor] = React.useState(false)
 
-    try {
-      console.log('=== TASK CREATION DEBUG ===');
-      console.log('selectedCategory:', selectedCategory);
-      console.log('newTaskCategoryId:', newTaskCategoryId);
-      
-      const tagsArray = newTaskTags
-        .split(',')
-        .map(t => t.trim())
-        .filter(t => t.length > 0)
+  // Mobile category selector
+  const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
+  const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
+  const [showDailyModal, setShowDailyModal] = React.useState(false)
 
-      const finalCategoryId = newTaskCategoryId || (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined);
-      console.log('finalCategoryId:', finalCategoryId);
-
-      const joinAttention = (() => {
-        try { return localStorage.getItem('zflow:quickCapture:joinAttention') === '1' || (window as any).__zflowJoinAttention === true } catch { return false }
-      })()
-
-      const newStatus: 'pending' | 'on_hold' = joinAttention ? 'pending' : 'on_hold'
-      const taskData = {
-        title: newTask,
-        description: newTaskDescription,
-        status: newStatus,
-        priority: newTaskPriority,
-        category_id: finalCategoryId,
-        due_date: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
-      }
-
-      console.log('taskData being sent:', JSON.stringify(taskData, null, 2));
-
-      await createTask({
-        type: 'task',
-        content: taskData,
-        tags: ['zflow', 'task', ...tagsArray]
-      })
-
-      // Reset form
-      setNewTask('')
-      setNewTaskDescription('')
-      setNewTaskPriority('medium')
-      setNewTaskDueDate('')
-      setNewTaskTags('')
-      setNewTaskCategoryId(undefined)
-       setShowAddForm(false)
-       setShowAddModal(false)
-    } catch (error) {
-      console.error('Failed to create task:', error)
-      alert(t.messages.taskCreateFailed)
-    }
+  // Navigate to work view with specific task
+  const goToWork = (taskId: string) => {
+    router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
   }
 
-  const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    try {
-      const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
-      const now = new Date().toISOString()
-      
-      await updateTask(taskId, {
-        content: {
-          ...tasks.find(t => t.id === taskId)?.content,
-          status: newStatus,
-          completion_date: newStatus === 'completed' ? now : undefined
-        }
-      })
-    } catch (error) {
-      console.error('Failed to update task:', error)
-      alert(t.messages.taskUpdateFailed)
-    }
-  }
-
+  // Delete task function
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm(t.messages.confirmDelete)) return
 
@@ -260,6 +78,7 @@ export default function ZFlowPage() {
     }
   }
 
+  // Open task editor
   const openEditor = (taskMemory: any) => {
     // Convert TaskMemory to Task format expected by TaskEditor
     const task = {
@@ -271,404 +90,825 @@ export default function ZFlowPage() {
       // Add category_id from the top level if available
       category_id: (taskMemory as any).category_id || taskMemory.content.category_id,
     }
-    setSelectedTask(task)
-    setEditorOpen(true)
+    setEditingTask(task)
+    setShowTaskEditor(true)
   }
 
-  const closeEditor = () => {
-    setEditorOpen(false)
-    setSelectedTask(null)
+  // Format elapsed time from milliseconds
+  const formatElapsedTime = (elapsedMs: number): string => {
+    const totalSeconds = Math.floor(elapsedMs / 1000)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  // Categories are now loaded via useCategories hook
+
+  const filteredByCommon = React.useMemo(() => {
+    return tasks.filter((t) => {
+      const c = t.content as TaskContent
+      const catId = (t as any).category_id || c.category_id
+      const matchCategory = selectedCategory === 'all' ? true : selectedCategory === 'uncategorized' ? !catId : catId === selectedCategory
+      const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
+      const matchPriority = filterPriority === 'all' || c.priority === filterPriority
+      return matchCategory && matchSearch && matchPriority
+    })
+  }, [tasks, selectedCategory, search, filterPriority])
+
+  const now = Date.now()
+  const windowMs = 24 * 60 * 60 * 1000
+
+  // Current: pending/in_progress/completed within 24h
+  const currentList = React.useMemo(() => {
+    const list = filteredByCommon.filter((t) => {
+      const c = t.content as TaskContent
+      if (c.status === 'pending' || c.status === 'in_progress') return true
+      if (c.status === 'completed') {
+        const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+        return completedAt && now - completedAt <= windowMs
+      }
+      return false
+    })
+    
+    // Sort with timing tasks first, then in_progress, then pending, then completed last
+    const sorted = sortTasks(list, sortMode)
+    return sorted.sort((a, b) => {
+      const aStatus = (a.content as TaskContent).status
+      const bStatus = (b.content as TaskContent).status
+      const aIsTiming = runningTaskId === a.id
+      const bIsTiming = runningTaskId === b.id
+      
+      // Timing tasks always come first
+      if (aIsTiming && !bIsTiming) return -1
+      if (bIsTiming && !aIsTiming) return 1
+      
+      // Then in_progress tasks come second
+      if (aStatus === 'in_progress' && bStatus !== 'in_progress') return -1
+      if (bStatus === 'in_progress' && aStatus !== 'in_progress') return 1
+      
+      // Then pending tasks come third
+      if (aStatus === 'pending' && bStatus === 'completed') return -1
+      if (bStatus === 'pending' && aStatus === 'completed') return 1
+      
+      // Completed tasks come last
+      if (aStatus === 'completed' && bStatus !== 'completed') return 1
+      if (bStatus === 'completed' && aStatus !== 'completed') return -1
+      
+      // Keep original order for same status
+      return 0
+    })
+  }, [filteredByCommon, sortMode, runningTaskId])
+
+  // Future: on_hold
+  const futureList = React.useMemo(() => {
+    const list = filteredByCommon.filter(t => (t.content as TaskContent).status === 'on_hold')
+    return sortTasks(list, sortMode)
+  }, [filteredByCommon, sortMode])
+
+  // Archive: completed beyond 24h + cancelled
+  const archiveList = React.useMemo(() => {
+    const list = filteredByCommon.filter((t) => {
+      const c = t.content as TaskContent
+      if (c.status === 'cancelled') return true
+      if (c.status === 'completed') {
+        const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+        return completedAt && now - completedAt > windowMs
+      }
+      return false
+    })
+    return sortTasks(list, sortMode)
+  }, [filteredByCommon, sortMode])
+
+  // Calculate statistics
+  const stats = React.useMemo(() => {
+    const current = tasks.filter(t => {
+      const c = t.content as TaskContent
+      if (c.status === 'pending' || c.status === 'in_progress') return true
+      if (c.status === 'completed') {
+        const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+        return completedAt && now - completedAt <= windowMs
+      }
+      return false
+    }).length
+
+    const future = tasks.filter(t => {
+      const c = t.content as TaskContent
+      return c.status === 'on_hold'
+    }).length
+
+    const archive = tasks.filter(t => {
+      const c = t.content as TaskContent
+      if (c.status === 'cancelled') return true
+      if (c.status === 'completed') {
+        const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+        return completedAt && now - completedAt > windowMs
+      }
+      return false
+    }).length
+
+    return { current, future, archive }
+  }, [tasks])
+
+  // Calculate category counts based on current view
+  const viewBasedCounts = React.useMemo(() => {
+    const getTasksForView = (viewType: ViewKey) => {
+      switch (viewType) {
+        case 'current':
+          return tasks.filter(t => {
+            const c = t.content as TaskContent
+            if (c.status === 'pending' || c.status === 'in_progress') return true
+            if (c.status === 'completed') {
+              const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+              return completedAt && now - completedAt <= windowMs
+            }
+            return false
+          })
+        case 'future':
+          return tasks.filter(t => {
+            const c = t.content as TaskContent
+            return c.status === 'on_hold'
+          })
+        case 'archive':
+          return tasks.filter(t => {
+            const c = t.content as TaskContent
+            if (c.status === 'cancelled') return true
+            if (c.status === 'completed') {
+              const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+              return completedAt && now - completedAt > windowMs
+            }
+            return false
+          })
+        default:
+          return []
+      }
+    }
+
+    const viewTasks = getTasksForView(view)
+    const counts = {
+      byId: {} as Record<string, number>,
+      byIdCompleted: {} as Record<string, number>,
+      byIdIncomplete: {} as Record<string, number>,
+      uncategorized: 0,
+      uncategorizedCompleted: 0,
+      uncategorizedIncomplete: 0,
+      total: viewTasks.length,
+      totalCompleted: 0,
+      totalIncomplete: 0,
+    }
+
+    for (const t of viewTasks) {
+      const c = t.content as TaskContent
+      const completed = c.status === 'completed'
+      const catId = (t as any).category_id || c.category_id
+      if (catId) {
+        counts.byId[catId] = (counts.byId[catId] || 0) + 1
+        if (completed) counts.byIdCompleted[catId] = (counts.byIdCompleted[catId] || 0) + 1
+        else counts.byIdIncomplete[catId] = (counts.byIdIncomplete[catId] || 0) + 1
+      } else {
+        counts.uncategorized += 1
+        if (completed) counts.uncategorizedCompleted += 1
+        else counts.uncategorizedIncomplete += 1
+      }
+      if (completed) counts.totalCompleted += 1
+      else counts.totalIncomplete += 1
+    }
+
+    return counts
+  }, [tasks, view, now])
+
+  const handleAddTask = async (taskData: any) => {
+    await createTask(taskData)
+  }
+
+  const handleEditTask = (task: TaskMemory) => {
+    // Convert TaskMemory to Task format for TaskEditor
+    const taskContent = task.content as TaskContent
+    const convertedTask = {
+      id: task.id,
+      title: taskContent.title,
+      description: taskContent.description,
+      status: taskContent.status,
+      priority: taskContent.priority,
+      category_id: (task as any).category_id || taskContent.category_id,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+      due_date: taskContent.due_date,
+      estimated_duration: taskContent.estimated_duration,
+      progress: taskContent.progress || 0,
+      assignee: taskContent.assignee,
+      completion_date: taskContent.completion_date,
+      notes: taskContent.notes,
+      tags: task.tags
+    }
+    setEditingTask(convertedTask as any)
+    setShowTaskEditor(true)
   }
 
   const handleSaveTask = async (taskId: string, data: any) => {
     await updateTask(taskId, data)
+    setShowTaskEditor(false)
+    setEditingTask(null)
   }
 
-  let filteredTasks = useMemo(() => {
-    const shouldHideCompleted = hideCompleted && filterStatus !== 'completed'
-    return tasks.filter((t) => {
-      const c = t.content as Task
-      // Category filter: all shows everything; uncategorized shows tasks without category_id; otherwise match by category_id
-      const catId = (t as any).category_id || (t as any).content?.category_id
-      const matchCategory = selectedCategory === 'all'
-        ? true
-        : selectedCategory === 'uncategorized'
-          ? !catId
-          : catId === selectedCategory
-      // Home page: show all tasks when filterStatus is 'all'
-      // - If filterStatus === 'all', show all statuses including on_hold and cancelled
-      // - Completed: show all completed tasks when filterStatus is 'completed'
-      const now = Date.now()
-      const windowMs = 24 * 60 * 60 * 1000
-      const isCompletedWithinWindow = c.status === 'completed' && c.completion_date ? (now - new Date(c.completion_date).getTime()) <= windowMs : false
-      const baseStatusInclude = filterStatus === 'all'
-        ? (c.status === 'pending' || c.status === 'in_progress' || c.status === 'on_hold' || c.status === 'cancelled' || isCompletedWithinWindow)
-        : (filterStatus === 'completed' ? c.status === 'completed' : c.status === filterStatus)
+  const handleUpdateCategory = async (taskId: string, categoryId: string | undefined) => {
+    await updateTask(taskId, { content: { category_id: categoryId } })
+  }
 
-      const matchStatus = baseStatusInclude
-      const matchPriority = filterPriority === 'all' || c.priority === filterPriority
-      const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
-      const matchCompletedHide = !(shouldHideCompleted && c.status === 'completed')
-      const overdueNow = !!c.due_date && isOverdue(c.due_date)
-      const matchOverdue = !showOverdueOnly || (c.status !== 'completed' && overdueNow)
-      return matchCategory && matchStatus && matchPriority && matchSearch && matchCompletedHide && matchOverdue
+  const toggleComplete = async (id: string, current: string) => {
+    const newStatus = current === 'completed' ? 'pending' : 'completed'
+    const now = new Date().toISOString()
+    await updateTask(id, { 
+      content: { 
+        status: newStatus,
+        completion_date: newStatus === 'completed' ? now : undefined
+      } 
     })
-  }, [tasks, selectedCategory, filterStatus, filterPriority, search, hideCompleted, showOverdueOnly])
-
-  // Apply sort (shared with Kanban): priority or due_date
-  filteredTasks = useMemo(() => {
-    const priorityOrder: Record<Task['priority'], number> = { urgent: 0, high: 1, medium: 2, low: 3 }
-    if (sortMode === 'priority') {
-      return [...filteredTasks].sort((a, b) => {
-        const ca = (a.content as Task).priority
-        const cb = (b.content as Task).priority
-        return priorityOrder[ca] - priorityOrder[cb]
-      })
-    }
-    if (sortMode === 'due_date') {
-      return [...filteredTasks].sort((a, b) => {
-        const da = (a.content as Task).due_date
-        const db = (b.content as Task).due_date
-        if (!da && !db) return 0
-        if (!da) return 1
-        if (!db) return -1
-        return new Date(da).getTime() - new Date(db).getTime()
-      })
-    }
-    return filteredTasks
-  }, [filteredTasks, sortMode])
-
-  // Show loading while checking authentication
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
   }
 
-  // Show login page if not authenticated
-  if (!user) {
-    return <LoginPage />
-  }
+  const activate = async (id: string) => { await updateTask(id, { content: { status: 'pending' } }) }
+  const reopen = async (id: string) => { await updateTask(id, { content: { status: 'pending', progress: 0 } }) }
 
-  // Show loading while fetching data
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
+  // Authentication/loading guards
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  if (!user) return <LoginPage />
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  if (error) return <div className="flex items-center justify-center min-h-screen text-red-600">Failed to load</div>
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-          <p className="text-red-600">Failed to load tasks</p>
-          <button 
-            onClick={() => refetch()}
-            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const getCurrentList = () => currentList
+  const getFutureList = () => futureList
+  const getArchiveList = () => archiveList
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="py-8">
-        {/* Auth button is provided in global NavBar */}
-      <div className="flex gap-4">
-        {/* Left category sidebar */}
-        <CategorySidebar
-          categories={categories}
-          selected={selectedCategory}
-          counts={categoryCounts}
-          onSelect={(key) => setSelectedCategory(key as any)}
-          onCreate={async (payload) => {
-            await createCategory({ name: payload.name, color: payload.color })
-          }}
-          onUpdate={async (id, payload) => {
-            await updateCategory(id, payload)
-          }}
-          onDelete={async (id) => {
-            await deleteCategory(id)
-            // If the deleted category was selected, switch to 'all'
-            if (selectedCategory === id) {
-              setSelectedCategory('all')
-            }
-          }}
-          className="hidden md:block rounded-lg"
-        />
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
+        <div className="flex gap-4 md:gap-6">
+          {/* Left: Category sidebar */}
+          <CategorySidebar
+            categories={categories}
+            selected={selectedCategory}
+            counts={viewBasedCounts}
+            view={view}
+            onSelect={(key) => setSelectedCategory(key as any)}
+            onCreate={async (payload) => { await createCategory({ name: payload.name, color: payload.color }) }}
+            onUpdate={async (id, payload) => { await updateCategory(id, payload) }}
+            onDelete={async (id) => { await deleteCategory(id); if (selectedCategory === id) setSelectedCategory('all') }}
+            className="hidden md:block rounded-lg"
+          />
 
-        {/* Right main content */
-        }
-        <div className="flex-1">
-          
-      <div className="mb-8">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white">
-          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute -left-10 -bottom-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative p-6 sm:p-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                  <ListTodo className="w-7 h-7" /> ZFlow
-                </h1>
-                <p className="mt-1 text-white/90">{t.meta.taskManagementWorkbench}</p>
+          {/* Right: Main Content */}
+          <div className="flex-1">
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8">
+              <button
+                onClick={() => setView('current')}
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                  view === 'current' 
+                    ? 'border-primary-300 shadow-md -translate-y-0.5' 
+                    : ''
+                }`}
+              >
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-100 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <Clock className="w-4 h-4 md:w-5 md:h-5 text-primary-600" />
+                  </div>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Current</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">{t.ui.inProgress} + Completed within 24h</p>
+                  </div>
+                </div>
+                <p className="text-xl md:text-3xl font-bold text-primary-600 text-center md:text-left">{stats.current}</p>
+              </button>
+
+              <button
+                onClick={() => setView('future')}
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                  view === 'future' 
+                    ? 'border-primary-300 shadow-md -translate-y-0.5' 
+                    : ''
+                }`}
+              >
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-200 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-primary-700" />
+                  </div>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Future</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">{t.ui.backlogItems}</p>
+                  </div>
+                </div>
+                <p className="text-xl md:text-3xl font-bold text-primary-700 text-center md:text-left">{stats.future}</p>
+              </button>
+
+              <button
+                onClick={() => setView('archive')}
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                  view === 'archive' 
+                    ? 'border-primary-300 shadow-md -translate-y-0.5' 
+                    : ''
+                }`}
+              >
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-300 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <Archive className="w-4 h-4 md:w-5 md:h-5 text-primary-800" />
+                  </div>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Archive</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">Archived + Cancelled</p>
+                  </div>
+                </div>
+                <p className="text-xl md:text-3xl font-bold text-primary-800 text-center md:text-left">{stats.archive}</p>
+              </button>
+            </div>
+
+            {/* Current Category Display (Mobile) */}
+            <div className="md:hidden mb-3">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Tag className="w-4 h-4" />
+                <span>
+                  {t.ui.currentCategory}: {
+                    selectedCategory === 'all' ? t.common.all : 
+                    selectedCategory === 'uncategorized' ? t.ui.uncategorized : 
+                    categories.find(c => c.id === selectedCategory)?.name || 'Unknown'
+                  }
+                </span>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center bg-white/10 rounded-full p-1">
+            </div>
+
+            {/* Search, Filters and View Controls */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
+              {/* Left: Search and Filters */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                <div className="flex items-center glass rounded-full px-3 md:px-4 py-2">
+                  <input 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)} 
+                    placeholder={t.ui.searchTasks} 
+                    className="bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-500 w-full sm:w-48"
+                  />
+                </div>
+                <select 
+                  value={filterPriority} 
+                  onChange={(e) => setFilterPriority(e.target.value as any)} 
+                  className="glass rounded-full px-3 md:px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="all">{t.ui.allPriority}</option>
+                  <option value="urgent">{t.task.priorityUrgent}</option>
+                  <option value="high">{t.task.priorityHigh}</option>
+                  <option value="medium">{t.task.priorityMedium}</option>
+                  <option value="low">{t.task.priorityLow}</option>
+                </select>
+                
+                {/* Mobile Category Selector Button */}
+                <button
+                  onClick={() => setShowMobileCategorySelector(true)}
+                  className="md:hidden flex items-center justify-between glass rounded-full px-3 py-2 text-sm text-gray-700 hover:bg-white/50 transition-colors duration-200"
+                >
+                  <span className="flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    <span>
+                      {selectedCategory === 'all' ? t.ui.allCategories : 
+                       selectedCategory === 'uncategorized' ? t.ui.uncategorized : 
+                       categories.find(c => c.id === selectedCategory)?.name || t.ui.selectCategory}
+                    </span>
+                  </span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Right: View Controls and Current View Indicator */}
+              <div className="flex items-center justify-center sm:justify-end gap-2 md:gap-4">
+                {/* View Mode Toggle */}
+                <div className="flex items-center glass rounded-full p-1">
                   <button
-                    onClick={() => setViewMode('list')}
-                    className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ${viewMode === 'list' ? 'bg-white text-primary-700' : 'text-white/90 hover:bg-white/10'}`}
+                    onClick={() => setDisplayMode('list')}
+                    className={`px-2 md:px-3 py-1.5 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${
+                      displayMode === 'list' 
+                        ? 'bg-primary-600 text-white shadow-sm' 
+                        : 'text-gray-600 hover:bg-white/50'
+                    }`}
                   >
-                    <ListTodo className="w-4 h-4" /> {t.ui.listView}
+                    {t.ui.listView}
                   </button>
                   <button
-                    onClick={() => setViewMode('grid')}
-                    className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ${viewMode === 'grid' ? 'bg-white text-primary-700' : 'text-white/90 hover:bg-white/10'}`}
+                    onClick={() => setDisplayMode('grid')}
+                    className={`px-2 md:px-3 py-1.5 rounded-full text-xs md:text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
+                      displayMode === 'grid' 
+                        ? 'bg-primary-600 text-white shadow-sm' 
+                        : 'text-gray-600 hover:bg-white/50'
+                    }`}
                   >
-                    <BarChart3 className="w-4 h-4" /> {t.ui.gridView}
+                    <Grid className="w-3 h-3" />
+                    {t.ui.gridView}
                   </button>
                 </div>
-                <Link href="/focus?view=work" className="btn btn-secondary bg-white text-primary-700 hover:bg-white/90">
-                  <span className="inline-flex items-center gap-2"><KanbanSquare className="w-4 h-4" /> Focus</span>
+
+                {/* Focus Button */}
+                <Link href="/focus?view=work" className="bg-primary-600 text-white px-3 md:px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                  <Focus className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Focus</span>
                 </Link>
+
+                {/* Daily time overview */}
+                <button
+                  onClick={() => setShowDailyModal(true)}
+                  className="glass px-3 md:px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-1 md:gap-2 text-xs md:text-sm hover:shadow-sm hover:-translate-y-0.5"
+                >
+                  <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Time</span>
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {[
-                { key: 'all', label: t.ui.totalTasks, value: quickStats.total },
-                { key: 'pending', label: t.ui.planned, value: quickStats.pending },
-                { key: 'in_progress', label: t.ui.inProgress, value: quickStats.inProgress },
-                { key: 'completed', label: t.ui.completed, value: quickStats.completed },
-                { key: 'on_hold', label: t.ui.backlog, value: quickStats.onHold },
-                { key: 'cancelled', label: t.ui.abandoned, value: quickStats.cancelled },
-              ].map(({ key, label, value }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setFilterStatus(key as any)
-                    setHideCompleted(key !== 'completed')
-                    setShowOverdueOnly(false)
-                    setSearch('')
-                  }}
-                  className="glass rounded-lg p-3 text-left text-gray-800 card-hover"
-                >
-                  <div className="text-[11px] text-gray-500 truncate">{label}</div>
-                  <div className="mt-0.5 text-xl font-semibold">{value}</div>
-                </button>
-              ))}
-            </div>
+
+
+            {/* View content */}
+            {view === 'current' && (
+              <div className="space-y-3 md:space-y-4">
+                {getCurrentList().length === 0 ? (
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
+                    {t.ui.noCurrentTasks}
+                  </div>
+                ) : (
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
+                    {getCurrentList().map((task) => {
+                      const c = task.content as TaskContent
+                      const isInProgress = c.status === 'in_progress'
+                      const isTiming = runningTaskId === task.id
+                      return (
+                        <div 
+                          key={task.id} 
+                          className={`${isTiming 
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-100 border-2 border-green-400 shadow-lg shadow-green-200/60 ring-2 ring-green-300/50' 
+                            : isInProgress 
+                              ? 'bg-gradient-to-r from-primary-50 to-primary-100 border-2 border-primary-300 shadow-lg shadow-primary-200/50' 
+                              : 'glass'
+                          } rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer ${isTiming ? 'hover:shadow-xl hover:shadow-green-200/70' : isInProgress ? 'hover:shadow-xl hover:shadow-primary-200/60' : ''}`}
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+                              return
+                            }
+                            goToWork(task.id)
+                          }}
+                        >
+                          <div className="flex items-start justify-between mb-3 md:mb-4">
+                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                              <button 
+                                onClick={() => toggleComplete(task.id, c.status)} 
+                                className="flex-shrink-0"
+                              >
+                                {c.status === 'completed' ? (
+                                  <svg className="w-4 h-4 md:w-5 md:h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.5-1.5z"/>
+                                  </svg>
+                                ) : isTiming ? (
+                                  <div className="relative">
+                                    <svg className="w-4 h-4 md:w-5 md:h-5 text-green-600" viewBox="0 0 24 24" fill="currentColor">
+                                      <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                    <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-green-600 rounded-full animate-ping"></div>
+                                    <div className="absolute inset-1 w-2 h-2 md:w-3 md:h-3 bg-green-600 rounded-full animate-pulse"></div>
+                                  </div>
+                                ) : c.status === 'in_progress' ? (
+                                  <div className="relative">
+                                    <svg className="w-4 h-4 md:w-5 md:h-5 text-primary-600" viewBox="0 0 24 24" fill="currentColor">
+                                      <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                    <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-primary-600 rounded-full animate-pulse"></div>
+                                  </div>
+                                ) : (
+                                  <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="12" r="10"/>
+                                  </svg>
+                                )}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className={`font-medium text-base md:text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                    {c.title}
+                                  </h3>
+                                  {isTiming ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
+                                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
+                                      {t.ui.timing} {formatElapsedTime(elapsedMs)}
+                                    </span>
+                                  ) : isInProgress && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded-full">
+                                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                                      {t.ui.inProgress}
+                                    </span>
+                                  )}
+                                </div>
+                                {c.description && (
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          <div className="flex items-center gap-1 md:gap-2">
+                              {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEditor(task)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑任务"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除任务"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                title="查看专注时间"
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500 gap-1">
+                            <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
+                            {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
+                              <span className={`inline-flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
+                                <Calendar className="w-3 h-3" />
+                                {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
+                                {shouldShowOverdue(c.status, c.due_date) && t.ui.overdue}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === 'future' && (
+              <div className="space-y-3 md:space-y-4">
+                {getFutureList().length === 0 ? (
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
+                    {t.ui.noBacklogItems}
+                  </div>
+                ) : (
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
+                    {getFutureList().map((task) => {
+                      const c = task.content as TaskContent
+                      return (
+                        <div 
+                          key={task.id} 
+                          className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons or select elements
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || 
+                                (e.target as HTMLElement).tagName === 'SELECT' ||
+                                (e.target as HTMLElement).closest('button') ||
+                                (e.target as HTMLElement).closest('select')) {
+                              return
+                            }
+                            goToWork(task.id)
+                          }}
+                        >
+                          <div className="flex items-start justify-between mb-3 md:mb-4">
+                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                              <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
+                                <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
+                                {c.description && (
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          <div className="flex items-center gap-1 md:gap-2">
+                              {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEditor(task)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑任务"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除任务"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                title="查看专注时间"
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs text-gray-500">{t.ui.createdAt} {formatDate(task.created_at)}</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              {/* Quick Category Change */}
+                              <select
+                                value={(task as any).category_id || (c as any).category_id || ''}
+                                onChange={(e) => handleUpdateCategory(task.id, e.target.value || undefined)}
+                                className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="">{t.ui.noCategory}</option>
+                                {categories.map((cat: any) => (
+                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                              </select>
+                              
+                              <div className="flex items-center gap-1">
+                                {/* Edit Button */}
+                                <button
+                                  onClick={() => handleEditTask(task)}
+                                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                                  title={t.task.editTask}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Activate Button */}
+                                <button 
+                                  onClick={() => activate(task.id)} 
+                                  className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors duration-200"
+                                >
+                                  {t.task.activateTask}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === 'archive' && (
+              <div className="space-y-3 md:space-y-4">
+                {getArchiveList().length === 0 ? (
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
+                    {t.ui.noArchivedTasks}
+                  </div>
+                ) : (
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
+                    {getArchiveList().map((task) => {
+                      const c = task.content as TaskContent
+                      return (
+                        <div 
+                          key={task.id} 
+                          className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+                              return
+                            }
+                            goToWork(task.id)
+                          }}
+                        >
+                          <div className="flex items-start justify-between mb-3 md:mb-4">
+                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                              <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
+                                {c.status === 'completed' ? (
+                                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
+                                ) : (
+                                  <Archive className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
+                                {c.description && (
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 md:gap-2">
+                              {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEditor(task)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑任务"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除任务"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                title="查看专注时间"
+                              >
+                                <Timer className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <span className="text-xs text-gray-500">
+                              {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
+                            </span>
+                            {c.status === 'completed' && (
+                              <button 
+                                onClick={() => reopen(task.id)} 
+                                className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
+                              >
+                                {t.task.reopenTask}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Mobile category entry */}
-      <div className="md:hidden mb-3">
-        <button
-          onClick={() => setShowCategorySheet(true)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-gray-200 shadow-sm"
-        >
-          <span className="inline-flex items-center gap-2 text-gray-700">
-            <Folder className="w-4 h-4 text-gray-500" />
-            {(() => {
-              if (selectedCategory === 'all') return t.common.all
-              if (selectedCategory === 'uncategorized') return t.ui.uncategorized
-              const cat = categories.find((c: any) => c.id === selectedCategory)
-              return cat ? cat.name : t.ui.categories
-            })()}
-          </span>
-          <span className="text-xs text-gray-500 inline-flex items-center gap-1">
-            <span className="px-2 py-1 rounded-full bg-primary-50 text-primary-700">
-              {selectedCategory === 'all' ? categoryCounts.total : selectedCategory === 'uncategorized' ? categoryCounts.uncategorized : (categoryCounts.byId as any)[selectedCategory] || 0}
-            </span>
-            <ChevronDown className="w-4 h-4" />
-          </span>
-        </button>
+      {/* Floating Add Button (desktop only) */}
+      <div className="hidden sm:block">
+        <FloatingAddButton 
+          onClick={() => setShowAddModal(true)} 
+        />
       </div>
 
-      {/* Filters */}
-      <div className="glass rounded-2xl p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-              className="pill-select"
-            >
-              <option value="all">{t.ui.allStatus}</option>
-              <option value="pending">{t.task.statusPending}</option>
-              <option value="in_progress">{t.task.statusInProgress}</option>
-              <option value="completed">{t.task.statusCompleted}</option>
-              <option value="on_hold">{t.task.statusOnHold}</option>
-              <option value="cancelled">{t.task.statusCancelled}</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value as FilterPriority)}
-              className="pill-select"
-            >
-              <option value="all">{t.ui.allPriority}</option>
-              <option value="urgent">{t.task.priorityUrgent}</option>
-              <option value="high">{t.task.priorityHigh}</option>
-              <option value="medium">{t.task.priorityMedium}</option>
-              <option value="low">{t.task.priorityLow}</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t.ui.searchPlaceholder}
-              className="pill-input w-full"
-            />
-          </div>
-          {/* 隐藏已完成控制已移动到导航设置中 */}
-        </div>
-      </div>
-
-      {/* Add task: use modal like overview; trigger via floating button on desktop or bottom nav on mobile */}
+      {/* Add Task Modal */}
       <AddTaskModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSubmit={async (payload) => {
-          await createTask(payload)
-          setShowAddModal(false)
-        }}
+        onSubmit={handleAddTask}
         categories={categories}
-        defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? (selectedCategory as string) : undefined}
+        defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined}
       />
 
-      {/* Task list */}
-      <div className="space-y-4">
-        {filteredTasks.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
-            <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>{t.messages.noTasksYet}</p>
-          </div>
-        ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
-            {filteredTasks.map((task) => {
-              const taskContent = task.content as Task
-              return (
-                <div key={task.id} className={`card card-hover ${viewMode === 'grid' ? 'h-fit' : ''}`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3 flex-1">
-                      <button
-                        onClick={() => toggleTaskStatus(task.id, taskContent.status)}
-                        className="flex-shrink-0"
-                      >
-                        {taskContent.status === 'completed' ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-gray-400" />
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`font-medium text-lg ${taskContent.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                          {taskContent.title}
-                        </h3>
-                        {taskContent.description && (
-                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                            {taskContent.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getPriorityIcon(taskContent.priority)}
-                      <button
-                        onClick={() => openEditor(task)}
-                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  {task.tags && task.tags.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 mb-4">
-                      {task.tags.slice(0, 4).map((tag: string) => (
-                        <span key={tag} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">
-                          <Tag className="w-3 h-3" /> {tag}
-                        </span>
-                      ))}
-                      {task.tags.length > 4 && (
-                        <span className="text-xs text-gray-500">+{task.tags.length - 4}</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Status and priority tags */}
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <span className={`inline-flex items-center text-xs px-2 py-1 rounded border ${getStatusColor(taskContent.status)}`}>
-                      {taskContent.status}
-                    </span>
-                    <span className={`inline-flex items-center text-xs px-2 py-1 rounded border ${getPriorityColor(taskContent.priority)}`}>
-                      {taskContent.priority}
-                    </span>
-                  </div>
-
-                  {/* Time information */}
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
-                    {getTaskDisplayDate(taskContent.status, taskContent.due_date, taskContent.completion_date) && (
-                      <span className={`inline-flex items-center gap-1 ${shouldShowOverdue(taskContent.status, taskContent.due_date) ? 'text-red-600' : ''}`}>
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(getTaskDisplayDate(taskContent.status, taskContent.due_date, taskContent.completion_date)!)}
-                        {shouldShowOverdue(taskContent.status, taskContent.due_date) && t.ui.overdue}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-          {/* Use shared TaskEditor component */}
-          <TaskEditor
-            isOpen={editorOpen}
-            onClose={closeEditor}
-            task={selectedTask}
-            categories={categories}
-            onSave={handleSaveTask}
-            title={t.ui.editTaskTitle}
-          />
-          {/* Desktop floating add button (same pattern as overview) */}
-          <div className="hidden sm:block">
-            <FloatingAddButton
-              onClick={() => setShowAddModal(true)}
-            />
-          </div>
-        </div>
-      </div>
-      {/* Mobile category sheet */}
-      <MobileCategorySheet
-        open={showCategorySheet}
-        onClose={() => setShowCategorySheet(false)}
+      {/* Task Editor */}
+      <TaskEditor
+        isOpen={showTaskEditor}
+        onClose={() => { setShowTaskEditor(false); setEditingTask(null) }}
+        task={editingTask}
         categories={categories}
-        counts={categoryCounts as any}
-        selected={selectedCategory as any}
+        onSave={handleSaveTask}
+        title={t.task.editTask}
+      />
+
+      {/* Task Time Modal */}
+      <TaskTimeModal
+        isOpen={!!timeModalTask}
+        onClose={() => setTimeModalTask(null)}
+        taskId={timeModalTask?.id || ''}
+        taskTitle={timeModalTask?.title}
+      />
+
+      {/* Daily Time Overview Modal */}
+      <DailyTimeModal isOpen={showDailyModal} onClose={() => setShowDailyModal(false)} />
+
+      {/* Mobile Category Selector Sheet */}
+      <MobileCategorySheet
+        open={showMobileCategorySelector}
+        onClose={() => setShowMobileCategorySelector(false)}
+        categories={categories}
+        counts={viewBasedCounts}
+        selected={selectedCategory}
         onSelect={(key) => setSelectedCategory(key as any)}
         onCreate={async (payload) => {
           await createCategory({ name: payload.name, color: payload.color })
@@ -682,6 +922,73 @@ export default function ZFlowPage() {
         }}
       />
     </div>
-    </div>
   )
-} 
+}
+
+function labelOf(k: ViewKey) {
+  if (k === 'current') return 'Current'
+  if (k === 'future') return 'Future'
+  return 'Past'
+}
+
+function computeCounts(tasks: TaskMemory[]) {
+  const counts = {
+    byId: {} as Record<string, number>,
+    byIdCompleted: {} as Record<string, number>,
+    byIdIncomplete: {} as Record<string, number>,
+    uncategorized: 0,
+    uncategorizedCompleted: 0,
+    uncategorizedIncomplete: 0,
+    total: tasks.length,
+    totalCompleted: 0,
+    totalIncomplete: 0,
+  }
+  for (const t of tasks) {
+    const c = t.content as TaskContent
+    const completed = c.status === 'completed'
+    const catId = (t as any).category_id || c.category_id
+    if (catId) {
+      counts.byId[catId] = (counts.byId[catId] || 0) + 1
+      if (completed) counts.byIdCompleted[catId] = (counts.byIdCompleted[catId] || 0) + 1
+      else counts.byIdIncomplete[catId] = (counts.byIdIncomplete[catId] || 0) + 1
+    } else {
+      counts.uncategorized += 1
+      if (completed) counts.uncategorizedCompleted += 1
+      else counts.uncategorizedIncomplete += 1
+    }
+    if (completed) counts.totalCompleted += 1
+    else counts.totalIncomplete += 1
+  }
+  return counts
+}
+
+function sortTasks(list: TaskMemory[], mode: 'none' | 'priority' | 'due_date') {
+  if (mode === 'none') return list
+  if (mode === 'priority') {
+    const order: Record<TaskContent['priority'], number> = { urgent: 0, high: 1, medium: 2, low: 3 }
+    return [...list].sort((a, b) => order[(a.content as TaskContent).priority] - order[(b.content as TaskContent).priority])
+  }
+  if (mode === 'due_date') {
+    return [...list].sort((a, b) => {
+      const da = (a.content as TaskContent).due_date
+      const db = (b.content as TaskContent).due_date
+      if (!da && !db) return 0
+      if (!da) return 1
+      if (!db) return -1
+      return new Date(da).getTime() - new Date(db).getTime()
+    })
+  }
+  return list
+}
+
+export default function ZFlowPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    }>
+      <ZFlowPageContent />
+    </Suspense>
+  )
+}

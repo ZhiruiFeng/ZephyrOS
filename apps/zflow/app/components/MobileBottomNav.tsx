@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Target, ListTodo, Mic, Plus } from 'lucide-react'
+import { Home, Target, ListTodo, Mic, Plus, Bot } from 'lucide-react'
 import { useTranslation } from '../../contexts/LanguageContext'
 
 function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: any }) {
@@ -35,7 +35,7 @@ export default function MobileBottomNav() {
     <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-7xl mx-auto px-2">
         <div className="relative flex items-center">
-          <NavItem href="/" label={t.nav.home} icon={Home} />
+          <NavItem href="/" label={t.nav.overview} icon={ListTodo} />
           <NavItem href="/focus?view=work" label={t.nav.focus} icon={Target} />
 
           {/* Center Add Button */}
@@ -49,7 +49,7 @@ export default function MobileBottomNav() {
           </button>
 
           <div className="flex-1" />
-          <NavItem href="/overview" label={t.nav.overview} icon={ListTodo} />
+          <NavItem href="/agents" label="Agents" icon={Bot} />
           <NavItem href="/speech" label={t.nav.speech} icon={Mic} />
         </div>
       </div>
