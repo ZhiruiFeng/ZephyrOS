@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.anthropic.com/claude-desktop-config.json",
+  "mcpServers": {
+    "zmemory": {
+      "command": "node",
+      "args": ["/path/to/ZephyrOS/apps/zmemory-mcp/dist/index.js"],
+      "env": {
+        "ZMEMORY_API_URL": "http://localhost:3001"
+      }
+    }
+  }
+}

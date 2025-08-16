@@ -4,13 +4,29 @@ A modern, modular task management and productivity platform built with Next.js, 
 
 ## Architecture Overview
 
+ZephyrOS 现在包含三个核心组件：Web界面、AI记忆服务和MCP集成，为现代AI工作流提供完整的记忆管理解决方案。
+
 ```
-┌─────────────┐    HTTP API     ┌──────────────┐    Database     ┌──────────────┐
-│             │    Requests     │              │    Queries      │              │
-│    ZFlow    │ ──────────────► │ ZMemory-API  │ ──────────────► │   Supabase   │
-│  (Frontend) │                 │  (Backend)   │                 │ (PostgreSQL) │
-│             │ ◄────────────── │              │ ◄────────────── │              │
-└─────────────┘    JSON         └──────────────┘    Results      └──────────────┘
+┌─────────────────┐                     ┌─────────────────┐    HTTP API     ┌─────────────────┐
+│   AI Agents     │ ── MCP Protocol ──► │  ZMemory MCP    │ ──────────────► │   ZMemory API   │
+│ (Claude/GPT)    │   (JSON-RPC 2.0)    │    Server       │                 │   (Backend)     │
+└─────────────────┘                     └─────────────────┘                 |                 |
+                                                                            |                 |
+                                                                            |                 |
+                                        ┌─────────────────┐    HTTP API     |                 |
+                                        │     ZFlow       │ ──────────────► |                 |
+                                        │   Frontend      │                 │                 │                      
+                                        │   (:3000)       │ ◄────────────── │                 │                 
+                                        └─────────────────┘      JSON       |                 |
+                                                                            └─────────────────┘
+                                                                                     │
+                                                                                     │ Database  
+                                                                                     │ Queries
+                                                                                     ▼
+                                                                            ┌─────────────────┐
+                                                                            │   Supabase      │
+                                                                            │  (PostgreSQL)   │
+                                                                            └─────────────────┘
 ```
 
 ## Project Structure
@@ -19,11 +35,13 @@ A modern, modular task management and productivity platform built with Next.js, 
 ZephyrOS/
 ├── apps/
 │   ├── zflow/           # Frontend task management app (Port: 3000)
-│   └── zmemory/         # Backend API service (Port: 3001)
+│   ├── zmemory/         # Backend API service (Port: 3001)
+│   └── zmemory-mcp/     # MCP server for AI agent integration
 ├── packages/
 │   └── shared/          # Shared types and utilities
 ├── supabase/            # Database schema
 ├── guidance/            # Development and deployment guides
+├── docs/                # Technical documentation
 └── scripts/             # Setup and utility scripts
 ```
 
@@ -40,6 +58,56 @@ ZephyrOS/
 - **Tech Stack**: Next.js API Routes, TypeScript, Supabase
 - **Responsibilities**: Data persistence, business logic, API endpoints
 - **Features**: Pure backend service, provides RESTful API
+
+### ZMemory MCP (AI Integration)
+- **Port**: stdio (no HTTP port needed)
+- **Tech Stack**: TypeScript, MCP SDK, JSON-RPC 2.0
+- **Responsibilities**: AI agent memory management, MCP protocol implementation
+- **Features**: Enables AI tools like Claude Desktop to access and manage memories
+
+## 🤖 AI Agent Integration
+
+ZephyrOS 支持通过 Model Context Protocol (MCP) 与 AI 工具集成，让 AI 助手能够访问和管理你的记忆。
+
+### 支持的 AI 工具
+- **Claude Desktop** - 完全集成支持
+- **其他 MCP 兼容工具** - 通过标准 MCP 协议
+
+### MCP 功能
+- 📝 添加新记忆和任务
+- 🔍 智能搜索现有记忆  
+- 📊 获取记忆统计信息
+- ✏️ 更新和管理记忆内容
+
+### 快速配置 Claude Desktop
+
+1. **启动服务**：
+   ```bash
+   npm run dev  # 启动所有服务
+   ```
+
+2. **配置 Claude Desktop**：
+   编辑配置文件 `~/Library/Application Support/Claude/claude_desktop_config.json`：
+   ```json
+   {
+     "mcpServers": {
+       "zmemory": {
+         "command": "node",
+         "args": ["/path/to/ZephyrOS/apps/zmemory-mcp/dist/index.js"],
+         "env": {
+           "ZMEMORY_API_URL": "http://localhost:3001"
+         }
+       }
+     }
+   }
+   ```
+
+3. **重启 Claude Desktop** 并测试：
+   ```
+   请显示我的记忆统计信息
+   ```
+
+📖 **完整文档**: 查看 [guidance/ZMEMORY_MCP_INTEGRATION.md](guidance/ZMEMORY_MCP_INTEGRATION.md) 了解详细配置和使用指南。
 
 ## Quick Start
 
@@ -230,6 +298,7 @@ npm start
 
 - **Frontend**: Next.js 15, React 18, TypeScript, Tailwind CSS, SWR
 - **Backend**: Next.js API Routes, TypeScript, Zod (validation)
+- **AI Integration**: Model Context Protocol (MCP), JSON-RPC 2.0
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Vercel
 - **Build Tool**: Turbo
@@ -252,9 +321,9 @@ npm start
 
 ---
 
-**Current Version**: 2.0.0  
-**Architecture**: Modular monorepo with i18n support  
-**Status**: Production-ready core features with ongoing enhancements
+**Current Version**: 2.1.0  
+**Architecture**: Modular monorepo with AI integration support  
+**Status**: Production-ready with MCP integration for AI agents
 
 ## 📄 License
 

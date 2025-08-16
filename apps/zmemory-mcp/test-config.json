@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "zmemory": {
+      "command": "node",
+      "args": ["./dist/index.js"],
+      "env": {
+        "ZMEMORY_API_URL": "http://localhost:3001"
+      }
+    }
+  }
+}
