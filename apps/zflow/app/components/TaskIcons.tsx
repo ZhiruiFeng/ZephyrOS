@@ -1,20 +1,20 @@
 'use client'
 
 import React from 'react'
-import { AlertCircle, Clock, Circle } from 'lucide-react'
+import { Flag } from 'lucide-react'
 
 // 获取优先级图标
 export const getPriorityIcon = (priority: string) => {
   switch (priority) {
-    case 'high':
-      return <AlertCircle className="w-4 h-4 text-red-500" />
     case 'urgent':
-      return <AlertCircle className="w-4 h-4 text-red-600" />
+      return <Flag className="w-4 h-4 text-rose-400 fill-rose-400" />
+    case 'high':
+      return <Flag className="w-4 h-4 text-amber-400 fill-amber-400" />
     case 'medium':
-      return <Clock className="w-4 h-4 text-yellow-500" />
+      return <Flag className="w-4 h-4 text-emerald-400 fill-emerald-400" />
     case 'low':
-      return <Circle className="w-4 h-4 text-gray-400" />
+      return <Flag className="w-4 h-4 text-slate-300 fill-slate-300" />
     default:
-      return <Clock className="w-4 h-4 text-yellow-500" />
+      return <Flag className="w-4 h-4 text-emerald-400 fill-emerald-400" />
   }
 }

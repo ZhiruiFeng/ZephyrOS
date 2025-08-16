@@ -570,8 +570,9 @@ function ZFlowPageContent() {
                             goToWork(task.id)
                           }}
                         >
-                          <div className="flex items-start justify-between mb-3 md:mb-4">
-                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                          {/* Header with action buttons */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
                               <button 
                                 onClick={() => toggleComplete(task.id, c.status)} 
                                 className="flex-shrink-0"
@@ -601,46 +602,9 @@ function ZFlowPageContent() {
                                   </svg>
                                 )}
                               </button>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className={`font-medium text-base md:text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                                    {c.title}
-                                  </h3>
-                                  {c.description && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        toggleDescriptionExpansion(task.id)
-                                      }}
-                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                                      title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
-                                    >
-                                      {expandedDescriptions.has(task.id) ? (
-                                        <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
-                                      ) : (
-                                        <Info className="w-3 h-3 md:w-4 md:h-4" />
-                                      )}
-                                    </button>
-                                  )}
-                                  {isTiming ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
-                                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
-                                      {t.ui.timing} {formatElapsedTime(elapsedMs)}
-                                    </span>
-                                  ) : isInProgress && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded-full">
-                                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                                      {t.ui.inProgress}
-                                    </span>
-                                  )}
-                                </div>
-                                {c.description && expandedDescriptions.has(task.id) && (
-                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">{c.description}</p>
-                                )}
-                              </div>
-                            </div>
-                          <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                            </div>
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -670,14 +634,65 @@ function ZFlowPageContent() {
                               </button>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500 gap-1">
-                            <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
+
+                          {/* Title and description */}
+                          <div className="mb-3">
+                            <div className="flex items-start gap-2 mb-2">
+                              <h3 className={`font-medium text-sm md:text-base flex-1 ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                {c.title}
+                              </h3>
+                              {c.description && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleDescriptionExpansion(task.id)
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+                                  title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                >
+                                  {expandedDescriptions.has(task.id) ? (
+                                    <ChevronDown className="w-3 h-3" />
+                                  ) : (
+                                    <Info className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                            
+                            {/* Status badges */}
+                            {(isTiming || isInProgress) && (
+                              <div className="mb-2">
+                                {isTiming ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
+                                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
+                                    {t.ui.timing} {formatElapsedTime(elapsedMs)}
+                                  </span>
+                                ) : isInProgress && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded-full">
+                                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                                    {t.ui.inProgress}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            
+                            {c.description && expandedDescriptions.has(task.id) && (
+                              <p className="text-xs text-gray-600">{c.description}</p>
+                            )}
+                          </div>
+                          {/* Metadata section */}
+                          <div className={`text-xs text-gray-500 space-y-1 ${displayMode === 'grid' ? '' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1'}`}>
+                            <div className="flex items-center gap-1">
+                              <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
+                            </div>
                             {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
-                              <span className={`inline-flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
+                              <div className={`flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
                                 <Calendar className="w-3 h-3" />
-                                {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
-                                {shouldShowOverdue(c.status, c.due_date) && t.ui.overdue}
-                              </span>
+                                <span>
+                                  {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
+                                  {shouldShowOverdue(c.status, c.due_date) && ` • ${t.ui.overdue}`}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -713,38 +728,15 @@ function ZFlowPageContent() {
                             goToWork(task.id)
                           }}
                         >
-                          <div className="flex items-start justify-between mb-3 md:mb-4">
-                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                          {/* Header with action buttons */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
                               <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
                                 <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
-                                  {c.description && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        toggleDescriptionExpansion(task.id)
-                                      }}
-                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                                      title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
-                                    >
-                                      {expandedDescriptions.has(task.id) ? (
-                                        <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
-                                      ) : (
-                                        <Info className="w-3 h-3 md:w-4 md:h-4" />
-                                      )}
-                                    </button>
-                                  )}
-                                </div>
-                                {c.description && expandedDescriptions.has(task.id) && (
-                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">{c.description}</p>
-                                )}
-                              </div>
-                            </div>
-                          <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                            </div>
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -774,14 +766,43 @@ function ZFlowPageContent() {
                               </button>
                             </div>
                           </div>
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs text-gray-500">{t.ui.createdAt} {formatDate(task.created_at)}</span>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+
+                          {/* Title and description */}
+                          <div className="mb-3">
+                            <div className="flex items-start gap-2 mb-2">
+                              <h3 className="font-medium text-sm md:text-base flex-1 text-gray-900">{c.title}</h3>
+                              {c.description && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleDescriptionExpansion(task.id)
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+                                  title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                >
+                                  {expandedDescriptions.has(task.id) ? (
+                                    <ChevronDown className="w-3 h-3" />
+                                  ) : (
+                                    <Info className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                            {c.description && expandedDescriptions.has(task.id) && (
+                              <p className="text-xs text-gray-600">{c.description}</p>
+                            )}
+                          </div>
+                          {/* Category and Actions */}
+                          <div className="space-y-2">
+                            <div className="text-xs text-gray-500">
+                              {t.ui.createdAt} {formatDate(task.created_at)}
+                            </div>
+                            <div className={`${displayMode === 'grid' ? 'space-y-2' : 'flex flex-col sm:flex-row sm:items-center gap-2'}`}>
                               {/* Quick Category Change */}
                               <select
                                 value={(task as any).category_id || (c as any).category_id || ''}
                                 onChange={(e) => handleUpdateCategory(task.id, e.target.value || undefined)}
-                                className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <option value="">{t.ui.noCategory}</option>
@@ -790,7 +811,7 @@ function ZFlowPageContent() {
                                 ))}
                               </select>
                               
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center justify-between gap-1">
                                 {/* Edit Button */}
                                 <button
                                   onClick={() => handleEditTask(task)}
@@ -842,8 +863,9 @@ function ZFlowPageContent() {
                             goToWork(task.id)
                           }}
                         >
-                          <div className="flex items-start justify-between mb-3 md:mb-4">
-                            <div className="flex items-center gap-2 md:gap-3 flex-1">
+                          {/* Header with action buttons */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
                               <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
                                 {c.status === 'completed' ? (
                                   <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
@@ -851,33 +873,9 @@ function ZFlowPageContent() {
                                   <Archive className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
                                 )}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
-                                  {c.description && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        toggleDescriptionExpansion(task.id)
-                                      }}
-                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                                      title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
-                                    >
-                                      {expandedDescriptions.has(task.id) ? (
-                                        <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
-                                      ) : (
-                                        <Info className="w-3 h-3 md:w-4 md:h-4" />
-                                      )}
-                                    </button>
-                                  )}
-                                </div>
-                                {c.description && expandedDescriptions.has(task.id) && (
-                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">{c.description}</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                            </div>
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -907,10 +905,37 @@ function ZFlowPageContent() {
                               </button>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <span className="text-xs text-gray-500">
+
+                          {/* Title and description */}
+                          <div className="mb-3">
+                            <div className="flex items-start gap-2 mb-2">
+                              <h3 className="font-medium text-sm md:text-base flex-1 text-gray-900">{c.title}</h3>
+                              {c.description && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleDescriptionExpansion(task.id)
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+                                  title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                >
+                                  {expandedDescriptions.has(task.id) ? (
+                                    <ChevronDown className="w-3 h-3" />
+                                  ) : (
+                                    <Info className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                            {c.description && expandedDescriptions.has(task.id) && (
+                              <p className="text-xs text-gray-600">{c.description}</p>
+                            )}
+                          </div>
+                          {/* Metadata section */}
+                          <div className={`text-xs text-gray-500 ${displayMode === 'grid' ? 'space-y-1' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
+                            <div>
                               {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
-                            </span>
+                            </div>
                             {c.status === 'completed' && (
                               <button 
                                 onClick={() => reopen(task.id)} 
