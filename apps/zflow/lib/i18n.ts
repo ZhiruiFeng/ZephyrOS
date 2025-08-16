@@ -230,6 +230,8 @@ export interface TranslationKeys {
     viewTimeSegmentsByDay: string;
     year: string;
     month: string;
+    timing: string;
+    timingStatus: string;
     pleaseSelectDate: string;
     calendar: string;
     zoomOut: string;
@@ -463,7 +465,9 @@ const translations: Record<Language, TranslationKeys> = {
       focusTime: 'Focus Time',
       viewTimeSegmentsByDay: 'View task focus time segments by day',
       year: 'Year',
-      month: 'Month', 
+      month: 'Month',
+      timing: 'Timing',
+      timingStatus: 'Timing', 
       pleaseSelectDate: 'Please select date',
       calendar: 'Calendar',
       zoomOut: 'Zoom out',
@@ -725,6 +729,8 @@ const translations: Record<Language, TranslationKeys> = {
       viewTimeSegmentsByDay: '按日查看该任务的专注时间段',
       year: '年',
       month: '月',
+      timing: '计时中',
+      timingStatus: '计时中',
       pleaseSelectDate: '请选择日期',
       calendar: '日历',
       zoomOut: '缩小',

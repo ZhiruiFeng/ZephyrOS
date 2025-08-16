@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X, Timer } from 'lucide-react'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X, Timer, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/LoginPage'
@@ -15,6 +15,7 @@ import TaskTimeModal from '../components/TaskTimeModal'
 import DailyTimeModal from '../components/DailyTimeModal'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useCategories'
+import { useTimer } from '../../hooks/useTimer'
 import { categoriesApi, TaskMemory, TaskContent } from '../../lib/api'
 import { getPriorityIcon } from '../components/TaskIcons'
 import { isOverdue, formatDate, getTaskDisplayDate, shouldShowOverdue } from '../utils/taskUtils'
@@ -39,6 +40,7 @@ function OverviewPageContent() {
   const { createCategory } = useCreateCategory()
   const { updateCategory } = useUpdateCategory()
   const { deleteCategory } = useDeleteCategory()
+  const { isRunning, runningTaskId, runningSince, elapsedMs } = useTimer()
 
   // Shared filters
   const [selectedCategory, setSelectedCategory] = React.useState<'all' | 'uncategorized' | string>('all')
@@ -57,6 +59,52 @@ function OverviewPageContent() {
   const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
   const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
   const [showDailyModal, setShowDailyModal] = React.useState(false)
+
+  // Navigate to work view with specific task
+  const goToWork = (taskId: string) => {
+    router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
+  }
+
+  // Delete task function
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm(t.messages.confirmDelete)) return
+
+    try {
+      await deleteTask(taskId)
+    } catch (error) {
+      console.error('Failed to delete task:', error)
+      alert(t.messages.taskDeleteFailed)
+    }
+  }
+
+  // Open task editor
+  const openEditor = (taskMemory: any) => {
+    // Convert TaskMemory to Task format expected by TaskEditor
+    const task = {
+      id: taskMemory.id,
+      ...taskMemory.content,
+      tags: taskMemory.tags,
+      created_at: taskMemory.created_at,
+      updated_at: taskMemory.updated_at,
+      // Add category_id from the top level if available
+      category_id: (taskMemory as any).category_id || taskMemory.content.category_id,
+    }
+    setEditingTask(task)
+    setShowTaskEditor(true)
+  }
+
+  // Format elapsed time from milliseconds
+  const formatElapsedTime = (elapsedMs: number): string => {
+    const totalSeconds = Math.floor(elapsedMs / 1000)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
 
   // Categories are now loaded via useCategories hook
 
@@ -85,8 +133,35 @@ function OverviewPageContent() {
       }
       return false
     })
-    return sortTasks(list, sortMode)
-  }, [filteredByCommon, sortMode])
+    
+    // Sort with timing tasks first, then in_progress, then pending, then completed last
+    const sorted = sortTasks(list, sortMode)
+    return sorted.sort((a, b) => {
+      const aStatus = (a.content as TaskContent).status
+      const bStatus = (b.content as TaskContent).status
+      const aIsTiming = runningTaskId === a.id
+      const bIsTiming = runningTaskId === b.id
+      
+      // Timing tasks always come first
+      if (aIsTiming && !bIsTiming) return -1
+      if (bIsTiming && !aIsTiming) return 1
+      
+      // Then in_progress tasks come second
+      if (aStatus === 'in_progress' && bStatus !== 'in_progress') return -1
+      if (bStatus === 'in_progress' && aStatus !== 'in_progress') return 1
+      
+      // Then pending tasks come third
+      if (aStatus === 'pending' && bStatus === 'completed') return -1
+      if (bStatus === 'pending' && aStatus === 'completed') return 1
+      
+      // Completed tasks come last
+      if (aStatus === 'completed' && bStatus !== 'completed') return 1
+      if (bStatus === 'completed' && aStatus !== 'completed') return -1
+      
+      // Keep original order for same status
+      return 0
+    })
+  }, [filteredByCommon, sortMode, runningTaskId])
 
   // Future: on_hold
   const futureList = React.useMemo(() => {
@@ -461,8 +536,25 @@ function OverviewPageContent() {
                   <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
                     {getCurrentList().map((task) => {
                       const c = task.content as TaskContent
+                      const isInProgress = c.status === 'in_progress'
+                      const isTiming = runningTaskId === task.id
                       return (
-                        <div key={task.id} className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200">
+                        <div 
+                          key={task.id} 
+                          className={`${isTiming 
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-100 border-2 border-green-400 shadow-lg shadow-green-200/60 ring-2 ring-green-300/50' 
+                            : isInProgress 
+                              ? 'bg-gradient-to-r from-primary-50 to-primary-100 border-2 border-primary-300 shadow-lg shadow-primary-200/50' 
+                              : 'glass'
+                          } rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer ${isTiming ? 'hover:shadow-xl hover:shadow-green-200/70' : isInProgress ? 'hover:shadow-xl hover:shadow-primary-200/60' : ''}`}
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+                              return
+                            }
+                            goToWork(task.id)
+                          }}
+                        >
                           <div className="flex items-start justify-between mb-3 md:mb-4">
                             <div className="flex items-center gap-2 md:gap-3 flex-1">
                               <button 
@@ -473,6 +565,21 @@ function OverviewPageContent() {
                                   <svg className="w-4 h-4 md:w-5 md:h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.5-1.5z"/>
                                   </svg>
+                                ) : isTiming ? (
+                                  <div className="relative">
+                                    <svg className="w-4 h-4 md:w-5 md:h-5 text-green-600" viewBox="0 0 24 24" fill="currentColor">
+                                      <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                    <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-green-600 rounded-full animate-ping"></div>
+                                    <div className="absolute inset-1 w-2 h-2 md:w-3 md:h-3 bg-green-600 rounded-full animate-pulse"></div>
+                                  </div>
+                                ) : c.status === 'in_progress' ? (
+                                  <div className="relative">
+                                    <svg className="w-4 h-4 md:w-5 md:h-5 text-primary-600" viewBox="0 0 24 24" fill="currentColor">
+                                      <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                    <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-primary-600 rounded-full animate-pulse"></div>
+                                  </div>
                                 ) : (
                                   <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
                                     <circle cx="12" cy="12" r="10"/>
@@ -480,9 +587,22 @@ function OverviewPageContent() {
                                 )}
                               </button>
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-medium text-base md:text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                                  {c.title}
-                                </h3>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className={`font-medium text-base md:text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                    {c.title}
+                                  </h3>
+                                  {isTiming ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
+                                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
+                                      {t.ui.timing} {formatElapsedTime(elapsedMs)}
+                                    </span>
+                                  ) : isInProgress && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded-full">
+                                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                                      {t.ui.inProgress}
+                                    </span>
+                                  )}
+                                </div>
                                 {c.description && (
                                   <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
                                 )}
@@ -490,6 +610,26 @@ function OverviewPageContent() {
                             </div>
                           <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEditor(task)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑任务"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除任务"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
                                 className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
@@ -528,7 +668,20 @@ function OverviewPageContent() {
                     {getFutureList().map((task) => {
                       const c = task.content as TaskContent
                       return (
-                        <div key={task.id} className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200">
+                        <div 
+                          key={task.id} 
+                          className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons or select elements
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || 
+                                (e.target as HTMLElement).tagName === 'SELECT' ||
+                                (e.target as HTMLElement).closest('button') ||
+                                (e.target as HTMLElement).closest('select')) {
+                              return
+                            }
+                            goToWork(task.id)
+                          }}
+                        >
                           <div className="flex items-start justify-between mb-3 md:mb-4">
                             <div className="flex items-center gap-2 md:gap-3 flex-1">
                               <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
@@ -543,6 +696,26 @@ function OverviewPageContent() {
                             </div>
                           <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEditor(task)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑任务"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除任务"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
                                 className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
@@ -609,7 +782,17 @@ function OverviewPageContent() {
                     {getArchiveList().map((task) => {
                       const c = task.content as TaskContent
                       return (
-                        <div key={task.id} className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200">
+                        <div 
+                          key={task.id} 
+                          className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+                              return
+                            }
+                            goToWork(task.id)
+                          }}
+                        >
                           <div className="flex items-start justify-between mb-3 md:mb-4">
                             <div className="flex items-center gap-2 md:gap-3 flex-1">
                               <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
@@ -628,6 +811,26 @@ function OverviewPageContent() {
                             </div>
                             <div className="flex items-center gap-1 md:gap-2">
                               {getPriorityIcon(c.priority)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEditor(task)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑任务"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除任务"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
                                 className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
