@@ -10,7 +10,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
-import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square } from 'lucide-react'
+import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info } from 'lucide-react'
 import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -49,6 +49,9 @@ function WorkModeViewInner() {
     assignee: '',
     tags: [] as string[]
   })
+
+  // Task description expansion
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set())
 
   // Time tracking
   const timer = useTimer(5000)
@@ -244,6 +247,17 @@ function WorkModeViewInner() {
       newExpanded.add(categoryId)
     }
     setExpandedCategories(newExpanded)
+  }
+
+  // Toggle task description expansion
+  const toggleDescriptionExpansion = (taskId: string) => {
+    const newExpanded = new Set(expandedDescriptions)
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId)
+    } else {
+      newExpanded.add(taskId)
+    }
+    setExpandedDescriptions(newExpanded)
   }
 
   const handleSaveNotes = async () => {
@@ -536,8 +550,23 @@ function WorkModeViewInner() {
             <div className="p-4 lg:p-6 border-b border-gray-200">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl lg:text-2xl font-bold text-gray-900 break-words">{selectedTask.content.title}</h1>
-                  {selectedTask.content.description && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <h1 className="text-xl lg:text-2xl font-bold text-gray-900 break-words">{selectedTask.content.title}</h1>
+                    {selectedTask.content.description && (
+                      <button
+                        onClick={() => toggleDescriptionExpansion(selectedTask.id)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        title={expandedDescriptions.has(selectedTask.id) ? "Hide description" : "Show description"}
+                      >
+                        {expandedDescriptions.has(selectedTask.id) ? (
+                          <ChevronDown className="w-4 h-4 lg:w-5 lg:h-5" />
+                        ) : (
+                          <Info className="w-4 h-4 lg:w-5 lg:h-5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  {selectedTask.content.description && expandedDescriptions.has(selectedTask.id) && (
                     <p className="text-gray-600 mt-2 break-words">{selectedTask.content.description}</p>
                   )}
                   {selectedTask.category && (

@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, X, Timer, Pencil, Trash2 } from 'lucide-react'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, ChevronRight, X, Timer, Pencil, Trash2, Info } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../contexts/LanguageContext'
 import LoginPage from './components/LoginPage'
@@ -61,9 +61,23 @@ function ZFlowPageContent() {
   const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
   const [showDailyModal, setShowDailyModal] = React.useState(false)
 
+  // Task description expansion
+  const [expandedDescriptions, setExpandedDescriptions] = React.useState<Set<string>>(new Set())
+
   // Navigate to work view with specific task
   const goToWork = (taskId: string) => {
     router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
+  }
+
+  // Toggle task description expansion
+  const toggleDescriptionExpansion = (taskId: string) => {
+    const newExpanded = new Set(expandedDescriptions)
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId)
+    } else {
+      newExpanded.add(taskId)
+    }
+    setExpandedDescriptions(newExpanded)
   }
 
   // Delete task function
@@ -592,6 +606,22 @@ function ZFlowPageContent() {
                                   <h3 className={`font-medium text-base md:text-lg ${c.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                                     {c.title}
                                   </h3>
+                                  {c.description && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleDescriptionExpansion(task.id)
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                      title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                    >
+                                      {expandedDescriptions.has(task.id) ? (
+                                        <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
+                                      ) : (
+                                        <Info className="w-3 h-3 md:w-4 md:h-4" />
+                                      )}
+                                    </button>
+                                  )}
                                   {isTiming ? (
                                     <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
                                       <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
@@ -604,8 +634,8 @@ function ZFlowPageContent() {
                                     </span>
                                   )}
                                 </div>
-                                {c.description && (
-                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
+                                {c.description && expandedDescriptions.has(task.id) && (
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">{c.description}</p>
                                 )}
                               </div>
                             </div>
@@ -689,9 +719,27 @@ function ZFlowPageContent() {
                                 <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
-                                {c.description && (
-                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
+                                  {c.description && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleDescriptionExpansion(task.id)
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                      title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                    >
+                                      {expandedDescriptions.has(task.id) ? (
+                                        <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
+                                      ) : (
+                                        <Info className="w-3 h-3 md:w-4 md:h-4" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                                {c.description && expandedDescriptions.has(task.id) && (
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">{c.description}</p>
                                 )}
                               </div>
                             </div>
@@ -804,9 +852,27 @@ function ZFlowPageContent() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
-                                {c.description && (
-                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2 line-clamp-2">{c.description}</p>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-medium text-base md:text-lg text-gray-900">{c.title}</h3>
+                                  {c.description && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleDescriptionExpansion(task.id)
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                      title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                    >
+                                      {expandedDescriptions.has(task.id) ? (
+                                        <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
+                                      ) : (
+                                        <Info className="w-3 h-3 md:w-4 md:h-4" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                                {c.description && expandedDescriptions.has(task.id) && (
+                                  <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">{c.description}</p>
                                 )}
                               </div>
                             </div>
