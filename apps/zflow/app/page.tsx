@@ -685,15 +685,29 @@ function ZFlowPageContent() {
                             <div className="flex items-center gap-1">
                               <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
                             </div>
-                            {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
-                              <div className={`flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
-                                <Calendar className="w-3 h-3" />
-                                <span>
-                                  {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
-                                  {shouldShowOverdue(c.status, c.due_date) && ` • ${t.ui.overdue}`}
-                                </span>
-                              </div>
-                            )}
+                            <div className={`flex items-center gap-2 ${displayMode === 'grid' ? 'flex-wrap' : ''}`}>
+                              {(() => {
+                                const categoryId = (task as any).category_id || c.category_id
+                                const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                                return category ? (
+                                  <div className="flex items-center gap-1">
+                                    <Tag className="w-3 h-3" />
+                                    <span style={{ color: category.color || '#6B7280' }}>
+                                      {category.name}
+                                    </span>
+                                  </div>
+                                ) : null
+                              })()}
+                              {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
+                                <div className={`flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
+                                  <Calendar className="w-3 h-3" />
+                                  <span>
+                                    {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
+                                    {shouldShowOverdue(c.status, c.due_date) && ` • ${t.ui.overdue}`}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )
@@ -794,8 +808,20 @@ function ZFlowPageContent() {
                           </div>
                           {/* Category and Actions */}
                           <div className="space-y-2">
-                            <div className="text-xs text-gray-500">
-                              {t.ui.createdAt} {formatDate(task.created_at)}
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>{t.ui.createdAt} {formatDate(task.created_at)}</span>
+                              {(() => {
+                                const categoryId = (task as any).category_id || c.category_id
+                                const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                                return category ? (
+                                  <div className="flex items-center gap-1">
+                                    <Tag className="w-3 h-3" />
+                                    <span style={{ color: category.color || '#6B7280' }}>
+                                      {category.name}
+                                    </span>
+                                  </div>
+                                ) : null
+                              })()}
                             </div>
                             <div className={`${displayMode === 'grid' ? 'space-y-2' : 'flex flex-col sm:flex-row sm:items-center gap-2'}`}>
                               {/* Quick Category Change */}
@@ -933,8 +959,22 @@ function ZFlowPageContent() {
                           </div>
                           {/* Metadata section */}
                           <div className={`text-xs text-gray-500 ${displayMode === 'grid' ? 'space-y-1' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
-                            <div>
-                              {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
+                            <div className="flex items-center justify-between">
+                              <span>
+                                {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
+                              </span>
+                              {(() => {
+                                const categoryId = (task as any).category_id || c.category_id
+                                const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                                return category ? (
+                                  <div className="flex items-center gap-1">
+                                    <Tag className="w-3 h-3" />
+                                    <span style={{ color: category.color || '#6B7280' }}>
+                                      {category.name}
+                                    </span>
+                                  </div>
+                                ) : null
+                              })()}
                             </div>
                             {c.status === 'completed' && (
                               <button 

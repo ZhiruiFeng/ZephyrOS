@@ -9,7 +9,7 @@ import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
-import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText } from 'lucide-react'
+import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag } from 'lucide-react'
 import TaskEditor from '../components/TaskEditor'
 import { getPriorityIcon } from '../components/TaskIcons'
 import { 
@@ -502,6 +502,18 @@ export default function KanbanView() {
                                     </span>
                                   )}
                                 </div>
+                                {(() => {
+                                  const categoryId = (task as any).category_id || c.category_id
+                                  const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                                  return category ? (
+                                    <div className="flex items-center gap-1">
+                                      <Tag className="w-3 h-3" style={{ color: category.color || '#6B7280' }} />
+                                      <span style={{ color: category.color || '#6B7280' }} className="text-xs">
+                                        {category.name}
+                                      </span>
+                                    </div>
+                                  ) : null
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -568,6 +580,18 @@ export default function KanbanView() {
                                     </span>
                                   )}
                                 </div>
+                                {(() => {
+                                  const categoryId = (task as any).category_id || c.category_id
+                                  const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                                  return category ? (
+                                    <div className="flex items-center gap-1">
+                                      <Tag className="w-3 h-3" style={{ color: category.color || '#6B7280' }} />
+                                      <span style={{ color: category.color || '#6B7280' }} className="text-xs">
+                                        {category.name}
+                                      </span>
+                                    </div>
+                                  ) : null
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -639,6 +663,18 @@ export default function KanbanView() {
                               </span>
                             )}
                           </div>
+                          {(() => {
+                            const categoryId = (task as any).category_id || c.category_id
+                            const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                            return category ? (
+                              <div className="flex items-center gap-1">
+                                <Tag className="w-3 h-3" style={{ color: category.color || '#6B7280' }} />
+                                <span style={{ color: category.color || '#6B7280' }} className="text-xs">
+                                  {category.name}
+                                </span>
+                              </div>
+                            ) : null
+                          })()}
                         </div>
                       </div>
                       <button
