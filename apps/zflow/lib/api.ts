@@ -310,6 +310,32 @@ export const tasksApi = {
     } catch {
       return
     }
+  },
+
+  async getUpdatedToday(params?: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    limit?: number;
+    offset?: number;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<{ tasks: TaskMemory[]; total: number; date_range: { start: string; end: string } }> {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, value.toString())
+      })
+    }
+    
+    const authHeaders = await authManager.getAuthHeaders()
+    const response = await fetch(`${API_BASE}/api/tasks/updated-today?${searchParams}`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!response.ok) throw new Error('Failed to fetch tasks updated today')
+    const data = await response.json()
+    return data
   }
 }
 

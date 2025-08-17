@@ -106,6 +106,18 @@ const generateMockTasksUpdatedToday = (): TaskMemory[] => {
  *           type: integer
  *           default: 0
  *         description: Number of tasks to skip
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering tasks (YYYY-MM-DD format). If not provided, defaults to today.
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering tasks (YYYY-MM-DD format). If not provided, defaults to today.
  *     responses:
  *       200:
  *         description: List of tasks updated today
@@ -167,8 +179,19 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
 
-    const todayRange = getTodayDateRange();
+    // Use custom date range if provided, otherwise default to today
+    let dateRange;
+    if (startDate && endDate) {
+      dateRange = {
+        start: new Date(startDate).toISOString(),
+        end: new Date(endDate).toISOString()
+      };
+    } else {
+      dateRange = getTodayDateRange();
+    }
 
     // If Supabase is not configured, return filtered mock data
     if (!supabase) {
@@ -191,7 +214,7 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, {
         tasks: paginatedTasks,
         total: tasks.length,
-        date_range: todayRange
+        date_range: dateRange
       });
     }
 
@@ -211,8 +234,8 @@ export async function GET(request: NextRequest) {
         category:categories(id, name, color, icon)
       `)
       .eq('user_id', userId)
-      .gte('updated_at', todayRange.start)
-      .lte('updated_at', todayRange.end);
+      .gte('updated_at', dateRange.start)
+      .lte('updated_at', dateRange.end);
 
     // Apply filters
     if (status) {
@@ -243,8 +266,8 @@ export async function GET(request: NextRequest) {
       .from('tasks')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .gte('updated_at', todayRange.start)
-      .lte('updated_at', todayRange.end);
+      .gte('updated_at', dateRange.start)
+      .lte('updated_at', dateRange.end);
 
     // Apply same filters for count
     if (status) {
@@ -291,7 +314,7 @@ export async function GET(request: NextRequest) {
     return jsonWithCors(request, {
       tasks: mappedTasks,
       total: count || mappedTasks.length,
-      date_range: todayRange
+      date_range: dateRange
     });
   } catch (error) {
     console.error('API error:', error);
