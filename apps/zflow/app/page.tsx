@@ -195,8 +195,56 @@ function ZFlowPageContent() {
       }
       return false
     })
-    return sortTasks(list, sortMode)
-  }, [filteredByCommon, sortMode])
+    
+    // Sort by completion time descending (most recent first)
+    return [...list].sort((a, b) => {
+      const aContent = a.content as TaskContent
+      const bContent = b.content as TaskContent
+      
+      // Get completion dates
+      const aDate = aContent.status === 'completed' && aContent.completion_date 
+        ? new Date(aContent.completion_date).getTime()
+        : new Date(a.created_at).getTime() // fallback to created_at for cancelled tasks
+      const bDate = bContent.status === 'completed' && bContent.completion_date
+        ? new Date(bContent.completion_date).getTime()
+        : new Date(b.created_at).getTime() // fallback to created_at for cancelled tasks
+      
+      return bDate - aDate // descending order (newest first)
+    })
+  }, [filteredByCommon, now, windowMs])
+
+  // Group archive tasks by completion date
+  const groupedArchiveList = React.useMemo(() => {
+    const groups: Array<{ date: string; tasks: TaskMemory[] }> = []
+    const dateGroups = new Map<string, TaskMemory[]>()
+    
+    for (const task of archiveList) {
+      const c = task.content as TaskContent
+      const completionDate = c.status === 'completed' && c.completion_date 
+        ? c.completion_date
+        : task.created_at // fallback for cancelled tasks
+      
+      // Get date part only (YYYY-MM-DD)
+      const dateOnly = completionDate.split('T')[0]
+      
+      if (!dateGroups.has(dateOnly)) {
+        dateGroups.set(dateOnly, [])
+      }
+      dateGroups.get(dateOnly)!.push(task)
+    }
+    
+    // Convert to array and maintain chronological order (already sorted by archiveList)
+    const sortedDates = Array.from(dateGroups.keys()).sort((a, b) => b.localeCompare(a)) // descending
+    
+    for (const date of sortedDates) {
+      groups.push({
+        date,
+        tasks: dateGroups.get(date)!
+      })
+    }
+    
+    return groups
+  }, [archiveList])
 
   // Calculate statistics
   const stats = React.useMemo(() => {
@@ -869,125 +917,143 @@ function ZFlowPageContent() {
 
             {view === 'archive' && (
               <div className="space-y-3 md:space-y-4">
-                {getArchiveList().length === 0 ? (
+                {groupedArchiveList.length === 0 ? (
                   <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
                     {t.ui.noArchivedTasks}
                   </div>
                 ) : (
-                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
-                    {getArchiveList().map((task) => {
-                      const c = task.content as TaskContent
-                      return (
-                        <div 
-                          key={task.id} 
-                          className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
-                          onClick={(e) => {
-                            // Prevent click when clicking on buttons
-                            if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
-                              return
-                            }
-                            goToWork(task.id)
-                          }}
-                        >
-                          {/* Header with action buttons */}
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
-                                {c.status === 'completed' ? (
-                                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
-                                ) : (
-                                  <Archive className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
-                                )}
-                              </div>
-                              {getPriorityIcon(c.priority)}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  openEditor(task)
-                                }}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
-                                title="编辑任务"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteTask(task.id)
-                                }}
-                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
-                                title="删除任务"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
-                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
-                                title="查看专注时间"
-                              >
-                                <Timer className="w-4 h-4" />
-                              </button>
-                            </div>
+                  <div className="space-y-6">
+                    {groupedArchiveList.map((group, groupIndex) => (
+                      <div key={group.date}>
+                        {/* Date separator */}
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1"></div>
+                          <div className="glass px-4 py-2 rounded-full">
+                            <span className="text-sm font-medium text-gray-600">
+                              {formatDate(group.date)}
+                            </span>
                           </div>
-
-                          {/* Title and description */}
-                          <div className="mb-3">
-                            <div className="flex items-start gap-2 mb-2">
-                              <h3 className="font-medium text-sm md:text-base flex-1 text-gray-900">{c.title}</h3>
-                              {c.description && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleDescriptionExpansion(task.id)
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                                  title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
-                                >
-                                  {expandedDescriptions.has(task.id) ? (
-                                    <ChevronDown className="w-3 h-3" />
-                                  ) : (
-                                    <Info className="w-3 h-3" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                            {c.description && expandedDescriptions.has(task.id) && (
-                              <p className="text-xs text-gray-600">{c.description}</p>
-                            )}
-                          </div>
-                          {/* Metadata section */}
-                          <div className={`text-xs text-gray-500 ${displayMode === 'grid' ? 'space-y-1' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
-                            <div className="flex items-center justify-between">
-                              <span>
-                                {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
-                              </span>
-                              {(() => {
-                                const categoryId = (task as any).category_id || c.category_id
-                                const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
-                                return category ? (
-                                  <div className="flex items-center gap-1">
-                                    <Tag className="w-3 h-3" />
-                                    <span style={{ color: category.color || '#6B7280' }}>
-                                      {category.name}
-                                    </span>
-                                  </div>
-                                ) : null
-                              })()}
-                            </div>
-                            {c.status === 'completed' && (
-                              <button 
-                                onClick={() => reopen(task.id)} 
-                                className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
-                              >
-                                {t.task.reopenTask}
-                              </button>
-                            )}
-                          </div>
+                          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent flex-1"></div>
                         </div>
-                      )
-                    })}
+
+                        {/* Tasks for this date */}
+                        <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
+                          {group.tasks.map((task) => {
+                            const c = task.content as TaskContent
+                            return (
+                              <div 
+                                key={task.id} 
+                                className="glass rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer"
+                                onClick={(e) => {
+                                  // Prevent click when clicking on buttons
+                                  if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+                                    return
+                                  }
+                                  goToWork(task.id)
+                                }}
+                              >
+                                {/* Header with action buttons */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
+                                      {c.status === 'completed' ? (
+                                        <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
+                                      ) : (
+                                        <Archive className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
+                                      )}
+                                    </div>
+                                    {getPriorityIcon(c.priority)}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openEditor(task)
+                                      }}
+                                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                      title="编辑任务"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDeleteTask(task.id)
+                                      }}
+                                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                      title="删除任务"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setTimeModalTask({ id: task.id, title: c.title })}
+                                      className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
+                                      title="查看专注时间"
+                                    >
+                                      <Timer className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Title and description */}
+                                <div className="mb-3">
+                                  <div className="flex items-start gap-2 mb-2">
+                                    <h3 className="font-medium text-sm md:text-base flex-1 text-gray-900">{c.title}</h3>
+                                    {c.description && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          toggleDescriptionExpansion(task.id)
+                                        }}
+                                        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+                                        title={expandedDescriptions.has(task.id) ? "Hide description" : "Show description"}
+                                      >
+                                        {expandedDescriptions.has(task.id) ? (
+                                          <ChevronDown className="w-3 h-3" />
+                                        ) : (
+                                          <Info className="w-3 h-3" />
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                  {c.description && expandedDescriptions.has(task.id) && (
+                                    <p className="text-xs text-gray-600">{c.description}</p>
+                                  )}
+                                </div>
+                                {/* Metadata section */}
+                                <div className={`text-xs text-gray-500 ${displayMode === 'grid' ? 'space-y-1' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
+                                  <div className="flex items-center justify-between">
+                                    <span>
+                                      {c.status === 'completed' ? t.ui.completedAt : t.ui.cancelledAt} {formatDate(c.status === 'completed' && c.completion_date ? c.completion_date : task.created_at)}
+                                    </span>
+                                    {(() => {
+                                      const categoryId = (task as any).category_id || c.category_id
+                                      const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
+                                      return category ? (
+                                        <div className="flex items-center gap-1">
+                                          <Tag className="w-3 h-3" />
+                                          <span style={{ color: category.color || '#6B7280' }}>
+                                            {category.name}
+                                          </span>
+                                        </div>
+                                      ) : null
+                                    })()}
+                                  </div>
+                                  {c.status === 'completed' && (
+                                    <button 
+                                      onClick={() => reopen(task.id)} 
+                                      className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
+                                    >
+                                      {t.task.reopenTask}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
