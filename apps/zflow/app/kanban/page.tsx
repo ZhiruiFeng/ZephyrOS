@@ -9,7 +9,7 @@ import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
-import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag } from 'lucide-react'
+import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag, Hourglass } from 'lucide-react'
 import TaskEditor from '../components/TaskEditor'
 import { getPriorityIcon } from '../components/TaskIcons'
 import { 
@@ -257,6 +257,19 @@ export default function KanbanView() {
     await updateTask(taskId, data)
   }
 
+  const holdTask = async (id: string) => {
+    try {
+      await updateTask(id, { 
+        content: { 
+          status: 'on_hold'
+        } 
+      })
+    } catch (err) {
+      console.error('Failed to hold task:', err)
+      alert(t.messages.taskUpdateFailed)
+    }
+  }
+
   // Show loading while checking authentication
   if (authLoading) {
     return (
@@ -479,15 +492,29 @@ export default function KanbanView() {
                                 <h3 className="font-medium text-gray-900 text-sm leading-tight pr-2 line-clamp-2">
                                   {c.title}
                                 </h3>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openEditor(task)
-                                  }}
-                                  className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
-                                </button>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {c.status !== 'on_hold' && c.status !== 'completed' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        holdTask(task.id)
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded"
+                                      title={t.task.holdTask}
+                                    >
+                                      <Hourglass className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openEditor(task)
+                                    }}
+                                    className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
+                                  </button>
+                                </div>
                               </div>
                               {c.description && (
                                 <div className="text-xs text-gray-600 line-clamp-2">{c.description}</div>
@@ -557,15 +584,29 @@ export default function KanbanView() {
                                 <h3 className="font-medium text-gray-900 text-sm leading-tight pr-2 line-clamp-2">
                                   {c.title}
                                 </h3>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openEditor(task)
-                                  }}
-                                  className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 flex-shrink-0"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
-                                </button>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {c.status !== 'on_hold' && c.status !== 'completed' && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        holdTask(task.id)
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded"
+                                      title={t.task.holdTask}
+                                    >
+                                      <Hourglass className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openEditor(task)
+                                    }}
+                                    className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
+                                  </button>
+                                </div>
                               </div>
                               {c.description && (
                                 <div className="text-xs text-gray-600 line-clamp-2">{c.description}</div>
@@ -677,15 +718,29 @@ export default function KanbanView() {
                           })()}
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openEditor(task)
-                        }}
-                        className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
-                      >
-                        <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {c.status !== 'on_hold' && c.status !== 'completed' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              holdTask(task.id)
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded"
+                            title={t.task.holdTask}
+                          >
+                            <Hourglass className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditor(task)
+                          }}
+                          className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> {t.ui.editTask}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )

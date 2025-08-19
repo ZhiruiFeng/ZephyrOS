@@ -76,6 +76,7 @@ export interface TranslationKeys {
     markCompleted: string;
     activateTask: string;
     reopenTask: string;
+    holdTask: string;
     
     // Task Editor fields
     selectCategory: string;
@@ -362,6 +363,7 @@ const translations: Record<Language, TranslationKeys> = {
       markCompleted: 'Mark as Completed',
       activateTask: 'Activate',
       reopenTask: 'Reopen',
+      holdTask: 'Hold',
       
       selectCategory: 'Select category...',
       estimatedDuration: 'Estimated Duration (minutes)',
@@ -632,6 +634,7 @@ const translations: Record<Language, TranslationKeys> = {
       markCompleted: '标记为完成',
       activateTask: '激活',
       reopenTask: '重新打开',
+      holdTask: '暂停',
       
       selectCategory: '选择分类...',
       estimatedDuration: '预计用时（分钟）',

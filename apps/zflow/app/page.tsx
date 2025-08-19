@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, ChevronRight, X, Timer, Pencil, Trash2, Info } from 'lucide-react'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, ChevronRight, X, Timer, Pencil, Trash2, Info, Hourglass } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../contexts/LanguageContext'
 import LoginPage from './components/LoginPage'
@@ -392,6 +392,14 @@ function ZFlowPageContent() {
     })
   }
 
+  const holdTask = async (id: string) => {
+    await updateTask(id, { 
+      content: { 
+        status: 'on_hold'
+      } 
+    })
+  }
+
   const activate = async (id: string) => { await updateTask(id, { content: { status: 'pending' } }) }
   const reopen = async (id: string) => { await updateTask(id, { content: { status: 'pending', progress: 0 } }) }
 
@@ -653,6 +661,18 @@ function ZFlowPageContent() {
                               {getPriorityIcon(c.priority)}
                             </div>
                             <div className="flex items-center gap-1">
+                              {c.status !== 'on_hold' && c.status !== 'completed' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    holdTask(task.id)
+                                  }}
+                                  className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-md"
+                                  title={t.task.holdTask}
+                                >
+                                  <Hourglass className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
