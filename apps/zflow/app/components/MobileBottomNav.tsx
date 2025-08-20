@@ -27,7 +27,16 @@ export default function MobileBottomNav() {
 
   const openAddTask = () => {
     try {
-      window.dispatchEvent(new CustomEvent('zflow:addTask'))
+      // 检查当前是否在page.tsx页面（通过URL路径判断）
+      const isOnMainPage = window.location.pathname === '/' || window.location.pathname === '/page'
+      
+      if (isOnMainPage) {
+        // 在主页时，触发带有分类信息的事件
+        window.dispatchEvent(new CustomEvent('zflow:addTaskFromPage'))
+      } else {
+        // 在其他页面时，触发普通事件
+        window.dispatchEvent(new CustomEvent('zflow:addTask'))
+      }
     } catch {}
   }
 

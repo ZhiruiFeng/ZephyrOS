@@ -17,6 +17,7 @@ import AddTaskModal from './components/AddTaskModal'
 import { useCategories } from '../hooks/useCategories'
 import { useCreateTask } from '../hooks/useMemories'
 import { useTimer } from '../hooks/useTimer'
+import { usePrefs } from '../contexts/PrefsContext'
 
 export default function RootLayout({
   children,
@@ -27,33 +28,47 @@ export default function RootLayout({
     const { categories } = useCategories()
     const { createTask } = useCreateTask()
     const timer = useTimer()
+    const { selectedCategory } = usePrefs()
     const [open, setOpen] = React.useState(false)
     const [defaultCat, setDefaultCat] = React.useState<string | undefined>(undefined)
 
     useEffect(() => {
-      const handler = () => {
-        setDefaultCat(undefined)
+      const handler = (event: CustomEvent) => {
+        // 如果事件包含分类信息，使用它；否则使用全局选中的分类
+        const categoryId = event.detail?.categoryId || 
+          (selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined)
+        setDefaultCat(categoryId)
         setOpen(true)
       }
-      window.addEventListener('zflow:addTask', handler)
-      return () => window.removeEventListener('zflow:addTask', handler)
-    }, [])
+      window.addEventListener('zflow:addTask', handler as EventListener)
+      return () => window.removeEventListener('zflow:addTask', handler as EventListener)
+    }, [selectedCategory])
 
     return (
       <AddTaskModal
         isOpen={open}
         onClose={() => setOpen(false)}
         onSubmit={async (payload) => {
-          await createTask(payload)
-          setOpen(false)
+          try {
+            await createTask(payload)
+            setOpen(false)
+          } catch (error) {
+            console.error('Failed to create task:', error)
+            // 错误情况下不关闭模态窗口，让用户决定是否重试
+          }
         }}
         onSubmitAndStart={async (payload) => {
-          const task = await createTask(payload)
-          // Start timer for the created task
-          if (task && task.id) {
-            await timer.start(task.id, { autoSwitch: true })
+          try {
+            const task = await createTask(payload)
+            // Start timer for the created task
+            if (task && task.id) {
+              await timer.start(task.id, { autoSwitch: true })
+            }
+            setOpen(false)
+          } catch (error) {
+            console.error('Failed to create task:', error)
+            // 错误情况下不关闭模态窗口，让用户决定是否重试
           }
-          setOpen(false)
         }}
         categories={categories}
         defaultCategoryId={defaultCat}

@@ -109,7 +109,8 @@ export default function AddTaskModal({
       onClose()
     } catch (error) {
       console.error('Failed to create task:', error)
-      // Add error handling here
+      // 在错误情况下，不自动关闭模态窗口，让用户决定是否重试
+      // 可以在这里添加错误提示
     } finally {
       setIsSubmitting(false)
     }
@@ -127,9 +128,8 @@ export default function AddTaskModal({
   }
 
   const handleClose = () => {
-    if (!isSubmitting) {
-      onClose()
-    }
+    // 允许在任何时候关闭模态窗口，包括提交过程中
+    onClose()
   }
 
   if (!isOpen) return null

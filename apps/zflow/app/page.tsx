@@ -64,6 +64,25 @@ function ZFlowPageContent() {
   // Task description expansion
   const [expandedDescriptions, setExpandedDescriptions] = React.useState<Set<string>>(new Set())
 
+  // 监听移动端创建任务事件，传递当前选中的分类
+  React.useEffect(() => {
+    const handler = () => {
+      // 如果当前选中的分类不是'all'或'uncategorized'，则传递分类信息
+      if (selectedCategory !== 'all' && selectedCategory !== 'uncategorized') {
+        window.dispatchEvent(new CustomEvent('zflow:addTask', {
+          detail: { categoryId: selectedCategory }
+        }))
+      } else {
+        // 否则触发普通事件
+        window.dispatchEvent(new CustomEvent('zflow:addTask'))
+      }
+    }
+    
+    // 监听移动端创建任务事件
+    window.addEventListener('zflow:addTaskFromPage', handler)
+    return () => window.removeEventListener('zflow:addTaskFromPage', handler)
+  }, [selectedCategory])
+
   // Navigate to work view with specific task
   const goToWork = (taskId: string) => {
     router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
@@ -344,7 +363,13 @@ function ZFlowPageContent() {
   }, [tasks, view, now])
 
   const handleAddTask = async (taskData: any) => {
-    await createTask(taskData)
+    try {
+      await createTask(taskData)
+    } catch (error) {
+      console.error('Failed to create task:', error)
+      // 错误会向上传播到AddTaskModal的handleSubmit中处理
+      throw error
+    }
   }
 
   const handleEditTask = (task: TaskMemory) => {
@@ -1095,10 +1120,16 @@ function ZFlowPageContent() {
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddTask}
         onSubmitAndStart={async (taskData) => {
-          const task = await createTask(taskData)
-          // Start timer for the created task
-          if (task && task.id) {
-            await timer.start(task.id, { autoSwitch: true })
+          try {
+            const task = await createTask(taskData)
+            // Start timer for the created task
+            if (task && task.id) {
+              await timer.start(task.id, { autoSwitch: true })
+            }
+            setShowAddModal(false)
+          } catch (error) {
+            console.error('Failed to create task:', error)
+            // 错误情况下不关闭模态窗口，让用户决定是否重试
           }
         }}
         categories={categories}
