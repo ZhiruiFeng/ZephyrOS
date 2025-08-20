@@ -1,6 +1,15 @@
 # ZephyrOS - Personal AI Operating System
 
-A modern, modular task management and productivity platform built with Next.js, React, and TypeScript.
+* **Core Vision**: ZephyrOS is designed as a personal AI-powered operating system that integrates deeply into daily life. It emphasizes **task management, knowledge reuse, and intelligent coaching** to enhance productivity and personal growth.
+* **Purpose**: ZFlow is the **workflow layer** of ZephyrOS, connecting tasks, notes, and knowledge into a structured system that can be acted upon by AI agents.
+
+Together, **ZephyrOS + ZFlow** form a **personal productivity and growth ecosystem**:
+
+* ZephyrOS = the **AI operating system** (philosophy, orchestration, agents, coaching).
+* ZFlow = the **execution engine** (tasks, workflows, memory, and knowledge pipelines).
+
+They enable users to **live in an “infinite game”**: continuously learning, building, and connecting — not just managing tasks, but shaping a richer, more intelligent life.
+
 
 ## Architecture Overview
 
