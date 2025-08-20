@@ -99,21 +99,26 @@ export default function UpdatedTodayPage() {
       // 在指定时区创建该日期的开始时间 (00:00:00)
       const startOfDayInTimezone = new Date(`${dateStr}T00:00:00`);
       
-      // 在指定时区创建该日期的结束时间 (23:59:59)
-      const endOfDayInTimezone = new Date(`${dateStr}T23:59:59`);
+      // 计算结束时间：24小时后或当前时间（取较小的）
+      const endOfDayInTimezone = new Date(startOfDayInTimezone.getTime() + 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const actualEndTime = endOfDayInTimezone > now ? now : endOfDayInTimezone;
       
-      // 返回 ISO 日期字符串（不包含时间部分）
+      // 返回完整的ISO日期时间字符串
       return {
-        start_date: dateStr,
-        end_date: dateStr
+        start_date: startOfDayInTimezone.toISOString(),
+        end_date: actualEndTime.toISOString()
       };
     } catch (error) {
       console.error('Error processing date range:', error);
       // 降级到当前日期
-      const today = getTodayDateString();
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+      const actualEnd = endOfToday > today ? today : endOfToday;
       return {
-        start_date: today,
-        end_date: today
+        start_date: startOfToday.toISOString(),
+        end_date: actualEnd.toISOString()
       };
     }
   };

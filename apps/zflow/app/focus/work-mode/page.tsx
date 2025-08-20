@@ -10,7 +10,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
-import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info } from 'lucide-react'
+import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle } from 'lucide-react'
 import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -329,6 +329,46 @@ function WorkModeViewInner() {
     }))
   }
 
+  const handleCompleteTask = async () => {
+    if (!selectedTask) return
+    
+    setIsSaving(true)
+    try {
+      const updatedTask = await updateTask(selectedTask.id, { 
+        content: {
+          status: 'completed',
+          progress: 100,
+          completion_date: new Date().toISOString()
+        } 
+      })
+      
+      // Update the selectedTask state with the updated task data
+      const taskWithCategory = {
+        ...updatedTask,
+        category: selectedTask.category,
+        category_id: selectedTask.category_id || selectedTask.content.category_id
+      } as TaskWithCategory
+      
+      setSelectedTask(taskWithCategory)
+      
+      // Update taskInfo to reflect the completion
+      setTaskInfo(prev => ({
+        ...prev,
+        status: 'completed',
+        progress: 100
+      }))
+      
+      // Stop timer if running
+      if (timer.isRunning && timer.runningTaskId === selectedTask.id) {
+        timer.stop(selectedTask.id)
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   // Show loading while checking authentication
   if (authLoading) {
     return (
@@ -621,6 +661,17 @@ function WorkModeViewInner() {
                           <span className="hidden sm:inline ml-1">{t.common.start}</span>
                         </>
                       )}
+                    </button>
+                  )}
+                  {/* Complete Button - Only show if task is not already completed */}
+                  {selectedTask && selectedTask.content.status !== 'completed' && (
+                    <button
+                      onClick={handleCompleteTask}
+                      disabled={isSaving}
+                      className="flex items-center justify-center px-1 py-1 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[28px] sm:min-w-[100px] ml-0.5 sm:ml-1 disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                      <span className="hidden sm:inline ml-1">{t.task.markCompleted}</span>
                     </button>
                   )}
                   {/* Task Info Button */}

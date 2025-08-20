@@ -185,9 +185,13 @@ export async function GET(request: NextRequest) {
     // Use custom date range if provided, otherwise default to today
     let dateRange;
     if (startDate && endDate) {
+      // If start_date and end_date are provided, use them directly
+      // They can be either date strings (YYYY-MM-DD) or full ISO strings
+      const start = startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`;
+      const end = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`;
       dateRange = {
-        start: new Date(startDate).toISOString(),
-        end: new Date(endDate).toISOString()
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString()
       };
     } else {
       dateRange = getTodayDateRange();
