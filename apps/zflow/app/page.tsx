@@ -195,7 +195,7 @@ function ZFlowPageContent() {
       // Keep original order for same status
       return 0
     })
-  }, [filteredByCommon, sortMode, timer.runningTaskId])
+  }, [filteredByCommon, sortMode, timer.runningTaskId, now, windowMs])
 
   // Future: on_hold
   const futureList = React.useMemo(() => {

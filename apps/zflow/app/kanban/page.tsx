@@ -66,17 +66,19 @@ export default function KanbanView() {
   // using shared prefs; local persistence handled by PrefsProvider
 
   const filtered = useMemo(() => {
-    const shouldHideCompleted = hideCompleted
+    // Note: In Kanban view, we don't hide completed tasks at this level because
+    // we need them for the Done(24h) column. The hideCompleted setting is handled
+    // in the byStatus logic instead.
     return tasks.filter((t) => {
       const c = t.content as TaskContent
       const catId = (t as any).category_id || (t as any).content?.category_id
       const matchCategory = selectedCategory === 'all' ? true : selectedCategory === 'uncategorized' ? !catId : catId === selectedCategory
       const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
       const matchPriority = filterPriority === 'all' || c.priority === filterPriority
-      const matchCompletedHide = !(shouldHideCompleted && c.status === 'completed')
-      return matchCategory && matchSearch && matchPriority && matchCompletedHide
+      // Don't filter completed tasks here - handle in byStatus for Done(24h) column
+      return matchCategory && matchSearch && matchPriority
     })
-  }, [tasks, search, filterPriority, hideCompleted, selectedCategory])
+  }, [tasks, search, filterPriority, selectedCategory])
 
   // sort mode from shared prefs
 
@@ -90,12 +92,17 @@ export default function KanbanView() {
     }
     const now = Date.now()
     const windowMs = 24 * 60 * 60 * 1000
+    
     for (const t of filtered) {
       const s = (t.content as TaskContent).status
       if (s === 'completed') {
         const completion = (t.content as TaskContent).completion_date
         const completedAt = completion ? new Date(completion).getTime() : 0
-        if (completedAt && now - completedAt <= windowMs) {
+        const withinWindow = completedAt && now - completedAt <= windowMs
+        
+        // Show completed tasks within 24h regardless of hideCompleted setting
+        // This is the "Done(24h)" column behavior
+        if (withinWindow) {
           map.completed.push(t)
         }
         // else: older completed tasks are hidden from Kanban; visible in Archive page
@@ -103,6 +110,7 @@ export default function KanbanView() {
         map[s].push(t)
       }
     }
+    
     // sort inside each column
     const priorityOrder: Record<TaskContent['priority'], number> = { urgent: 0, high: 1, medium: 2, low: 3 }
     const sorters: Record<typeof sortMode, (a: TaskMemory, b: TaskMemory) => number> = {
@@ -120,7 +128,7 @@ export default function KanbanView() {
     const sorter = sorters[sortMode]
     ;(Object.keys(map) as StatusKey[]).forEach((k) => map[k].sort(sorter))
     return map
-  }, [filtered, sortMode])
+  }, [filtered, sortMode, hideCompleted])
 
   const onDragStart = (taskId: string, e: React.DragEvent) => {
     setDraggingId(taskId)
