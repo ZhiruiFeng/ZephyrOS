@@ -77,6 +77,10 @@ export interface TranslationKeys {
     activateTask: string;
     reopenTask: string;
     holdTask: string;
+    createCurrentTask: string;
+    createAndStart: string;
+    createNormalTaskDesc: string;
+    createCurrentTaskDesc: string;
     
     // Task Editor fields
     selectCategory: string;
@@ -364,6 +368,10 @@ const translations: Record<Language, TranslationKeys> = {
       activateTask: 'Activate',
       reopenTask: 'Reopen',
       holdTask: 'Hold',
+      createCurrentTask: 'Create Current Task',
+      createAndStart: 'Create & Start',
+      createNormalTaskDesc: 'Complete task setup with all options',
+      createCurrentTaskDesc: 'Simplified for immediate work',
       
       selectCategory: 'Select category...',
       estimatedDuration: 'Estimated Duration (minutes)',
@@ -635,6 +643,10 @@ const translations: Record<Language, TranslationKeys> = {
       activateTask: '激活',
       reopenTask: '重新打开',
       holdTask: '暂停',
+      createCurrentTask: '创建当前任务',
+      createAndStart: '创建并开始',
+      createNormalTaskDesc: '完整任务设置，包含所有选项',
+      createCurrentTaskDesc: '简化创建，立即开始工作',
       
       selectCategory: '选择分类...',
       estimatedDuration: '预计用时（分钟）',

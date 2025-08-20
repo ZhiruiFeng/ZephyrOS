@@ -16,6 +16,7 @@ import DynamicHead from './components/DynamicHead'
 import AddTaskModal from './components/AddTaskModal'
 import { useCategories } from '../hooks/useCategories'
 import { useCreateTask } from '../hooks/useMemories'
+import { useTimer } from '../hooks/useTimer'
 
 export default function RootLayout({
   children,
@@ -25,6 +26,7 @@ export default function RootLayout({
   function GlobalAddTaskMount() {
     const { categories } = useCategories()
     const { createTask } = useCreateTask()
+    const timer = useTimer()
     const [open, setOpen] = React.useState(false)
     const [defaultCat, setDefaultCat] = React.useState<string | undefined>(undefined)
 
@@ -43,6 +45,14 @@ export default function RootLayout({
         onClose={() => setOpen(false)}
         onSubmit={async (payload) => {
           await createTask(payload)
+          setOpen(false)
+        }}
+        onSubmitAndStart={async (payload) => {
+          const task = await createTask(payload)
+          // Start timer for the created task
+          if (task && task.id) {
+            await timer.start(task.id, { autoSwitch: true })
+          }
           setOpen(false)
         }}
         categories={categories}

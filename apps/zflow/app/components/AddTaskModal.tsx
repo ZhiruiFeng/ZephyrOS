@@ -10,6 +10,7 @@ interface AddTaskModalProps {
   onSubmit: (taskData: any) => Promise<void>
   categories: any[]
   defaultCategoryId?: string
+  onSubmitAndStart?: (taskData: any) => Promise<void>
 }
 
 export default function AddTaskModal({ 
@@ -17,9 +18,11 @@ export default function AddTaskModal({
   onClose, 
   onSubmit, 
   categories, 
-  defaultCategoryId 
+  defaultCategoryId,
+  onSubmitAndStart 
 }: AddTaskModalProps) {
   const { t } = useTranslation()
+  const [createMode, setCreateMode] = useState<'normal' | 'current'>('normal')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -73,18 +76,24 @@ export default function AddTaskModal({
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean)
       const finalCategoryId = formData.categoryId || (defaultCategoryId !== 'all' && defaultCategoryId !== 'uncategorized' ? defaultCategoryId : undefined)
       
-      await onSubmit({
+      const taskData = {
         type: 'task',
         content: {
           title: formData.title.trim(),
           description: formData.description.trim(),
-          status: (formData.joinAttention ? 'pending' : 'on_hold'),
+          status: createMode === 'current' ? 'in_progress' : (formData.joinAttention ? 'pending' : 'on_hold'),
           priority: formData.priority,
           category_id: finalCategoryId,
-          due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+          due_date: createMode === 'normal' && formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
         },
         tags: ['zflow', 'task', ...tagsArray]
-      })
+      }
+
+      if (createMode === 'current' && onSubmitAndStart) {
+        await onSubmitAndStart(taskData)
+      } else {
+        await onSubmit(taskData)
+      }
 
       // Reset form
       setFormData({
@@ -96,6 +105,7 @@ export default function AddTaskModal({
         tags: '',
         joinAttention: false
       })
+      setCreateMode('normal')
       onClose()
     } catch (error) {
       console.error('Failed to create task:', error)
@@ -148,6 +158,36 @@ export default function AddTaskModal({
 
         {/* Form (scrollable content) */}
         <form id="addTaskForm" onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Create Mode Selector */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCreateMode('normal')}
+                className={`p-3 rounded-lg border transition-all ${
+                  createMode === 'normal' 
+                    ? 'bg-white border-blue-500 text-blue-600 shadow-sm' 
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <div className="text-sm font-medium">{t.task.createTask}</div>
+                <div className="text-xs text-gray-500 mt-1">{t.task.createNormalTaskDesc}</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateMode('current')}
+                className={`p-3 rounded-lg border transition-all ${
+                  createMode === 'current' 
+                    ? 'bg-white border-green-500 text-green-600 shadow-sm' 
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <div className="text-sm font-medium">{t.task.createCurrentTask}</div>
+                <div className="text-xs text-gray-500 mt-1">{t.task.createCurrentTaskDesc}</div>
+              </button>
+            </div>
+          </div>
+
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -178,9 +218,9 @@ export default function AddTaskModal({
           </div>
 
           {/* Priority and Category - Improved, touch-friendly */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Priority: 4-step slider */}
-            <div>
+          <div className={`grid grid-cols-1 ${createMode === 'normal' ? 'md:grid-cols-2' : ''} gap-4`}>
+            {/* Priority: 4-step slider - hidden in current mode */}
+            {createMode === 'normal' && <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t.task.priority}
               </label>
@@ -224,7 +264,7 @@ export default function AddTaskModal({
                   </div>
                 )
               })()}
-            </div>
+            </div>}
             {/* Category: searchable picker */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -317,8 +357,8 @@ export default function AddTaskModal({
             </div>
           </div>
 
-          {/* Due Date and Tags */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Due Date and Tags - hidden in current mode */}
+          {createMode === 'normal' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t.task.dueDate}
@@ -348,10 +388,10 @@ export default function AddTaskModal({
                 />
               </div>
             </div>
-          </div>
+          </div>}
 
-          {/* Join Attention Checkbox */}
-          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
+          {/* Join Attention Checkbox - hidden in current mode */}
+          {createMode === 'normal' && <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
             <input
               type="checkbox"
               id="joinAttention"
@@ -362,7 +402,7 @@ export default function AddTaskModal({
             <label htmlFor="joinAttention" className="text-sm text-gray-700">
               {t.task.joinAttentionPool}
             </label>
-          </div>
+          </div>}
 
         </form>
 
@@ -385,10 +425,14 @@ export default function AddTaskModal({
                 type="submit"
                 form="addTaskForm"
                 disabled={!formData.title.trim() || isSubmitting}
-                className="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                className={`px-5 py-2.5 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2 ${
+                  createMode === 'current' 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-primary-600 hover:bg-primary-700'
+                }`}
               >
                 <Save className="w-4 h-4" />
-                {isSubmitting ? `${t.common.create}...` : t.task.createTask}
+                {isSubmitting ? `${t.common.create}...` : (createMode === 'current' ? t.task.createAndStart : t.task.createTask)}
               </button>
             </div>
           </div>

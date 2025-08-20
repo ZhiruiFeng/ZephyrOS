@@ -41,7 +41,7 @@ function ZFlowPageContent() {
   const { createCategory } = useCreateCategory()
   const { updateCategory } = useUpdateCategory()
   const { deleteCategory } = useDeleteCategory()
-  const { isRunning, runningTaskId, runningSince, elapsedMs } = useTimer()
+  const timer = useTimer()
 
   // Shared filters
   const [selectedCategory, setSelectedCategory] = React.useState<'all' | 'uncategorized' | string>('all')
@@ -154,8 +154,8 @@ function ZFlowPageContent() {
     return sorted.sort((a, b) => {
       const aStatus = (a.content as TaskContent).status
       const bStatus = (b.content as TaskContent).status
-      const aIsTiming = runningTaskId === a.id
-      const bIsTiming = runningTaskId === b.id
+      const aIsTiming = timer.runningTaskId === a.id
+      const bIsTiming = timer.runningTaskId === b.id
       
       // Timing tasks always come first
       if (aIsTiming && !bIsTiming) return -1
@@ -176,7 +176,7 @@ function ZFlowPageContent() {
       // Keep original order for same status
       return 0
     })
-  }, [filteredByCommon, sortMode, runningTaskId])
+  }, [filteredByCommon, sortMode, timer.runningTaskId])
 
   // Future: on_hold
   const futureList = React.useMemo(() => {
@@ -608,7 +608,7 @@ function ZFlowPageContent() {
                     {getCurrentList().map((task) => {
                       const c = task.content as TaskContent
                       const isInProgress = c.status === 'in_progress'
-                      const isTiming = runningTaskId === task.id
+                      const isTiming = timer.runningTaskId === task.id
                       return (
                         <div 
                           key={task.id} 
@@ -733,7 +733,7 @@ function ZFlowPageContent() {
                                 {isTiming ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
                                     <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
-                                    {t.ui.timing} {formatElapsedTime(elapsedMs)}
+                                    {t.ui.timing} {formatElapsedTime(timer.elapsedMs)}
                                   </span>
                                 ) : isInProgress && (
                                   <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded-full">
@@ -1094,6 +1094,13 @@ function ZFlowPageContent() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddTask}
+        onSubmitAndStart={async (taskData) => {
+          const task = await createTask(taskData)
+          // Start timer for the created task
+          if (task && task.id) {
+            await timer.start(task.id, { autoSwitch: true })
+          }
+        }}
         categories={categories}
         defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined}
       />
