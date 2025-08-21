@@ -13,8 +13,28 @@ import {
   Edit,
   Trash2,
   Move,
-  GripVertical
+  GripVertical,
+  Info
 } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useSubtasks, useSubtaskActions } from '../../hooks/useSubtasks'
 import { TaskMemory } from '../../lib/api'
 import { Task } from '../../app/types/task'
@@ -37,7 +57,12 @@ interface SubtaskItemProps {
   onStatusToggle?: (subtaskId: string, newStatus: Task['status']) => void
 }
 
-const SubtaskItem: React.FC<SubtaskItemProps> = ({
+interface SortableSubtaskItemProps extends SubtaskItemProps {
+  id: string
+}
+
+const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
+  id,
   subtask,
   depth,
   onSelect,
@@ -46,8 +71,53 @@ const SubtaskItem: React.FC<SubtaskItemProps> = ({
   onDelete,
   onStatusToggle
 }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${isDragging ? 'opacity-50' : ''}`}
+    >
+      <SubtaskItem
+        subtask={subtask}
+        depth={depth}
+        onSelect={onSelect}
+        isSelected={isSelected}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onStatusToggle={onStatusToggle}
+        dragHandleProps={{ attributes, listeners }}
+      />
+    </div>
+  )
+}
+
+const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
+  subtask,
+  depth,
+  onSelect,
+  isSelected,
+  onEdit,
+  onDelete,
+  onStatusToggle,
+  dragHandleProps
+}) => {
   const { t } = useTranslation()
   const [showActions, setShowActions] = useState(false)
+  const [showDescription, setShowDescription] = useState(false)
   
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -86,7 +156,13 @@ const SubtaskItem: React.FC<SubtaskItemProps> = ({
     >
       <div className="flex items-center gap-2 p-2 cursor-pointer" onClick={() => onSelect?.(subtask)}>
         {/* Drag handle */}
-        <GripVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 cursor-grab" />
+        <div
+          {...dragHandleProps?.attributes}
+          {...dragHandleProps?.listeners}
+          className="cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
+        </div>
         
         {/* Status icon */}
         <button
@@ -109,7 +185,18 @@ const SubtaskItem: React.FC<SubtaskItemProps> = ({
             }`}>
               {subtask.content.title}
             </span>
-            <StatusBadge status={subtask.content.status} className="text-xs" />
+            {subtask.content.description && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowDescription(!showDescription)
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="查看描述"
+              >
+                <Info className="w-3 h-3" />
+              </button>
+            )}
             {subtask.content.priority && subtask.content.priority !== 'medium' && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                 subtask.content.priority === 'urgent' ? 'bg-red-100 text-red-700' :
@@ -120,9 +207,6 @@ const SubtaskItem: React.FC<SubtaskItemProps> = ({
               </span>
             )}
           </div>
-          {subtask.content.description && (
-            <p className="text-xs text-gray-600 mt-1 truncate">{subtask.content.description}</p>
-          )}
           {subtask.content.progress !== undefined && subtask.content.progress > 0 && (
             <div className="flex items-center gap-2 mt-1">
               <div className="flex-1 bg-gray-200 rounded-full h-1.5">
@@ -132,6 +216,15 @@ const SubtaskItem: React.FC<SubtaskItemProps> = ({
                 />
               </div>
               <span className="text-xs text-gray-500">{subtask.content.progress}%</span>
+            </div>
+          )}
+          
+          {/* Description display */}
+          {showDescription && subtask.content.description && (
+            <div className="mt-2 p-2 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-xs text-gray-700 whitespace-pre-wrap">
+                {subtask.content.description}
+              </p>
             </div>
           )}
         </div>
@@ -297,9 +390,7 @@ const CreateSubtaskForm: React.FC<{
   const { createSubtask, isCreating } = useSubtaskActions()
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
-    priority: 'medium' as const,
-    estimated_duration: 0
+    description: ''
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -310,8 +401,7 @@ const CreateSubtaskForm: React.FC<{
       await createSubtask(parentTaskId, {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
-        priority: formData.priority,
-        estimated_duration: formData.estimated_duration || undefined,
+        priority: 'medium', // 默认中等优先级
         status: 'pending',
         // 继承父任务的类别
         category_id: parentTask?.category_id
@@ -319,9 +409,7 @@ const CreateSubtaskForm: React.FC<{
       // 重置表单
       setFormData({
         title: '',
-        description: '',
-        priority: 'medium',
-        estimated_duration: 0
+        description: ''
       })
       onSuccess()
     } catch (error) {
@@ -353,32 +441,6 @@ const CreateSubtaskForm: React.FC<{
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <select
-            value={formData.priority}
-            onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="low">{t.task.priorityLow}</option>
-            <option value="medium">{t.task.priorityMedium}</option>
-            <option value="high">{t.task.priorityHigh}</option>
-            <option value="urgent">{t.task.priorityUrgent}</option>
-          </select>
-        </div>
-        
-        <div>
-          <input
-            type="number"
-            placeholder={t.ui.estimatedDurationMinutes}
-            value={formData.estimated_duration}
-            onChange={(e) => setFormData(prev => ({ ...prev, estimated_duration: parseInt(e.target.value) || 0 }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            min="0"
-          />
-        </div>
-      </div>
-
       <div className="flex items-center gap-2 pt-2">
         <button
           type="submit"
@@ -406,10 +468,18 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
     format: 'flat', 
     include_completed: true 
   })
-  const { updateSubtask, deleteSubtask, isUpdating, isDeleting } = useSubtaskActions()
+  const { updateSubtask, deleteSubtask, reorderSubtasks, isUpdating, isDeleting, isReordering } = useSubtaskActions()
   const [isExpanded, setIsExpanded] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingSubtask, setEditingSubtask] = useState<TaskMemory | null>(null)
+
+  // 设置拖拽传感器
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Group subtasks by depth for proper hierarchy display
   const groupedSubtasks = useMemo(() => {
@@ -465,6 +535,36 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
         setTimeout(() => refresh(), 100)
       } catch (error) {
         console.error('Failed to delete subtask:', error)
+      }
+    }
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      const oldIndex = groupedSubtasks.findIndex(subtask => subtask.id === active.id)
+      const newIndex = groupedSubtasks.findIndex(subtask => subtask.id === over?.id)
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        try {
+          // 准备重新排序的数据
+          const reorderData = groupedSubtasks.map((subtask, index) => ({
+            task_id: subtask.id,
+            new_order: index
+          }))
+
+          // 交换位置
+          const newOrder = arrayMove(reorderData, oldIndex, newIndex)
+
+          // 调用API重新排序
+          await reorderSubtasks(taskId, newOrder)
+          
+          // 刷新数据
+          setTimeout(() => refresh(), 100)
+        } catch (error) {
+          console.error('Failed to reorder subtasks:', error)
+        }
       }
     }
   }
@@ -563,20 +663,32 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
               <p className="text-xs text-gray-400 mt-1">{t.ui.addSubtaskToGetStarted}</p>
             </div>
           ) : (
-            <div className="space-y-1" key={subtasksKey}>
-              {groupedSubtasks.map((subtask) => (
-                <SubtaskItem
-                  key={`${subtask.id}-${subtask.updated_at}`}
-                  subtask={subtask}
-                  depth={subtask.depth}
-                  onSelect={onSubtaskSelect}
-                  isSelected={selectedSubtaskId === subtask.id}
-                  onEdit={handleEditSubtask}
-                  onDelete={handleDeleteSubtask}
-                  onStatusToggle={handleStatusToggle}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={groupedSubtasks.map(subtask => subtask.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-1" key={subtasksKey}>
+                  {groupedSubtasks.map((subtask) => (
+                    <SortableSubtaskItem
+                      key={`${subtask.id}-${subtask.updated_at}`}
+                      id={subtask.id}
+                      subtask={subtask}
+                      depth={subtask.depth}
+                      onSelect={onSubtaskSelect}
+                      isSelected={selectedSubtaskId === subtask.id}
+                      onEdit={handleEditSubtask}
+                      onDelete={handleDeleteSubtask}
+                      onStatusToggle={handleStatusToggle}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       )}
