@@ -149,6 +149,12 @@ function WorkModeViewInner() {
     const uncategorized: TaskWithCategory[] = []
 
     filteredTasks.forEach((task) => {
+      // 仅展示根任务（hierarchy_level = 0 或没有 parent_task_id）
+      const level = (task as any).hierarchy_level
+      const parentId = (task as any).content?.parent_task_id
+      const isRoot = (level === 0) || (level === undefined && !parentId)
+      if (!isRoot) return
+
       const taskWithCategory = task as TaskWithCategory
       const categoryId = task.category_id || task.content.category_id
       

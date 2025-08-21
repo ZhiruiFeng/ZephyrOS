@@ -33,7 +33,7 @@ function ZFlowPageContent() {
   const setView = (v: ViewKey) => router.push(`/?view=${v}`)
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>('list')
 
-  const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
   const { categories } = useCategories()
   const { createTask } = useCreateTask()
   const { updateTask } = useUpdateTask()
@@ -297,6 +297,13 @@ function ZFlowPageContent() {
 
   // Calculate category counts based on current view
   const viewBasedCounts = React.useMemo(() => {
+    const isRootTask = (t: TaskMemory) => {
+      const level = (t as any).hierarchy_level
+      const parentId = (t as any).content?.parent_task_id
+      // Prefer explicit hierarchy_level; fallback to absence of parent_task_id
+      return (level === 0) || (level === undefined && !parentId)
+    }
+
     const getTasksForView = (viewType: ViewKey) => {
       switch (viewType) {
         case 'current':
@@ -308,12 +315,12 @@ function ZFlowPageContent() {
               return completedAt && now - completedAt <= windowMs
             }
             return false
-          })
+          }).filter(isRootTask)
         case 'future':
           return tasks.filter(t => {
             const c = t.content as TaskContent
             return c.status === 'on_hold'
-          })
+          }).filter(isRootTask)
         case 'archive':
           return tasks.filter(t => {
             const c = t.content as TaskContent
@@ -323,7 +330,7 @@ function ZFlowPageContent() {
               return completedAt && now - completedAt > windowMs
             }
             return false
-          })
+          }).filter(isRootTask)
         default:
           return []
       }

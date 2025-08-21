@@ -33,7 +33,7 @@ const getColumns = (t: any): Array<{ key: StatusKey; title: string; hint?: strin
 export default function KanbanView() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
-  const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
   const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
 
