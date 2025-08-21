@@ -55,6 +55,12 @@ interface SubtaskItemProps {
   onEdit?: (subtask: TaskMemory) => void
   onDelete?: (subtaskId: string) => void
   onStatusToggle?: (subtaskId: string, newStatus: Task['status']) => void
+  onAddChild?: (parent: TaskMemory) => void
+  isCollapsed?: boolean
+  onToggleCollapse?: (taskId: string) => void
+  isRoot?: boolean
+  isManaging?: boolean
+  onToggleManage?: () => void
 }
 
 interface SortableSubtaskItemProps extends SubtaskItemProps {
@@ -69,7 +75,13 @@ const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
   isSelected,
   onEdit,
   onDelete,
-  onStatusToggle
+  onStatusToggle,
+  onAddChild,
+  isCollapsed,
+  onToggleCollapse,
+  isRoot,
+  isManaging,
+  onToggleManage
 }) => {
   const {
     attributes,
@@ -99,6 +111,12 @@ const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
         onEdit={onEdit}
         onDelete={onDelete}
         onStatusToggle={onStatusToggle}
+        onAddChild={onAddChild}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={onToggleCollapse}
+        isRoot={isRoot}
+        isManaging={isManaging}
+        onToggleManage={onToggleManage}
         dragHandleProps={{ attributes, listeners }}
       />
     </div>
@@ -113,12 +131,17 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
   onEdit,
   onDelete,
   onStatusToggle,
+  onAddChild,
+  isCollapsed,
+  onToggleCollapse,
+  isRoot,
+  isManaging,
+  onToggleManage,
   dragHandleProps
 }) => {
   const { t } = useTranslation()
   const [showActions, setShowActions] = useState(false)
   const [showDescription, setShowDescription] = useState(false)
-  
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -155,27 +178,54 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
       style={{ marginLeft: `${depth * 20}px` }}
     >
       <div className="flex items-center gap-2 p-2 cursor-pointer" onClick={() => onSelect?.(subtask)}>
-        {/* Drag handle */}
-        <div
-          {...dragHandleProps?.attributes}
-          {...dragHandleProps?.listeners}
-          className="cursor-grab active:cursor-grabbing"
-        >
-          <GripVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
-        </div>
+        {/* Collapse/expand toggle (if has children) */}
+        {typeof subtask.subtask_count === 'number' && subtask.subtask_count > 0 ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleCollapse?.(subtask.id)
+            }}
+            className="text-gray-400 hover:text-gray-600"
+            title={isCollapsed ? '展开' : '收起'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+        ) : (
+          <span className="w-4 h-4" />
+        )}
+        {/* Drag handle (hide for root) */}
+        {isRoot ? (
+          <span className="w-4 h-4" />
+        ) : (
+          <div
+            {...dragHandleProps?.attributes}
+            {...dragHandleProps?.listeners}
+            className="cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className={`w-4 h-4 text-gray-400 ${isManaging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+          </div>
+        )}
         
-        {/* Status icon */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            const currentStatus = subtask.content.status
-            const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
-            onStatusToggle?.(subtask.id, newStatus)
-          }}
-          className="hover:scale-110 transition-transform"
-        >
-          {getStatusIcon(subtask.content.status)}
-        </button>
+        {/* Status icon (non-clickable for root) */}
+        {isRoot ? (
+          <span>{getStatusIcon(subtask.content.status)}</span>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              const currentStatus = subtask.content.status
+              const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+              onStatusToggle?.(subtask.id, newStatus)
+            }}
+            className="hover:scale-110 transition-transform"
+          >
+            {getStatusIcon(subtask.content.status)}
+          </button>
+        )}
         
         {/* Task content */}
         <div className="flex-1 min-w-0">
@@ -197,6 +247,16 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
                 <Info className="w-3 h-3" />
               </button>
             )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleManage?.()
+              }}
+              className={`text-gray-400 hover:text-gray-600 transition-colors ${isManaging ? 'text-primary-600' : ''}`}
+              title="管理子任务"
+            >
+              <Move className="w-3 h-3" />
+            </button>
             {subtask.content.priority && subtask.content.priority !== 'medium' && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                 subtask.content.priority === 'urgent' ? 'bg-red-100 text-red-700' :
@@ -206,18 +266,33 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
                 {subtask.content.priority}
               </span>
             )}
-          </div>
-          {subtask.content.progress !== undefined && subtask.content.progress > 0 && (
-            <div className="flex items-center gap-2 mt-1">
-              <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${subtask.content.progress}%` }}
-                />
+            {typeof subtask.subtask_count === 'number' && subtask.subtask_count > 0 && (
+              <div className="flex items-center gap-1 ml-auto" title={`${subtask.completed_subtask_count || 0}/${subtask.subtask_count}`}>
+                <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                  <div
+                    className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.round(((subtask.completed_subtask_count || 0) / subtask.subtask_count) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] leading-none text-gray-500">
+                  {Math.round(((subtask.completed_subtask_count || 0) / subtask.subtask_count) * 100)}%
+                </span>
               </div>
-              <span className="text-xs text-gray-500">{subtask.content.progress}%</span>
-            </div>
-          )}
+            )}
+            {/* 无子任务时，右对齐展示 content.progress */}
+            {(!(typeof subtask.subtask_count === 'number' && subtask.subtask_count > 0)) &&
+             subtask.content.progress !== undefined && subtask.content.progress > 0 && (
+              <div className="flex items-center gap-1 ml-auto" title={`${subtask.content.progress}%`}>
+                <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                  <div
+                    className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${subtask.content.progress}%` }}
+                  />
+                </div>
+                <span className="text-[10px] leading-none text-gray-500">{subtask.content.progress}%</span>
+              </div>
+            )}
+          </div>
           
           {/* Description display */}
           {showDescription && subtask.content.description && (
@@ -231,6 +306,28 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
 
         {/* Actions menu */}
         <div className="relative">
+          {isRoot && (
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleManage?.()
+              }}
+              title="管理子任务"
+            >
+              <Move className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddChild?.(subtask)
+            }}
+            title={t.ui.addSubtask}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
           <button
             className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
@@ -259,17 +356,19 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
                   <Edit className="w-4 h-4" />
                   {t.common.edit}
                 </button>
-                <button
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDelete?.(subtask.id)
-                    setShowActions(false)
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {t.common.delete}
-                </button>
+                {!isRoot && (
+                  <button
+                    className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete?.(subtask.id)
+                      setShowActions(false)
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {t.common.delete}
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -469,9 +568,10 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
     include_completed: true 
   })
   const { updateSubtask, deleteSubtask, reorderSubtasks, isUpdating, isDeleting, isReordering } = useSubtaskActions()
-  const [isExpanded, setIsExpanded] = useState(true)
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingSubtask, setEditingSubtask] = useState<TaskMemory | null>(null)
+  const [creatingForParentId, setCreatingForParentId] = useState<string | null>(null)
+  const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set())
+  const [isManaging, setIsManaging] = useState<boolean>(false)
 
   // 设置拖拽传感器
   const sensors = useSensors(
@@ -502,10 +602,45 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   // Safe access to tree stats
   const treeStats = data?.tree_stats
 
-  const handleCreateSuccess = () => {
-    setShowCreateForm(false)
-    refresh()
-  }
+  // Root task item (displayed like a subtask) and visibility calculations
+  const rootTask = data?.task
+  const rootItem = useMemo(() => {
+    if (!rootTask) return null
+    return {
+      ...rootTask,
+      depth: (rootTask as any).hierarchy_level || 0
+    } as TaskMemory & { depth: number }
+  }, [rootTask])
+
+  const allItems = useMemo(() => {
+    if (!rootItem) return groupedSubtasks
+    return [rootItem, ...groupedSubtasks]
+  }, [rootItem, groupedSubtasks])
+
+  const visibleItems = useMemo(() => {
+    return allItems.filter((item: any, index: number, all: any[]) => {
+      let currentDepth = item.hierarchy_level || item.depth || 0
+      for (let i = index - 1; i >= 0; i--) {
+        const candidate: any = all[i]
+        const candidateDepth = candidate.hierarchy_level ?? candidate.depth ?? 0
+        if (candidateDepth < currentDepth) {
+          if (collapsedTaskIds.has((candidate as TaskMemory).id)) return false
+          currentDepth = candidateDepth
+        }
+        if (candidateDepth === 0 && currentDepth === 0) break
+      }
+      return true
+    })
+  }, [allItems, collapsedTaskIds])
+
+  const visibleSubtasks = useMemo(() => {
+    const rootId = rootItem?.id
+    return visibleItems.filter((i: any) => i.id !== rootId)
+  }, [visibleItems, rootItem])
+
+  
+
+  
 
   const handleStatusToggle = async (subtaskId: string, newStatus: Task['status']) => {
     try {
@@ -537,6 +672,31 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
         console.error('Failed to delete subtask:', error)
       }
     }
+  }
+
+  const handleAddChildSubtask = (parent: TaskMemory) => {
+    setCreatingForParentId(prev => (prev === parent.id ? null : parent.id))
+  }
+
+  const handleChildCreateSuccess = () => {
+    setCreatingForParentId(null)
+    refresh()
+  }
+
+  const handleToggleCollapse = (taskId: string) => {
+    setCollapsedTaskIds(prev => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
+  }
+
+  const handleToggleManage = () => {
+    setIsManaging(prev => !prev)
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -599,98 +759,92 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
     )
   }
 
+  
+
   return (
-    <div className="border border-gray-200 rounded-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700"
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+      {/* Root task */}
+      {rootItem && (
+        <>
+          <SubtaskItem
+            subtask={rootItem as unknown as TaskMemory}
+            depth={(rootItem as any).depth || 0}
+            onSelect={onSubtaskSelect}
+            isSelected={selectedSubtaskId === rootItem.id}
+            onEdit={handleEditSubtask}
+            onDelete={undefined}
+            onStatusToggle={handleStatusToggle}
+            onAddChild={handleAddChildSubtask}
+            isCollapsed={collapsedTaskIds.has(rootItem.id)}
+            onToggleCollapse={handleToggleCollapse}
+            isRoot
+            isManaging={isManaging}
+            onToggleManage={handleToggleManage}
+          />
+          {creatingForParentId === rootItem.id && (
+            <div style={{ marginLeft: `${((rootItem as any).depth + 1) * 20}px` }}>
+              <CreateSubtaskForm
+                parentTaskId={rootItem.id}
+                parentTask={rootItem as unknown as TaskMemory}
+                onSuccess={handleChildCreateSuccess}
+                onCancel={() => setCreatingForParentId(null)}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Subtasks list */}
+      {groupedSubtasks.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Circle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+          <p className="text-sm">{t.ui.noSubtasksYet}</p>
+          <p className="text-xs text-gray-400 mt-1">{t.ui.addSubtaskToGetStarted}</p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          {isExpanded ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-          {t.ui.subtasks} ({treeStats?.total_subtasks || 0})
-        </button>
-        
-        <div className="flex items-center gap-3">
-          {treeStats && treeStats.total_subtasks > 0 && (
-            <div className="text-xs text-gray-500">
-              {treeStats.completed_subtasks}/{treeStats.total_subtasks} {t.ui.completed} 
-              ({Math.round(treeStats.completion_percentage || 0)}%)
-            </div>
-          )}
-          
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+          <SortableContext
+            items={groupedSubtasks.map(subtask => subtask.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <Plus className="w-4 h-4" />
-            {t.ui.addSubtask}
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      {isExpanded && (
-        <div className="p-4 space-y-3">
-          {/* Create form */}
-          {showCreateForm && (
-            <CreateSubtaskForm
-              parentTaskId={taskId}
-              parentTask={data?.task}
-              onSuccess={handleCreateSuccess}
-              onCancel={() => setShowCreateForm(false)}
-            />
-          )}
-
-          {/* Edit form */}
-          {editingSubtask && (
-            <EditSubtaskForm
-              subtask={editingSubtask}
-              onSuccess={handleEditSuccess}
-              onCancel={() => setEditingSubtask(null)}
-            />
-          )}
-
-          {/* Subtasks list */}
-          {groupedSubtasks.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Circle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">{t.ui.noSubtasksYet}</p>
-              <p className="text-xs text-gray-400 mt-1">{t.ui.addSubtaskToGetStarted}</p>
+            <div className="space-y-1" key={subtasksKey}>
+              {visibleSubtasks.map((subtask) => (
+                <React.Fragment key={`${subtask.id}-${subtask.updated_at}`}>
+                  <SortableSubtaskItem
+                    id={subtask.id}
+                    subtask={subtask}
+                    depth={(subtask as any).depth || (subtask as any).hierarchy_level || 0}
+                    onSelect={onSubtaskSelect}
+                    isSelected={selectedSubtaskId === subtask.id}
+                    onEdit={handleEditSubtask}
+                    onDelete={handleDeleteSubtask}
+                    onStatusToggle={handleStatusToggle}
+                    onAddChild={handleAddChildSubtask}
+                    isCollapsed={collapsedTaskIds.has(subtask.id)}
+                    onToggleCollapse={handleToggleCollapse}
+                    isRoot={false}
+                    isManaging={isManaging}
+                    onToggleManage={handleToggleManage}
+                  />
+                  {creatingForParentId === subtask.id && (
+                    <div style={{ marginLeft: `${(((subtask as any).depth || (subtask as any).hierarchy_level || 0) + 1) * 20}px` }}>
+                      <CreateSubtaskForm
+                        parentTaskId={subtask.id}
+                        parentTask={subtask}
+                        onSuccess={handleChildCreateSuccess}
+                        onCancel={() => setCreatingForParentId(null)}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
             </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={groupedSubtasks.map(subtask => subtask.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-1" key={subtasksKey}>
-                  {groupedSubtasks.map((subtask) => (
-                    <SortableSubtaskItem
-                      key={`${subtask.id}-${subtask.updated_at}`}
-                      id={subtask.id}
-                      subtask={subtask}
-                      depth={subtask.depth}
-                      onSelect={onSubtaskSelect}
-                      isSelected={selectedSubtaskId === subtask.id}
-                      onEdit={handleEditSubtask}
-                      onDelete={handleDeleteSubtask}
-                      onStatusToggle={handleStatusToggle}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   )

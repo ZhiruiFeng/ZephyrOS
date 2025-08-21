@@ -10,7 +10,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
-import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle } from 'lucide-react'
+import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle, ListTodo } from 'lucide-react'
 import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -36,6 +36,7 @@ function WorkModeViewInner() {
   const [originalNotes, setOriginalNotes] = useState('')
   const [viewMode, setViewMode] = useState<'current' | 'backlog'>('current')
   const [showTaskInfo, setShowTaskInfo] = useState(false)
+  const [showSubtasks, setShowSubtasks] = useState(false)
   const [editingTaskInfo, setEditingTaskInfo] = useState(false)
   const [sidebarVisible, setSidebarVisible] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
@@ -689,6 +690,15 @@ function WorkModeViewInner() {
                     <Settings className="w-3 h-3 flex-shrink-0" />
                     <span className="hidden sm:inline ml-1">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
                   </button>
+                  {/* Toggle Subtasks Button */}
+                  <button
+                    onClick={() => setShowSubtasks(prev => !prev)}
+                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px] sm:min-w-[100px] ml-0.5 sm:ml-1"
+                    title={t.ui.subtasks}
+                  >
+                    <ListTodo className="w-3 h-3 flex-shrink-0" />
+                    <span className="hidden sm:inline ml-1">{t.ui.subtasks}</span>
+                  </button>
                 </div>
 
                 {/* Save Controls - Right Side */}
@@ -952,17 +962,19 @@ function WorkModeViewInner() {
               </div>
             )}
 
-            {/* Subtasks Section */}
-            <div className="p-4 lg:p-6 border-b border-gray-200">
-              <SubtaskSection 
-                taskId={selectedTask.id}
-                onSubtaskSelect={(subtask) => {
-                  // TODO: Handle subtask selection - maybe switch to subtask or show in modal
-                  console.log('Selected subtask:', subtask)
-                }}
-                selectedSubtaskId={undefined}
-              />
-            </div>
+            {/* Subtasks Section (toggled) */}
+            {showSubtasks && (
+              <div className="p-4 lg:p-6 border-b border-gray-200">
+                <SubtaskSection 
+                  taskId={selectedTask.id}
+                  onSubtaskSelect={(subtask) => {
+                    // TODO: Handle subtask selection - maybe switch to subtask or show in modal
+                    console.log('Selected subtask:', subtask)
+                  }}
+                  selectedSubtaskId={undefined}
+                />
+              </div>
+            )}
 
             {/* Markdown Editor */}
             <div className="flex-1 min-h-0 p-4 lg:p-6">
