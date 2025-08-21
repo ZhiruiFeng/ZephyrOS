@@ -25,7 +25,15 @@ interface TaskWithCategory extends TaskMemory {
 function WorkModeViewInner() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
-  const { tasks, isLoading, error } = useTasks(user ? {} : null)
+  const { tasks, isLoading, error } = useTasks(user ? {
+    // 提高上限，避免老任务被默认分页丢失
+    limit: 500,
+    // 仅取根任务，减少无关数据量
+    root_tasks_only: true,
+    // 使用最近更新排序，更贴近“正在处理/今日相关”的工作流
+    sort_by: 'updated_at',
+    sort_order: 'desc'
+  } : null)
   const { categories } = useCategories()
   const { updateTask, updateTaskSilent } = useUpdateTask()
   const searchParams = useSearchParams()
@@ -129,22 +137,27 @@ function WorkModeViewInner() {
   const filteredTasks = React.useMemo(() => {
     // Skip filtering on server side to avoid hydration mismatch
     if (typeof window === 'undefined') return tasks
-    
+
     const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endOfToday = new Date(startOfToday)
+    endOfToday.setHours(23, 59, 59, 999)
+
     return tasks.filter((task) => {
       const content = task.content as TaskContent
       const dueDate = content.due_date ? new Date(content.due_date) : null
-      
+
       if (viewMode === 'current') {
-        // Current: tasks due today or overdue, or in progress (excluding completed tasks)
-        return content.status === 'in_progress' || 
-               (content.status === 'pending' && dueDate && dueDate <= today) ||
-               (content.status === 'pending' && !dueDate)
+        // Current: in progress, pending without due date, pending due today (until 23:59:59), or overdue
+        if (content.status === 'in_progress') return true
+        if (content.status === 'pending' && !dueDate) return true
+        if (content.status === 'pending' && dueDate && dueDate <= endOfToday) return true
+        return false
       } else {
-        // Backlog: tasks on hold
-        return content.status === 'on_hold'
+        // Backlog: on_hold or pending with future due date (after today)
+        if (content.status === 'on_hold') return true
+        if (content.status === 'pending' && dueDate && dueDate > endOfToday) return true
+        return false
       }
     })
   }, [tasks, viewMode])
@@ -1040,14 +1053,14 @@ function WorkModeViewInner() {
             {/* Markdown Editor */}
             <div className="flex-1 min-h-0 p-4 lg:p-6">
               {/* Editing mode indicator */}
-              <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                <span className="px-2 py-0.5 bg-gray-100 rounded-full">
+              <div className="flex items-center gap-1 sm:gap-2 mb-2 text-xs text-gray-500 w-full overflow-hidden">
+                <span className="px-2 py-0.5 bg-gray-100 rounded-full flex-shrink-0">
                   {selectedSubtask ? t.ui.subtasks : 'Task'}
                 </span>
-                <span className="truncate max-w-[70%]">
+                <span className="flex-1 min-w-0 truncate">
                   {selectedSubtask ? selectedSubtask.content.title : selectedTask.content.title}
                 </span>
-                <span className="ml-auto italic">{t.common.edit}</span>
+                <span className="ml-auto italic flex-shrink-0 hidden sm:inline">{t.common.edit}</span>
               </div>
               <MarkdownEditor
                 value={notes}
