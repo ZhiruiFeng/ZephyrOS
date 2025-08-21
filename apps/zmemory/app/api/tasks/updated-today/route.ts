@@ -41,7 +41,10 @@ const generateMockTasksUpdatedToday = (): TaskMemory[] => {
         category: 'work',
         progress: 60,
         estimated_duration: 30,
-        notes: 'Updated progress to 60% after initial review'
+        notes: 'Updated progress to 60% after initial review',
+        subtask_order: 0,
+        completion_behavior: 'manual',
+        progress_calculation: 'manual'
       },
       tags: ['code-review', 'authentication', 'urgent'],
       created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -59,7 +62,10 @@ const generateMockTasksUpdatedToday = (): TaskMemory[] => {
         progress: 100,
         estimated_duration: 90,
         completion_date: now,
-        notes: 'Documentation completed and reviewed'
+        notes: 'Documentation completed and reviewed',
+        subtask_order: 0,
+        completion_behavior: 'manual',
+        progress_calculation: 'manual'
       },
       tags: ['documentation', 'api'],
       created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),

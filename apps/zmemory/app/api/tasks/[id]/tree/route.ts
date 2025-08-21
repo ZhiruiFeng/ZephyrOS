@@ -106,7 +106,7 @@ function buildTaskTree(flatTasks: TaskMemory[], rootTaskId: string): TaskWithSub
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Rate limiting
@@ -127,7 +127,8 @@ export async function GET(
     }
 
     const query = queryResult.data;
-    const taskId = params.id;
+    const resolvedParams = await params;
+    const taskId = resolvedParams.id;
 
     // Validate task ID format
     if (!/^[0-9a-fA-F-]{36}$/.test(taskId)) {

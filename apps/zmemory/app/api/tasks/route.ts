@@ -45,7 +45,10 @@ const generateMockTasks = (): TaskMemory[] => [
       category: TaskCategory.WORK,
       progress: 75,
       estimated_duration: 480,
-      notes: 'Making good progress on the implementation'
+      notes: 'Making good progress on the implementation',
+      subtask_order: 0,
+      completion_behavior: 'manual',
+      progress_calculation: 'manual'
     },
     tags: ['api', 'development', 'high-priority'],
     created_at: new Date(Date.now() - 86400000).toISOString(),
@@ -62,7 +65,10 @@ const generateMockTasks = (): TaskMemory[] => [
       category: TaskCategory.WORK,
       progress: 0,
       due_date: new Date(Date.now() + 172800000).toISOString(),
-      estimated_duration: 120
+      estimated_duration: 120,
+      subtask_order: 0,
+      completion_behavior: 'manual',
+      progress_calculation: 'manual'
     },
     tags: ['documentation', 'review'],
     created_at: new Date(Date.now() - 43200000).toISOString(),
@@ -79,7 +85,10 @@ const generateMockTasks = (): TaskMemory[] => [
       category: TaskCategory.LEARNING,
       progress: 100,
       completion_date: new Date(Date.now() - 7200000).toISOString(),
-      estimated_duration: 240
+      estimated_duration: 240,
+      subtask_order: 0,
+      completion_behavior: 'manual',
+      progress_calculation: 'manual'
     },
     tags: ['learning', 'nextjs', 'frontend'],
     created_at: new Date(Date.now() - 259200000).toISOString(),

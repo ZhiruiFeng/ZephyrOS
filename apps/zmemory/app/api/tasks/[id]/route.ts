@@ -72,7 +72,10 @@ export async function GET(
             category: 'work',
             progress: 75,
             estimated_duration: 480,
-            notes: 'Making good progress on the implementation'
+            notes: 'Making good progress on the implementation',
+            subtask_order: 0,
+            completion_behavior: 'manual',
+            progress_calculation: 'manual'
           },
           tags: ['api', 'development', 'high-priority'],
           created_at: new Date(Date.now() - 86400000).toISOString(),
@@ -233,7 +236,10 @@ export async function PUT(
             progress: 100,
             estimated_duration: 480,
             completion_date: now,
-            notes: updateData.content?.notes || 'Successfully completed the implementation'
+            notes: updateData.content?.notes || 'Successfully completed the implementation',
+            subtask_order: 0,
+            completion_behavior: 'manual',
+            progress_calculation: 'manual'
           },
           tags: updateData.tags || ['api', 'development', 'high-priority'],
           metadata: updateData.metadata,
