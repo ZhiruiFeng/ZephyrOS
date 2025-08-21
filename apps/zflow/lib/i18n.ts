@@ -256,6 +256,13 @@ export interface TranslationKeys {
     crossDaySegment: string;
     loadFailed: string;
     noData: string;
+    // Subtasks
+    subtasks: string;
+    addSubtask: string;
+    createSubtask: string;
+    creating: string;
+    noSubtasksYet: string;
+    addSubtaskToGetStarted: string;
   };
 
   // Messages and notifications
@@ -273,6 +280,7 @@ export interface TranslationKeys {
     retry: string;
     confirmDeleteCategory: string;
     categoryDeleteFailed: string;
+    failedToLoadSubtasks: string;
   };
 
   // Meta information
@@ -478,6 +486,13 @@ const translations: Record<Language, TranslationKeys> = {
       assignee: 'Assignee',
       minutes: 'minutes',
       idle: 'Idle',
+      // Subtasks
+      subtasks: 'Subtasks',
+      addSubtask: 'Add Subtask',
+      createSubtask: 'Create Subtask',
+      creating: 'Creating...',
+      noSubtasksYet: 'No subtasks yet',
+      addSubtaskToGetStarted: 'Add a subtask to get started',
       // Time tracking
       focusTime: 'Focus Time',
       viewTimeSegmentsByDay: 'View task focus time segments by day',
@@ -554,6 +569,7 @@ const translations: Record<Language, TranslationKeys> = {
       retry: 'Retry',
       confirmDeleteCategory: 'Are you sure you want to delete this category? Associated tasks will become uncategorized.',
       categoryDeleteFailed: 'Delete failed, please try again',
+      failedToLoadSubtasks: 'Failed to load subtasks',
     },
     meta: {
       appTitle: 'ZFlow - Task Management System',
@@ -814,6 +830,13 @@ const translations: Record<Language, TranslationKeys> = {
       mobileKanbanFeature: '移动端看板',
       mobileKanbanDesc: '单列布局，适合垂直滚动',
       testDescription: '所有页面都已针对移动设备进行了优化，提供更好的用户体验',
+      // Subtasks
+      subtasks: '子任务',
+      addSubtask: '添加子任务',
+      createSubtask: '创建子任务',
+      creating: '创建中...',
+      noSubtasksYet: '暂无子任务',
+      addSubtaskToGetStarted: '添加子任务开始分解工作',
     },
     messages: {
       taskCreated: '任务创建成功',
@@ -829,6 +852,7 @@ const translations: Record<Language, TranslationKeys> = {
       retry: '重试',
       confirmDeleteCategory: '确定要删除这个分类吗？关联的任务将变为未分类。',
       categoryDeleteFailed: '删除失败，请重试',
+      failedToLoadSubtasks: '加载子任务失败',
     },
     meta: {
       appTitle: 'ZFlow - 任务管理系统',

@@ -15,6 +15,7 @@ import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { useTimer } from '../../../hooks/useTimer'
+import SubtaskSection from '../../components/SubtaskSection'
 
 interface TaskWithCategory extends TaskMemory {
   category?: Category
@@ -944,6 +945,18 @@ function WorkModeViewInner() {
                 )}
               </div>
             )}
+
+            {/* Subtasks Section */}
+            <div className="p-4 lg:p-6 border-b border-gray-200">
+              <SubtaskSection 
+                taskId={selectedTask.id}
+                onSubtaskSelect={(subtask) => {
+                  // TODO: Handle subtask selection - maybe switch to subtask or show in modal
+                  console.log('Selected subtask:', subtask)
+                }}
+                selectedSubtaskId={undefined}
+              />
+            </div>
 
             {/* Markdown Editor */}
             <div className="flex-1 min-h-0 p-4 lg:p-6">
