@@ -28,6 +28,18 @@ export const TaskCategory = {
   OTHER: 'other'
 } as const;
 
+// Subtasks behavior enumerations
+export const CompletionBehavior = {
+  MANUAL: 'manual',
+  AUTO_WHEN_SUBTASKS_COMPLETE: 'auto_when_subtasks_complete'
+} as const;
+
+export const ProgressCalculation = {
+  MANUAL: 'manual',
+  AVERAGE_SUBTASKS: 'average_subtasks',
+  WEIGHTED_SUBTASKS: 'weighted_subtasks'
+} as const;
+
 // Zod schemas for validation
 export const TaskContentSchema = z.object({
   title: z.string().min(1, 'Task title is required').max(200, 'Title too long'),
@@ -62,7 +74,20 @@ export const TaskContentSchema = z.object({
   dependencies: z.array(z.string()).optional(), // Array of task IDs
   subtasks: z.array(z.string()).optional(), // Array of subtask IDs
   notes: z.string().optional(),
-  completion_date: z.string().datetime().optional()
+  completion_date: z.string().datetime().optional(),
+  
+  // Subtasks hierarchy fields
+  parent_task_id: z.string().uuid().optional(),
+  subtask_order: z.number().int().min(0).default(0),
+  completion_behavior: z.enum([
+    CompletionBehavior.MANUAL,
+    CompletionBehavior.AUTO_WHEN_SUBTASKS_COMPLETE
+  ]).default(CompletionBehavior.MANUAL),
+  progress_calculation: z.enum([
+    ProgressCalculation.MANUAL,
+    ProgressCalculation.AVERAGE_SUBTASKS,
+    ProgressCalculation.WEIGHTED_SUBTASKS
+  ]).default(ProgressCalculation.MANUAL)
 });
 
 export const CreateTaskSchema = z.object({
@@ -74,7 +99,7 @@ export const CreateTaskSchema = z.object({
 
 export const UpdateTaskSchema = z.object({
   type: z.literal('task').optional(),
-  content: TaskContentSchema.partial(),
+  content: TaskContentSchema.partial().optional(),
   tags: z.array(z.string()).optional(),
   metadata: z.record(z.any()).optional()
 });
@@ -109,9 +134,16 @@ export const TaskQuerySchema = z.object({
   due_after: z.string().datetime().optional(),
   created_before: z.string().datetime().optional(),
   created_after: z.string().datetime().optional(),
+  
+  // Subtasks filtering
+  parent_task_id: z.string().uuid().optional(), // Filter by parent task
+  include_subtasks: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
+  hierarchy_level: z.string().regex(/^\d+$/).transform(Number).optional(), // Filter by hierarchy level
+  root_tasks_only: z.enum(['true', 'false']).transform(val => val === 'true').default('false'), // Show only root tasks
+  
   limit: z.string().regex(/^\d+$/).transform(Number).default('50'),
   offset: z.string().regex(/^\d+$/).transform(Number).default('0'),
-  sort_by: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'title']).default('created_at'),
+  sort_by: z.enum(['created_at', 'updated_at', 'due_date', 'priority', 'title', 'hierarchy_level', 'subtask_order']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc')
 });
 
@@ -119,12 +151,14 @@ export const TaskQuerySchema = z.object({
 export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
 export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
 export type TaskCategory = typeof TaskCategory[keyof typeof TaskCategory];
+export type CompletionBehavior = typeof CompletionBehavior[keyof typeof CompletionBehavior];
+export type ProgressCalculation = typeof ProgressCalculation[keyof typeof ProgressCalculation];
 export type TaskContent = z.infer<typeof TaskContentSchema>;
 export type CreateTaskRequest = z.infer<typeof CreateTaskSchema>;
 export type UpdateTaskRequest = z.infer<typeof UpdateTaskSchema>;
 export type TaskQuery = z.infer<typeof TaskQuerySchema>;
 
-// Task memory interface
+// Task memory interface with hierarchy support
 export interface TaskMemory {
   id: string;
   type: 'task';
@@ -133,6 +167,33 @@ export interface TaskMemory {
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
+  
+  // Hierarchy metadata (populated from database fields)
+  hierarchy_level?: number;
+  hierarchy_path?: string;
+  subtask_count?: number;
+  completed_subtask_count?: number;
+  
+  // Optional populated subtasks for tree responses
+  subtasks?: TaskMemory[];
+}
+
+// Subtask tree node interface
+export interface SubtaskTreeNode {
+  task_id: string;
+  parent_task_id: string | null;
+  title: string;
+  status: TaskStatus;
+  progress: number;
+  hierarchy_level: number;
+  subtask_order: number;
+}
+
+// Create subtask request
+export interface CreateSubtaskRequest {
+  parent_task_id: string;
+  task_data: CreateTaskRequest;
+  subtask_order?: number;
 }
 
 // Task statistics interface

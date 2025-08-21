@@ -132,10 +132,21 @@ export async function GET(
         assignee: data.assignee || undefined,
         completion_date: data.completion_date || undefined,
         notes: data.notes || undefined,
+        // Include subtasks hierarchy fields
+        parent_task_id: data.parent_task_id || undefined,
+        subtask_order: data.subtask_order || 0,
+        completion_behavior: data.completion_behavior || 'manual',
+        progress_calculation: data.progress_calculation || 'manual',
       },
       tags: data.tags || [],
       created_at: data.created_at,
       updated_at: data.updated_at,
+      // Surface additional fields for frontend
+      category_id: data.category_id,
+      hierarchy_level: data.hierarchy_level,
+      hierarchy_path: data.hierarchy_path,
+      subtask_count: data.subtask_count || 0,
+      completed_subtask_count: data.completed_subtask_count || 0,
     });
   } catch (error) {
     console.error('API error:', error);
@@ -294,6 +305,12 @@ export async function PUT(
         updateObject.completion_date = null;
       }
       if (updateData.content.notes !== undefined) updateObject.notes = updateData.content.notes;
+      
+      // Handle subtasks hierarchy fields
+      if (updateData.content.parent_task_id !== undefined) updateObject.parent_task_id = updateData.content.parent_task_id;
+      if (updateData.content.subtask_order !== undefined) updateObject.subtask_order = updateData.content.subtask_order;
+      if (updateData.content.completion_behavior !== undefined) updateObject.completion_behavior = updateData.content.completion_behavior;
+      if (updateData.content.progress_calculation !== undefined) updateObject.progress_calculation = updateData.content.progress_calculation;
     }
     if (updateData.tags !== undefined) {
       updateObject.tags = updateData.tags;
@@ -333,10 +350,21 @@ export async function PUT(
         assignee: data.assignee || undefined,
         completion_date: data.completion_date || undefined,
         notes: data.notes || undefined,
+        // Include subtasks hierarchy fields
+        parent_task_id: data.parent_task_id || undefined,
+        subtask_order: data.subtask_order || 0,
+        completion_behavior: data.completion_behavior || 'manual',
+        progress_calculation: data.progress_calculation || 'manual',
       },
       tags: data.tags || [],
       created_at: data.created_at,
       updated_at: data.updated_at,
+      // Surface additional fields for frontend
+      category_id: data.category_id,
+      hierarchy_level: data.hierarchy_level,
+      hierarchy_path: data.hierarchy_path,
+      subtask_count: data.subtask_count || 0,
+      completed_subtask_count: data.completed_subtask_count || 0,
     };
     
     const response = NextResponse.json(responseData);

@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
 
     const client = createClientForRequest(request) || supabase
 
-    // Build Supabase query against tasks table
+    // Build Supabase query against tasks table with hierarchy support
     let dbQuery = client
       .from('tasks')
       .select(`
@@ -305,6 +305,17 @@ export async function GET(request: NextRequest) {
       dbQuery = dbQuery.overlaps('tags', filterTags);
     }
 
+    // Subtasks-specific filters
+    if (query.parent_task_id) {
+      dbQuery = dbQuery.eq('parent_task_id', query.parent_task_id);
+    }
+    if (query.root_tasks_only) {
+      dbQuery = dbQuery.is('parent_task_id', null);
+    }
+    if (query.hierarchy_level !== undefined) {
+      dbQuery = dbQuery.eq('hierarchy_level', query.hierarchy_level);
+    }
+
     // Apply sorting
     const ascending = query.sort_order === 'asc';
     if (query.sort_by === 'title') {
@@ -313,6 +324,10 @@ export async function GET(request: NextRequest) {
       dbQuery = dbQuery.order('due_date', { ascending, nullsFirst: false });
     } else if (query.sort_by === 'priority') {
       dbQuery = dbQuery.order('priority', { ascending });
+    } else if (query.sort_by === 'hierarchy_level') {
+      dbQuery = dbQuery.order('hierarchy_level', { ascending }).order('subtask_order', { ascending });
+    } else if (query.sort_by === 'subtask_order') {
+      dbQuery = dbQuery.order('parent_task_id', { ascending, nullsFirst: true }).order('subtask_order', { ascending });
     } else {
       dbQuery = dbQuery.order(query.sort_by, { ascending });
     }
@@ -354,12 +369,21 @@ export async function GET(request: NextRequest) {
         assignee: row.assignee || undefined,
         completion_date: row.completion_date || undefined,
         notes: row.notes || undefined,
+        // Include subtasks hierarchy fields
+        parent_task_id: row.parent_task_id || undefined,
+        subtask_order: row.subtask_order || 0,
+        completion_behavior: row.completion_behavior || 'manual',
+        progress_calculation: row.progress_calculation || 'manual',
       },
       tags: row.tags || [],
       created_at: row.created_at,
       updated_at: row.updated_at,
-      // surface category_id for frontend filtering
+      // Surface additional fields for frontend
       category_id: row.category_id,
+      hierarchy_level: row.hierarchy_level,
+      hierarchy_path: row.hierarchy_path,
+      subtask_count: row.subtask_count || 0,
+      completed_subtask_count: row.completed_subtask_count || 0,
     }));
     return jsonWithCors(request, mapped);
   } catch (error) {
@@ -476,6 +500,12 @@ export async function POST(request: NextRequest) {
       created_at: now,
       updated_at: now,
       user_id: userId,
+      
+      // Subtasks hierarchy fields
+      parent_task_id: taskData.content.parent_task_id || null,
+      subtask_order: taskData.content.subtask_order || 0,
+      completion_behavior: taskData.content.completion_behavior || 'manual',
+      progress_calculation: taskData.content.progress_calculation || 'manual',
     };
 
     // If creating with completed status and no explicit completion_date, set it to now
@@ -513,12 +543,21 @@ export async function POST(request: NextRequest) {
         progress: data.progress || 0,
         assignee: data.assignee || undefined,
         notes: data.notes || undefined,
+        // Include subtasks hierarchy fields
+        parent_task_id: data.parent_task_id || undefined,
+        subtask_order: data.subtask_order || 0,
+        completion_behavior: data.completion_behavior || 'manual',
+        progress_calculation: data.progress_calculation || 'manual',
       },
       tags: data.tags || [],
       created_at: data.created_at,
       updated_at: data.updated_at,
-      // Add category_id at the top level for frontend filtering
+      // Add additional fields for frontend
       category_id: data.category_id,
+      hierarchy_level: data.hierarchy_level,
+      hierarchy_path: data.hierarchy_path,
+      subtask_count: data.subtask_count || 0,
+      completed_subtask_count: data.completed_subtask_count || 0,
     } as any;
     
     console.log('Returning created task:', JSON.stringify(mapped, null, 2));
