@@ -12,7 +12,6 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Move,
   GripVertical,
   Info
 } from 'lucide-react'
@@ -59,8 +58,7 @@ interface SubtaskItemProps {
   isCollapsed?: boolean
   onToggleCollapse?: (taskId: string) => void
   isRoot?: boolean
-  isManaging?: boolean
-  onToggleManage?: () => void
+  
 }
 
 interface SortableSubtaskItemProps extends SubtaskItemProps {
@@ -79,9 +77,7 @@ const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
   onAddChild,
   isCollapsed,
   onToggleCollapse,
-  isRoot,
-  isManaging,
-  onToggleManage
+  isRoot
 }) => {
   const {
     attributes,
@@ -115,8 +111,6 @@ const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
         isCollapsed={isCollapsed}
         onToggleCollapse={onToggleCollapse}
         isRoot={isRoot}
-        isManaging={isManaging}
-        onToggleManage={onToggleManage}
         dragHandleProps={{ attributes, listeners }}
       />
     </div>
@@ -135,8 +129,6 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
   isCollapsed,
   onToggleCollapse,
   isRoot,
-  isManaging,
-  onToggleManage,
   dragHandleProps
 }) => {
   const { t } = useTranslation()
@@ -206,7 +198,7 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
             {...dragHandleProps?.listeners}
             className="cursor-grab active:cursor-grabbing"
           >
-            <GripVertical className={`w-4 h-4 text-gray-400 ${isManaging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+            <GripVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
           </div>
         )}
         
@@ -247,16 +239,7 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
                 <Info className="w-3 h-3" />
               </button>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleManage?.()
-              }}
-              className={`text-gray-400 hover:text-gray-600 transition-colors ${isManaging ? 'text-primary-600' : ''}`}
-              title="管理子任务"
-            >
-              <Move className="w-3 h-3" />
-            </button>
+            
             {subtask.content.priority && subtask.content.priority !== 'medium' && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                 subtask.content.priority === 'urgent' ? 'bg-red-100 text-red-700' :
@@ -306,18 +289,7 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
 
         {/* Actions menu */}
         <div className="relative">
-          {isRoot && (
-            <button
-              className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleManage?.()
-              }}
-              title="管理子任务"
-            >
-              <Move className="w-4 h-4" />
-            </button>
-          )}
+          
           <button
             className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
@@ -571,7 +543,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   const [editingSubtask, setEditingSubtask] = useState<TaskMemory | null>(null)
   const [creatingForParentId, setCreatingForParentId] = useState<string | null>(null)
   const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set())
-  const [isManaging, setIsManaging] = useState<boolean>(false)
+  
 
   // 设置拖拽传感器
   const sensors = useSensors(
@@ -695,9 +667,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
     })
   }
 
-  const handleToggleManage = () => {
-    setIsManaging(prev => !prev)
-  }
+  
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
@@ -762,7 +732,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3 w-full max-w-full overflow-x-hidden">
       {/* Root task */}
       {rootItem && (
         <>
@@ -778,8 +748,6 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
             isCollapsed={collapsedTaskIds.has(rootItem.id)}
             onToggleCollapse={handleToggleCollapse}
             isRoot
-            isManaging={isManaging}
-            onToggleManage={handleToggleManage}
           />
           {creatingForParentId === rootItem.id && (
             <div style={{ marginLeft: `${((rootItem as any).depth + 1) * 20}px` }}>
@@ -827,8 +795,6 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
                     isCollapsed={collapsedTaskIds.has(subtask.id)}
                     onToggleCollapse={handleToggleCollapse}
                     isRoot={false}
-                    isManaging={isManaging}
-                    onToggleManage={handleToggleManage}
                   />
                   {creatingForParentId === subtask.id && (
                     <div style={{ marginLeft: `${(((subtask as any).depth || (subtask as any).hierarchy_level || 0) + 1) * 20}px` }}>

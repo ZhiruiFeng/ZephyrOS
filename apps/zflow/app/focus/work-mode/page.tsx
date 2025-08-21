@@ -629,9 +629,9 @@ function WorkModeViewInner() {
               </div>
 
               {/* Controls Section */}
-              <div className="flex items-center gap-0 sm:gap-1 min-h-[36px] sm:min-h-[40px] overflow-x-auto">
+              <div className="flex flex-wrap items-center gap-1 md:gap-2 min-h-[36px] sm:min-h-[40px]">
                 {/* Timer and Controls - Compact Row */}
-                <div className="flex items-center gap-0 sm:gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 overflow-x-auto">
                   {/* Ultra-compact Timer */}
                   {selectedTask && (
                     <div className="flex items-center gap-0 sm:gap-1 px-1 py-0.5 bg-gray-100 rounded text-xs min-w-[45px] sm:min-w-[120px]">
@@ -652,7 +652,7 @@ function WorkModeViewInner() {
                         ? timer.stop(selectedTask.id) 
                         : timer.start(selectedTask.id, { autoSwitch: true })
                       }
-                      className={`flex items-center justify-center px-2 py-2 text-white rounded transition-colors text-xs min-w-[36px] sm:min-w-[85px] ml-0.5 sm:ml-1 ${
+                      className={`flex items-center justify-center px-2 py-2 text-white rounded transition-colors text-xs min-w-[36px] ${
                         timer.isRunning && timer.runningTaskId === selectedTask.id 
                           ? 'bg-red-600 hover:bg-red-700' 
                           : 'bg-green-600 hover:bg-green-700'
@@ -676,33 +676,33 @@ function WorkModeViewInner() {
                     <button
                       onClick={handleCompleteTask}
                       disabled={isSaving}
-                      className="flex items-center justify-center px-2 py-2 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[36px] sm:min-w-[100px] ml-0.5 sm:ml-1 disabled:opacity-50"
+                      className="flex items-center justify-center px-2 py-2 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[36px] disabled:opacity-50"
                     >
                       <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                      <span className="hidden sm:inline ml-1">{t.task.markCompleted}</span>
+                      <span className="hidden sm:inline ml-1 truncate">{t.task.markCompleted}</span>
                     </button>
                   )}
                   {/* Task Info Button */}
                   <button
                     onClick={() => setShowTaskInfo(!showTaskInfo)}
-                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px] sm:min-w-[100px] ml-0.5 sm:ml-1"
+                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px]"
                   >
                     <Settings className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden sm:inline ml-1">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
+                    <span className="hidden sm:inline ml-1 truncate">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
                   </button>
                   {/* Toggle Subtasks Button */}
                   <button
                     onClick={() => setShowSubtasks(prev => !prev)}
-                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px] sm:min-w-[100px] ml-0.5 sm:ml-1"
+                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px]"
                     title={t.ui.subtasks}
                   >
                     <ListTodo className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden sm:inline ml-1">{t.ui.subtasks}</span>
+                    <span className="hidden sm:inline ml-1 truncate">{t.ui.subtasks}</span>
                   </button>
                 </div>
 
-                {/* Save Controls - Right Side */}
-                <div className="flex items-center ml-auto gap-0 sm:gap-2">
+                {/* Save Controls - Right Side (wraps below on mobile) */}
+                <div className="flex items-center ml-0 md:ml-auto gap-1 md:gap-2 w-full md:w-auto justify-end mt-2 md:mt-0">
                   {/* Auto-save indicator - Hidden on mobile */}
                   <div className="hidden sm:flex items-center text-xs text-gray-400 min-w-[140px] justify-end">
                     {autoSave.status === 'error' ? (
@@ -719,10 +719,10 @@ function WorkModeViewInner() {
                   <button
                     onClick={handleSaveNotes}
                     disabled={isSaving}
-                    className="flex items-center justify-center px-3 py-2 sm:px-4 sm:py-2 bg-primary-600 text-white rounded transition-colors text-xs min-w-[50px] sm:min-w-[120px] hover:bg-primary-700 disabled:opacity-50"
+                    className="flex items-center justify-center px-3 py-2 sm:px-4 sm:py-2 bg-primary-600 text-white rounded transition-colors text-xs min-w-[50px] sm:min-w-[100px] hover:bg-primary-700 disabled:opacity-50"
                   >
                     <Save className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden sm:inline ml-1">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
+                    <span className="hidden sm:inline ml-1 truncate">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
                   </button>
                 </div>
               </div>
@@ -964,16 +964,47 @@ function WorkModeViewInner() {
 
             {/* Subtasks Section (toggled) */}
             {showSubtasks && (
-              <div className="p-4 lg:p-6 border-b border-gray-200">
-                <SubtaskSection 
-                  taskId={selectedTask.id}
-                  onSubtaskSelect={(subtask) => {
-                    // TODO: Handle subtask selection - maybe switch to subtask or show in modal
-                    console.log('Selected subtask:', subtask)
-                  }}
-                  selectedSubtaskId={undefined}
-                />
-              </div>
+              <>
+                {/* Desktop/tablet inline section */}
+                <div className="hidden lg:block p-4 lg:p-6 border-b border-gray-200">
+                  <SubtaskSection 
+                    taskId={selectedTask.id}
+                    onSubtaskSelect={(subtask) => {
+                      console.log('Selected subtask:', subtask)
+                    }}
+                    selectedSubtaskId={undefined}
+                  />
+                </div>
+
+                {/* Mobile floating bottom sheet */}
+                <div className="lg:hidden fixed inset-0 z-50">
+                  <div
+                    className="absolute inset-0 bg-black/50"
+                    onClick={() => setShowSubtasks(false)}
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-white rounded-t-2xl shadow-lg">
+                    <div className="flex items-center justify-between p-3 border-b border-gray-200">
+                      <span className="text-sm font-medium text-gray-900">{t.ui.subtasks}</span>
+                      <button
+                        onClick={() => setShowSubtasks(false)}
+                        className="p-2 text-gray-500 hover:text-gray-700"
+                        aria-label="Close subtasks"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="p-4 overflow-y-auto">
+                      <SubtaskSection 
+                        taskId={selectedTask.id}
+                        onSubtaskSelect={(subtask) => {
+                          console.log('Selected subtask:', subtask)
+                        }}
+                        selectedSubtaskId={undefined}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Markdown Editor */}
