@@ -30,6 +30,7 @@ function WorkModeViewInner() {
   const { updateTask, updateTaskSilent } = useUpdateTask()
   const searchParams = useSearchParams()
   const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
+  const [selectedSubtask, setSelectedSubtask] = useState<TaskMemory | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [notes, setNotes] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -60,31 +61,35 @@ function WorkModeViewInner() {
 
   // Auto-save functionality for notes
   const autoSaveNotes = useCallback(async () => {
-    if (!selectedTask) return
+    if (!selectedTask && !selectedSubtask) return
     
     try {
-      const updatedTask = await updateTaskSilent(selectedTask.id, { 
+      const targetId = selectedSubtask ? selectedSubtask.id : (selectedTask as TaskWithCategory).id
+      const updated = await updateTaskSilent(targetId, { 
         content: { 
           notes 
         } 
       })
-      // Preserve the category information from the original selectedTask
-      const taskWithCategory = {
-        ...updatedTask,
-        category: selectedTask.category,
-        category_id: selectedTask.category_id || selectedTask.content.category_id
-      } as TaskWithCategory
-      
-      setSelectedTask(taskWithCategory)
+      if (selectedSubtask) {
+        setSelectedSubtask(updated as TaskMemory)
+      } else if (selectedTask) {
+        // Preserve the category information from the original selectedTask
+        const taskWithCategory = {
+          ...updated,
+          category: selectedTask.category,
+          category_id: selectedTask.category_id || selectedTask.content.category_id
+        } as TaskWithCategory
+        setSelectedTask(taskWithCategory)
+      }
       setOriginalNotes(notes)
     } catch (error) {
       throw error
     }
-  }, [selectedTask, notes, updateTaskSilent])
+  }, [selectedTask, selectedSubtask, notes, updateTaskSilent])
 
   const autoSave = useAutoSave({
     delay: 5000, // 5 seconds after user stops typing - less sensitive
-    enabled: !!selectedTask,
+    enabled: !!(selectedTask || selectedSubtask),
     onSave: autoSaveNotes,
     hasChanges: () => {
       // Only save if there's meaningful change
@@ -105,10 +110,10 @@ function WorkModeViewInner() {
 
   // Trigger auto-save when notes change
   useEffect(() => {
-    if (selectedTask && notes !== originalNotes) {
+    if ((selectedTask || selectedSubtask) && notes !== originalNotes) {
       autoSave.triggerAutoSave()
     }
-  }, [notes, selectedTask, originalNotes])
+  }, [notes, selectedTask, selectedSubtask, originalNotes])
 
   // Load categories
   // Categories are now loaded via useCategories hook
@@ -198,6 +203,8 @@ function WorkModeViewInner() {
 
   // Load notes and task info when task is selected
   useEffect(() => {
+    // Reset selected subtask when switching root task
+    setSelectedSubtask(null)
     if (selectedTask) {
       const taskNotes = selectedTask.content.notes || ''
       setNotes(taskNotes)
@@ -230,10 +237,23 @@ function WorkModeViewInner() {
     }
   }, [selectedTask])
 
-  // Reset auto-save state when switching tasks
+  // Load notes when a subtask is selected
+  useEffect(() => {
+    if (selectedSubtask) {
+      const subtaskNotes = selectedSubtask.content.notes || ''
+      setNotes(subtaskNotes)
+      setOriginalNotes(subtaskNotes)
+    } else if (selectedTask) {
+      const taskNotes = selectedTask.content.notes || ''
+      setNotes(taskNotes)
+      setOriginalNotes(taskNotes)
+    }
+  }, [selectedSubtask])
+
+  // Reset auto-save state when switching tasks or subtasks
   useEffect(() => {
     autoSave.resetAutoSave()
-  }, [selectedTask?.id])
+  }, [selectedTask?.id, selectedSubtask?.id])
 
   // Auto-select task from query param taskId
   useEffect(() => {
@@ -269,21 +289,29 @@ function WorkModeViewInner() {
   }
 
   const handleSaveNotes = async () => {
-    if (!selectedTask) return
+    if (!selectedTask && !selectedSubtask) return
     
     // Cancel any pending auto-save
     autoSave.cancelAutoSave()
     
     setIsSaving(true)
     try {
-      // 只更新notes字段，避免传递错误的category字段
-      const updatedTask = await updateTask(selectedTask.id, { 
+      const targetId = selectedSubtask ? selectedSubtask.id : (selectedTask as TaskWithCategory).id
+      const updated = await updateTask(targetId, { 
         content: { 
           notes 
         } 
       })
-      // Update the selectedTask state with the updated task data
-      setSelectedTask(updatedTask as TaskWithCategory)
+      if (selectedSubtask) {
+        setSelectedSubtask(updated as TaskMemory)
+      } else if (selectedTask) {
+        const taskWithCategory = {
+          ...updated,
+          category: selectedTask.category,
+          category_id: selectedTask.category_id || selectedTask.content.category_id
+        } as TaskWithCategory
+        setSelectedTask(taskWithCategory)
+      }
       setOriginalNotes(notes)
     } catch (error) {
       console.error('Failed to save notes:', error)
@@ -970,9 +998,10 @@ function WorkModeViewInner() {
                   <SubtaskSection 
                     taskId={selectedTask.id}
                     onSubtaskSelect={(subtask) => {
-                      console.log('Selected subtask:', subtask)
+                      setSelectedSubtask(subtask)
+                      setShowSubtasks(false)
                     }}
-                    selectedSubtaskId={undefined}
+                    selectedSubtaskId={selectedSubtask?.id}
                   />
                 </div>
 
@@ -997,9 +1026,10 @@ function WorkModeViewInner() {
                       <SubtaskSection 
                         taskId={selectedTask.id}
                         onSubtaskSelect={(subtask) => {
-                          console.log('Selected subtask:', subtask)
+                          setSelectedSubtask(subtask)
+                          setShowSubtasks(false)
                         }}
-                        selectedSubtaskId={undefined}
+                        selectedSubtaskId={selectedSubtask?.id}
                       />
                     </div>
                   </div>
@@ -1009,6 +1039,16 @@ function WorkModeViewInner() {
 
             {/* Markdown Editor */}
             <div className="flex-1 min-h-0 p-4 lg:p-6">
+              {/* Editing mode indicator */}
+              <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+                <span className="px-2 py-0.5 bg-gray-100 rounded-full">
+                  {selectedSubtask ? t.ui.subtasks : 'Task'}
+                </span>
+                <span className="truncate max-w-[70%]">
+                  {selectedSubtask ? selectedSubtask.content.title : selectedTask.content.title}
+                </span>
+                <span className="ml-auto italic">{t.common.edit}</span>
+              </div>
               <MarkdownEditor
                 value={notes}
                 onChange={setNotes}
