@@ -189,6 +189,8 @@ export const tasksApi = {
     offset?: number;
     root_tasks_only?: boolean;
     hierarchy_level?: number;
+    sort_by?: string;
+    sort_order?: string;
   }): Promise<TaskMemory[]> {
     const searchParams = new URLSearchParams()
     if (params) {
