@@ -644,7 +644,7 @@ function WorkModeViewInner() {
                         ? timer.stop(selectedTask.id) 
                         : timer.start(selectedTask.id, { autoSwitch: true })
                       }
-                      className={`flex items-center justify-center px-1 py-1 text-white rounded transition-colors text-xs min-w-[28px] sm:min-w-[85px] ml-0.5 sm:ml-1 ${
+                      className={`flex items-center justify-center px-2 py-2 text-white rounded transition-colors text-xs min-w-[36px] sm:min-w-[85px] ml-0.5 sm:ml-1 ${
                         timer.isRunning && timer.runningTaskId === selectedTask.id 
                           ? 'bg-red-600 hover:bg-red-700' 
                           : 'bg-green-600 hover:bg-green-700'
@@ -668,7 +668,7 @@ function WorkModeViewInner() {
                     <button
                       onClick={handleCompleteTask}
                       disabled={isSaving}
-                      className="flex items-center justify-center px-1 py-1 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[28px] sm:min-w-[100px] ml-0.5 sm:ml-1 disabled:opacity-50"
+                      className="flex items-center justify-center px-2 py-2 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[36px] sm:min-w-[100px] ml-0.5 sm:ml-1 disabled:opacity-50"
                     >
                       <CheckCircle className="w-3 h-3 flex-shrink-0" />
                       <span className="hidden sm:inline ml-1">{t.task.markCompleted}</span>
@@ -677,7 +677,7 @@ function WorkModeViewInner() {
                   {/* Task Info Button */}
                   <button
                     onClick={() => setShowTaskInfo(!showTaskInfo)}
-                    className="flex items-center justify-center px-1 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[28px] sm:min-w-[100px] ml-0.5 sm:ml-1"
+                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px] sm:min-w-[100px] ml-0.5 sm:ml-1"
                   >
                     <Settings className="w-3 h-3 flex-shrink-0" />
                     <span className="hidden sm:inline ml-1">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
@@ -702,7 +702,7 @@ function WorkModeViewInner() {
                   <button
                     onClick={handleSaveNotes}
                     disabled={isSaving}
-                    className="flex items-center justify-center px-1.5 py-1 sm:px-4 sm:py-2 bg-primary-600 text-white rounded transition-colors text-xs min-w-[45px] sm:min-w-[120px] hover:bg-primary-700 disabled:opacity-50"
+                    className="flex items-center justify-center px-3 py-2 sm:px-4 sm:py-2 bg-primary-600 text-white rounded transition-colors text-xs min-w-[50px] sm:min-w-[120px] hover:bg-primary-700 disabled:opacity-50"
                   >
                     <Save className="w-3 h-3 flex-shrink-0" />
                     <span className="hidden sm:inline ml-1">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
