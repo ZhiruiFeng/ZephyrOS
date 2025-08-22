@@ -227,11 +227,34 @@ export async function GET(
       tasks = tasks.filter(task => task.content.status !== 'completed');
     }
 
-    // Sort by hierarchy and order
+    // Sort by hierarchy path to maintain proper parent-child relationships
     tasks.sort((a, b) => {
-      if (a.hierarchy_level !== b.hierarchy_level) {
-        return (a.hierarchy_level || 0) - (b.hierarchy_level || 0);
+      const pathA = a.hierarchy_path || '';
+      const pathB = b.hierarchy_path || '';
+      
+      // Split paths into components
+      const componentsA = pathA.split('/').filter(Boolean);
+      const componentsB = pathB.split('/').filter(Boolean);
+      
+      // Compare path components level by level
+      const minLength = Math.min(componentsA.length, componentsB.length);
+      for (let i = 0; i < minLength; i++) {
+        if (componentsA[i] !== componentsB[i]) {
+          // At this level, sort by subtask_order within the same parent
+          const taskA = tasks.find(t => t.id === componentsA[i]);
+          const taskB = tasks.find(t => t.id === componentsB[i]);
+          const orderA = taskA?.content.subtask_order || 0;
+          const orderB = taskB?.content.subtask_order || 0;
+          return orderA - orderB;
+        }
       }
+      
+      // If one path is a prefix of another, shorter path comes first
+      if (componentsA.length !== componentsB.length) {
+        return componentsA.length - componentsB.length;
+      }
+      
+      // Fallback to subtask_order if paths are identical (shouldn't happen)
       return (a.content.subtask_order || 0) - (b.content.subtask_order || 0);
     });
 
