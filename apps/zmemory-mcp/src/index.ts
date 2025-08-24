@@ -6,6 +6,7 @@
  * 启动ZMemory MCP服务器的主入口文件
  */
 
+import 'dotenv/config';
 import { ZMemoryMCPServer } from './server.js';
 import { ZMemoryConfig } from './types.js';
 
