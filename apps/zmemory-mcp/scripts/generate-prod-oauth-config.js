@@ -23,16 +23,7 @@ function generateProdConfig() {
   // 现有的生产环境配置
   const existingConfig = [
     {
-      "client_id": "chatgpt-zephyros",
-      "redirect_uris": [
-        "https://chat.openai.com/aip/g-689c2e17c4808191bae8cb19ec79dded/oauth/callback",
-        "https://oauth.openai.com/aip/g-689c2e17c4808191bae8cb19ec79dded/oauth/callback",
-        "https://chat.openai.com/aip/auth/callback",
-        "https://oauth.openai.com/aip/auth/callback",
-        "https://chat.openai.com/aip/g-b303f2ea10f4b22f10fb2b1a3c9cefc156ef7d69/oauth/callback",
-        "https://oauth.openai.com/aip/g-b303f2ea10f4b22f10fb2b1a3c9cefc156ef7d69/oauth/callback"
-      ],
-      "scopes": ["tasks.write"]
+      // Some other preconfigured clients
     }
   ];
   
