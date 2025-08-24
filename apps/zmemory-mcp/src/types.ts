@@ -60,11 +60,25 @@ export const DeleteMemoryParamsSchema = z.object({
   id: z.string().describe('要删除的记忆ID'),
 });
 
+// OAuth 认证相关类型
+export const AuthenticateParamsSchema = z.object({
+  client_id: z.string().describe('OAuth客户端ID'),
+  redirect_uri: z.string().optional().describe('重定向URI'),
+  scope: z.string().optional().describe('请求的权限范围'),
+  state: z.string().optional().describe('状态参数'),
+});
+
+export const RefreshTokenParamsSchema = z.object({
+  refresh_token: z.string().describe('刷新令牌'),
+});
+
 export type AddMemoryParams = z.infer<typeof AddMemoryParamsSchema>;
 export type SearchMemoriesParams = z.infer<typeof SearchMemoriesParamsSchema>;
 export type UpdateMemoryParams = z.infer<typeof UpdateMemoryParamsSchema>;
 export type GetMemoryParams = z.infer<typeof GetMemoryParamsSchema>;
 export type DeleteMemoryParams = z.infer<typeof DeleteMemoryParamsSchema>;
+export type AuthenticateParams = z.infer<typeof AuthenticateParamsSchema>;
+export type RefreshTokenParams = z.infer<typeof RefreshTokenParamsSchema>;
 
 // API响应类型
 export interface ApiResponse<T = any> {
@@ -82,11 +96,41 @@ export interface MemoryStats {
   recent_count: number;
 }
 
+// OAuth 令牌信息
+export interface OAuthTokens {
+  access_token: string;
+  refresh_token?: string;
+  token_type: string;
+  expires_in: number;
+  scope?: string;
+}
+
+// 用户信息
+export interface UserInfo {
+  sub: string;
+  email: string;
+  name?: string;
+}
+
 // ZMemory API客户端配置
 export interface ZMemoryConfig {
   apiUrl: string;
   apiKey?: string;
   timeout?: number;
+  oauth?: {
+    clientId: string;
+    clientSecret?: string;
+    redirectUri?: string;
+    scope?: string;
+  };
+}
+
+// 认证状态
+export interface AuthState {
+  isAuthenticated: boolean;
+  tokens?: OAuthTokens;
+  userInfo?: UserInfo;
+  expiresAt?: number;
 }
 
 // 错误类型
@@ -98,5 +142,17 @@ export class ZMemoryError extends Error {
   ) {
     super(message);
     this.name = 'ZMemoryError';
+  }
+}
+
+// OAuth 错误类型
+export class OAuthError extends Error {
+  constructor(
+    message: string,
+    public error: string,
+    public errorDescription?: string
+  ) {
+    super(message);
+    this.name = 'OAuthError';
   }
 }

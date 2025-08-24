@@ -12,6 +12,13 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "jest",
+    "test:oauth": "node scripts/test-oauth.js",
+    "test:mcp": "node scripts/test-mcp.js",
+    "generate:oauth": "node scripts/generate-oauth-config.js",
+    "generate:prod": "node scripts/generate-prod-oauth-config.js",
+    "generate:custom": "node scripts/generate-custom-oauth-config.js",
+    "setup:claude": "node scripts/setup-claude-desktop.js",
+    "security:check": "node scripts/security-check.js",
     "type-check": "tsc --noEmit"
   },
   "keywords": [
@@ -19,7 +26,8 @@
     "memory",
     "ai",
     "agent",
-    "task-management"
+    "task-management",
+    "oauth"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

@@ -18,7 +18,10 @@ import {
   UpdateMemoryParamsSchema,
   GetMemoryParamsSchema,
   DeleteMemoryParamsSchema,
+  AuthenticateParamsSchema,
+  RefreshTokenParamsSchema,
   ZMemoryError,
+  OAuthError,
 } from './types.js';
 
 export class ZMemoryMCPServer {
@@ -57,6 +60,23 @@ export class ZMemoryMCPServer {
 
       try {
         switch (name) {
+          // OAuth 认证相关工具
+          case 'authenticate':
+            return await this.handleAuthenticate(args);
+          case 'exchange_code_for_token':
+            return await this.handleExchangeCodeForToken(args);
+          case 'refresh_token':
+            return await this.handleRefreshToken(args);
+          case 'get_user_info':
+            return await this.handleGetUserInfo(args);
+          case 'set_access_token':
+            return await this.handleSetAccessToken(args);
+          case 'get_auth_status':
+            return await this.handleGetAuthStatus(args);
+          case 'clear_auth':
+            return await this.handleClearAuth(args);
+          
+          // 记忆管理工具
           case 'add_memory':
             return await this.handleAddMemory(args);
           case 'search_memories':
@@ -73,7 +93,18 @@ export class ZMemoryMCPServer {
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        let errorMessage = 'Unknown error';
+        let isOAuthError = false;
+
+        if (error instanceof OAuthError) {
+          errorMessage = `OAuth错误: ${error.message}`;
+          isOAuthError = true;
+        } else if (error instanceof ZMemoryError) {
+          errorMessage = `ZMemory错误: ${error.message}`;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
         return {
           content: [
             {
@@ -89,6 +120,85 @@ export class ZMemoryMCPServer {
 
   private getTools(): Tool[] {
     return [
+      // OAuth 认证工具
+      {
+        name: 'authenticate',
+        description: '启动OAuth认证流程，获取认证URL',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            client_id: { type: 'string', description: 'OAuth客户端ID' },
+            redirect_uri: { type: 'string', description: '重定向URI' },
+            scope: { type: 'string', description: '请求的权限范围' },
+            state: { type: 'string', description: '状态参数' },
+          },
+          required: ['client_id'],
+        },
+      },
+      {
+        name: 'exchange_code_for_token',
+        description: '使用授权码交换访问令牌',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: '授权码' },
+            redirect_uri: { type: 'string', description: '重定向URI' },
+            code_verifier: { type: 'string', description: 'PKCE验证码' },
+          },
+          required: ['code', 'redirect_uri'],
+        },
+      },
+      {
+        name: 'refresh_token',
+        description: '刷新访问令牌',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            refresh_token: { type: 'string', description: '刷新令牌' },
+          },
+          required: ['refresh_token'],
+        },
+      },
+      {
+        name: 'get_user_info',
+        description: '获取当前用户信息',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'set_access_token',
+        description: '手动设置访问令牌（用于测试或直接使用令牌）',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            access_token: { type: 'string', description: '访问令牌' },
+          },
+          required: ['access_token'],
+        },
+      },
+      {
+        name: 'get_auth_status',
+        description: '获取当前认证状态',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'clear_auth',
+        description: '清除认证状态',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      
+      // 记忆管理工具
       {
         name: 'add_memory',
         description: '添加新的记忆或任务到ZMemory系统',
@@ -180,6 +290,128 @@ export class ZMemoryMCPServer {
     ];
   }
 
+  // OAuth 认证处理器
+  private async handleAuthenticate(args: any) {
+    const params = AuthenticateParamsSchema.parse(args);
+    const result = await this.zmemoryClient.authenticate(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `请访问以下URL进行认证:\n${result.authUrl}\n\n认证完成后，请使用返回的授权码调用 exchange_code_for_token 工具。`,
+        },
+      ],
+    };
+  }
+
+  private async handleExchangeCodeForToken(args: any) {
+    const { code, redirect_uri, code_verifier } = args;
+    if (!code || !redirect_uri) {
+      throw new Error('需要提供 code 和 redirect_uri 参数');
+    }
+
+    const tokens = await this.zmemoryClient.exchangeCodeForToken(code, redirect_uri, code_verifier);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `认证成功！\n访问令牌已保存。\n令牌类型: ${tokens.token_type}\n过期时间: ${tokens.expires_in}秒`,
+        },
+      ],
+    };
+  }
+
+  private async handleRefreshToken(args: any) {
+    const { refresh_token } = args;
+    if (!refresh_token) {
+      throw new Error('需要提供 refresh_token 参数');
+    }
+
+    const tokens = await this.zmemoryClient.refreshToken(refresh_token);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `令牌刷新成功！\n新的访问令牌已保存。\n过期时间: ${tokens.expires_in}秒`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetUserInfo(args: any) {
+    const userInfo = await this.zmemoryClient.getUserInfo();
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `用户信息:\n用户ID: ${userInfo.sub}\n邮箱: ${userInfo.email}\n姓名: ${userInfo.name || '未设置'}`,
+        },
+      ],
+    };
+  }
+
+  private async handleSetAccessToken(args: any) {
+    const { access_token } = args;
+    if (!access_token) {
+      throw new Error('需要提供 access_token 参数');
+    }
+
+    this.zmemoryClient.setAccessToken(access_token);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: '访问令牌已设置。现在可以使用记忆管理功能了。',
+        },
+      ],
+    };
+  }
+
+  private async handleGetAuthStatus(args: any) {
+    const authState = this.zmemoryClient.getAuthState();
+
+    if (!authState.isAuthenticated) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '当前未认证。请先进行OAuth认证。',
+          },
+        ],
+      };
+    }
+
+    const statusText = `认证状态: 已认证\n用户: ${authState.userInfo?.email || '未知'}\n令牌过期时间: ${authState.expiresAt ? new Date(authState.expiresAt).toLocaleString() : '未知'}`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: statusText,
+        },
+      ],
+    };
+  }
+
+  private async handleClearAuth(args: any) {
+    this.zmemoryClient.clearAuth();
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: '认证状态已清除。',
+        },
+      ],
+    };
+  }
+
+  // 记忆管理处理器
   private async handleAddMemory(args: any) {
     const params = AddMemoryParamsSchema.parse(args);
     const memory = await this.zmemoryClient.addMemory(params);

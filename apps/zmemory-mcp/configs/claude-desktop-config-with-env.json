@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schemas.anthropic.com/claude-desktop-config.json",
+  "mcpServers": {
+    "zmemory": {
+      "command": "node",
+      "args": ["/path/to/ZephyrOS/apps/zmemory-mcp/dist/index.js"],
+      "env": {
+        "ZMEMORY_API_URL": "http://localhost:3001",
+        "OAUTH_CLIENT_ID": "zmemory-mcp",
+        "OAUTH_CLIENT_SECRET": "REPLACE_WITH_YOUR_ACTUAL_SECRET",
+        "OAUTH_REDIRECT_URI": "http://localhost:3000/callback",
+        "OAUTH_SCOPE": "tasks.write"
+      }
+    }
+  }
+}

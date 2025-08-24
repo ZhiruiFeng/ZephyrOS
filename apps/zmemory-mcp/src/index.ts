@@ -16,6 +16,12 @@ async function main() {
     apiUrl: process.env.ZMEMORY_API_URL || 'http://localhost:3001',
     apiKey: process.env.ZMEMORY_API_KEY,
     timeout: process.env.ZMEMORY_TIMEOUT ? parseInt(process.env.ZMEMORY_TIMEOUT) : 10000,
+    oauth: {
+      clientId: process.env.OAUTH_CLIENT_ID || 'zmemory-mcp',
+      clientSecret: process.env.OAUTH_CLIENT_SECRET,
+      redirectUri: process.env.OAUTH_REDIRECT_URI || 'http://localhost:3000/callback',
+      scope: process.env.OAUTH_SCOPE || 'tasks.write',
+    },
   };
 
   // 输出配置信息（不包含敏感信息）
@@ -23,6 +29,9 @@ async function main() {
   console.error(`  API URL: ${config.apiUrl}`);
   console.error(`  API Key: ${config.apiKey ? '已设置' : '未设置'}`);
   console.error(`  超时时间: ${config.timeout}ms`);
+  console.error(`  OAuth 客户端ID: ${config.oauth?.clientId}`);
+  console.error(`  OAuth 重定向URI: ${config.oauth?.redirectUri}`);
+  console.error(`  OAuth 权限范围: ${config.oauth?.scope}`);
   console.error('');
 
   try {
