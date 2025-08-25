@@ -13,13 +13,22 @@ import {
 import { ZMemoryClient } from './zmemory-client.js';
 import {
   ZMemoryConfig,
-  AddMemoryParamsSchema,
-  SearchMemoriesParamsSchema,
-  UpdateMemoryParamsSchema,
-  GetMemoryParamsSchema,
-  DeleteMemoryParamsSchema,
+  // AddMemoryParamsSchema, // DISABLED - Memory API not available
+  // SearchMemoriesParamsSchema, // DISABLED - Memory API not available
+  // UpdateMemoryParamsSchema, // DISABLED - Memory API not available
+  // GetMemoryParamsSchema, // DISABLED - Memory API not available
+  // DeleteMemoryParamsSchema, // DISABLED - Memory API not available
   AuthenticateParamsSchema,
   RefreshTokenParamsSchema,
+  CreateTaskParamsSchema,
+  SearchTasksParamsSchema,
+  UpdateTaskParamsSchema,
+  GetDayTimeEntriesParamsSchema,
+  GetTaskTimeEntriesParamsSchema,
+  StartTaskTimerParamsSchema,
+  StopTaskTimerParamsSchema,
+  GetCategoriesParamsSchema,
+  CreateCategoryParamsSchema,
   ZMemoryError,
   OAuthError,
 } from './types.js';
@@ -76,19 +85,54 @@ export class ZMemoryMCPServer {
           case 'clear_auth':
             return await this.handleClearAuth(args);
           
-          // 记忆管理工具
-          case 'add_memory':
-            return await this.handleAddMemory(args);
-          case 'search_memories':
-            return await this.handleSearchMemories(args);
-          case 'get_memory':
-            return await this.handleGetMemory(args);
-          case 'update_memory':
-            return await this.handleUpdateMemory(args);
-          case 'delete_memory':
-            return await this.handleDeleteMemory(args);
-          case 'get_memory_stats':
-            return await this.handleGetMemoryStats(args);
+          // 记忆管理工具 - DISABLED (API not available)
+          // case 'add_memory':
+          //   return await this.handleAddMemory(args);
+          // case 'search_memories':
+          //   return await this.handleSearchMemories(args);
+          // case 'get_memory':
+          //   return await this.handleGetMemory(args);
+          // case 'update_memory':
+          //   return await this.handleUpdateMemory(args);
+          // case 'get_memory_stats':
+          //   return await this.handleGetMemoryStats(args);
+          
+          // Task management tools
+          case 'create_task':
+            return await this.handleCreateTask(args);
+          case 'search_tasks':
+            return await this.handleSearchTasks(args);
+          case 'get_task':
+            return await this.handleGetTask(args);
+          case 'update_task':
+            return await this.handleUpdateTask(args);
+          case 'get_task_stats':
+            return await this.handleGetTaskStats(args);
+          case 'get_updated_today_tasks':
+            return await this.handleGetUpdatedTodayTasks(args);
+          
+          // Time tracking tools
+          case 'get_day_time_spending':
+            return await this.handleGetDayTimeSpending(args);
+          case 'get_task_time_entries':
+            return await this.handleGetTaskTimeEntries(args);
+          case 'start_task_timer':
+            return await this.handleStartTaskTimer(args);
+          case 'stop_task_timer':
+            return await this.handleStopTaskTimer(args);
+          case 'get_running_timer':
+            return await this.handleGetRunningTimer(args);
+          
+          // Category management tools
+          case 'get_categories':
+            return await this.handleGetCategories(args);
+          case 'create_category':
+            return await this.handleCreateCategory(args);
+          case 'get_category':
+            return await this.handleGetCategory(args);
+          case 'update_category':
+            return await this.handleUpdateCategory(args);
+          
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -198,7 +242,8 @@ export class ZMemoryMCPServer {
         },
       },
       
-      // 记忆管理工具
+      // 记忆管理工具 - DISABLED (API not available)
+      /*
       {
         name: 'add_memory',
         description: '添加新的记忆或任务到ZMemory系统',
@@ -268,23 +313,222 @@ export class ZMemoryMCPServer {
         },
       },
       {
-        name: 'delete_memory',
-        description: '删除指定的记忆',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', description: '要删除的记忆ID' },
-          },
-          required: ['id'],
-        },
-      },
-      {
         name: 'get_memory_stats',
         description: '获取记忆统计信息，包括总数、类型分布、状态分布等',
         inputSchema: {
           type: 'object',
           properties: {},
           required: [],
+        },
+      },
+      */
+
+      // Task management tools
+      {
+        name: 'create_task',
+        description: '创建新任务，支持设置标题、描述、状态、优先级、分类、截止日期等',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '任务标题' },
+            description: { type: 'string', description: '任务描述' },
+            status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'], description: '任务状态', default: 'pending' },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: '任务优先级', default: 'medium' },
+            category: { type: 'string', description: '任务分类' },
+            due_date: { type: 'string', description: '截止日期 (YYYY-MM-DD 或 ISO 8601格式)' },
+            estimated_duration: { type: 'number', description: '预计耗时(分钟)' },
+            assignee: { type: 'string', description: '任务负责人' },
+            tags: { type: 'array', items: { type: 'string' }, description: '任务标签' },
+            notes: { type: 'string', description: '任务备注' },
+          },
+          required: ['title'],
+        },
+      },
+      {
+        name: 'search_tasks',
+        description: '搜索和筛选任务，支持按状态、优先级、分类、日期范围等筛选',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'], description: '按状态筛选' },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: '按优先级筛选' },
+            category: { type: 'string', description: '按分类筛选' },
+            assignee: { type: 'string', description: '按负责人筛选' },
+            keyword: { type: 'string', description: '在标题和描述中搜索关键词' },
+            tags: { type: 'array', items: { type: 'string' }, description: '按标签筛选' },
+            due_after: { type: 'string', description: '截止日期在此日期之后 (YYYY-MM-DD格式)' },
+            due_before: { type: 'string', description: '截止日期在此日期之前 (YYYY-MM-DD格式)' },
+            created_after: { type: 'string', description: '创建日期在此日期之后 (YYYY-MM-DD格式)' },
+            created_before: { type: 'string', description: '创建日期在此日期之前 (YYYY-MM-DD格式)' },
+            updated_today: { type: 'boolean', description: '只显示今天更新的任务' },
+            overdue: { type: 'boolean', description: '只显示过期任务' },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: '返回数量限制' },
+            offset: { type: 'number', minimum: 0, default: 0, description: '分页偏移' },
+            sort_by: { type: 'string', enum: ['created_at', 'updated_at', 'due_date', 'priority', 'title'], default: 'created_at', description: '排序字段' },
+            sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc', description: '排序方向' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_task',
+        description: '根据ID获取特定任务的详细信息',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '任务ID' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'update_task',
+        description: '更新任务信息，可以修改标题、状态、优先级、进度等',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '任务ID' },
+            title: { type: 'string', description: '任务标题' },
+            description: { type: 'string', description: '任务描述' },
+            status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'], description: '任务状态' },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: '任务优先级' },
+            category: { type: 'string', description: '任务分类' },
+            due_date: { type: 'string', description: '截止日期 (YYYY-MM-DD格式)' },
+            estimated_duration: { type: 'number', description: '预计耗时(分钟)' },
+            progress: { type: 'number', minimum: 0, maximum: 100, description: '完成进度(0-100)' },
+            assignee: { type: 'string', description: '任务负责人' },
+            tags: { type: 'array', items: { type: 'string' }, description: '任务标签' },
+            notes: { type: 'string', description: '任务备注' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'get_task_stats',
+        description: '获取任务统计信息，包括总数、状态分布、优先级分布、过期任务数等',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'get_updated_today_tasks',
+        description: '获取今天更新的任务列表',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+
+      // Time tracking tools
+      {
+        name: 'get_day_time_spending',
+        description: '获取指定日期的时间花费统计，包括总时间和按任务分解的时间',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            date: { type: 'string', description: '日期 (YYYY-MM-DD格式)' },
+            user_id: { type: 'string', description: '用户ID (可选，默认为当前用户)' },
+          },
+          required: ['date'],
+        },
+      },
+      {
+        name: 'get_task_time_entries',
+        description: '获取指定任务的时间记录',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task_id: { type: 'string', description: '任务ID' },
+            start_date: { type: 'string', description: '开始日期 (YYYY-MM-DD格式)' },
+            end_date: { type: 'string', description: '结束日期 (YYYY-MM-DD格式)' },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'start_task_timer',
+        description: '开始任务计时',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task_id: { type: 'string', description: '要开始计时的任务ID' },
+            description: { type: 'string', description: '时间条目描述' },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'stop_task_timer',
+        description: '停止任务计时',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task_id: { type: 'string', description: '要停止计时的任务ID' },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'get_running_timer',
+        description: '获取当前正在运行的计时器',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+
+      // Category management tools
+      {
+        name: 'get_categories',
+        description: '获取所有任务分类',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'create_category',
+        description: '创建新的任务分类',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', minLength: 1, maxLength: 50, description: '分类名称' },
+            description: { type: 'string', description: '分类描述' },
+            color: { type: 'string', pattern: '^#[0-9A-F]{6}$', description: '分类颜色 (十六进制格式)', default: '#6B7280' },
+            icon: { type: 'string', description: '分类图标' },
+          },
+          required: ['name'],
+        },
+      },
+      {
+        name: 'get_category',
+        description: '根据ID获取特定分类信息',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '分类ID' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'update_category',
+        description: '更新分类信息',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '分类ID' },
+            name: { type: 'string', minLength: 1, maxLength: 50, description: '分类名称' },
+            description: { type: 'string', description: '分类描述' },
+            color: { type: 'string', pattern: '^#[0-9A-F]{6}$', description: '分类颜色 (十六进制格式)' },
+            icon: { type: 'string', description: '分类图标' },
+          },
+          required: ['id'],
         },
       },
     ];
@@ -411,7 +655,8 @@ export class ZMemoryMCPServer {
     };
   }
 
-  // 记忆管理处理器
+  // Memory management handlers - DISABLED (API not available)
+  /*
   private async handleAddMemory(args: any) {
     const params = AddMemoryParamsSchema.parse(args);
     const memory = await this.zmemoryClient.addMemory(params);
@@ -507,20 +752,6 @@ ${content}`,
     };
   }
 
-  private async handleDeleteMemory(args: any) {
-    const params = DeleteMemoryParamsSchema.parse(args);
-    await this.zmemoryClient.deleteMemory(params.id);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `成功删除记忆: ${params.id}`,
-        },
-      ],
-    };
-  }
-
   private async handleGetMemoryStats(args: any) {
     const stats = await this.zmemoryClient.getStats();
 
@@ -553,6 +784,443 @@ ${statusStats}
 
 按优先级分布:
 ${priorityStats}`,
+        },
+      ],
+    };
+  }
+  */
+
+  // Task management handlers
+  private async handleCreateTask(args: any) {
+    const params = CreateTaskParamsSchema.parse(args);
+    const task = await this.zmemoryClient.createTask(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功创建任务: ${task.content?.title || task.id}`,
+        },
+        {
+          type: 'text',
+          text: `任务详情:
+ID: ${task.id}
+状态: ${task.content?.status || '未知'}
+优先级: ${task.content?.priority || '未知'}
+创建时间: ${task.created_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleSearchTasks(args: any) {
+    const params = SearchTasksParamsSchema.parse(args);
+    const tasks = await this.zmemoryClient.searchTasks(params);
+
+    if (tasks.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '未找到匹配的任务',
+          },
+        ],
+      };
+    }
+
+    const taskList = tasks
+      .map((task: any) => {
+        const title = task.content?.title || `未命名任务`;
+        const status = task.content?.status ? ` (${task.content.status})` : '';
+        const priority = task.content?.priority ? ` [${task.content.priority}]` : '';
+        const dueDate = task.content?.due_date ? ` 截止: ${task.content.due_date}` : '';
+        const progress = task.content?.progress !== undefined ? ` 进度: ${task.content.progress}%` : '';
+        return `• ${title}${status}${priority}${dueDate}${progress} (ID: ${task.id})`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `找到 ${tasks.length} 个任务:\n\n${taskList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetTask(args: any) {
+    const { id } = args;
+    if (!id) {
+      throw new Error('需要提供任务ID');
+    }
+
+    const task = await this.zmemoryClient.getTask(id);
+    const content = JSON.stringify(task.content, null, 2);
+    const tags = task.tags?.join(', ') || '无';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `任务详情:
+ID: ${task.id}
+类型: ${task.type}
+标签: ${tags}
+创建时间: ${task.created_at}
+更新时间: ${task.updated_at}
+
+内容:
+${content}`,
+        },
+      ],
+    };
+  }
+
+  private async handleUpdateTask(args: any) {
+    const params = UpdateTaskParamsSchema.parse(args);
+    const task = await this.zmemoryClient.updateTask(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功更新任务: ${task.content?.title || task.id}`,
+        },
+        {
+          type: 'text',
+          text: `更新时间: ${task.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetTaskStats(args: any) {
+    const stats = await this.zmemoryClient.getTaskStats();
+
+    const statusStats = Object.entries(stats.by_status || {})
+      .map(([status, count]) => `  ${status}: ${count}`)
+      .join('\n');
+
+    const priorityStats = Object.entries(stats.by_priority || {})
+      .map(([priority, count]) => `  ${priority}: ${count}`)
+      .join('\n');
+
+    const categoryStats = Object.entries(stats.by_category || {})
+      .map(([category, count]) => `  ${category}: ${count}`)
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `任务统计信息:
+
+总任务数: ${stats.total || 0}
+过期任务: ${stats.overdue || 0}
+今日到期: ${stats.due_today || 0}
+本周到期: ${stats.due_this_week || 0}
+完成率: ${(stats.completion_rate || 0).toFixed(1)}%
+
+按状态分布:
+${statusStats || '  无数据'}
+
+按优先级分布:
+${priorityStats || '  无数据'}
+
+按分类分布:
+${categoryStats || '  无数据'}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetUpdatedTodayTasks(args: any) {
+    const tasks = await this.zmemoryClient.getUpdatedTodayTasks();
+
+    if (tasks.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '今天没有更新的任务',
+          },
+        ],
+      };
+    }
+
+    const taskList = tasks
+      .map((task: any) => {
+        const title = task.content?.title || `未命名任务`;
+        const status = task.content?.status ? ` (${task.content.status})` : '';
+        return `• ${title}${status} - 更新于 ${new Date(task.updated_at).toLocaleString()}`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `今天更新的 ${tasks.length} 个任务:\n\n${taskList}`,
+        },
+      ],
+    };
+  }
+
+  // Time tracking handlers
+  private async handleGetDayTimeSpending(args: any) {
+    const params = GetDayTimeEntriesParamsSchema.parse(args);
+    const daySpending = await this.zmemoryClient.getDayTimeEntries(params);
+
+    const totalHours = Math.floor(daySpending.total_time / 60);
+    const totalMinutes = daySpending.total_time % 60;
+
+    const taskBreakdown = daySpending.task_breakdown
+      .map((task: any) => {
+        const hours = Math.floor(task.total_time / 60);
+        const minutes = task.total_time % 60;
+        const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
+        return `• ${task.task_title}: ${timeStr} (${task.entries.length}个时间段)`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `${params.date} 时间花费统计:
+
+总时间: ${totalHours > 0 ? `${totalHours}小时${totalMinutes}分钟` : `${totalMinutes}分钟`}
+时间条目数: ${daySpending.entries.length}
+
+按任务分解:
+${taskBreakdown || '  无时间记录'}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetTaskTimeEntries(args: any) {
+    const params = GetTaskTimeEntriesParamsSchema.parse(args);
+    const entries = await this.zmemoryClient.getTaskTimeEntries(params);
+
+    if (entries.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '该任务没有时间记录',
+          },
+        ],
+      };
+    }
+
+    const totalTime = entries.reduce((sum: number, entry: any) => sum + (entry.duration || 0), 0);
+    const totalHours = Math.floor(totalTime / 60);
+    const totalMinutes = totalTime % 60;
+
+    const entriesList = entries
+      .map((entry: any) => {
+        const duration = entry.duration || 0;
+        const hours = Math.floor(duration / 60);
+        const minutes = duration % 60;
+        const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
+        const date = new Date(entry.start_time).toLocaleDateString();
+        const description = entry.description ? ` - ${entry.description}` : '';
+        return `• ${date}: ${timeStr}${description}`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `任务时间记录:
+
+总时间: ${totalHours > 0 ? `${totalHours}小时${totalMinutes}分钟` : `${totalMinutes}分钟`}
+记录数: ${entries.length}
+
+时间记录:
+${entriesList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleStartTaskTimer(args: any) {
+    const params = StartTaskTimerParamsSchema.parse(args);
+    const entry = await this.zmemoryClient.startTaskTimer(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功开始任务计时:
+任务ID: ${entry.task_id}
+开始时间: ${new Date(entry.start_time).toLocaleString()}
+${entry.description ? `描述: ${entry.description}` : ''}`,
+        },
+      ],
+    };
+  }
+
+  private async handleStopTaskTimer(args: any) {
+    const params = StopTaskTimerParamsSchema.parse(args);
+    const entry = await this.zmemoryClient.stopTaskTimer(params);
+
+    const duration = entry.duration || 0;
+    const hours = Math.floor(duration / 60);
+    const minutes = duration % 60;
+    const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功停止任务计时:
+任务ID: ${entry.task_id}
+结束时间: ${entry.end_time ? new Date(entry.end_time).toLocaleString() : '未知'}
+计时时长: ${timeStr}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetRunningTimer(args: any) {
+    const timer = await this.zmemoryClient.getRunningTimer();
+
+    if (!timer) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '当前没有运行中的计时器',
+          },
+        ],
+      };
+    }
+
+    const startTime = new Date(timer.start_time);
+    const now = new Date();
+    const runningMinutes = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
+    const hours = Math.floor(runningMinutes / 60);
+    const minutes = runningMinutes % 60;
+    const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `当前运行的计时器:
+任务ID: ${timer.task_id}
+开始时间: ${startTime.toLocaleString()}
+已运行时间: ${timeStr}
+${timer.description ? `描述: ${timer.description}` : ''}`,
+        },
+      ],
+    };
+  }
+
+  // Category management handlers
+  private async handleGetCategories(args: any) {
+    const params = GetCategoriesParamsSchema.parse(args);
+    const categories = await this.zmemoryClient.getCategories(params);
+
+    if (categories.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '暂无分类',
+          },
+        ],
+      };
+    }
+
+    const categoryList = categories
+      .map((category: any) => {
+        const color = category.color || '#6B7280';
+        const icon = category.icon ? `${category.icon} ` : '';
+        const description = category.description ? ` - ${category.description}` : '';
+        return `• ${icon}${category.name} (${color})${description} (ID: ${category.id})`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `分类列表 (共 ${categories.length} 个):\n\n${categoryList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleCreateCategory(args: any) {
+    const params = CreateCategoryParamsSchema.parse(args);
+    const category = await this.zmemoryClient.createCategory(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功创建分类: ${category.name}`,
+        },
+        {
+          type: 'text',
+          text: `分类详情:
+ID: ${category.id}
+名称: ${category.name}
+颜色: ${category.color}
+${category.description ? `描述: ${category.description}` : ''}
+${category.icon ? `图标: ${category.icon}` : ''}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetCategory(args: any) {
+    const { id } = args;
+    if (!id) {
+      throw new Error('需要提供分类ID');
+    }
+
+    const category = await this.zmemoryClient.getCategory(id);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `分类详情:
+ID: ${category.id}
+名称: ${category.name}
+颜色: ${category.color}
+${category.description ? `描述: ${category.description}` : ''}
+${category.icon ? `图标: ${category.icon}` : ''}
+创建时间: ${category.created_at}
+更新时间: ${category.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleUpdateCategory(args: any) {
+    const { id, ...updates } = args;
+    if (!id) {
+      throw new Error('需要提供分类ID');
+    }
+
+    const category = await this.zmemoryClient.updateCategory(id, updates);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功更新分类: ${category.name}`,
+        },
+        {
+          type: 'text',
+          text: `更新时间: ${category.updated_at}`,
         },
       ],
     };

@@ -5,12 +5,12 @@ export function setupResponseInterceptor(client: AxiosInstance): void {
   client.interceptors.response.use(
     (response: AxiosResponse) => response,
     (error: AxiosError) => {
-      const message = error.response?.data?.error || error.message || 'Unknown error';
+      const message = (error.response?.data as any)?.error || error.message || 'Unknown error';
       const status = error.response?.status;
-      const code = error.response?.data?.code;
+      const code = (error.response?.data as any)?.code;
       
-      if (status === 401 && error.response?.data?.error) {
-        throw new OAuthError(message, error.response.data.error, error.response.data.error_description);
+      if (status === 401 && (error.response?.data as any)?.error) {
+        throw new OAuthError(message, (error.response?.data as any).error, (error.response?.data as any).error_description);
       }
       
       throw new ZMemoryError(message, code, status);

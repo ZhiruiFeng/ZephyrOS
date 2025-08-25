@@ -21,6 +21,9 @@ import { AuthModule } from './modules/auth/auth-module.js';
 import { MemoryModule } from './modules/memory/memory-module.js';
 import { SearchModule } from './modules/search/search-module.js';
 import { StatsModule } from './modules/stats/stats-module.js';
+import { TaskModule } from './modules/task/task-module.js';
+import { TimeModule } from './modules/time/time-module.js';
+import { CategoryModule } from './modules/category/category-module.js';
 import { setupResponseInterceptor, setupRequestInterceptor } from './modules/utils/http-utils.js';
 
 export class ZMemoryClient {
@@ -30,6 +33,9 @@ export class ZMemoryClient {
   private memoryModule: MemoryModule;
   private searchModule: SearchModule;
   private statsModule: StatsModule;
+  private taskModule: TaskModule;
+  private timeModule: TimeModule;
+  private categoryModule: CategoryModule;
 
   constructor(private config: ZMemoryConfig) {
     this.client = axios.create({
@@ -57,6 +63,9 @@ export class ZMemoryClient {
       this.authState,
       (params) => this.searchModule.searchMemories(params)
     );
+    this.taskModule = new TaskModule(this.client, this.authState);
+    this.timeModule = new TimeModule(this.client, this.authState);
+    this.categoryModule = new CategoryModule(this.client, this.authState);
   }
 
   // Authentication methods - delegated to AuthModule
@@ -117,5 +126,68 @@ export class ZMemoryClient {
 
   async healthCheck(): Promise<boolean> {
     return this.statsModule.healthCheck();
+  }
+
+  // Task management methods - delegated to TaskModule
+  async createTask(params: any): Promise<any> {
+    return this.taskModule.createTask(params);
+  }
+
+  async searchTasks(params: any): Promise<any> {
+    return this.taskModule.searchTasks(params);
+  }
+
+  async getTask(id: string): Promise<any> {
+    return this.taskModule.getTask(id);
+  }
+
+  async updateTask(params: any): Promise<any> {
+    return this.taskModule.updateTask(params);
+  }
+
+  async getTaskStats(): Promise<any> {
+    return this.taskModule.getTaskStats();
+  }
+
+  async getUpdatedTodayTasks(): Promise<any> {
+    return this.taskModule.getUpdatedTodayTasks();
+  }
+
+  // Time tracking methods - delegated to TimeModule
+  async getDayTimeEntries(params: any): Promise<any> {
+    return this.timeModule.getDayTimeEntries(params);
+  }
+
+  async getTaskTimeEntries(params: any): Promise<any> {
+    return this.timeModule.getTaskTimeEntries(params);
+  }
+
+  async startTaskTimer(params: any): Promise<any> {
+    return this.timeModule.startTaskTimer(params);
+  }
+
+  async stopTaskTimer(params: any): Promise<any> {
+    return this.timeModule.stopTaskTimer(params);
+  }
+
+  async getRunningTimer(): Promise<any> {
+    return this.timeModule.getRunningTimer();
+  }
+
+  // Category management methods - delegated to CategoryModule
+  async getCategories(params?: any): Promise<any> {
+    return this.categoryModule.getCategories(params);
+  }
+
+  async createCategory(params: any): Promise<any> {
+    return this.categoryModule.createCategory(params);
+  }
+
+  async getCategory(id: string): Promise<any> {
+    return this.categoryModule.getCategory(id);
+  }
+
+  async updateCategory(id: string, updates: any): Promise<any> {
+    return this.categoryModule.updateCategory(id, updates);
   }
 }
