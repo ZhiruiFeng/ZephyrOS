@@ -32,10 +32,12 @@ export interface AuthorizationCode {
   code_challenge?: string
   code_challenge_method?: 'S256' | 'plain'
   created_at: number
+  used_at?: number
 }
 
 const CODE_TTL_MS = 10 * 60 * 1000 // 10 minutes
 const TX_TTL_MS = 10 * 60 * 1000 // 10 minutes
+const CODE_REUSE_GRACE_MS = 5 * 1000 // 5 seconds grace period for retries
 
 const txStore = new Map<string, AuthorizeRequest>()
 const codeStore = new Map<string, AuthorizationCode>()
@@ -93,9 +95,34 @@ export function saveAuthorizationCode(code: string, payload: AuthorizationCode):
 export function consumeAuthorizationCode(code: string): AuthorizationCode | undefined {
   const item = codeStore.get(code)
   if (!item) return undefined
-  codeStore.delete(code)
+  
+  const currentTime = now()
+  
   // TTL check
-  if (now() - item.created_at > CODE_TTL_MS) return undefined
+  if (currentTime - item.created_at > CODE_TTL_MS) {
+    codeStore.delete(code)
+    return undefined
+  }
+  
+  // If already used, allow reuse within grace period (for retries)
+  if (item.used_at) {
+    if (currentTime - item.used_at > CODE_REUSE_GRACE_MS) {
+      codeStore.delete(code)
+      return undefined
+    }
+    // Return the same code for retry within grace period
+    return item
+  }
+  
+  // Mark as used but keep in store for grace period
+  item.used_at = currentTime
+  codeStore.set(code, item)
+  
+  // Schedule cleanup after grace period
+  setTimeout(() => {
+    codeStore.delete(code)
+  }, CODE_REUSE_GRACE_MS)
+  
   return item
 }
 

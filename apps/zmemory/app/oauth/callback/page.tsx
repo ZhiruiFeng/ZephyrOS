@@ -203,7 +203,7 @@ function OAuthCallbackContent() {
         borderTop: '1px solid #e5e7eb',
         paddingTop: 12
       }}>
-        此授权码将在 10 分钟后过期，请尽快使用
+        此授权码将在 10 分钟后过期，但生成的访问令牌有效期为 8 小时
       </div>
     </div>
   )
