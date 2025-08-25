@@ -15,6 +15,19 @@ export class TaskModule {
     private authState: AuthState
   ) {}
 
+  /**
+   * Get the server's timezone for API calls
+   * Agents typically run in the same environment/timezone as users
+   */
+  private getServerTimezone(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (error) {
+      console.warn('Failed to detect server timezone, defaulting to UTC:', error);
+      return 'UTC';
+    }
+  }
+
   async createTask(params: CreateTaskParams): Promise<TaskMemory> {
     if (!this.isAuthenticated()) {
       throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
@@ -37,7 +50,17 @@ export class TaskModule {
       tags: params.tags || [],
     };
 
-    const response = await this.client.post('/api/tasks', taskData);
+    // Add timezone parameter to query string if due_date is provided
+    const urlSuffix = (params.due_date && !params.timezone) 
+      ? `?timezone=${encodeURIComponent(this.getServerTimezone())}`
+      : (params.due_date && params.timezone)
+        ? `?timezone=${encodeURIComponent(params.timezone)}`
+        : '';
+    
+    const createUrl = `/api/tasks${urlSuffix}`;
+    console.log('Creating task with timezone:', params.timezone || this.getServerTimezone());
+
+    const response = await this.client.post(createUrl, taskData);
     return response.data;
   }
 
@@ -59,6 +82,14 @@ export class TaskModule {
     if (params.due_before) searchParams.set('due_before', params.due_before);
     if (params.created_after) searchParams.set('created_after', params.created_after);
     if (params.created_before) searchParams.set('created_before', params.created_before);
+    
+    // Add timezone if any date parameters are provided and timezone is not already specified
+    const hasDateParams = params.due_after || params.due_before || params.created_after || params.created_before;
+    if (hasDateParams) {
+      const timezone = params.timezone || this.getServerTimezone();
+      searchParams.set('timezone', timezone);
+      console.log('Searching tasks with timezone:', timezone);
+    }
     
     searchParams.set('limit', params.limit.toString());
     searchParams.set('offset', params.offset.toString());
@@ -107,7 +138,19 @@ export class TaskModule {
       updateData.tags = params.tags;
     }
 
-    const response = await this.client.put(`/api/tasks/${params.id}`, updateData);
+    // Add timezone parameter to query string if due_date is being updated
+    const urlSuffix = (params.due_date && !params.timezone) 
+      ? `?timezone=${encodeURIComponent(this.getServerTimezone())}`
+      : (params.due_date && params.timezone)
+        ? `?timezone=${encodeURIComponent(params.timezone)}`
+        : '';
+    
+    const updateUrl = `/api/tasks/${params.id}${urlSuffix}`;
+    if (params.due_date) {
+      console.log('Updating task with timezone:', params.timezone || this.getServerTimezone());
+    }
+
+    const response = await this.client.put(updateUrl, updateData);
     return response.data;
   }
 

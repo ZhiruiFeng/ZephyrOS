@@ -1,6 +1,7 @@
 import { Task, Category, TaskRelationType } from '../app/types/task'
 import { supabase } from './supabase'
 import { authManager } from './auth-manager'
+import { toUTC } from '../app/utils/timeUtils'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
 const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
@@ -234,6 +235,13 @@ export const tasksApi = {
     tags?: string[];
   }): Promise<TaskMemory> {
     const authHeaders = await authManager.getAuthHeaders()
+    
+    // Convert due_date to UTC if provided
+    const taskWithUTC = {
+      ...task,
+      due_date: task.due_date ? toUTC(task.due_date) : undefined
+    }
+    
     const response = await fetch(`${API_BASE}/api/tasks`, {
       method: 'POST',
       headers: {
@@ -242,8 +250,8 @@ export const tasksApi = {
       },
       body: JSON.stringify({
         type: 'task',
-        content: task,
-        tags: task.tags || []
+        content: taskWithUTC,
+        tags: taskWithUTC.tags || []
       }),
       ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
@@ -276,7 +284,12 @@ export const tasksApi = {
         if (value === '' && !fieldsAllowingEmpty.includes(key)) {
           return
         }
-        cleanContent[key] = value
+        // Convert due_date to UTC if it's being updated
+        if (key === 'due_date' && typeof value === 'string') {
+          cleanContent[key] = toUTC(value)
+        } else {
+          cleanContent[key] = value
+        }
       }
     })
     

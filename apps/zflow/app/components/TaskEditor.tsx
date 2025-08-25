@@ -5,6 +5,7 @@ import { X as XIcon } from 'lucide-react'
 import { Task, TaskForm, TaskEditorProps, Category } from '../types/task'
 import CategorySelector from './CategorySelector'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { toLocal, toUTC } from '../utils/timeUtils'
 
 const X = XIcon
 
@@ -40,7 +41,7 @@ export default function TaskEditor({
         status: task.status || 'pending',
         priority: task.priority || 'medium',
         category_id: task.category_id || '',
-        due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 16) : '',
+        due_date: task.due_date ? toLocal(task.due_date, { format: 'datetime-local' }) : '',
         estimated_duration: task.estimated_duration || 0,
         progress: task.progress || 0,
         assignee: task.assignee || '',
@@ -71,7 +72,7 @@ export default function TaskEditor({
           status: form.status,
           priority: form.priority,
           category_id: form.category_id || undefined,
-          due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined,
+          due_date: form.due_date ? toUTC(form.due_date) : undefined,
           estimated_duration: form.estimated_duration || undefined,
           progress: form.progress || 0,
           assignee: form.assignee || undefined,

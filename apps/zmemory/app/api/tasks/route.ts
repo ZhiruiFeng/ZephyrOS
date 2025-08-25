@@ -10,6 +10,7 @@ import {
   TaskPriority,
   TaskCategory
 } from '../../../lib/task-types';
+import { nowUTC, convertSearchParamsToUTC } from '../../../lib/time-utils';
 
 // Helper function to get category ID by name for current user
 async function getCategoryIdByName(client: SupabaseClient, userId: string, categoryName: string): Promise<string | null> {
@@ -209,6 +210,10 @@ export async function GET(request: NextRequest) {
     }
 
     const query = queryResult.data;
+    
+    // Convert any date parameters to UTC for database queries
+    // If timezone is provided, convert from that timezone; otherwise assume local time
+    const utcQuery = convertSearchParamsToUTC(query, undefined, query.timezone);
 
     // If Supabase is not configured, return filtered mock data
     if (!supabase) {
@@ -275,39 +280,39 @@ export async function GET(request: NextRequest) {
       `)
       .eq('user_id', userId);
 
-    // Apply filters
-    if (query.status) {
-      dbQuery = dbQuery.eq('status', query.status);
+    // Apply filters (use UTC-converted query for date filters)
+    if (utcQuery.status) {
+      dbQuery = dbQuery.eq('status', utcQuery.status);
     }
-    if (query.priority) {
-      dbQuery = dbQuery.eq('priority', query.priority);
+    if (utcQuery.priority) {
+      dbQuery = dbQuery.eq('priority', utcQuery.priority);
     }
-    if (query.category) {
+    if (utcQuery.category) {
       // Only filter by category_id when the input looks like a UUID
       const uuidLike = /^[0-9a-fA-F-]{36}$/
-      if (uuidLike.test(query.category)) {
-        dbQuery = dbQuery.eq('category_id', query.category)
+      if (uuidLike.test(utcQuery.category)) {
+        dbQuery = dbQuery.eq('category_id', utcQuery.category)
       } else {
         // Skip invalid category filter to avoid UUID cast errors
       }
     }
-    if (query.assignee) {
-      dbQuery = dbQuery.eq('assignee', query.assignee);
+    if (utcQuery.assignee) {
+      dbQuery = dbQuery.eq('assignee', utcQuery.assignee);
     }
-    if (query.search) {
-      dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
+    if (utcQuery.search) {
+      dbQuery = dbQuery.or(`title.ilike.%${utcQuery.search}%,description.ilike.%${utcQuery.search}%`);
     }
-    if (query.due_before) {
-      dbQuery = dbQuery.lte('due_date', query.due_before);
+    if (utcQuery.due_before) {
+      dbQuery = dbQuery.lte('due_date', utcQuery.due_before);
     }
-    if (query.due_after) {
-      dbQuery = dbQuery.gte('due_date', query.due_after);
+    if (utcQuery.due_after) {
+      dbQuery = dbQuery.gte('due_date', utcQuery.due_after);
     }
-    if (query.created_before) {
-      dbQuery = dbQuery.lte('created_at', query.created_before);
+    if (utcQuery.created_before) {
+      dbQuery = dbQuery.lte('created_at', utcQuery.created_before);
     }
-    if (query.created_after) {
-      dbQuery = dbQuery.gte('created_at', query.created_after);
+    if (utcQuery.created_after) {
+      dbQuery = dbQuery.gte('created_at', utcQuery.created_after);
     }
     if (query.tags) {
       const filterTags = query.tags.split(',').map(tag => tag.trim());
@@ -462,7 +467,7 @@ export async function POST(request: NextRequest) {
     }
 
     const taskData = validationResult.data;
-    const now = new Date().toISOString();
+    const now = nowUTC();
 
     // If Supabase is not configured, return mock response
     if (!supabase) {

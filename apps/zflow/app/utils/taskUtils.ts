@@ -1,4 +1,5 @@
 import { Task } from '../types/task'
+import { isOverdue as isOverdueUTC, toLocal, smartFormatDate, formatRelative } from './timeUtils'
 
 // Get status color
 export const getStatusColor = (status: string) => {
@@ -32,12 +33,9 @@ export const getPriorityColor = (priority: string) => {
   }
 }
 
-// Check if overdue
+// Check if overdue (UTC-aware)
 export const isOverdue = (dueDate?: string) => {
-  if (!dueDate) return false
-  const due = new Date(dueDate).getTime()
-  const now = Date.now()
-  return due < now
+  return isOverdueUTC(dueDate)
 }
 
 // Get display date for a task (completion_date for completed tasks, due_date for others)
@@ -54,14 +52,24 @@ export const shouldShowOverdue = (status: string, dueDate?: string) => {
   return isOverdue(dueDate)
 }
 
-// Format date
+// Format date (timezone-aware)
 export const formatDate = (date: string, locale: string = 'en-US') => {
-  return new Date(date).toLocaleDateString(locale)
+  return toLocal(date, { format: 'medium', locale })
 }
 
-// Format date时间
+// Format date时间 (timezone-aware)
 export const formatDateTime = (date: string, locale: string = 'en-US') => {
-  return new Date(date).toLocaleString(locale)
+  return toLocal(date, { format: 'full', locale })
+}
+
+// Smart date format that adapts based on proximity
+export const formatSmartDate = (date: string, options?: { showTime?: boolean; showRelative?: boolean; locale?: string }) => {
+  return smartFormatDate(date, options)
+}
+
+// Format relative time (e.g., "2 hours ago")
+export const formatRelativeTime = (date: string, locale: string = 'en-US') => {
+  return formatRelative(date, locale)
 }
 
 // Process tags array

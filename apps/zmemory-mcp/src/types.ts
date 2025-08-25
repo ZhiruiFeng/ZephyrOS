@@ -94,6 +94,7 @@ export const CreateTaskParamsSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium').describe('任务优先级'),
   category: z.string().optional().describe('任务分类'),
   due_date: z.string().optional().describe('截止日期 (YYYY-MM-DD 或 ISO 8601格式)'),
+  timezone: z.string().optional().describe('时区标识符，用于解释due_date。如 "America/New_York" 或 "Asia/Shanghai"'),
   estimated_duration: z.number().optional().describe('预计耗时(分钟)'),
   assignee: z.string().optional().describe('任务负责人'),
   tags: z.array(z.string()).optional().describe('任务标签'),
@@ -111,6 +112,7 @@ export const SearchTasksParamsSchema = z.object({
   due_before: z.string().optional().describe('截止日期在此日期之前 (YYYY-MM-DD格式)'),
   created_after: z.string().optional().describe('创建日期在此日期之后 (YYYY-MM-DD格式)'),
   created_before: z.string().optional().describe('创建日期在此日期之前 (YYYY-MM-DD格式)'),
+  timezone: z.string().optional().describe('时区标识符，如 "America/New_York" 或 "Asia/Shanghai"。如果不提供，使用服务器本地时区'),
   updated_today: z.boolean().optional().describe('只显示今天更新的任务'),
   overdue: z.boolean().optional().describe('只显示过期任务'),
   limit: z.number().min(1).max(100).default(20).describe('返回数量限制'),
@@ -127,6 +129,7 @@ export const UpdateTaskParamsSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('任务优先级'),
   category: z.string().optional().describe('任务分类'),
   due_date: z.string().optional().describe('截止日期 (YYYY-MM-DD格式)'),
+  timezone: z.string().optional().describe('时区标识符，用于解释due_date。如 "America/New_York" 或 "Asia/Shanghai"'),
   estimated_duration: z.number().optional().describe('预计耗时(分钟)'),
   progress: z.number().min(0).max(100).optional().describe('完成进度(0-100)'),
   assignee: z.string().optional().describe('任务负责人'),
@@ -137,6 +140,7 @@ export const UpdateTaskParamsSchema = z.object({
 // 时间跟踪相关类型
 export const GetDayTimeEntriesParamsSchema = z.object({
   date: z.string().describe('日期 (YYYY-MM-DD格式)'),
+  timezone: z.string().optional().describe('时区标识符，如 "America/New_York" 或 "Asia/Shanghai"'),
   user_id: z.string().optional().describe('用户ID (可选，默认为当前用户)'),
 });
 
@@ -144,6 +148,7 @@ export const GetTaskTimeEntriesParamsSchema = z.object({
   task_id: z.string().describe('任务ID'),
   start_date: z.string().optional().describe('开始日期 (YYYY-MM-DD格式)'),
   end_date: z.string().optional().describe('结束日期 (YYYY-MM-DD格式)'),
+  timezone: z.string().optional().describe('时区标识符，用于解释日期参数'),
 });
 
 export const StartTaskTimerParamsSchema = z.object({

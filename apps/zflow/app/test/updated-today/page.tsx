@@ -7,6 +7,8 @@ import { useTranslation } from '../../../contexts/LanguageContext';
 import { tasksApi, TaskMemory, TaskContent } from '../../../lib/api';
 import { useCategories } from '../../../hooks/useCategories';
 import LoginPage from '../../components/LoginPage';
+import { toLocal, toUTC, formatRelative, getUserTimezone } from '../../utils/timeUtils';
+import { getDayBoundariesInTimezone, getTimezoneOffsetDescription, getCurrentTimezone as getCurrentTZ } from '../../utils/timezoneUtils';
 
 interface TasksResponse {
   tasks: TaskMemory[];
@@ -90,35 +92,34 @@ export default function UpdatedTodayPage() {
     timezone: getCurrentTimezone(),
   });
 
-  // 根据日期和时区计算开始和结束时间
+  // 根据日期和时区计算开始和结束时间，转换为UTC用于API调用
   const getDateRangeFromFilter = (filter: DateTimeFilter) => {
     try {
-      // 创建指定日期在指定时区的开始和结束时间
       const dateStr = filter.date;
+      const timezone = filter.timezone;
       
-      // 在指定时区创建该日期的开始时间 (00:00:00)
-      const startOfDayInTimezone = new Date(`${dateStr}T00:00:00`);
+      // Use the improved timezone utility to get proper boundaries
+      const boundaries = getDayBoundariesInTimezone(dateStr, timezone);
       
-      // 计算结束时间：24小时后或当前时间（取较小的）
-      const endOfDayInTimezone = new Date(startOfDayInTimezone.getTime() + 24 * 60 * 60 * 1000);
+      // For end time, use either end of day or current time (whichever is earlier)
       const now = new Date();
-      const actualEndTime = endOfDayInTimezone > now ? now : endOfDayInTimezone;
+      const endTime = new Date(boundaries.endUTC);
+      const actualEndTime = endTime > now ? now : endTime;
       
-      // 返回完整的ISO日期时间字符串
       return {
-        start_date: startOfDayInTimezone.toISOString(),
+        start_date: boundaries.startUTC,
         end_date: actualEndTime.toISOString()
       };
     } catch (error) {
       console.error('Error processing date range:', error);
-      // 降级到当前日期
+      // Fallback to current day in local timezone, converted to UTC
       const today = new Date();
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
       const actualEnd = endOfToday > today ? today : endOfToday;
       return {
-        start_date: startOfToday.toISOString(),
-        end_date: actualEnd.toISOString()
+        start_date: toUTC(startOfToday.toISOString()),
+        end_date: toUTC(actualEnd.toISOString())
       };
     }
   };
@@ -170,24 +171,14 @@ export default function UpdatedTodayPage() {
     });
   };
 
-  // 格式化时间
+  // 格式化时间 (UTC-aware)
   const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return toLocal(isoString, { format: 'full', locale: 'zh-CN' });
   };
 
-  // 格式化日期
+  // 格式化日期 (UTC-aware)
   const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    return toLocal(isoString, { format: 'medium', locale: 'zh-CN' });
   };
 
   // 获取任务分类信息
@@ -222,7 +213,7 @@ export default function UpdatedTodayPage() {
             </div>
           </div>
           <div className="text-sm text-gray-500">
-            {formatTime(task.updated_at)}
+            {formatRelative(task.updated_at, 'zh-CN')}
           </div>
         </div>
 
@@ -337,8 +328,10 @@ export default function UpdatedTodayPage() {
               <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
                 <Clock className="w-4 h-4" />
                 <span>
-                  时区: {commonTimezones.find(tz => tz.value === dateTimeFilter.timezone)?.label || dateTimeFilter.timezone}
+                  当前时区: {commonTimezones.find(tz => tz.value === dateTimeFilter.timezone)?.label || `${dateTimeFilter.timezone} (${getTimezoneOffsetDescription(dateTimeFilter.timezone)})`}
                 </span>
+                <span className="text-gray-400">|</span>
+                <span>所有时间均已转换为本地时间显示</span>
               </div>
             </div>
             <button
@@ -457,14 +450,18 @@ export default function UpdatedTodayPage() {
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-gray-700" />
-              <span className="text-sm font-medium text-gray-700">快捷选择:</span>
+              <span className="text-sm font-medium text-gray-700">快捷选择 (本地时区):</span>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
+                  // Get today in current local timezone
+                  const todayLocal = new Date();
+                  const todayString = todayLocal.toISOString().split('T')[0];
                   setDateTimeFilter(prev => ({ 
                     ...prev, 
-                    date: getTodayDateString() 
+                    date: todayString,
+                    timezone: getCurrentTZ() // Ensure we use current timezone
                   }));
                 }}
                 className="px-3 py-1 text-xs bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors"
@@ -473,11 +470,14 @@ export default function UpdatedTodayPage() {
               </button>
               <button
                 onClick={() => {
-                  const yesterday = new Date();
-                  yesterday.setDate(yesterday.getDate() - 1);
+                  // Get yesterday in current local timezone
+                  const yesterdayLocal = new Date();
+                  yesterdayLocal.setDate(yesterdayLocal.getDate() - 1);
+                  const yesterdayString = yesterdayLocal.toISOString().split('T')[0];
                   setDateTimeFilter(prev => ({ 
                     ...prev, 
-                    date: yesterday.toISOString().split('T')[0] 
+                    date: yesterdayString,
+                    timezone: getCurrentTZ()
                   }));
                 }}
                 className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
@@ -486,11 +486,14 @@ export default function UpdatedTodayPage() {
               </button>
               <button
                 onClick={() => {
-                  const weekAgo = new Date();
-                  weekAgo.setDate(weekAgo.getDate() - 7);
+                  // Get 7 days ago in current local timezone
+                  const weekAgoLocal = new Date();
+                  weekAgoLocal.setDate(weekAgoLocal.getDate() - 7);
+                  const weekAgoString = weekAgoLocal.toISOString().split('T')[0];
                   setDateTimeFilter(prev => ({ 
                     ...prev, 
-                    date: weekAgo.toISOString().split('T')[0] 
+                    date: weekAgoString,
+                    timezone: getCurrentTZ()
                   }));
                 }}
                 className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
@@ -499,11 +502,14 @@ export default function UpdatedTodayPage() {
               </button>
               <button
                 onClick={() => {
-                  const monthAgo = new Date();
-                  monthAgo.setDate(monthAgo.getDate() - 30);
+                  // Get 30 days ago in current local timezone
+                  const monthAgoLocal = new Date();
+                  monthAgoLocal.setDate(monthAgoLocal.getDate() - 30);
+                  const monthAgoString = monthAgoLocal.toISOString().split('T')[0];
                   setDateTimeFilter(prev => ({ 
                     ...prev, 
-                    date: monthAgo.toISOString().split('T')[0] 
+                    date: monthAgoString,
+                    timezone: getCurrentTZ()
                   }));
                 }}
                 className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"

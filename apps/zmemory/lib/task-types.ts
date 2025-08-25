@@ -134,6 +134,7 @@ export const TaskQuerySchema = z.object({
   due_after: z.string().datetime().optional(),
   created_before: z.string().datetime().optional(),
   created_after: z.string().datetime().optional(),
+  timezone: z.string().optional().describe('Timezone for date parameters (e.g., "America/New_York", "Asia/Shanghai"). Defaults to UTC if not provided.'),
   
   // Subtasks filtering
   parent_task_id: z.string().uuid().optional(), // Filter by parent task

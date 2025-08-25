@@ -3,6 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
 import { TaskMemory } from '../../../../lib/task-types';
+import { nowUTC, convertSearchParamsToUTC } from '../../../../lib/time-utils';
 
 // Create Supabase client (service key only for mock fallback; real requests use bearer token)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -27,7 +28,7 @@ function getTodayDateRange() {
 // Mock data generator for tasks updated today
 const generateMockTasksUpdatedToday = (): TaskMemory[] => {
   const todayRange = getTodayDateRange();
-  const now = new Date().toISOString();
+  const now = nowUTC();
   
   return [
     {
@@ -187,19 +188,30 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
+    const timezone = searchParams.get('timezone'); // Accept timezone parameter
 
     // Use custom date range if provided, otherwise default to today
     let dateRange;
     if (startDate && endDate) {
-      // If start_date and end_date are provided, use them directly
-      // They can be either date strings (YYYY-MM-DD) or full ISO strings
-      const start = startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`;
-      const end = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`;
-      dateRange = {
-        start: new Date(start).toISOString(),
-        end: new Date(end).toISOString()
-      };
+      // Convert date range using timezone if provided
+      if (timezone) {
+        const convertedParams = { start_date: startDate, end_date: endDate };
+        const utcParams = convertSearchParamsToUTC(convertedParams, ['start_date', 'end_date'], timezone);
+        dateRange = {
+          start: utcParams.start_date,
+          end: utcParams.end_date
+        };
+      } else {
+        // If no timezone provided, assume dates are already in UTC (legacy behavior)
+        const start = startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`;
+        const end = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`;
+        dateRange = {
+          start: new Date(start).toISOString(),
+          end: new Date(end).toISOString()
+        };
+      }
     } else {
+      // Default to UTC "today" - this is fallback behavior for direct API access
       dateRange = getTodayDateRange();
     }
 
