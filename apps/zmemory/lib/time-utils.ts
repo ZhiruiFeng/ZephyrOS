@@ -126,10 +126,10 @@ export function convertSearchParamsToUTC<T extends Record<string, any>>(
       const dateValue = converted[field] as string;
       if (timezone) {
         // If timezone is provided, convert from that timezone to UTC
-        converted[field] = convertFromTimezoneToUTC(dateValue, timezone);
+        converted[field] = convertFromTimezoneToUTC(dateValue, timezone) as T[keyof T];
       } else {
         // Default behavior: assume local timezone
-        converted[field] = toUTC(dateValue);
+        converted[field] = toUTC(dateValue) as T[keyof T];
       }
     }
   });
