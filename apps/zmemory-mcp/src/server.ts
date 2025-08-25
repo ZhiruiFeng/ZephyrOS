@@ -414,10 +414,15 @@ export class ZMemoryMCPServer {
       },
       {
         name: 'get_updated_today_tasks',
-        description: '获取今天更新的任务列表',
+        description: '获取今天更新的任务列表，支持时区转换。如果不提供时区参数，将使用服务器所在时区。',
         inputSchema: {
           type: 'object',
-          properties: {},
+          properties: {
+            timezone: { 
+              type: 'string', 
+              description: '时区标识符，例如 "America/New_York", "Asia/Shanghai", "Europe/London" 等。如果不提供，将自动检测服务器时区。建议 Claude 明确告知其所在时区以确保准确的时间范围。' 
+            },
+          },
           required: [],
         },
       },
@@ -936,32 +941,42 @@ ${categoryStats || '  无数据'}`,
   }
 
   private async handleGetUpdatedTodayTasks(args: any) {
-    const tasks = await this.zmemoryClient.getUpdatedTodayTasks();
+    const { timezone } = args;
+    const result = await this.zmemoryClient.getUpdatedTodayTasks(timezone);
 
-    if (tasks.length === 0) {
+    if (result.tasks.length === 0) {
+      const usedTimezone = timezone || 'server default timezone';
       return {
         content: [
           {
             type: 'text',
-            text: '今天没有更新的任务',
+            text: `今天没有更新的任务 (使用时区: ${usedTimezone})\n时间范围: ${result.date_range.start} 至 ${result.date_range.end}`,
           },
         ],
       };
     }
 
-    const taskList = tasks
+    const taskList = result.tasks
       .map((task: any) => {
         const title = task.content?.title || `未命名任务`;
         const status = task.content?.status ? ` (${task.content.status})` : '';
-        return `• ${title}${status} - 更新于 ${new Date(task.updated_at).toLocaleString()}`;
+        const priority = task.content?.priority ? ` [${task.content.priority}]` : '';
+        const progress = task.content?.progress !== undefined ? ` 进度: ${task.content.progress}%` : '';
+        const category = task.content?.category ? ` 分类: ${task.content.category}` : '';
+        return `• ${title}${status}${priority}${progress}${category} - 更新于 ${new Date(task.updated_at).toLocaleString()}`;
       })
       .join('\n');
 
+    const usedTimezone = timezone || 'server default timezone';
     return {
       content: [
         {
           type: 'text',
-          text: `今天更新的 ${tasks.length} 个任务:\n\n${taskList}`,
+          text: `今天更新的 ${result.tasks.length} 个任务 (总共 ${result.total} 个，使用时区: ${usedTimezone}):
+          
+时间范围: ${result.date_range.start} 至 ${result.date_range.end}
+
+${taskList}`,
         },
       ],
     };

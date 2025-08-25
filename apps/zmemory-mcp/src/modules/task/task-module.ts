@@ -163,12 +163,19 @@ export class TaskModule {
     return response.data;
   }
 
-  async getUpdatedTodayTasks(): Promise<TaskMemory[]> {
+  async getUpdatedTodayTasks(timezone?: string): Promise<{ tasks: TaskMemory[], total: number, date_range: { start: string, end: string } }> {
     if (!this.isAuthenticated()) {
       throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
     }
 
-    const response = await this.client.get('/api/tasks/updated-today');
+    // Use provided timezone or detect server timezone
+    const tz = timezone || this.getServerTimezone();
+    const searchParams = new URLSearchParams();
+    searchParams.set('timezone', tz);
+
+    console.log('Getting updated today tasks with timezone:', tz);
+
+    const response = await this.client.get(`/api/tasks/updated-today?${searchParams.toString()}`);
     return response.data;
   }
 
