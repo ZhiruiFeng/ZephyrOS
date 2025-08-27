@@ -154,11 +154,26 @@ export function convertFromTimezoneToUTC(datetime: string, timezone: string): st
     
     // For date-only format (YYYY-MM-DD), assume start of day in the specified timezone
     if (datetime.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Create a date that represents midnight in the specified timezone
-      const dateInTimezone = new Date(`${datetime}T00:00:00`);
+      datetime = `${datetime}T00:00:00`;
+    }
+    
+    // For datetime strings (YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SS.SSS)
+    if (datetime.includes('T')) {
+      // Create a date as if it's in the specified timezone
+      // This approach uses a more accurate timezone conversion
       
-      // Get the offset for this date in the specified timezone
-      const formatter = new Intl.DateTimeFormat('en-CA', {
+      // Parse the datetime components
+      const [datePart, timePart] = datetime.split('T');
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [time, milliseconds] = timePart.split('.');
+      const [hours, minutes, seconds] = time.split(':').map(Number);
+      const ms = milliseconds ? parseInt(milliseconds.padEnd(3, '0')) : 0;
+      
+      // Create a date representing this time in UTC
+      const utcDate = new Date(year, month - 1, day, hours, minutes, seconds, ms);
+      
+      // Get what this UTC time would be in the target timezone
+      const formatter = new Intl.DateTimeFormat('sv-SE', {
         timeZone: timezone,
         year: 'numeric',
         month: '2-digit',
@@ -169,17 +184,54 @@ export function convertFromTimezoneToUTC(datetime: string, timezone: string): st
         hour12: false
       });
       
-      // Format the current time to understand the timezone offset
-      const now = new Date();
-      const localTime = formatter.format(now);
-      const utcTime = now.toISOString().replace('T', ', ').replace(/\.\d{3}Z$/, '');
+      // Find the UTC time that displays as our target time in the specified timezone
+      // Binary search approach for accuracy
+      let testTime = utcDate.getTime();
+      let step = 12 * 60 * 60 * 1000; // Start with 12 hours
       
-      // This is a simplified conversion - for production use date-fns-tz or similar
-      // For now, assume the date string represents local time in the specified timezone
-      return dateInTimezone.toISOString();
+      while (step >= 1000) { // Down to 1 second precision
+        const testDate = new Date(testTime);
+        const formatted = formatter.format(testDate);
+        
+        if (formatted === `${datePart} ${time}`) {
+          return testDate.toISOString();
+        }
+        
+        // Compare and adjust
+        if (formatted < `${datePart} ${time}`) {
+          testTime += step;
+        } else {
+          testTime -= step;
+        }
+        step = Math.floor(step / 2);
+      }
+      
+      // Fallback: use the original approach with offset calculation
+      const offsetFormatter = new Intl.DateTimeFormat('en', {
+        timeZone: timezone,
+        timeZoneName: 'longOffset'
+      });
+      
+      const offsetString = offsetFormatter.formatToParts(utcDate)
+        .find(part => part.type === 'timeZoneName')?.value;
+        
+      if (offsetString) {
+        const match = offsetString.match(/GMT([+-])(\d+)(?::(\d+))?/);
+        if (match) {
+          const sign = match[1] === '+' ? -1 : 1; // Opposite sign for UTC adjustment
+          const offsetHours = parseInt(match[2]);
+          const offsetMinutes = match[3] ? parseInt(match[3]) : 0;
+          const totalOffsetMs = sign * (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+          
+          return new Date(utcDate.getTime() + totalOffsetMs).toISOString();
+        }
+      }
+      
+      // Final fallback: treat as UTC
+      return utcDate.toISOString();
     }
     
-    // For datetime strings, create date and assume it's in the specified timezone
+    // Fallback for other formats
     const date = new Date(datetime);
     return date.toISOString();
     

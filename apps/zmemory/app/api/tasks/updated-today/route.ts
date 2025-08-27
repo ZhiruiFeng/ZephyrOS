@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
 import { TaskMemory } from '../../../../lib/task-types';
-import { nowUTC, convertSearchParamsToUTC } from '../../../../lib/time-utils';
+import { nowUTC, convertSearchParamsToUTC, convertFromTimezoneToUTC } from '../../../../lib/time-utils';
 
 // Create Supabase client (service key only for mock fallback; real requests use bearer token)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,8 +13,71 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+// Helper function to get start and end of a specific date in ISO format
+function getTodayDateRangeForDate(dateStr: string, timezone: string) {
+  try {
+    // Use the convertFromTimezoneToUTC helper to properly convert timezone-aware dates
+    const startOfDayInTZ = `${dateStr}T00:00:00`;
+    const endOfDayInTZ = `${dateStr}T23:59:59.999`;
+    
+    // For proper timezone conversion, we need to create dates that represent 
+    // the exact moments when it's start/end of day in the target timezone
+    const startUTC = convertFromTimezoneToUTC(startOfDayInTZ, timezone);
+    const endUTC = convertFromTimezoneToUTC(endOfDayInTZ, timezone);
+    
+    return {
+      start: startUTC,
+      end: endUTC
+    };
+    
+  } catch (error) {
+    console.warn(`Failed to calculate date range for date "${dateStr}" in timezone "${timezone}":`, error);
+    // Fallback to UTC interpretation
+    return {
+      start: `${dateStr}T00:00:00.000Z`,
+      end: `${dateStr}T23:59:59.999Z`
+    };
+  }
+}
+
 // Helper function to get start and end of today in ISO format
-function getTodayDateRange() {
+function getTodayDateRange(timezone?: string) {
+  if (timezone) {
+    try {
+      // Get current date in the specified timezone
+      const now = new Date();
+      
+      // Use Intl.DateTimeFormat to get the date in the specified timezone
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      
+      const todayInTimezone = formatter.format(now); // Returns YYYY-MM-DD format
+      
+      // Use the convertFromTimezoneToUTC helper to properly convert timezone-aware dates
+      const startOfDayInTZ = `${todayInTimezone}T00:00:00`;
+      const endOfDayInTZ = `${todayInTimezone}T23:59:59.999`;
+      
+      // For proper timezone conversion, we need to create dates that represent 
+      // the exact moments when it's start/end of day in the target timezone
+      const startUTC = convertFromTimezoneToUTC(startOfDayInTZ, timezone);
+      const endUTC = convertFromTimezoneToUTC(endOfDayInTZ, timezone);
+      
+      return {
+        start: startUTC,
+        end: endUTC
+      };
+      
+    } catch (error) {
+      console.warn(`Failed to calculate date range for timezone "${timezone}":`, error);
+      // Fall back to server timezone
+    }
+  }
+  
+  // Fallback to server local timezone (existing behavior)
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
@@ -26,8 +89,8 @@ function getTodayDateRange() {
 }
 
 // Mock data generator for tasks updated today
-const generateMockTasksUpdatedToday = (): TaskMemory[] => {
-  const todayRange = getTodayDateRange();
+const generateMockTasksUpdatedToday = (timezone?: string): TaskMemory[] => {
+  const todayRange = getTodayDateRange(timezone);
   const now = nowUTC();
   
   return [
@@ -125,6 +188,11 @@ const generateMockTasksUpdatedToday = (): TaskMemory[] => {
  *           type: string
  *           format: date
  *         description: End date for filtering tasks (YYYY-MM-DD format). If not provided, defaults to today.
+ *       - in: query
+ *         name: timezone
+ *         schema:
+ *           type: string
+ *         description: Timezone for date calculations (e.g., "America/New_York", "Asia/Shanghai"). If not provided, uses server timezone.
  *     responses:
  *       200:
  *         description: List of tasks updated today
@@ -195,11 +263,30 @@ export async function GET(request: NextRequest) {
     if (startDate && endDate) {
       // Convert date range using timezone if provided
       if (timezone) {
-        const convertedParams = { start_date: startDate, end_date: endDate };
-        const utcParams = convertSearchParamsToUTC(convertedParams, ['start_date', 'end_date'], timezone);
+        // Handle start_date and end_date differently to get proper day boundaries
+        let startUTC: string;
+        let endUTC: string;
+        
+        if (startDate === endDate) {
+          // Same date - get start and end of that day in the specified timezone
+          const dayRange = getTodayDateRangeForDate(startDate, timezone);
+          startUTC = dayRange.start;
+          endUTC = dayRange.end;
+        } else {
+          // Different dates - convert each to appropriate time
+          startUTC = convertFromTimezoneToUTC(
+            startDate.includes('T') ? startDate : `${startDate}T00:00:00`, 
+            timezone
+          );
+          endUTC = convertFromTimezoneToUTC(
+            endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`, 
+            timezone
+          );
+        }
+        
         dateRange = {
-          start: utcParams.start_date,
-          end: utcParams.end_date
+          start: startUTC,
+          end: endUTC
         };
       } else {
         // If no timezone provided, assume dates are already in UTC (legacy behavior)
@@ -211,13 +298,13 @@ export async function GET(request: NextRequest) {
         };
       }
     } else {
-      // Default to UTC "today" - this is fallback behavior for direct API access
-      dateRange = getTodayDateRange();
+      // Default to "today" in the specified timezone, or server timezone if none provided
+      dateRange = getTodayDateRange(timezone || undefined);
     }
 
     // If Supabase is not configured, return filtered mock data
     if (!supabase) {
-      let tasks = generateMockTasksUpdatedToday();
+      let tasks = generateMockTasksUpdatedToday(timezone || undefined);
 
       // Apply filters
       if (status) {

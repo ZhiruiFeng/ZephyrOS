@@ -92,36 +92,23 @@ export default function UpdatedTodayPage() {
     timezone: getCurrentTimezone(),
   });
 
-  // 根据日期和时区计算开始和结束时间，转换为UTC用于API调用
-  const getDateRangeFromFilter = (filter: DateTimeFilter) => {
-    try {
-      const dateStr = filter.date;
-      const timezone = filter.timezone;
-      
-      // Use the improved timezone utility to get proper boundaries
-      const boundaries = getDayBoundariesInTimezone(dateStr, timezone);
-      
-      // For end time, use either end of day or current time (whichever is earlier)
-      const now = new Date();
-      const endTime = new Date(boundaries.endUTC);
-      const actualEndTime = endTime > now ? now : endTime;
-      
+  // 使用新的API，直接传递日期和时区参数，让API处理日期范围计算
+  const getApiParamsFromFilter = (filter: DateTimeFilter) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 如果是今天且使用当前时区，则不传递start_date和end_date，让API使用默认的getTodayDateRange
+    if (filter.date === today && filter.timezone === getCurrentTimezone()) {
       return {
-        start_date: boundaries.startUTC,
-        end_date: actualEndTime.toISOString()
-      };
-    } catch (error) {
-      console.error('Error processing date range:', error);
-      // Fallback to current day in local timezone, converted to UTC
-      const today = new Date();
-      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-      const actualEnd = endOfToday > today ? today : endOfToday;
-      return {
-        start_date: toUTC(startOfToday.toISOString()),
-        end_date: toUTC(actualEnd.toISOString())
+        timezone: filter.timezone
       };
     }
+    
+    // 否则传递指定的日期和时区
+    return {
+      start_date: filter.date,
+      end_date: filter.date,
+      timezone: filter.timezone
+    };
   };
 
   // 获取任务数据
@@ -137,10 +124,9 @@ export default function UpdatedTodayPage() {
       if (filters.priority) params.priority = filters.priority;
       if (filters.category) params.category = filters.category;
       
-      // 根据选择的日期和时区计算日期范围
-      const dateRange = getDateRangeFromFilter(dateTimeFilter);
-      params.start_date = dateRange.start_date;
-      params.end_date = dateRange.end_date;
+      // 使用简化的API参数，让后端处理日期范围计算
+      const apiParams = getApiParamsFromFilter(dateTimeFilter);
+      Object.assign(params, apiParams);
       
       const data = await tasksApi.getUpdatedToday(params);
       setTasks(data.tasks);

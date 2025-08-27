@@ -342,6 +342,7 @@ export const tasksApi = {
     offset?: number;
     start_date?: string;
     end_date?: string;
+    timezone?: string;
   }): Promise<{ tasks: TaskMemory[]; total: number; date_range: { start: string; end: string } }> {
     const searchParams = new URLSearchParams()
     if (params) {
