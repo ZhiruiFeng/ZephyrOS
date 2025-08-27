@@ -19,11 +19,10 @@ export class AuthModule {
   async authenticate(params: AuthenticateParams): Promise<{ authUrl: string; state: string }> {
     const state = params.state || this.generateRandomString(32);
     const scope = params.scope || this.config.oauth?.scope || 'tasks.write';
-    
     const authUrl = new URL(`${this.config.apiUrl}/oauth/authorize`);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('client_id', params.client_id);
-    authUrl.searchParams.set('redirect_uri', params.redirect_uri || this.config.oauth?.redirectUri || 'http://localhost:3000/callback');
+    authUrl.searchParams.set('client_id', this.config.oauth?.clientId || params.client_id);
+    authUrl.searchParams.set('redirect_uri', this.config.oauth?.redirectUri || params.redirect_uri || 'http://localhost:3000/callback');
     authUrl.searchParams.set('scope', scope);
     authUrl.searchParams.set('state', state);
 
