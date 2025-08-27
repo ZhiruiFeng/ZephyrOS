@@ -23,7 +23,7 @@ export class TimeModule {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch (error) {
-      console.warn('Failed to detect server timezone, defaulting to UTC:', error);
+      // Silently fallback to UTC to avoid JSON parsing issues in MCP
       return 'UTC';
     }
   }
@@ -37,8 +37,6 @@ export class TimeModule {
     const searchParams = new URLSearchParams({ date: params.date });
     const timezone = params.timezone || this.getServerTimezone();
     searchParams.set('timezone', timezone);
-    console.log('Getting day time entries with timezone:', timezone);
-
     const response = await this.client.get(`/api/time-entries/day?${searchParams.toString()}`);
     return this.processDayTimeEntries(response.data, params.date);
   }
@@ -56,7 +54,6 @@ export class TimeModule {
     if (params.start_date || params.end_date) {
       const timezone = params.timezone || this.getServerTimezone();
       searchParams.set('timezone', timezone);
-      console.log('Getting task time entries with timezone:', timezone);
     }
 
     const response = await this.client.get(`/api/tasks/${params.task_id}/time-entries?${searchParams.toString()}`);

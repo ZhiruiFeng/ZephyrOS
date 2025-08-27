@@ -108,8 +108,10 @@ export class ZMemoryMCPServer {
             return await this.handleUpdateTask(args);
           case 'get_task_stats':
             return await this.handleGetTaskStats(args);
-          case 'get_updated_today_tasks':
-            return await this.handleGetUpdatedTodayTasks(args);
+          case 'get_task_updates_for_today':
+            return await this.handleGetTaskUpdatesForToday(args);
+          case 'get_task_updates_for_date':
+            return await this.handleGetTaskUpdatesForDate(args);
           
           // Time tracking tools
           case 'get_day_time_spending':
@@ -413,17 +415,35 @@ export class ZMemoryMCPServer {
         },
       },
       {
-        name: 'get_updated_today_tasks',
-        description: '获取今天更新的任务列表，支持时区转换。如果不提供时区参数，将使用服务器所在时区。',
+        name: 'get_task_updates_for_today',
+        description: '获取今天更新的任务列表。这个工具专门用于查看当前日期内所有有更新记录的任务，帮助用户快速了解今天的工作进展和任务状态变化。支持自动时区检测，如果不提供时区参数，将使用MCP服务器所在时区作为"今天"的定义。\n\n使用场景：\n• 日常工作总结：查看今天完成了哪些任务\n• 进度跟踪：了解今天任务状态的变化\n• 工作汇报：快速获取今日工作成果\n• 习惯养成：每日查看工作进展，培养总结习惯',
         inputSchema: {
           type: 'object',
           properties: {
             timezone: { 
               type: 'string', 
-              description: '时区标识符，例如 "America/New_York", "Asia/Shanghai", "Europe/London" 等。如果不提供，将自动检测服务器时区。建议 Claude 明确告知其所在时区以确保准确的时间范围。' 
+              description: '时区标识符（如 "America/New_York", "Asia/Shanghai", "Europe/London"）。如果不提供，将自动使用MCP服务器时区。建议Claude用户明确指定所在时区以确保获取准确的"今天"范围。' 
             },
           },
           required: [],
+        },
+      },
+      {
+        name: 'get_task_updates_for_date',
+        description: '获取指定日期更新的任务列表。这个工具允许用户查看历史某一天或未来某一天的任务更新情况，非常适合回顾过去的工作或规划未来的任务。结合时区参数，可以准确获取指定时区下某一天（00:00到23:59）的所有任务更新记录。\n\n使用场景：\n• 工作回顾：查看过去某天的工作完成情况\n• 绩效分析：统计特定日期的任务处理数量和类型\n• 项目复盘：回看项目关键节点的任务状态变化\n• 跨时区协作：查看不同时区同事在其本地时间某天的工作进展\n• 补录工作：查看遗漏记录的某天任务状态',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            date: {
+              type: 'string',
+              description: '要查询的日期，格式为 YYYY-MM-DD（如 "2023-08-27"）。可以是过去、今天或未来的日期。'
+            },
+            timezone: { 
+              type: 'string', 
+              description: '时区标识符（如 "America/New_York", "Asia/Shanghai", "Europe/London"）。如果不提供，将使用MCP服务器时区。时区决定了指定日期的具体时间范围（该时区的00:00:00到23:59:59）。' 
+            },
+          },
+          required: ['date'],
         },
       },
 
@@ -940,12 +960,12 @@ ${categoryStats || '  无数据'}`,
     };
   }
 
-  private async handleGetUpdatedTodayTasks(args: any) {
+  private async handleGetTaskUpdatesForToday(args: any) {
     const { timezone } = args;
-    const result = await this.zmemoryClient.getUpdatedTodayTasks(timezone);
+    const result = await this.zmemoryClient.getTaskUpdatesForToday(timezone);
 
     if (result.tasks.length === 0) {
-      const usedTimezone = timezone || 'server default timezone';
+      const usedTimezone = timezone || 'MCP服务器时区';
       return {
         content: [
           {
@@ -967,12 +987,66 @@ ${categoryStats || '  无数据'}`,
       })
       .join('\n');
 
-    const usedTimezone = timezone || 'server default timezone';
+    const usedTimezone = timezone || 'MCP服务器时区';
     return {
       content: [
         {
           type: 'text',
           text: `今天更新的 ${result.tasks.length} 个任务 (总共 ${result.total} 个，使用时区: ${usedTimezone}):
+          
+时间范围: ${result.date_range.start} 至 ${result.date_range.end}
+
+${taskList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetTaskUpdatesForDate(args: any) {
+    const { date, timezone } = args;
+    
+    if (!date) {
+      throw new Error('日期参数是必需的，格式为 YYYY-MM-DD');
+    }
+
+    // 验证日期格式
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error('日期格式无效，请使用 YYYY-MM-DD 格式（如 "2023-08-27"）');
+    }
+
+    const result = await this.zmemoryClient.getTaskUpdatesForDate(date, timezone);
+
+    if (result.tasks.length === 0) {
+      const usedTimezone = timezone || 'MCP服务器时区';
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `${date} 没有更新的任务 (使用时区: ${usedTimezone})\n时间范围: ${result.date_range.start} 至 ${result.date_range.end}`,
+          },
+        ],
+      };
+    }
+
+    const taskList = result.tasks
+      .map((task: any) => {
+        const title = task.content?.title || `未命名任务`;
+        const status = task.content?.status ? ` (${task.content.status})` : '';
+        const priority = task.content?.priority ? ` [${task.content.priority}]` : '';
+        const progress = task.content?.progress !== undefined ? ` 进度: ${task.content.progress}%` : '';
+        const category = task.content?.category ? ` 分类: ${task.content.category}` : '';
+        return `• ${title}${status}${priority}${progress}${category} - 更新于 ${new Date(task.updated_at).toLocaleString()}`;
+      })
+      .join('\n');
+
+    const usedTimezone = timezone || 'MCP服务器时区';
+    const dateDisplay = date === new Date().toISOString().split('T')[0] ? `${date} (今天)` : date;
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `${dateDisplay} 更新的 ${result.tasks.length} 个任务 (总共 ${result.total} 个，使用时区: ${usedTimezone}):
           
 时间范围: ${result.date_range.start} 至 ${result.date_range.end}
 

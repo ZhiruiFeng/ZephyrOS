@@ -23,7 +23,7 @@ export class TaskModule {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch (error) {
-      console.warn('Failed to detect server timezone, defaulting to UTC:', error);
+      // Silently fallback to UTC to avoid JSON parsing issues in MCP
       return 'UTC';
     }
   }
@@ -58,8 +58,6 @@ export class TaskModule {
         : '';
     
     const createUrl = `/api/tasks${urlSuffix}`;
-    console.log('Creating task with timezone:', params.timezone || this.getServerTimezone());
-
     const response = await this.client.post(createUrl, taskData);
     return response.data;
   }
@@ -88,7 +86,6 @@ export class TaskModule {
     if (hasDateParams) {
       const timezone = params.timezone || this.getServerTimezone();
       searchParams.set('timezone', timezone);
-      console.log('Searching tasks with timezone:', timezone);
     }
     
     searchParams.set('limit', params.limit.toString());
@@ -146,10 +143,6 @@ export class TaskModule {
         : '';
     
     const updateUrl = `/api/tasks/${params.id}${urlSuffix}`;
-    if (params.due_date) {
-      console.log('Updating task with timezone:', params.timezone || this.getServerTimezone());
-    }
-
     const response = await this.client.put(updateUrl, updateData);
     return response.data;
   }
@@ -163,7 +156,7 @@ export class TaskModule {
     return response.data;
   }
 
-  async getUpdatedTodayTasks(timezone?: string): Promise<{ tasks: TaskMemory[], total: number, date_range: { start: string, end: string } }> {
+  async getTaskUpdatesForToday(timezone?: string): Promise<{ tasks: TaskMemory[], total: number, date_range: { start: string, end: string } }> {
     if (!this.isAuthenticated()) {
       throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
     }
@@ -173,7 +166,26 @@ export class TaskModule {
     const searchParams = new URLSearchParams();
     searchParams.set('timezone', tz);
 
-    console.log('Getting updated today tasks with timezone:', tz);
+    const response = await this.client.get(`/api/tasks/updated-today?${searchParams.toString()}`);
+    return response.data;
+  }
+
+  async getTaskUpdatesForDate(date: string, timezone?: string): Promise<{ tasks: TaskMemory[], total: number, date_range: { start: string, end: string } }> {
+    if (!this.isAuthenticated()) {
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+    }
+
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error('日期格式无效，请使用 YYYY-MM-DD 格式（如 "2023-08-27"）');
+    }
+
+    // Use provided timezone or detect server timezone
+    const tz = timezone || this.getServerTimezone();
+    const searchParams = new URLSearchParams();
+    searchParams.set('start_date', date);
+    searchParams.set('end_date', date);
+    searchParams.set('timezone', tz);
 
     const response = await this.client.get(`/api/tasks/updated-today?${searchParams.toString()}`);
     return response.data;

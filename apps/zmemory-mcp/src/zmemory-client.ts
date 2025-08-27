@@ -149,8 +149,12 @@ export class ZMemoryClient {
     return this.taskModule.getTaskStats();
   }
 
-  async getUpdatedTodayTasks(timezone?: string): Promise<any> {
-    return this.taskModule.getUpdatedTodayTasks(timezone);
+  async getTaskUpdatesForToday(timezone?: string): Promise<any> {
+    return this.taskModule.getTaskUpdatesForToday(timezone);
+  }
+
+  async getTaskUpdatesForDate(date: string, timezone?: string): Promise<any> {
+    return this.taskModule.getTaskUpdatesForDate(date, timezone);
   }
 
   // Time tracking methods - delegated to TimeModule
