@@ -12,7 +12,37 @@ import {
   Calendar,
   Target
 } from 'lucide-react'
-import { TaskStats } from '../../../zmemory/lib/task-types'
+// Local TaskStats interface to avoid zod dependency
+interface TaskStats {
+  total: number
+  by_status: {
+    pending: number
+    in_progress: number
+    completed: number
+    cancelled: number
+    on_hold: number
+  }
+  by_priority: {
+    low: number
+    medium: number
+    high: number
+    urgent: number
+  }
+  by_category: {
+    work: number
+    personal: number
+    project: number
+    meeting: number
+    learning: number
+    maintenance: number
+    other: number
+  }
+  overdue: number
+  due_today: number
+  due_this_week: number
+  completion_rate: number
+  average_completion_time: number
+}
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { statsApi } from '../../lib/api'
