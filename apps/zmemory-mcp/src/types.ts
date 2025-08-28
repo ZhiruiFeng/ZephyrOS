@@ -239,13 +239,15 @@ export interface TaskStats {
 export interface TimeEntry {
   id: string;
   task_id: string;
-  user_id: string;
-  start_time: string;
-  end_time?: string;
-  duration?: number; // minutes
-  description?: string;
-  created_at: string;
-  updated_at: string;
+  start_at: string;
+  end_at?: string | null;
+  duration_minutes?: number | null;
+  note?: string | null;
+  source: 'timer' | 'manual' | 'import';
+  // Joined fields for display
+  task_title?: string;
+  category_name?: string;
+  category_color?: string;
 }
 
 // 日期时间汇总类型

@@ -33,10 +33,12 @@ export class TimeModule {
       throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
     }
 
-    // Build URL with timezone parameter
-    const searchParams = new URLSearchParams({ date: params.date });
+    // Convert date and timezone to from/to parameters
     const timezone = params.timezone || this.getServerTimezone();
-    searchParams.set('timezone', timezone);
+    const { from, to } = this.getDayBoundaries(params.date, timezone);
+
+    // Build URL with from/to parameters (not date/timezone)
+    const searchParams = new URLSearchParams({ from, to });
     const response = await this.client.get(`/api/time-entries/day?${searchParams.toString()}`);
     return this.processDayTimeEntries(response.data, params.date);
   }
@@ -87,7 +89,7 @@ export class TimeModule {
 
     try {
       const response = await this.client.get('/api/time-entries/running');
-      return response.data;
+      return response.data.entry || null; // 返回 entry 字段，而不是整个 response.data
     } catch (error: any) {
       if (error.response?.status === 404) {
         return null; // No running timer
@@ -101,7 +103,7 @@ export class TimeModule {
     let totalTime = 0;
 
     entries.forEach(entry => {
-      const duration = entry.duration || 0;
+      const duration = entry.duration_minutes || 0;
       totalTime += duration;
 
       if (!taskBreakdown.has(entry.task_id)) {
@@ -124,6 +126,110 @@ export class TimeModule {
       entries,
       task_breakdown: Array.from(taskBreakdown.values()),
     };
+  }
+
+  /**
+   * Get day boundaries (from/to) for a given date and timezone
+   * Similar to ZFlow's DailyTimeModal implementation
+   */
+  private getDayBoundaries(dateString: string, timezone: string): { from: string; to: string } {
+    try {
+      // If timezone is the same as server timezone, use simple local date creation
+      if (timezone === this.getServerTimezone()) {
+        const startOfDay = new Date(`${dateString}T00:00:00`);
+        const endOfDay = new Date(`${dateString}T23:59:59.999`);
+        
+        return {
+          from: startOfDay.toISOString(),
+          to: endOfDay.toISOString()
+        };
+      }
+      
+      // For different timezones, create dates that represent the boundaries in that timezone
+      // This is a simplified approach - for full timezone support, consider using date-fns-tz
+      const startOfDay = this.createDateInTimezone(dateString, timezone);
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
+      
+      return {
+        from: startOfDay.toISOString(),
+        to: endOfDay.toISOString()
+      };
+    } catch (error) {
+      console.error('Error creating day boundaries:', error);
+      
+      // Fallback to local timezone
+      const startOfDay = new Date(`${dateString}T00:00:00`);
+      const endOfDay = new Date(`${dateString}T23:59:59.999`);
+      
+      return {
+        from: startOfDay.toISOString(),
+        to: endOfDay.toISOString()
+      };
+    }
+  }
+
+  /**
+   * Create a date in a specific timezone at start of day (00:00:00)
+   * Simplified version of ZFlow's createDateInTimezone function
+   */
+  private createDateInTimezone(dateString: string, timezone: string): Date {
+    try {
+      // Create a temporary date to get the right date components
+      const tempDate = new Date(`${dateString}T12:00:00`); // Use noon to avoid DST issues
+      
+      // Get the date components
+      const year = tempDate.getFullYear();
+      const month = tempDate.getMonth();
+      const day = tempDate.getDate();
+      
+      // Create date at start of day in local timezone first
+      const localStartOfDay = new Date(year, month, day, 0, 0, 0, 0);
+      
+      if (timezone === this.getServerTimezone()) {
+        // If the target timezone is the same as local, return as-is
+        return localStartOfDay;
+      }
+      
+      // For different timezones, we need to calculate the offset
+      // This is a simplified approach - for full timezone support, consider using date-fns-tz
+      try {
+        // Create a date string that will be interpreted in the target timezone
+        const isoString = `${dateString}T00:00:00`;
+        
+        // Get the time zone offset for the target timezone at this date
+        const targetDate = new Date(isoString);
+        const localOffset = targetDate.getTimezoneOffset();
+        
+        // Create formatter for the target timezone
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+        
+        // Format a known date in the target timezone to understand the offset
+        const testDate = new Date('2025-01-01T12:00:00Z');
+        const formattedInTarget = formatter.format(testDate);
+        const parsedTarget = new Date(formattedInTarget.replace(/(\d{4})-(\d{2})-(\d{2}), (\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3T$4:$5:$6'));
+        
+        const targetOffset = (testDate.getTime() - parsedTarget.getTime()) / (1000 * 60);
+        const offsetDiff = targetOffset - localOffset;
+        
+        // Adjust the local date by the offset difference
+        return new Date(localStartOfDay.getTime() + offsetDiff * 60 * 1000);
+      } catch (error) {
+        console.warn('Timezone conversion failed, falling back to local timezone:', error);
+        return localStartOfDay;
+      }
+    } catch (error) {
+      console.warn('Date creation failed, falling back to simple parsing:', error);
+      return new Date(`${dateString}T00:00:00`);
+    }
   }
 
   private isAuthenticated(): boolean {

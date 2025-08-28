@@ -455,7 +455,14 @@ export class ZMemoryMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
-            date: { type: 'string', description: '日期 (YYYY-MM-DD格式)' },
+            date: { 
+              type: 'string', 
+              description: '要查询的日期，格式为 YYYY-MM-DD（如 "2023-08-27"）。可以是过去、今天或未来的日期。'
+            },
+            timezone: { 
+              type: 'string', 
+              description: '时区标识符（如 "America/New_York", "Asia/Shanghai", "Europe/London"）。如果不提供，将使用MCP服务器时区。时区决定了指定日期的具体时间范围（该时区的00:00:00到23:59:59）。' 
+            },
             user_id: { type: 'string', description: '用户ID (可选，默认为当前用户)' },
           },
           required: ['date'],
@@ -1190,7 +1197,7 @@ ${entry.description ? `描述: ${entry.description}` : ''}`,
       };
     }
 
-    const startTime = new Date(timer.start_time);
+    const startTime = new Date(timer.start_at);
     const now = new Date();
     const runningMinutes = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
     const hours = Math.floor(runningMinutes / 60);
@@ -1205,7 +1212,7 @@ ${entry.description ? `描述: ${entry.description}` : ''}`,
 任务ID: ${timer.task_id}
 开始时间: ${startTime.toLocaleString()}
 已运行时间: ${timeStr}
-${timer.description ? `描述: ${timer.description}` : ''}`,
+${timer.note ? `描述: ${timer.note}` : ''}`,
         },
       ],
     };
