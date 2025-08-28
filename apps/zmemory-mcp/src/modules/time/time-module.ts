@@ -40,7 +40,7 @@ export class TimeModule {
     // Build URL with from/to parameters (not date/timezone)
     const searchParams = new URLSearchParams({ from, to });
     const response = await this.client.get(`/api/time-entries/day?${searchParams.toString()}`);
-    return this.processDayTimeEntries(response.data, params.date);
+    return this.processDayTimeEntries(response.data.entries || [], params.date);
   }
 
   async getTaskTimeEntries(params: GetTaskTimeEntriesParams): Promise<TimeEntry[]> {
@@ -130,23 +130,12 @@ export class TimeModule {
 
   /**
    * Get day boundaries (from/to) for a given date and timezone
-   * Similar to ZFlow's DailyTimeModal implementation
+   * Converts the specified date in the given timezone to UTC boundaries
+   * Similar to ZFlow's getDayBoundariesInTimezone implementation
    */
   private getDayBoundaries(dateString: string, timezone: string): { from: string; to: string } {
     try {
-      // If timezone is the same as server timezone, use simple local date creation
-      if (timezone === this.getServerTimezone()) {
-        const startOfDay = new Date(`${dateString}T00:00:00`);
-        const endOfDay = new Date(`${dateString}T23:59:59.999`);
-        
-        return {
-          from: startOfDay.toISOString(),
-          to: endOfDay.toISOString()
-        };
-      }
-      
-      // For different timezones, create dates that represent the boundaries in that timezone
-      // This is a simplified approach - for full timezone support, consider using date-fns-tz
+      // Always use createDateInTimezone for consistent timezone handling
       const startOfDay = this.createDateInTimezone(dateString, timezone);
       const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
       
@@ -170,7 +159,8 @@ export class TimeModule {
 
   /**
    * Create a date in a specific timezone at start of day (00:00:00)
-   * Simplified version of ZFlow's createDateInTimezone function
+   * This function creates a Date object that represents the start of day in the specified timezone
+   * The returned Date object will have the correct UTC time that corresponds to 00:00:00 in the target timezone
    */
   private createDateInTimezone(dateString: string, timezone: string): Date {
     try {
@@ -191,15 +181,7 @@ export class TimeModule {
       }
       
       // For different timezones, we need to calculate the offset
-      // This is a simplified approach - for full timezone support, consider using date-fns-tz
       try {
-        // Create a date string that will be interpreted in the target timezone
-        const isoString = `${dateString}T00:00:00`;
-        
-        // Get the time zone offset for the target timezone at this date
-        const targetDate = new Date(isoString);
-        const localOffset = targetDate.getTimezoneOffset();
-        
         // Create formatter for the target timezone
         const formatter = new Intl.DateTimeFormat('en-CA', {
           timeZone: timezone,
@@ -212,16 +194,15 @@ export class TimeModule {
           hour12: false
         });
         
-        // Format a known date in the target timezone to understand the offset
-        const testDate = new Date('2025-01-01T12:00:00Z');
-        const formattedInTarget = formatter.format(testDate);
-        const parsedTarget = new Date(formattedInTarget.replace(/(\d{4})-(\d{2})-(\d{2}), (\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3T$4:$5:$6'));
+        // Format the target date in the target timezone
+        const targetDate = new Date(`${dateString}T00:00:00`);
+        const formattedInTarget = formatter.format(targetDate);
         
-        const targetOffset = (testDate.getTime() - parsedTarget.getTime()) / (1000 * 60);
-        const offsetDiff = targetOffset - localOffset;
+        // Parse the formatted string back to a Date object
+        // This gives us the UTC time that corresponds to 00:00:00 in the target timezone
+        const utcStartOfDay = new Date(formattedInTarget.replace(/(\d{4})-(\d{2})-(\d{2}), (\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3T$4:$5:$6'));
         
-        // Adjust the local date by the offset difference
-        return new Date(localStartOfDay.getTime() + offsetDiff * 60 * 1000);
+        return utcStartOfDay;
       } catch (error) {
         console.warn('Timezone conversion failed, falling back to local timezone:', error);
         return localStartOfDay;
