@@ -204,6 +204,8 @@ CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
 -- Energy day indexes
 CREATE INDEX IF NOT EXISTS idx_energy_day_user_updated 
   ON energy_day(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_energy_day_user_date 
+  ON energy_day(user_id, local_date);
 
 -- =====================================================
 -- 4. FUNCTIONS
@@ -215,6 +217,61 @@ RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Energy day atomic update function
+CREATE OR REPLACE FUNCTION update_energy_segment(
+  p_user_id UUID,
+  p_local_date DATE,
+  p_index INTEGER,
+  p_value NUMERIC
+) RETURNS TABLE(
+  user_id UUID,
+  local_date DATE,
+  tz TEXT,
+  curve NUMERIC[],
+  edited_mask BOOLEAN[],
+  last_checked_index INTEGER,
+  last_checked_at TIMESTAMPTZ,
+  source TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  -- Validate index range (PostgreSQL uses 1-based arrays)
+  IF p_index < 1 OR p_index > 72 THEN
+    RAISE EXCEPTION 'index out of range (1..72)';
+  END IF;
+  
+  -- Update the curve array and edited_mask atomically
+  UPDATE energy_day 
+  SET 
+    curve[p_index] = p_value,
+    edited_mask[p_index] = true,
+    source = 'user_edited',
+    updated_at = NOW()
+  WHERE energy_day.user_id = p_user_id 
+    AND energy_day.local_date = p_local_date;
+    
+  -- Return the updated row
+  RETURN QUERY
+  SELECT 
+    ed.user_id,
+    ed.local_date,
+    ed.tz,
+    ed.curve,
+    ed.edited_mask,
+    ed.last_checked_index,
+    ed.last_checked_at,
+    ed.source,
+    ed.metadata,
+    ed.created_at,
+    ed.updated_at
+  FROM energy_day ed
+  WHERE ed.user_id = p_user_id 
+    AND ed.local_date = p_local_date;
 END;
 $$ LANGUAGE plpgsql;
 

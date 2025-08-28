@@ -103,36 +103,25 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json();
     const { date } = await params
 
-    // Segment update op: use Postgres 1-based index
+    // Segment update op: use Postgres array update with single query
     if (body?.op === 'set_segment') {
       const idx = Number(body.index);
       const val = Number(body.value);
       if (!Number.isInteger(idx) || idx < 0 || idx > 71) {
         return jsonWithCors(request, { error: 'index out of range (0..71)' }, 400);
       }
-      const { data, error } = await client
-        .from('energy_day')
-        .update({})
-        .eq('user_id', userId)
-        .eq('local_date', date)
-        .select('*')
-        .single();
-
-      if (error) return jsonWithCors(request, { error: 'Failed to load energy day' }, 500);
-      const curve = data?.curve || [];
-      curve[idx] = val; // client-side 0-based for safety; Supabase will serialize back
-      const edited_mask = data?.edited_mask || new Array(72).fill(false);
-      edited_mask[idx] = true;
-
-      const { data: updated, error: uerr } = await client
-        .from('energy_day')
-        .update({ curve, edited_mask, source: 'user_edited' })
-        .eq('user_id', userId)
-        .eq('local_date', date)
-        .select('*')
-        .single();
-      if (uerr) return jsonWithCors(request, { error: 'Failed to update segment' }, 500);
-      return jsonWithCors(request, updated);
+      
+      // Use PostgreSQL array update syntax for atomic operation
+      // Note: PostgreSQL arrays are 1-based, so we add 1 to the index
+      const { data, error } = await client.rpc('update_energy_segment', {
+        p_user_id: userId,
+        p_local_date: date,
+        p_index: idx + 1, // Convert to 1-based index for PostgreSQL
+        p_value: val
+      });
+      
+      if (error) return jsonWithCors(request, { error: 'Failed to update segment' }, 500);
+      return jsonWithCors(request, data);
     }
 
     if (body?.op === 'set_mask') {
