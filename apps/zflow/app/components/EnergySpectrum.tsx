@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { energyDaysApi, type EnergyDay } from '../../lib/api'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 type Props = {
   date: string
@@ -25,13 +26,13 @@ function defaultMask() {
   return new Array(SEGMENTS).fill(false)
 }
 
-// Map energy 1..10 to heatmap-like HSL color (cool→warm)
+// Light green → yellow → orange → red mapping based on energy value
 function energyToColor(e: number) {
-  // Match prototype palette: hue 200→10, sat 75%, light 35%→60%
-  const t = (clamp(e, 1, 10) - 1) / 9
-  const hue = Math.round(200 - 190 * t)
-  const sat = 75
-  const light = Math.round(35 + 25 * t)
+  const t = (clamp(e, 1, 10) - 1) / 9 // 0..1
+  // Hue 120 (green) → 0 (red)
+  const hue = Math.round(120 - 120 * t)
+  const sat = 60
+  const light = 70
   return `hsl(${hue} ${sat}% ${light}%)`
 }
 
@@ -43,6 +44,7 @@ function segmentToTimeLabel(index: number) {
 }
 
 export default function EnergySpectrum({ date, now, onSaved }: Props) {
+  const { t } = useTranslation()
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -107,7 +109,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
           setLastSaved(created.updated_at ?? null)
         }
       } catch (e: any) {
-        setError(e?.message || 'Failed to load')
+        setError(e?.message || t.common.error)
       } finally {
         if (mounted) setLoading(false)
       }
@@ -138,7 +140,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const dragging = React.useRef<number | null>(null)
   const [dims, setDims] = React.useState({ w: 900, h: 360 })
-  const pad = { left: 48, right: 24, top: 24, bottom: 42 }
+  const pad = { left: 48, right: 24, top: 36, bottom: 42 }
   const plotW = dims.w - pad.left - pad.right
   const plotH = dims.h - pad.top - pad.bottom
 
@@ -163,7 +165,30 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   }
 
   const hourMarks = React.useMemo(() => Array.from({ length: 25 }, (_, h) => h), [])
-  const polyPoints = React.useMemo(() => curve.map((e, i) => `${xForIdx(i)},${yForEnergy(Number(e) || 5)}`).join(' '), [curve, dims])
+  const points = React.useMemo(() => curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [curve, dims])
+
+  // Smooth path (Catmull-Rom to cubic Bezier)
+  function buildSmoothPath(ps: { x: number; y: number }[], tension = 0.2) {
+    if (ps.length === 0) return ''
+    if (ps.length < 3) {
+      return `M ${ps[0].x} ${ps[0].y} ` + ps.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
+    }
+    const d: string[] = []
+    d.push(`M ${ps[0].x} ${ps[0].y}`)
+    for (let i = 0; i < ps.length - 1; i++) {
+      const p0 = ps[i - 1] || ps[i]
+      const p1 = ps[i]
+      const p2 = ps[i + 1]
+      const p3 = ps[i + 2] || p2
+      const cp1x = p1.x + (p2.x - p0.x) * tension / 6
+      const cp1y = p1.y + (p2.y - p0.y) * tension / 6
+      const cp2x = p2.x - (p3.x - p1.x) * tension / 6
+      const cp2y = p2.y - (p3.y - p1.y) * tension / 6
+      d.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`)
+    }
+    return d.join(' ')
+  }
+  const smoothPath = React.useMemo(() => buildSmoothPath(points, 0.8), [points])
 
   function handlePointerDown(e: React.PointerEvent<SVGRectElement>) {
     const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
@@ -204,25 +229,25 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
       setLastSaved(updated.updated_at ?? new Date().toISOString())
       onSaved?.(updated)
     } catch (e: any) {
-      setError(e?.message || 'Failed to save')
+      setError(e?.message || t.ui.loadFailed || t.common.error)
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-gray-600">{date} 能量图谱</div>
-        <div className="text-xs text-gray-500">{lastSaved ? `Last saved: ${new Date(lastSaved).toLocaleString()}` : ''}</div>
+        <div className="text-sm text-gray-700 font-medium tracking-tight">{date} {t.ui.energySpectrumTitle}</div>
+        <div className="text-xs text-gray-500">{lastSaved ? `${t.ui.lastSaved}: ${new Date(lastSaved).toLocaleString()}` : ''}</div>
       </div>
       {loading ? (
-        <div className="h-40 flex items-center justify-center text-gray-500">Loading...</div>
+        <div className="h-40 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
       ) : error ? (
         <div className="h-40 flex items-center justify-center text-red-600">{error}</div>
       ) : (
         <div>
-          <div ref={containerRef} className="rounded border border-gray-200 bg-white p-2">
+          <div ref={containerRef} className="rounded-lg border border-gray-100 bg-white p-3">
           <svg width={dims.w} height={dims.h} className="block select-none">
             {/* Hour grid lines */}
             {hourMarks.map((h, i) => {
@@ -230,9 +255,9 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               const isMajor = h % 3 === 0
               return (
                 <g key={i}>
-                  <line x1={x} x2={x} y1={pad.top} y2={pad.top + plotH} stroke={isMajor ? '#e5e7eb' : '#f1f5f9'} strokeWidth={isMajor ? 1.2 : 1} />
+                  <line x1={x} x2={x} y1={pad.top} y2={pad.top + plotH} stroke={isMajor ? '#e6eaf0' : '#f3f6fa'} strokeWidth={isMajor ? 1.25 : 1} />
                   {isMajor && (
-                    <text x={x} y={dims.h - 14} textAnchor="middle" fontSize={11} fill="#374151">
+                    <text x={x} y={dims.h - 14} textAnchor="middle" fontSize={11} fill="#475569">
                       {String(h).padStart(2, '0')}:00
                     </text>
                   )}
@@ -246,8 +271,8 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               const y = yForEnergy(e)
               return (
                 <g key={k}>
-                  <line x1={pad.left} x2={pad.left + plotW} y1={y} y2={y} stroke="#f1f5f9" />
-                  <text x={pad.left - 10} y={y + 4} textAnchor="end" fontSize={11} fill="#374151" className="tabular-nums">{e}</text>
+                  <line x1={pad.left} x2={pad.left + plotW} y1={y} y2={y} stroke="#eef2f7" />
+                  <text x={pad.left - 10} y={y + 4} textAnchor="end" fontSize={11} fill="#475569" className="tabular-nums">{e}</text>
                 </g>
               )
             })}
@@ -261,12 +286,12 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               const h = pad.top + plotH - y
               const editable = canEdit(i)
               const fill = editable ? energyToColor(eNum) : '#cbd5e1'
-              const opacity = editable ? 0.85 : 0.45
-              return <rect key={i} x={x - w / 2} y={y} width={w} height={h} fill={fill} opacity={opacity} rx={2} />
+              const opacity = editable ? 0.9 : 0.4
+              return <rect key={i} x={x - w / 2} y={y} width={w} height={h} fill={fill} opacity={opacity} rx={3} />
             })}
 
-            {/* Line */}
-            <polyline points={polyPoints} fill="none" stroke="#1f2937" strokeWidth={2} />
+            {/* Smoothed line */}
+            <path d={smoothPath} fill="none" stroke="#111827" strokeWidth={2} />
 
             {/* Legend gradient */}
             <defs>
@@ -277,9 +302,9 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               </linearGradient>
             </defs>
             <g>
-              <rect x={pad.left} y={pad.top - 14} width={140} height={6} rx={3} fill="url(#energyLegend)" />
-              <text x={pad.left + 70} y={pad.top - 18} textAnchor="middle" fontSize={10} fill="#6b7280">低能量 
-                <tspan dx="64">高能量</tspan>
+              <rect x={pad.left} y={25} width={160} height={6} rx={3} fill="url(#energyLegend)" />
+              <text x={pad.left + 80} y={20} textAnchor="middle" fontSize={10} fill="#64748b">{t.ui.lowEnergy} 
+                <tspan dx="84">{t.ui.highEnergy}</tspan>
               </text>
             </g>
 
@@ -297,14 +322,14 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
             />
 
             {/* Axis titles */}
-            <text x={pad.left + plotW / 2} y={16} textAnchor="middle" fontSize={12} fill="#4b5563">Energy (1–10)</text>
-            <text x={pad.left + plotW / 2} y={dims.h - 6} textAnchor="middle" fontSize={12} fill="#4b5563">Time of day</text>
+            <text x={pad.left + plotW / 2} y={28} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.energyAxis}</text>
+            <text x={pad.left + plotW / 2} y={dims.h} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.timeAxis}</text>
           </svg>
           </div>
           <div className="mt-4 flex items-center justify-between">
-            <div className="text-xs text-gray-600">可编辑范围：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : '全天'}</div>
-            <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50">
-              {saving ? '保存中...' : '保存修改'}
+            <div className="text-xs text-gray-600">{t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}</div>
+            <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
+              {saving ? t.ui.saving : t.common.save}
             </button>
           </div>
         </div>

@@ -186,7 +186,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 // DELETE /api/energy-days/[date]
-export async function DELETE(request: NextRequest, { params }: { params: { date: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ date: string }> }) {
   try {
     const clientIP = getClientIP(request);
     if (isRateLimited(clientIP, 60 * 1000, 30)) {
@@ -197,11 +197,13 @@ export async function DELETE(request: NextRequest, { params }: { params: { date:
     const client = getSupabaseClient(request);
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
 
+    const { date } = await params
+
     const { error } = await client
       .from('energy_day')
       .delete()
       .eq('user_id', userId)
-      .eq('local_date', params.date);
+      .eq('local_date', date);
     if (error) return jsonWithCors(request, { error: 'Failed to delete energy day' }, 500);
     return jsonWithCors(request, { success: true });
   } catch (err) {

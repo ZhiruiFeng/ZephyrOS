@@ -186,6 +186,25 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Energy Spectrum */}
+      <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-purple-600" />
+          Energy Spectrum
+        </h2>
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <EnergySpectrum date={selectedDate} onSaved={() => { /* no-op */ }} />
+      </div>
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
@@ -315,25 +334,6 @@ export default function ProfilePage() {
             <div className="text-sm text-gray-600">Due This Week</div>
           </div>
         </div>
-      </div>
-
-      {/* Energy Spectrum */}
-      <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-purple-600" />
-          Energy Spectrum
-        </h2>
-        <div className="mb-3">
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              className="border rounded px-2 py-1 text-sm"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </div>
-        </div>
-        <EnergySpectrum date={selectedDate} onSaved={() => { /* no-op */ }} />
       </div>
     </div>
   )

@@ -185,6 +185,15 @@ export interface TranslationKeys {
     newTask: string;
     newTaskShortcut: string;
     testDescription: string;
+    // Energy Spectrum
+    energySpectrumTitle: string;
+    lastSaved: string;
+    lowEnergy: string;
+    highEnergy: string;
+    energyAxis: string;
+    timeAxis: string;
+    editableRange: string;
+    allDay: string;
     // Archive page
     archiveOlderThan24h: string;
     backToHome: string;
@@ -554,6 +563,15 @@ const translations: Record<Language, TranslationKeys> = {
       mobileKanbanFeature: 'Mobile Kanban',
       mobileKanbanDesc: 'Single column layout suitable for vertical scrolling',
       testDescription: 'All pages have been optimized for mobile devices, providing better user experience',
+      // Energy Spectrum
+      energySpectrumTitle: 'Energy Spectrum',
+      lastSaved: 'Last saved',
+      lowEnergy: 'Low',
+      highEnergy: 'High',
+      energyAxis: 'Energy (1–10)',
+      timeAxis: 'Time of day',
+      editableRange: 'Editable range',
+      allDay: 'All day',
     },
     messages: {
       taskCreated: 'Task created successfully',
@@ -830,6 +848,15 @@ const translations: Record<Language, TranslationKeys> = {
       mobileKanbanFeature: '移动端看板',
       mobileKanbanDesc: '单列布局，适合垂直滚动',
       testDescription: '所有页面都已针对移动设备进行了优化，提供更好的用户体验',
+      // Energy Spectrum
+      energySpectrumTitle: '能量图谱',
+      lastSaved: '上次保存',
+      lowEnergy: '低',
+      highEnergy: '高',
+      energyAxis: '能量（1–10）',
+      timeAxis: '一天中的时间',
+      editableRange: '可编辑范围',
+      allDay: '全天',
       // Subtasks
       subtasks: '子任务',
       addSubtask: '添加子任务',

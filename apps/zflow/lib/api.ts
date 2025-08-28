@@ -205,7 +205,12 @@ export const tasksApi = {
       ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
-    if (!response.ok) throw new Error('Failed to fetch tasks')
+    if (!response.ok) {
+      // Graceful fallback to avoid breaking UI in development or when backend not ready
+      const errorText = await response.text().catch(() => '')
+      console.warn('Tasks fetch failed:', response.status, response.statusText, errorText)
+      return [] as TaskMemory[]
+    }
     const data = await response.json()
     return data as TaskMemory[]
   },
@@ -641,7 +646,24 @@ export const statsApi = {
       ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
       headers: authHeaders,
     })
-    if (!response.ok) throw new Error('Failed to fetch task statistics')
+    if (!response.ok) {
+      // Graceful fallback to empty stats to avoid crashing UI
+      try {
+        const payload = await response.json().catch(() => null)
+        console.warn('Task stats request failed:', response.status, payload)
+      } catch {}
+      return {
+        total: 0,
+        by_status: { pending: 0, in_progress: 0, completed: 0, cancelled: 0, on_hold: 0 },
+        by_priority: { low: 0, medium: 0, high: 0, urgent: 0 },
+        by_category: { work: 0, personal: 0, project: 0, meeting: 0, learning: 0, maintenance: 0, other: 0 },
+        overdue: 0,
+        due_today: 0,
+        due_this_week: 0,
+        completion_rate: 0,
+        average_completion_time: 0,
+      }
+    }
     return response.json()
   }
 }
