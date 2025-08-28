@@ -328,16 +328,17 @@ export class ZMemoryMCPServer {
       // Task management tools
       {
         name: 'create_task',
-        description: '创建新任务，支持设置标题、描述、状态、优先级、分类、截止日期等',
+        description: '创建新任务。只需要提供任务标题即可创建，建议提供描述以获得更好的任务管理体验。默认状态为pending（与数据库默认值一致）。对于分类，可以传入分类名称（如"工作"、"个人"、"学习"等），系统会自动查找对应的category_id。支持设置优先级、截止日期、预计耗时等详细信息。',
         inputSchema: {
           type: 'object',
           properties: {
-            title: { type: 'string', description: '任务标题' },
-            description: { type: 'string', description: '任务描述' },
-            status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'], description: '任务状态', default: 'pending' },
-            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: '任务优先级', default: 'medium' },
-            category: { type: 'string', description: '任务分类' },
+            title: { type: 'string', description: '任务标题（必需）' },
+            description: { type: 'string', description: '任务描述（可选，但建议提供以获得更好的任务管理体验）' },
+            status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'], description: '任务状态，默认为pending（与数据库默认值一致）' },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: '任务优先级，默认为medium（与数据库默认值一致）' },
+            category: { type: 'string', description: '任务分类名称（如"工作"、"个人"、"学习"等，系统会自动查找对应的category_id）' },
             due_date: { type: 'string', description: '截止日期 (YYYY-MM-DD 或 ISO 8601格式)' },
+            timezone: { type: 'string', description: '时区标识符，用于解释due_date。如 "America/New_York" 或 "Asia/Shanghai"' },
             estimated_duration: { type: 'number', description: '预计耗时(分钟)' },
             assignee: { type: 'string', description: '任务负责人' },
             tags: { type: 'array', items: { type: 'string' }, description: '任务标签' },
@@ -509,7 +510,7 @@ export class ZMemoryMCPServer {
       // Category management tools
       {
         name: 'get_categories',
-        description: '获取所有任务分类',
+        description: '获取所有可用的任务分类列表。在创建任务时，可以使用这些分类名称来设置任务的分类。系统会自动将分类名称映射到对应的category_id。',
         inputSchema: {
           type: 'object',
           properties: {},

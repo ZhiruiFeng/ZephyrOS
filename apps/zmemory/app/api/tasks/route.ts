@@ -502,8 +502,8 @@ export async function POST(request: NextRequest) {
     const insertPayload: any = {
       title: taskData.content.title,
       description: taskData.content.description || null,
-      status: taskData.content.status,
-      priority: taskData.content.priority,
+      status: taskData.content.status || 'pending', // 使用数据库默认值
+      priority: taskData.content.priority || 'medium', // 使用数据库默认值
       category_id: categoryId,
       due_date: taskData.content.due_date || null,
       estimated_duration: taskData.content.estimated_duration || null,

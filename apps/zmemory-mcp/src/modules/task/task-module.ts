@@ -7,6 +7,7 @@ import {
   TaskStats,
   OAuthError,
   AuthState,
+  Category,
 } from '../../types.js';
 
 export class TaskModule {
@@ -33,6 +34,29 @@ export class TaskModule {
       throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
     }
 
+    // Handle category name to ID mapping
+    let categoryId: string | undefined;
+    if (params.category) {
+      try {
+        // Get all categories to find the matching one
+        const categoriesResponse = await this.client.get('/api/categories');
+        const categories: Category[] = categoriesResponse.data.categories || categoriesResponse.data;
+        
+        // Find category by name (case-insensitive)
+        const matchedCategory = categories.find(cat => 
+          cat.name.toLowerCase() === params.category!.toLowerCase()
+        );
+        
+        if (matchedCategory) {
+          categoryId = matchedCategory.id;
+        } else {
+          console.warn(`Category "${params.category}" not found. Available categories: ${categories.map(c => c.name).join(', ')}`);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch categories for mapping:', error);
+      }
+    }
+
     // Convert to the API format expected by zmemory
     const taskData = {
       type: 'task',
@@ -41,7 +65,7 @@ export class TaskModule {
         description: params.description,
         status: params.status,
         priority: params.priority,
-        category: params.category,
+        category_id: categoryId, // Use the resolved category ID
         due_date: params.due_date,
         estimated_duration: params.estimated_duration,
         assignee: params.assignee,

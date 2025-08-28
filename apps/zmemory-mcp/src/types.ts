@@ -89,10 +89,10 @@ export const TaskContentSchema = z.object({
 
 export const CreateTaskParamsSchema = z.object({
   title: z.string().describe('任务标题'),
-  description: z.string().optional().describe('任务描述'),
-  status: z.enum(['pending', 'in_progress', 'completed', 'on_hold', 'cancelled']).default('pending').describe('任务状态'),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium').describe('任务优先级'),
-  category: z.string().optional().describe('任务分类'),
+  description: z.string().optional().describe('任务描述（可选，但建议提供）'),
+  status: z.enum(['pending', 'in_progress', 'completed', 'on_hold', 'cancelled']).default('pending').describe('任务状态，默认为pending（与数据库默认值一致）'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium').describe('任务优先级，默认为medium（与数据库默认值一致）'),
+  category: z.string().optional().describe('任务分类名称（如"工作"、"个人"、"学习"等，系统会自动查找对应的category_id）'),
   due_date: z.string().optional().describe('截止日期 (YYYY-MM-DD 或 ISO 8601格式)'),
   timezone: z.string().optional().describe('时区标识符，用于解释due_date。如 "America/New_York" 或 "Asia/Shanghai"'),
   estimated_duration: z.number().optional().describe('预计耗时(分钟)'),

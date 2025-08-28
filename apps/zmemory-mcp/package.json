@@ -14,6 +14,7 @@
     "test": "jest",
     "test:oauth": "node scripts/test-oauth.js",
     "test:mcp": "node scripts/test-mcp.js",
+    "test:create-task": "node test-create-task.js",
     "generate:oauth": "node scripts/generate-oauth-config.js",
     "generate:prod": "node scripts/generate-prod-oauth-config.js",
     "generate:custom": "node scripts/generate-custom-oauth-config.js",
