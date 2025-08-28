@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Mic, LayoutDashboard, Target, Bot, Zap } from 'lucide-react'
+import { Mic, LayoutDashboard, Target, Bot, Zap, User } from 'lucide-react'
 import AuthButton from './AuthButton'
 import LanguageSelector from './LanguageSelector'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -61,6 +61,9 @@ export default function NavBar() {
 
           <div className="flex items-center gap-3">
             <LanguageSelector compact className="hidden sm:block" />
+            <NavLink href="/profile">
+              <User className="w-4 h-4" />
+            </NavLink>
             <AuthButton />
           </div>
         </div>

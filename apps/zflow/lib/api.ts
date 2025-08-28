@@ -633,6 +633,19 @@ export const subtasksApi = {
   }
 }
 
+// Task Statistics API
+export const statsApi = {
+  async getTaskStats(): Promise<any> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const response = await fetch(`${API_BASE}/api/tasks/stats`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!response.ok) throw new Error('Failed to fetch task statistics')
+    return response.json()
+  }
+}
+
 // Compatible export: maintain apiClient interface for legacy hooks
 export const apiClient = {
   getTasks: (params?: Parameters<typeof tasksApi.getAll>[0]) => tasksApi.getAll(params),
