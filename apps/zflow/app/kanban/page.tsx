@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
 import { useCategories } from '../../hooks/useCategories'
+import { useTimer } from '../../hooks/useTimer'
 import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
 import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag, Hourglass } from 'lucide-react'
 import TaskEditor from '../components/TaskEditor'
-import { getPriorityIcon } from '../components/TaskIcons'
+import { getPriorityIcon, getTimerIcon } from '../components/TaskIcons'
 import { 
   isOverdue, 
   formatDate,
@@ -36,6 +37,7 @@ export default function KanbanView() {
   const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
   const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
+  const timer = useTimer()
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -530,6 +532,18 @@ export default function KanbanView() {
                               <div className="flex items-center justify-between text-xs text-gray-500">
                                 <div className="flex items-center gap-2">
                                   {getPriorityIcon(c.priority)}
+                                  {getTimerIcon(
+                                    timer.isRunning,
+                                    timer.runningTaskId === task.id,
+                                    (e) => {
+                                      e.stopPropagation()
+                                      if (timer.isRunning && timer.runningTaskId === task.id) {
+                                        timer.stop(task.id)
+                                      } else {
+                                        timer.start(task.id, { autoSwitch: true })
+                                      }
+                                    }
+                                  )}
                                   {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
                                     <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
                                       <Calendar className="w-3.5 h-3.5" />
@@ -705,6 +719,18 @@ export default function KanbanView() {
                         <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                           <div className="flex items-center gap-2">
                             {getPriorityIcon(c.priority)}
+                            {getTimerIcon(
+                              timer.isRunning,
+                              timer.runningTaskId === task.id,
+                              (e) => {
+                                e.stopPropagation()
+                                if (timer.isRunning && timer.runningTaskId === task.id) {
+                                  timer.stop(task.id)
+                                } else {
+                                  timer.start(task.id, { autoSwitch: true })
+                                }
+                              }
+                            )}
                             {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
                               <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
                                 <Calendar className="w-3.5 h-3.5" />

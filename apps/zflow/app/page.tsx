@@ -18,7 +18,7 @@ import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
 import { useTimer } from '../hooks/useTimer'
 import { categoriesApi, TaskMemory, TaskContent } from '../lib/api'
-import { getPriorityIcon } from './components/TaskIcons'
+import { getPriorityIcon, getTimerIcon } from './components/TaskIcons'
 import { isOverdue, formatDate, getTaskDisplayDate, shouldShowOverdue } from './utils/taskUtils'
 
 type ViewKey = 'current' | 'future' | 'archive'
@@ -691,6 +691,18 @@ function ZFlowPageContent() {
                                 )}
                               </button>
                               {getPriorityIcon(c.priority)}
+                              {getTimerIcon(
+                                timer.isRunning,
+                                timer.runningTaskId === task.id,
+                                (e) => {
+                                  e.stopPropagation()
+                                  if (timer.isRunning && timer.runningTaskId === task.id) {
+                                    timer.stop(task.id)
+                                  } else {
+                                    timer.start(task.id, { autoSwitch: true })
+                                  }
+                                }
+                              )}
                             </div>
                             <div className="flex items-center gap-1">
                               {c.status !== 'on_hold' && c.status !== 'completed' && (
@@ -849,6 +861,18 @@ function ZFlowPageContent() {
                                 <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
                               </div>
                               {getPriorityIcon(c.priority)}
+                              {getTimerIcon(
+                                timer.isRunning,
+                                timer.runningTaskId === task.id,
+                                (e) => {
+                                  e.stopPropagation()
+                                  if (timer.isRunning && timer.runningTaskId === task.id) {
+                                    timer.stop(task.id)
+                                  } else {
+                                    timer.start(task.id, { autoSwitch: true })
+                                  }
+                                }
+                              )}
                             </div>
                             <div className="flex items-center gap-1">
                               <button
@@ -1015,6 +1039,18 @@ function ZFlowPageContent() {
                                       )}
                                     </div>
                                     {getPriorityIcon(c.priority)}
+                                    {getTimerIcon(
+                                      timer.isRunning,
+                                      timer.runningTaskId === task.id,
+                                      (e) => {
+                                        e.stopPropagation()
+                                        if (timer.isRunning && timer.runningTaskId === task.id) {
+                                          timer.stop(task.id)
+                                        } else {
+                                          timer.start(task.id, { autoSwitch: true })
+                                        }
+                                      }
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <button
