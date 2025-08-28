@@ -16,6 +16,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 2. CORE TABLES
 -- =====================================================
 
+-- Custom domain types
+-- Domain for energy level scaled 1..10
+DO $$ BEGIN
+  CREATE DOMAIN energy_level AS SMALLINT CHECK (VALUE BETWEEN 1 AND 10);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Categories table for organizing tasks
 CREATE TABLE IF NOT EXISTS categories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -116,6 +124,27 @@ CREATE TABLE IF NOT EXISTS memories (
   user_id UUID DEFAULT auth.uid()
 );
 
+-- Energy day table for per-day energy curve (72 x 20-minute slots)
+CREATE TABLE IF NOT EXISTS energy_day (
+  user_id UUID DEFAULT auth.uid() NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  local_date DATE NOT NULL,
+  tz TEXT NOT NULL DEFAULT 'America/Los_Angeles',
+  curve energy_level[] NOT NULL, -- length = 72, each value 1..10 enforced by domain
+  -- user decision tracking
+  last_checked_index SMALLINT CHECK (last_checked_index BETWEEN 0 AND 71),
+  last_checked_at TIMESTAMPTZ,
+  edited_mask BOOLEAN[] NOT NULL DEFAULT array_fill(false, ARRAY[72]), -- length = 72
+  source TEXT NOT NULL CHECK (source IN ('simulated','user_edited','merged')),
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, local_date),
+
+  -- guards
+  CONSTRAINT curve_len CHECK (array_length(curve, 1) = 72),
+  CONSTRAINT edited_mask_len CHECK (array_length(edited_mask, 1) = 72)
+);
+
 -- Tags table for organizing content
 CREATE TABLE IF NOT EXISTS tags (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -171,6 +200,10 @@ CREATE INDEX IF NOT EXISTS idx_memories_tags ON memories USING GIN(tags);
 
 -- Tags indexes
 CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
+
+-- Energy day indexes
+CREATE INDEX IF NOT EXISTS idx_energy_day_user_updated 
+  ON energy_day(user_id, updated_at DESC);
 
 -- =====================================================
 -- 4. FUNCTIONS
@@ -571,6 +604,11 @@ CREATE TRIGGER update_tte_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_energy_day_updated_at
+  BEFORE UPDATE ON energy_day
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- Time tracking triggers
 CREATE TRIGGER trg_tte_set_category_snapshot
   BEFORE INSERT ON task_time_entries
@@ -614,6 +652,7 @@ ALTER TABLE task_relations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_time_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE energy_day ENABLE ROW LEVEL SECURITY;
 
 -- Categories policies
 CREATE POLICY "Users can view their own categories" ON categories
@@ -695,6 +734,20 @@ CREATE POLICY "Users can update their own tags" ON tags
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own tags" ON tags
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Energy day policies
+CREATE POLICY "Users can view their own energy days" ON energy_day
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own energy days" ON energy_day
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own energy days" ON energy_day
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own energy days" ON energy_day
   FOR DELETE USING (auth.uid() = user_id);
 
 -- =====================================================

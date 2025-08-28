@@ -646,6 +646,83 @@ export const statsApi = {
   }
 }
 
+// Energy Days API
+export type EnergyDay = {
+  user_id: string
+  local_date: string
+  tz: string
+  curve: number[]
+  edited_mask: boolean[]
+  last_checked_index?: number | null
+  last_checked_at?: string | null
+  source: 'simulated' | 'user_edited' | 'merged'
+  metadata?: Record<string, any>
+  created_at?: string
+  updated_at?: string
+}
+
+export const energyDaysApi = {
+  async list(params?: { start?: string; end?: string; limit?: number }): Promise<EnergyDay[]> {
+    const sp = new URLSearchParams()
+    if (params?.start) sp.set('start', params.start)
+    if (params?.end) sp.set('end', params.end)
+    if (params?.limit !== undefined) sp.set('limit', String(params.limit))
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/energy-days?${sp.toString()}`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to list energy days')
+    return res.json()
+  },
+
+  async get(date: string): Promise<EnergyDay | null> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/energy-days/${date}`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to get energy day')
+    return res.json()
+  },
+
+  async upsert(day: Partial<EnergyDay> & { local_date: string; curve: number[]; tz?: string; source?: EnergyDay['source'] }): Promise<EnergyDay> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/energy-days`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify(day),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to upsert energy day')
+    return res.json()
+  },
+
+  async update(date: string, updates: Partial<Pick<EnergyDay, 'curve' | 'edited_mask' | 'last_checked_index' | 'last_checked_at' | 'tz' | 'source' | 'metadata'>>): Promise<EnergyDay> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/energy-days/${date}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify(updates),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to update energy day')
+    return res.json()
+  },
+
+  async setSegment(date: string, index: number, value: number): Promise<EnergyDay> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/energy-days/${date}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify({ op: 'set_segment', index, value }),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to set energy segment')
+    return res.json()
+  }
+}
+
 // Compatible export: maintain apiClient interface for legacy hooks
 export const apiClient = {
   getTasks: (params?: Parameters<typeof tasksApi.getAll>[0]) => tasksApi.getAll(params),

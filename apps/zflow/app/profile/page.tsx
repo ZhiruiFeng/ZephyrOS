@@ -46,6 +46,7 @@ interface TaskStats {
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { statsApi } from '../../lib/api'
+import EnergySpectrum from '../components/EnergySpectrum'
 
 interface StatCardProps {
   title: string
@@ -115,6 +116,7 @@ function PriorityBar({ label, value, total, color }: PriorityBarProps) {
 export default function ProfilePage() {
   const { user } = useAuth()
   const { t } = useTranslation()
+  const [selectedDate, setSelectedDate] = React.useState<string>(new Date().toISOString().slice(0,10))
   
   // Extract display name from user data
   const displayName = React.useMemo(() => {
@@ -314,6 +316,45 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Energy Spectrum */}
+      <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-purple-600" />
+          Energy Spectrum
+        </h2>
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <EnergySpectrum date={selectedDate} onSaved={() => { /* no-op */ }} />
+      </div>
+    </div>
+  )
+}
+
+// Minimal date picker inline for this page
+function DatePicker() {
+  const [value, setValue] = React.useState<string>(new Date().toISOString().slice(0,10))
+  ;(globalThis as any).setProfileSelectedDate = setValue
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="date"
+        className="border rounded px-2 py-1 text-sm"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value)
+          const setter = (globalThis as any).setSelectedDateInternal
+          if (setter) setter(e.target.value)
+        }}
+      />
     </div>
   )
 }
