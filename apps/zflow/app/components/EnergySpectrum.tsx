@@ -2,8 +2,10 @@
 
 import React from 'react'
 import { Maximize2, X } from 'lucide-react'
-import { energyDaysApi, type EnergyDay } from '../../lib/api'
+import { energyDaysApi, type EnergyDay, timeTrackingApi, type TimeEntry } from '../../lib/api'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { getUserTimezone, formatDuration, toLocal } from '../utils/timeUtils'
+import { processDayEntries, type TimeEntryWithCrossDay } from '../utils/crossDayUtils'
 
 type Props = {
   date: string
@@ -55,6 +57,13 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   const [lastSaved, setLastSaved] = React.useState<string | null>(null)
   const [isMobileModalOpen, setIsMobileModalOpen] = React.useState(false)
   const [isMobile, setIsMobile] = React.useState(false)
+  const [timeEntries, setTimeEntries] = React.useState<TimeEntryWithCrossDay[]>([])
+  const [loadingTimeEntries, setLoadingTimeEntries] = React.useState(true)
+  const [hoveredTimeEntry, setHoveredTimeEntry] = React.useState<{
+    entry: TimeEntryWithCrossDay
+    position: { x: number; y: number }
+  } | null>(null)
+  const [focusedTimeEntry, setFocusedTimeEntry] = React.useState<TimeEntryWithCrossDay | null>(null)
 
   const current = now ?? new Date()
   const isToday = date === new Date().toISOString().slice(0,10)
@@ -120,8 +129,69 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     return () => { mounted = false }
   }, [date])
 
+  // Fetch time entries for the selected date
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      setLoadingTimeEntries(true)
+      try {
+        // Create date range for the selected date in user's timezone
+        // We need to query UTC times that overlap with the local date
+        const localMidnight = new Date(date + 'T00:00:00')
+        const localEndOfDay = new Date(date + 'T23:59:59.999')
+        
+        // Convert local times to UTC for API query
+        const dayStart = new Date(localMidnight.getTime() - localMidnight.getTimezoneOffset() * 60000).toISOString()
+        const dayEnd = new Date(localEndOfDay.getTime() - localEndOfDay.getTimezoneOffset() * 60000).toISOString()
+        
+        console.debug(`Fetching time entries for ${date}:`, {
+          localRange: { start: localMidnight.toISOString(), end: localEndOfDay.toISOString() },
+          utcRange: { start: dayStart, end: dayEnd },
+          timezone: getUserTimezone()
+        })
+        
+        const data = await timeTrackingApi.listDay({ from: dayStart, to: dayEnd })
+        if (!mounted) return
+        
+        // Map raw entries to include category information
+        const rawEntries = (data.entries || []).map((e) => ({
+          ...e,
+          category_color: (e as any).category?.color || '#CBD5E1',
+          category_id: (e as any).category?.id || (e as any).category_id_snapshot || 'uncategorized',
+          category_name: (e as any).category?.name || 'Uncategorized',
+          task_title: (e as any).task?.title || (e as any).task_title || 'Unknown Task',
+        }))
+        
+        // Process entries using cross-day logic from DailyTimeModal
+        const processedEntries = processDayEntries(rawEntries, localMidnight)
+        
+        console.debug(`Processed ${data.entries?.length || 0} entries to ${processedEntries.length} for local date ${date}`, {
+          crossDayEntries: processedEntries.filter(e => e.isCrossDaySegment).length
+        })
+        setTimeEntries(processedEntries)
+      } catch (e: any) {
+        if (mounted) {
+          console.warn('Failed to fetch time entries:', e?.message)
+          setTimeEntries([]) // Fail gracefully
+        }
+      } finally {
+        if (mounted) setLoadingTimeEntries(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [date])
+
   function canEdit(index: number) {
-    return !isToday || index <= currentIndex
+    const basicCanEdit = !isToday || index <= currentIndex
+    
+    // If a time entry is focused, only allow editing within its time range
+    if (focusedTimeEntry) {
+      const { startSegment, endSegment } = getTimeEntryPosition(focusedTimeEntry)
+      const isInFocusedRange = index >= startSegment && index <= endSegment
+      return basicCanEdit && isInFocusedRange
+    }
+    
+    return basicCanEdit
   }
 
   function handleDrag(idx: number, clientY: number, rect: DOMRect) {
@@ -142,10 +212,11 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
 
   const containerRef = React.useRef<HTMLDivElement>(null)
   const dragging = React.useRef<number | null>(null)
-  const [dims, setDims] = React.useState({ w: 900, h: 360 })
+  const [dims, setDims] = React.useState({ w: 900, h: 400 }) // Reduced height for more compact design
   const pad = { left: 48, right: 24, top: 36, bottom: 42 }
+  const timeEntriesHeight = 40 // Reduced to two lines (2 * 20px)
+  const plotH = dims.h - pad.top - pad.bottom - timeEntriesHeight - 20 // Space for time entries
   const plotW = dims.w - pad.left - pad.right
-  const plotH = dims.h - pad.top - pad.bottom
 
   // Mobile detection
   React.useEffect(() => {
@@ -163,8 +234,8 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
       for (const e of entries) {
         const cr = e.contentRect
         const minWidth = isMobile ? 300 : 620
-        const maxHeight = isMobile ? Math.min(200, cr.width * 0.25) : Math.min(440, cr.width * 0.35)
-        setDims({ w: Math.max(minWidth, cr.width), h: Math.max(280, maxHeight) })
+        const maxHeight = isMobile ? Math.min(200, cr.width * 0.25) : Math.min(480, cr.width * 0.35)
+        setDims({ w: Math.max(minWidth, cr.width), h: Math.max(320, maxHeight) })
       }
     })
     ro.observe(containerRef.current)
@@ -204,6 +275,91 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     return d.join(' ')
   }
   const smoothPath = React.useMemo(() => buildSmoothPath(points, 0.8), [points])
+
+  // Helper functions for time entry positioning
+  const getTimeEntryPosition = (entry: TimeEntryWithCrossDay) => {
+    // Convert UTC times to local timezone for proper alignment
+    const startDate = new Date(entry.start_at)
+    const endDate = entry.end_at ? new Date(entry.end_at) : new Date()
+    
+    // Get local time components (automatically handles timezone conversion)
+    const startMinutes = startDate.getHours() * 60 + startDate.getMinutes()
+    const endMinutes = endDate.getHours() * 60 + endDate.getMinutes()
+    
+    // Note: cross-day entries are already processed by processDayEntries,
+    // so start_at and end_at are already clamped to the current day
+    
+    // Map to energy spectrum segments (20-minute intervals)
+    const startSegment = Math.floor(startMinutes / 20)
+    const endSegment = Math.min(SEGMENTS - 1, Math.ceil(endMinutes / 20))
+    
+    return { 
+      startSegment, 
+      endSegment, 
+      startMinutes, 
+      endMinutes,
+      originalStartDate: startDate,
+      originalEndDate: endDate,
+      isCrossDaySegment: entry.isCrossDaySegment || false
+    }
+  }
+
+  // Group time entries by overlapping periods for stacking
+  const timeEntryLayers = React.useMemo(() => {
+    if (!timeEntries.length) return []
+    
+    const layers: Array<Array<TimeEntryWithCrossDay>> = []
+    
+    timeEntries.forEach(entry => {
+      const { startMinutes, endMinutes } = getTimeEntryPosition(entry)
+      
+      // Find a layer where this entry doesn't overlap
+      let placedInLayer = false
+      for (const layer of layers) {
+        const hasOverlap = layer.some(existingEntry => {
+          const existingPos = getTimeEntryPosition(existingEntry)
+          return !(endMinutes <= existingPos.startMinutes || startMinutes >= existingPos.endMinutes)
+        })
+        
+        if (!hasOverlap) {
+          layer.push(entry)
+          placedInLayer = true
+          break
+        }
+      }
+      
+      // If no suitable layer found, create a new one
+      if (!placedInLayer) {
+        layers.push([entry])
+      }
+    })
+    
+    return layers
+  }, [timeEntries])
+
+  // Category summary for reference (like DailyTimeModal)
+  const categorySummary = React.useMemo(() => {
+    const byCat = new Map<string, { id: string; name: string; color: string; minutes: number }>()
+    
+    timeEntries.forEach((entry) => {
+      const key = entry.category_id || 'uncategorized'
+      const prev = byCat.get(key)
+      const add = Math.max(0, entry.duration_minutes || 0)
+      
+      if (prev) {
+        byCat.set(key, { ...prev, minutes: prev.minutes + add })
+      } else {
+        byCat.set(key, { 
+          id: key, 
+          name: entry.category_name || t.ui.uncategorized || 'Uncategorized', 
+          color: entry.category_color || '#CBD5E1', 
+          minutes: add 
+        })
+      }
+    })
+    
+    return Array.from(byCat.values()).sort((a, b) => b.minutes - a.minutes)
+  }, [timeEntries, t])
 
   function handlePointerDown(e: React.PointerEvent<SVGRectElement>) {
     const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
@@ -250,6 +406,189 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     }
   }
 
+  // Floating Tooltip Component for Time Entry Details
+  const TimeEntryTooltip = () => {
+    if (!hoveredTimeEntry) return null
+
+    const { entry, position } = hoveredTimeEntry
+    const { originalStartDate, originalEndDate } = getTimeEntryPosition(entry)
+    
+    // Calculate duration
+    let duration = entry.duration_minutes
+    if (!duration && entry.end_at) {
+      duration = Math.round((originalEndDate.getTime() - originalStartDate.getTime()) / (1000 * 60))
+    } else if (!duration) {
+      duration = Math.round((new Date().getTime() - originalStartDate.getTime()) / (1000 * 60))
+    }
+    
+    const startTime = toLocal(entry.start_at, { format: 'time-only' })
+    const endTime = entry.end_at ? toLocal(entry.end_at, { format: 'time-only' }) : 'Running'
+    const isCrossDaySegment = entry.isCrossDaySegment
+    
+    return (
+      <div
+        className="fixed z-[100] pointer-events-none"
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y - 10}px`,
+          transform: 'translate(-50%, -100%)'
+        }}
+      >
+        <div className="bg-gray-900 text-white text-sm rounded-lg shadow-xl px-3 py-2 max-w-xs">
+          <div className="font-medium truncate mb-1">
+            {entry.task_title || 'Unnamed Task'}
+          </div>
+          <div className="text-gray-300 text-xs space-y-1">
+            <div className="flex justify-between gap-4">
+              <span>Time:</span>
+              <span className="text-right">{startTime} - {endTime}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>Duration:</span>
+              <span className="text-right">{formatDuration(duration || 0)}</span>
+            </div>
+            {entry.category?.name && (
+              <div className="flex justify-between gap-4">
+                <span>Category:</span>
+                <div className="flex items-center gap-1">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: entry.category.color }}
+                  />
+                  <span className="text-right">{entry.category.name}</span>
+                </div>
+              </div>
+            )}
+            {isCrossDaySegment && (
+              <div className="flex justify-between gap-4">
+                <span>Cross-day:</span>
+                <span className="text-right text-orange-300">Yes</span>
+              </div>
+            )}
+            {entry.note && (
+              <div className="mt-2 pt-1 border-t border-gray-700">
+                <div className="text-xs text-gray-400">{entry.note}</div>
+              </div>
+            )}
+          </div>
+          {/* Tooltip arrow */}
+          <div 
+            className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0"
+            style={{
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid #1f2937'
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Time Entry Visualization Component
+  const TimeEntriesDisplay = ({ 
+    width, 
+    height, 
+    padLeft, 
+    padRight, 
+    yOffset,
+    isMobile = false 
+  }: { 
+    width: number; 
+    height: number; 
+    padLeft: number; 
+    padRight: number; 
+    yOffset: number;
+    isMobile?: boolean;
+  }) => {
+    const plotWidth = width - padLeft - padRight
+    const layerHeight = isMobile ? 16 : 20
+    const maxLayers = Math.floor(height / layerHeight)
+    const displayLayers = timeEntryLayers.slice(0, maxLayers)
+    
+    return (
+      <g>
+        {/* Time entries background area */}
+        <rect
+          x={padLeft}
+          y={yOffset}
+          width={plotWidth}
+          height={height}
+          fill="#f8fafc"
+          stroke="#e2e8f0"
+          strokeWidth={1}
+          rx={4}
+        />
+        
+        {/* Time entry bars */}
+        {displayLayers.map((layer, layerIndex) =>
+          layer.map((entry, entryIndex) => {
+            const { startMinutes, endMinutes } = getTimeEntryPosition(entry)
+            const x1 = padLeft + (startMinutes / (24 * 60)) * plotWidth
+            const x2 = padLeft + (endMinutes / (24 * 60)) * plotWidth
+            const y = yOffset + layerIndex * layerHeight + 2
+            const barHeight = layerHeight - 4
+            
+            const categoryColor = entry.category_color || '#94a3b8'
+            const isCrossDaySegment = entry.isCrossDaySegment
+            const isFocused = focusedTimeEntry?.id === entry.id
+            
+            return (
+              <g key={`${layerIndex}-${entryIndex}`}>
+                <rect
+                  x={x1}
+                  y={y}
+                  width={Math.max(2, x2 - x1)}
+                  height={barHeight}
+                  fill={categoryColor}
+                  opacity={isFocused ? 1 : 0.8}
+                  rx={2}
+                  stroke={isFocused ? '#3b82f6' : (isCrossDaySegment ? categoryColor : 'none')}
+                  strokeWidth={isFocused ? 3 : (isCrossDaySegment ? 2 : 0)}
+                  strokeDasharray={isCrossDaySegment && !isFocused ? '4,2' : 'none'}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setHoveredTimeEntry({
+                      entry,
+                      position: { 
+                        x: rect.left + rect.width / 2, 
+                        y: rect.top 
+                      }
+                    })
+                  }}
+                  onMouseLeave={() => setHoveredTimeEntry(null)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // Toggle focus: if already focused on this entry, unfocus; otherwise focus
+                    if (focusedTimeEntry?.id === entry.id) {
+                      setFocusedTimeEntry(null)
+                    } else {
+                      setFocusedTimeEntry(entry)
+                    }
+                  }}
+                />
+              </g>
+            )
+          })
+        )}
+        
+        {/* Layer overflow indicator */}
+        {timeEntryLayers.length > maxLayers && (
+          <text
+            x={padLeft + plotWidth - 4}
+            y={yOffset + height - 4}
+            textAnchor="end"
+            fontSize={10}
+            fill="#64748b"
+          >
+            +{timeEntryLayers.length - maxLayers} more
+          </text>
+        )}
+      </g>
+    )
+  }
+
   // Mobile Compact View Component
   const MobileCompactView = () => (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -294,6 +633,70 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
             <span>12:00</span>
             <span>23:59</span>
           </div>
+          {/* Mobile time entries preview */}
+          {!loadingTimeEntries && timeEntries.length > 0 && (
+            <div className="mt-3 pt-2 border-t border-gray-100">
+              <div className="text-xs text-gray-600 mb-2">{timeEntries.length} tasks tracked</div>
+              <div className="flex gap-1 overflow-x-auto">
+                {timeEntries.slice(0, 8).map((entry, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 w-4 h-4 rounded cursor-pointer"
+                    style={{ 
+                      backgroundColor: entry.category_color || '#94a3b8',
+                      border: entry.isCrossDaySegment ? `1px dashed ${entry.category_color || '#94a3b8'}` : 'none'
+                    }}
+                    title={entry.task_title || 'Unnamed Task'}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setHoveredTimeEntry({
+                        entry,
+                        position: { 
+                          x: rect.left + rect.width / 2, 
+                          y: rect.top 
+                        }
+                      })
+                    }}
+                    onMouseLeave={() => setHoveredTimeEntry(null)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (focusedTimeEntry?.id === entry.id) {
+                        setFocusedTimeEntry(null)
+                      } else {
+                        setFocusedTimeEntry(entry)
+                      }
+                    }}
+                  />
+                ))}
+                {timeEntries.length > 8 && (
+                  <div className="flex-shrink-0 w-4 h-4 rounded bg-gray-300 flex items-center justify-center">
+                    <span className="text-xs text-white">+</span>
+                  </div>
+                )}
+              </div>
+              {/* Mobile category legend */}
+              {categorySummary.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-gray-100">
+                  <div className="text-xs text-gray-600 mb-2">Categories</div>
+                  <div className="flex flex-wrap gap-2">
+                    {categorySummary.slice(0, 4).map((category) => (
+                      <div key={category.id} className="flex items-center gap-1.5 bg-gray-50 rounded-full px-2 py-1">
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: category.color }}
+                        />
+                        <span className="text-xs text-gray-700 font-medium">{category.name}</span>
+                        <span className="text-xs text-gray-500">({formatDuration(category.minutes)})</span>
+                      </div>
+                    ))}
+                    {categorySummary.length > 4 && (
+                      <div className="text-xs text-gray-500 px-2 py-1">+{categorySummary.length - 4} more</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -327,7 +730,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               {/* Mobile-optimized chart with horizontal scroll */}
               <div className="overflow-x-auto">
                 <div className="min-w-[800px] bg-gray-50 rounded-lg p-4">
-                  <svg width="800" height="300" className="block select-none">
+                  <svg width="800" height="360" className="block select-none">
                     {/* Hour grid lines */}
                     {hourMarks.map((h, i) => {
                       const x = 60 + (h / 24) * 680
@@ -364,9 +767,45 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                       const y = 40 + (1 - (eNum - 1) / 9) * 200
                       const h = 40 + 200 - y
                       const editable = canEdit(i)
-                      const fill = editable ? energyToColor(eNum) : '#cbd5e1'
-                      const opacity = editable ? 0.9 : 0.4
-                      return <rect key={i} x={x - w / 2} y={y} width={w} height={h} fill={fill} opacity={opacity} rx={3} />
+                      
+                      // Mobile version of focus logic
+                      let fill, opacity, stroke, strokeWidth
+                      if (focusedTimeEntry) {
+                        const { startSegment, endSegment } = getTimeEntryPosition(focusedTimeEntry)
+                        const isInFocusedRange = i >= startSegment && i <= endSegment
+                        
+                        if (isInFocusedRange && editable) {
+                          fill = energyToColor(eNum)
+                          opacity = 1
+                          stroke = '#3b82f6'
+                          strokeWidth = 2
+                        } else {
+                          fill = '#e5e7eb'
+                          opacity = 0.5
+                          stroke = 'none'
+                          strokeWidth = 0
+                        }
+                      } else {
+                        fill = editable ? energyToColor(eNum) : '#cbd5e1'
+                        opacity = editable ? 0.9 : 0.4
+                        stroke = 'none'
+                        strokeWidth = 0
+                      }
+                      
+                      return (
+                        <rect 
+                          key={i} 
+                          x={x - w / 2} 
+                          y={y} 
+                          width={w} 
+                          height={h} 
+                          fill={fill} 
+                          opacity={opacity}
+                          stroke={stroke}
+                          strokeWidth={strokeWidth}
+                          rx={3} 
+                        />
+                      )
                     })}
 
                     {/* Smoothed line */}
@@ -421,12 +860,52 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                       }}
                       onPointerUp={() => { dragging.current = null }}
                     />
+                    
+                    {/* Time entries display in mobile modal */}
+                    <TimeEntriesDisplay
+                      width={800}
+                      height={40}
+                      padLeft={60}
+                      padRight={60}
+                      yOffset={300}
+                      isMobile={true}
+                    />
+                    
+                    {/* Time entries label */}
+                    <text x={60} y={295} fontSize={12} fill="#64748b" fontWeight="500">Time Entries</text>
                   </svg>
                 </div>
               </div>
 
               {/* Info and controls */}
               <div className="mt-4 space-y-4">
+                {/* Mobile modal category legend */}
+                {categorySummary.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-xs text-gray-600 font-medium mb-3">Time Entry Categories</div>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {categorySummary.map((category) => (
+                        <div key={category.id} className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-gray-200">
+                          <div 
+                            className="w-3 h-3 rounded-full flex-shrink-0" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span className="text-sm text-gray-700 font-medium">{category.name}</span>
+                          <span className="text-sm text-gray-500">({formatDuration(category.minutes)})</span>
+                        </div>
+                      ))}
+                    </div>
+                    {timeEntries.some(e => e.isCrossDaySegment) && (
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <div className="w-4 h-3 rounded border-dashed border-2 border-gray-400"></div>
+                          <span>Dashed border indicates cross-day entries</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="text-xs text-gray-600">
                   {t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}
                 </div>
@@ -461,6 +940,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
       <>
         <MobileCompactView />
         <MobileFullScreenModal />
+        <TimeEntryTooltip />
       </>
     )
   }
@@ -515,9 +995,48 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               const y = yForEnergy(eNum)
               const h = pad.top + plotH - y
               const editable = canEdit(i)
-              const fill = editable ? energyToColor(eNum) : '#cbd5e1'
-              const opacity = editable ? 0.9 : 0.4
-              return <rect key={i} x={x - w / 2} y={y} width={w} height={h} fill={fill} opacity={opacity} rx={3} />
+              
+              // Determine visual state based on focus and editability
+              let fill, opacity, stroke, strokeWidth
+              if (focusedTimeEntry) {
+                const { startSegment, endSegment } = getTimeEntryPosition(focusedTimeEntry)
+                const isInFocusedRange = i >= startSegment && i <= endSegment
+                
+                if (isInFocusedRange && editable) {
+                  // Highlighted segments within focused time entry
+                  fill = energyToColor(eNum)
+                  opacity = 1
+                  stroke = '#3b82f6'
+                  strokeWidth = 2
+                } else {
+                  // Greyed out segments outside focused time entry
+                  fill = '#e5e7eb'
+                  opacity = 0.5
+                  stroke = 'none'
+                  strokeWidth = 0
+                }
+              } else {
+                // Normal mode
+                fill = editable ? energyToColor(eNum) : '#cbd5e1'
+                opacity = editable ? 0.9 : 0.4
+                stroke = 'none'
+                strokeWidth = 0
+              }
+              
+              return (
+                <rect 
+                  key={i} 
+                  x={x - w / 2} 
+                  y={y} 
+                  width={w} 
+                  height={h} 
+                  fill={fill} 
+                  opacity={opacity}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  rx={3} 
+                />
+              )
             })}
 
             {/* Smoothed line */}
@@ -545,25 +1064,103 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               width={plotW}
               height={plotH}
               fill="transparent"
-              style={{ cursor: 'crosshair' }}
+              style={{ cursor: focusedTimeEntry ? 'default' : 'crosshair' }}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onClick={() => {
+                // Click on empty area to exit focus mode
+                if (focusedTimeEntry) {
+                  setFocusedTimeEntry(null)
+                }
+              }}
             />
 
             {/* Axis titles */}
             <text x={pad.left + plotW / 2} y={28} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.energyAxis}</text>
             <text x={pad.left + plotW / 2} y={dims.h} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.timeAxis}</text>
+            
+            {/* Time entries display */}
+            <TimeEntriesDisplay
+              width={dims.w}
+              height={timeEntriesHeight}
+              padLeft={pad.left}
+              padRight={pad.right}
+              yOffset={pad.top + plotH + 20}
+              isMobile={false}
+            />
+            
+            {/* Time entries label */}
+            <text 
+              x={pad.left} 
+              y={pad.top + plotH + 15} 
+              fontSize={11} 
+              fill="#64748b" 
+              fontWeight="500"
+            >
+              Time Entries
+            </text>
           </svg>
           </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-xs text-gray-600">{t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}</div>
-            <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
-              {saving ? t.ui.saving : t.common.save}
-            </button>
+          <div className="mt-4 space-y-3">
+            {/* Category legend for desktop */}
+            {!loadingTimeEntries && categorySummary.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm text-gray-700 font-medium mb-3">Time Entry Categories</div>
+                <div className="flex flex-wrap gap-3">
+                  {categorySummary.map((category) => (
+                    <div key={category.id} className="flex items-center gap-2 bg-white rounded-full px-3 py-2 border border-gray-200 shadow-sm">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0" 
+                        style={{ backgroundColor: category.color }}
+                      />
+                      <span className="text-sm text-gray-700 font-medium whitespace-nowrap">{category.name}</span>
+                      <span className="text-sm text-gray-500">({formatDuration(category.minutes)})</span>
+                    </div>
+                  ))}
+                </div>
+                {timeEntries.some(e => e.isCrossDaySegment) && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-4 h-3 rounded border-dashed border-2 border-gray-400"></div>
+                      <span>Dashed border indicates cross-day entries</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-xs text-gray-600">{t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}</div>
+                {focusedTimeEntry && (
+                  <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-1.5">
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: focusedTimeEntry.category_color || '#94a3b8' }}
+                      />
+                      <span className="text-xs text-blue-700 font-medium">
+                        Focused: {focusedTimeEntry.task_title || 'Unnamed Task'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setFocusedTimeEntry(null)}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Exit
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
+                {saving ? t.ui.saving : t.common.save}
+              </button>
+            </div>
           </div>
         </div>
       )}
+      <TimeEntryTooltip />
     </div>
   )
 }
