@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { Maximize2, X } from 'lucide-react'
 import { energyDaysApi, type EnergyDay } from '../../lib/api'
 import { useTranslation } from '../../contexts/LanguageContext'
 
@@ -52,6 +53,8 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   const [mask, setMask] = React.useState<boolean[]>(defaultMask)
   const [lastCheckedIndex, setLastCheckedIndex] = React.useState<number | null>(null)
   const [lastSaved, setLastSaved] = React.useState<string | null>(null)
+  const [isMobileModalOpen, setIsMobileModalOpen] = React.useState(false)
+  const [isMobile, setIsMobile] = React.useState(false)
 
   const current = now ?? new Date()
   const isToday = date === new Date().toISOString().slice(0,10)
@@ -144,17 +147,29 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   const plotW = dims.w - pad.left - pad.right
   const plotH = dims.h - pad.top - pad.bottom
 
+  // Mobile detection
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   React.useEffect(() => {
     if (!containerRef.current) return
     const ro = new (window as any).ResizeObserver((entries: any) => {
       for (const e of entries) {
         const cr = e.contentRect
-        setDims({ w: Math.max(620, cr.width), h: Math.max(280, Math.min(440, cr.width * 0.35)) })
+        const minWidth = isMobile ? 300 : 620
+        const maxHeight = isMobile ? Math.min(200, cr.width * 0.25) : Math.min(440, cr.width * 0.35)
+        setDims({ w: Math.max(minWidth, cr.width), h: Math.max(280, maxHeight) })
       }
     })
     ro.observe(containerRef.current)
     return () => ro.disconnect()
-  }, [])
+  }, [isMobile])
 
   const xForIdx = (i: number) => pad.left + (i * plotW) / (SEGMENTS - 1)
   const yForEnergy = (e: number) => pad.top + (1 - (e - 1) / 9) * plotH
@@ -233,6 +248,221 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     } finally {
       setSaving(false)
     }
+  }
+
+  // Mobile Compact View Component
+  const MobileCompactView = () => (
+    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm text-gray-700 font-medium tracking-tight">{date} {t.ui.energySpectrumTitle}</div>
+        <button
+          onClick={() => setIsMobileModalOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors"
+        >
+          <Maximize2 className="w-4 h-4" />
+          View Full
+        </button>
+      </div>
+      {loading ? (
+        <div className="h-20 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
+      ) : error ? (
+        <div className="h-20 flex items-center justify-center text-red-600">{error}</div>
+      ) : (
+        <div className="relative">
+          {/* Simple curve preview */}
+          <div className="h-20 flex items-end gap-1 overflow-x-auto pb-2">
+            {curve.map((eVal, i) => {
+              const eNum = Number(eVal) || 5
+              const height = Math.max(4, (eNum / 10) * 60)
+              const editable = canEdit(i)
+              const fill = editable ? energyToColor(eNum) : '#cbd5e1'
+              return (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-2 rounded-t"
+                  style={{ 
+                    height: `${height}px`,
+                    backgroundColor: fill,
+                    opacity: editable ? 0.9 : 0.4
+                  }}
+                />
+              )
+            })}
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-gray-500">
+            <span>00:00</span>
+            <span>12:00</span>
+            <span>23:59</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // Full Screen Mobile Modal Component  
+  const MobileFullScreenModal = () => {
+    if (!isMobileModalOpen) return null
+
+    return (
+      <div className="fixed inset-0 z-50 bg-white">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">{date} {t.ui.energySpectrumTitle}</h2>
+          <button
+            onClick={() => setIsMobileModalOpen(false)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-4">
+          {loading ? (
+            <div className="h-64 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
+          ) : error ? (
+            <div className="h-64 flex items-center justify-center text-red-600">{error}</div>
+          ) : (
+            <div>
+              {/* Mobile-optimized chart with horizontal scroll */}
+              <div className="overflow-x-auto">
+                <div className="min-w-[800px] bg-gray-50 rounded-lg p-4">
+                  <svg width="800" height="300" className="block select-none">
+                    {/* Hour grid lines */}
+                    {hourMarks.map((h, i) => {
+                      const x = 60 + (h / 24) * 680
+                      const isMajor = h % 3 === 0
+                      return (
+                        <g key={i}>
+                          <line x1={x} x2={x} y1={40} y2={240} stroke={isMajor ? '#e6eaf0' : '#f3f6fa'} strokeWidth={isMajor ? 1.25 : 1} />
+                          {isMajor && (
+                            <text x={x} y={270} textAnchor="middle" fontSize={12} fill="#475569">
+                              {String(h).padStart(2, '0')}:00
+                            </text>
+                          )}
+                        </g>
+                      )
+                    })}
+
+                    {/* Y grid */}
+                    {Array.from({ length: 10 }).map((_, k) => {
+                      const e = 1 + k
+                      const y = 40 + (1 - (e - 1) / 9) * 200
+                      return (
+                        <g key={k}>
+                          <line x1={60} x2={740} y1={y} y2={y} stroke="#eef2f7" />
+                          <text x={45} y={y + 4} textAnchor="end" fontSize={12} fill="#475569" className="tabular-nums">{e}</text>
+                        </g>
+                      )
+                    })}
+
+                    {/* Energy bars */}
+                    {curve.map((eVal, i) => {
+                      const eNum = Number(eVal) || 5
+                      const x = 60 + (i * 680) / (SEGMENTS - 1)
+                      const w = Math.max(6, 680 / SEGMENTS * 0.8)
+                      const y = 40 + (1 - (eNum - 1) / 9) * 200
+                      const h = 40 + 200 - y
+                      const editable = canEdit(i)
+                      const fill = editable ? energyToColor(eNum) : '#cbd5e1'
+                      const opacity = editable ? 0.9 : 0.4
+                      return <rect key={i} x={x - w / 2} y={y} width={w} height={h} fill={fill} opacity={opacity} rx={3} />
+                    })}
+
+                    {/* Smoothed line */}
+                    <path 
+                      d={buildSmoothPath(
+                        curve.map((e, i) => ({ 
+                          x: 60 + (i * 680) / (SEGMENTS - 1), 
+                          y: 40 + (1 - (Number(e) || 5 - 1) / 9) * 200 
+                        })), 0.8
+                      )} 
+                      fill="none" 
+                      stroke="#111827" 
+                      strokeWidth={3} 
+                    />
+
+                    {/* Touch interaction overlay */}
+                    <rect
+                      x={60}
+                      y={40}
+                      width={680}
+                      height={200}
+                      fill="transparent"
+                      style={{ cursor: 'crosshair' }}
+                      onPointerDown={(e) => {
+                        const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
+                        const pt = svg.createSVGPoint()
+                        pt.x = e.clientX; pt.y = e.clientY
+                        const ctm = svg.getScreenCTM()
+                        if (!ctm) return
+                        const p = pt.matrixTransform(ctm.inverse())
+                        const idx = Math.round(((p.x - 60) / 680) * (SEGMENTS - 1))
+                        if (!canEdit(idx)) return
+                        dragging.current = idx
+                        ;(e.currentTarget as any).setPointerCapture?.(e.pointerId)
+                        const val = Math.round(10 - ((p.y - 40) / 200) * 9)
+                        setCurve(prev => { const next = prev.slice(); next[idx] = clamp(val); return next })
+                        setMask(prev => { const next = prev.slice(); next[idx] = true; return next })
+                      }}
+                      onPointerMove={(e) => {
+                        if (dragging.current == null) return
+                        const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
+                        const pt = svg.createSVGPoint()
+                        pt.x = e.clientX; pt.y = e.clientY
+                        const ctm = svg.getScreenCTM()
+                        if (!ctm) return
+                        const p = pt.matrixTransform(ctm.inverse())
+                        const idx = Math.round(((p.x - 60) / 680) * (SEGMENTS - 1))
+                        if (!canEdit(idx)) return
+                        const val = Math.round(10 - ((p.y - 40) / 200) * 9)
+                        setCurve(prev => { const next = prev.slice(); next[idx] = clamp(val); return next })
+                        setMask(prev => { const next = prev.slice(); next[idx] = true; return next })
+                      }}
+                      onPointerUp={() => { dragging.current = null }}
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Info and controls */}
+              <div className="mt-4 space-y-4">
+                <div className="text-xs text-gray-600">
+                  {t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}
+                </div>
+                
+                {lastSaved && (
+                  <div className="text-xs text-gray-500">
+                    {t.ui.lastSaved}: {new Date(lastSaved).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky bottom actions */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button 
+            onClick={saveAll} 
+            disabled={saving} 
+            className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm font-medium"
+          >
+            {saving ? t.ui.saving : t.common.save}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Conditional rendering based on mobile state
+  if (isMobile) {
+    return (
+      <>
+        <MobileCompactView />
+        <MobileFullScreenModal />
+      </>
+    )
   }
 
   return (
