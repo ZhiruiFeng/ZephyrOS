@@ -447,15 +447,15 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               <span>Duration:</span>
               <span className="text-right">{formatDuration(duration || 0)}</span>
             </div>
-            {entry.category?.name && (
+            {entry.category_name && (
               <div className="flex justify-between gap-4">
                 <span>Category:</span>
                 <div className="flex items-center gap-1">
                   <div
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: entry.category.color }}
+                    style={{ backgroundColor: entry.category_color || '#94a3b8' }}
                   />
-                  <span className="text-right">{entry.category.name}</span>
+                  <span className="text-right">{entry.category_name}</span>
                 </div>
               </div>
             )}
