@@ -42,7 +42,7 @@ export function jsonWithCors(request: NextRequest, body: any, status = 200): Nex
   }
   
   // Security headers
-  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
@@ -60,7 +60,7 @@ export function createOptionsResponse(request: NextRequest): NextResponse {
   const allowedOrigins = getAllowedOrigins();
   
   const headers: Record<string, string> = {
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
