@@ -432,6 +432,7 @@ function DayTimeline({
   const dayEvents = React.useMemo(() => {
     if (!selectedDay) return [] as Array<{
       id: string
+      originalId?: string
       start: Date
       end: Date
       top: number
@@ -455,6 +456,7 @@ function DayTimeline({
         const label = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
         return { 
           id: e.id, 
+          originalId: (e as any).originalId,
           start, 
           end, 
           top, 
@@ -644,7 +646,7 @@ function DayTimeline({
         }`}>
           <CreateItem taskId={taskId} dateKey={selectedDay} onCreated={refreshEntries} />
           {dayEvents.map((ev) => (
-            <ListItem key={ev.id} entryId={ev.id} label={ev.label} note={ev.note} onChanged={refreshEntries} />
+            <ListItem key={ev.id} entryId={ev.originalId || ev.id} label={ev.label} note={ev.note} onChanged={refreshEntries} />
           ))}
         </div>
       )}
