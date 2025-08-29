@@ -998,17 +998,17 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               <div className="mt-4 space-y-4">
                 {/* Mobile modal category legend */}
                 {categorySummary.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-600 font-medium mb-3">Time Entry Categories</div>
-                    <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="bg-gray-50 rounded-lg p-2">
+                    <div className="text-xs text-gray-600 font-medium mb-2">Categories</div>
+                    <div className="flex flex-wrap gap-1.5">
                       {categorySummary.map((category) => (
-                        <div key={category.id} className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-gray-200">
+                        <div key={category.id} className="flex items-center gap-1 bg-white rounded-full px-2 py-1 border border-gray-200">
                           <div 
-                            className="w-3 h-3 rounded-full flex-shrink-0" 
+                            className="w-2 h-2 rounded-full flex-shrink-0" 
                             style={{ backgroundColor: category.color }}
                           />
-                          <span className="text-sm text-gray-700 font-medium">{category.name}</span>
-                          <span className="text-sm text-gray-500">({formatDuration(category.minutes)})</span>
+                          <span className="text-xs text-gray-700 font-medium">{category.name}</span>
+                          <span className="text-xs text-gray-500">({formatDuration(category.minutes)})</span>
                         </div>
                       ))}
                     </div>
@@ -1274,17 +1274,17 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
           <div className="mt-4 space-y-3">
             {/* Category legend for desktop */}
             {!loadingTimeEntries && categorySummary.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700 font-medium mb-3">Time Entry Categories</div>
-                <div className="flex flex-wrap gap-3">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs text-gray-600 font-medium mb-2">Time Entry Categories</div>
+                <div className="flex flex-wrap gap-2">
                   {categorySummary.map((category) => (
-                    <div key={category.id} className="flex items-center gap-2 bg-white rounded-full px-3 py-2 border border-gray-200 shadow-sm">
+                    <div key={category.id} className="flex items-center gap-1.5 bg-white rounded-full px-2 py-1 border border-gray-200">
                       <div 
-                        className="w-3 h-3 rounded-full flex-shrink-0" 
+                        className="w-2 h-2 rounded-full flex-shrink-0" 
                         style={{ backgroundColor: category.color }}
                       />
-                      <span className="text-sm text-gray-700 font-medium whitespace-nowrap">{category.name}</span>
-                      <span className="text-sm text-gray-500">({formatDuration(category.minutes)})</span>
+                      <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{category.name}</span>
+                      <span className="text-xs text-gray-500">({formatDuration(category.minutes)})</span>
                     </div>
                   ))}
                 </div>
