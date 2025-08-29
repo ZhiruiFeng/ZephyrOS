@@ -10,8 +10,9 @@ import { MobileFullScreenModal } from './EnergySpectrum/components/MobileFullScr
 import { MobileEnergyChart } from './EnergySpectrum/components/MobileEnergyChart'
 import { useTimeEntries } from './EnergySpectrum/hooks/useTimeEntries'
 import type { TimeEntry } from '../../lib/api'
-import { tasksApi } from '../../lib/api'
+import { tasksApi, timeTrackingApi } from '../../lib/api'
 import type { TimeEntryWithCrossDay } from './EnergySpectrum/types'
+import { toLocal, toUTC } from '../utils/timeUtils'
 
 function localDateOf(iso: string) {
   const d = new Date(iso)
@@ -30,6 +31,18 @@ type Props = {
 export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEntries = true, mobileMode = 'sheet' }: Props) {
   const { t } = useTranslation()
   const [isMobile, setIsMobile] = React.useState(false)
+  const [isEditingTime, setIsEditingTime] = React.useState(false)
+  const [startTime, setStartTime] = React.useState<string>('')
+  const [endTime, setEndTime] = React.useState<string>('')
+  const [isSavingTime, setIsSavingTime] = React.useState(false)
+  const [timeError, setTimeError] = React.useState<string>('')
+  const [timeSuccess, setTimeSuccess] = React.useState<string>('')
+  const [currentEntry, setCurrentEntry] = React.useState<TimeEntry | null>(entry)
+
+  // Sync entry prop to currentEntry
+  React.useEffect(() => {
+    setCurrentEntry(entry)
+  }, [entry])
 
   React.useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -38,7 +51,7 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const date = React.useMemo(() => entry ? localDateOf(entry.start_at) : localDateOf(new Date().toISOString()), [entry])
+  const date = React.useMemo(() => currentEntry ? localDateOf(currentEntry.start_at) : localDateOf(new Date().toISOString()), [currentEntry])
 
   const energyData = useEnergyData(date)
   const timeEntriesDataRaw = useTimeEntries(date)
@@ -86,22 +99,32 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
   const smoothPath = React.useMemo(() => buildSmoothPath(points, 0.8), [points])
 
   React.useEffect(() => {
-    if (!entry) return setFocusedTimeEntry(null)
+    if (!currentEntry) return setFocusedTimeEntry(null)
     // 将 entry 转为本日片段（不精确分段，但用于可编辑范围计算足够）
     const fe: TimeEntryWithCrossDay = {
-      id: entry.id,
-      start_at: entry.start_at,
-      end_at: entry.end_at || undefined,
-      duration_minutes: entry.duration_minutes || null,
-      task_title: entry.task_title,
-      category_color: entry.category_color,
-      category_id: (entry as any).category_id,
-      category_name: (entry as any).category_name,
-      note: entry.note || null,
+      id: currentEntry.id,
+      start_at: currentEntry.start_at,
+      end_at: currentEntry.end_at || undefined,
+      duration_minutes: currentEntry.duration_minutes || null,
+      task_title: currentEntry.task_title,
+      category_color: currentEntry.category_color,
+      category_id: (currentEntry as any).category_id,
+      category_name: (currentEntry as any).category_name,
+      note: currentEntry.note || null,
       isCrossDaySegment: false,
     }
     setFocusedTimeEntry(fe)
-  }, [entry])
+  }, [currentEntry])
+
+  // Initialize time inputs when entry changes
+  React.useEffect(() => {
+    if (currentEntry) {
+      const startLocal = toLocal(currentEntry.start_at, { format: 'datetime-local' })
+      const endLocal = currentEntry.end_at ? toLocal(currentEntry.end_at, { format: 'datetime-local' }) : ''
+      setStartTime(startLocal)
+      setEndTime(endLocal)
+    }
+  }, [currentEntry])
 
   function handlePointerDown(e: React.PointerEvent<SVGRectElement>) {
     const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
@@ -187,6 +210,95 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
     return () => { cancelled = true }
   }, [entry])
 
+  const handleSaveTime = async () => {
+    if (!currentEntry || isSavingTime) return
+    
+    setIsSavingTime(true)
+    try {
+      const updates: any = {}
+      
+      if (startTime) {
+        updates.start_at = toUTC(startTime)
+      }
+      
+      if (endTime) {
+        updates.end_at = toUTC(endTime)
+      }
+      
+
+      
+      // Validate that end_at is after start_at
+      if (!validateTimes()) {
+        setIsSavingTime(false)
+        return
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        const updatedEntry = await timeTrackingApi.update(currentEntry.id, updates)
+        // Clear any previous errors
+        setTimeError('')
+        // Show success message
+        setTimeSuccess(t.ui.timeSavedSuccessfully)
+        // Clear success message after 3 seconds
+        setTimeout(() => setTimeSuccess(''), 3000)
+        
+        // Update the entry data to reflect the new time range
+        // This will trigger re-calculation of editable energy columns
+        if (updatedEntry.entry) {
+          // Update the current entry to reflect the new time range
+          setCurrentEntry(updatedEntry.entry)
+        }
+        
+        // Don't close the modal, just exit edit mode
+        // User can still modify energy levels and save later
+      }
+      
+      setIsEditingTime(false)
+    } catch (error) {
+      console.error('Failed to update time entry:', error)
+      // Show user-friendly error message
+      if (error instanceof Error && error.message.includes('end_at must be after start_at')) {
+        alert(t.ui.endTimeMustBeAfterStart)
+      } else {
+        alert(t.ui.saveFailed)
+      }
+    } finally {
+      setIsSavingTime(false)
+    }
+  }
+
+  const handleCancelTimeEdit = () => {
+    if (currentEntry) {
+      setStartTime(toLocal(currentEntry.start_at, { format: 'datetime-local' }))
+      setEndTime(currentEntry.end_at ? toLocal(currentEntry.end_at, { format: 'datetime-local' }) : '')
+    }
+    setIsEditingTime(false)
+    setTimeError('')
+    setTimeSuccess('')
+  }
+
+  // Validate time inputs in real-time
+  const validateTimes = () => {
+    if (startTime && endTime) {
+      const startDate = new Date(startTime)
+      const endDate = new Date(endTime)
+      
+      if (endDate <= startDate) {
+        setTimeError(t.ui.endTimeMustBeAfterStart)
+        return false
+      }
+    }
+    setTimeError('')
+    return true
+  }
+
+  // Update validation when times change
+  React.useEffect(() => {
+    if (isEditingTime) {
+      validateTimes()
+    }
+  }, [startTime, endTime, isEditingTime])
+
   if (!isVisible) {
     return null
   }
@@ -198,38 +310,130 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
         <div className="absolute inset-0 bg-black/40" onClick={onClose} />
         <div className="relative bg-white w-full max-w-5xl mx-4 rounded-xl shadow-xl border border-gray-200 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-            <div className="font-semibold text-gray-900 text-sm">Energy Review</div>
+            <div className="font-semibold text-gray-900 text-sm">{t.ui.energyReview}</div>
             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
           </div>
           <div className="p-4">
-            {entry && (
+            {currentEntry && (
               <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-gray-700">
-                {entry.category_color && (
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: (entry as any).category_color || entry.category_color as any }} />
+                {currentEntry.category_color && (
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: (currentEntry as any).category_color || currentEntry.category_color as any }} />
                 )}
-                <span className="font-medium truncate">{taskTitle || entry.task_title || '...'}</span>
+                <span className="font-medium truncate">{taskTitle || currentEntry.task_title || '...'}</span>
                 <span className="text-gray-400">•</span>
                 <span>
-                  {new Date(entry.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {entry.end_at ? ` - ${new Date(entry.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  {new Date(currentEntry.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {currentEntry.end_at ? ` - ${new Date(currentEntry.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                 </span>
                 <span className="text-gray-400">•</span>
                 <span>
                   {(() => {
-                    const startMs = new Date(entry.start_at).getTime()
-                    const endMs = new Date(entry.end_at || Date.now()).getTime()
-                    const mins = entry.duration_minutes ?? Math.max(0, Math.round((endMs - startMs) / 60000))
+                    const startMs = new Date(currentEntry.start_at).getTime()
+                    const endMs = new Date(currentEntry.end_at || Date.now()).getTime()
+                    const mins = currentEntry.duration_minutes ?? Math.max(0, Math.round((endMs - startMs) / 60000))
                     return `${mins} min`
                   })()}
                 </span>
-                {((entry as any).category_name) && (
+                {((currentEntry as any).category_name) && (
                   <>
                     <span className="text-gray-400">•</span>
-                    <span>{(entry as any).category_name}</span>
+                    <span>{(currentEntry as any).category_name}</span>
                   </>
                 )}
               </div>
             )}
+            
+            {/* Time editing section - Moved to top for better visibility */}
+            {currentEntry && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                    <span>⏰</span>
+                    {t.ui.timeEdit}
+                  </h3>
+                  {!isEditingTime ? (
+                    <button
+                      onClick={() => setIsEditingTime(true)}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      {t.ui.editTime}
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCancelTimeEdit}
+                        className="text-xs px-3 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                      >
+                        {t.common.cancel}
+                      </button>
+                      <button
+                        onClick={handleSaveTime}
+                        disabled={isSavingTime || !!timeError}
+                        className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        {isSavingTime ? t.ui.saving : t.common.save}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {isEditingTime ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.startTime}</label>
+                        <input
+                          type="datetime-local"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.endTime}</label>
+                        <input
+                          type="datetime-local"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        />
+                      </div>
+                    </div>
+                    {timeError && (
+                      <div className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-md p-2">
+                        ⚠️ {timeError}
+                      </div>
+                    )}
+                    {timeSuccess && (
+                      <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
+                        ✅ {timeSuccess}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-sm text-blue-800 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{t.ui.startTime}:</span>
+                        <span>{new Date(currentEntry.start_at).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{t.ui.endTime}:</span>
+                        <span>{currentEntry.end_at ? new Date(currentEntry.end_at).toLocaleString() : t.ui.inProgress}</span>
+                      </div>
+                    </div>
+                    {timeSuccess && (
+                      <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
+                        ✅ {timeSuccess}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
+
+
             {isMobile ? (
               <MobileFullScreenModal
                 isMobileModalOpen={true}
@@ -308,38 +512,126 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="absolute left-0 right-0 bottom-0 max-h-[80vh] bg-white rounded-t-2xl shadow-2xl border-t border-gray-200">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="font-semibold text-gray-900 text-sm truncate">Energy Review</div>
+          <div className="font-semibold text-gray-900 text-sm truncate">{t.ui.energyReview}</div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-3 overflow-y-auto">
-          {entry && (
+          {currentEntry && (
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-700">
-              {entry.category_color && (
-                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: (entry as any).category_color || entry.category_color as any }} />
+              {currentEntry.category_color && (
+                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: (currentEntry as any).category_color || currentEntry.category_color as any }} />
               )}
-              <span className="font-medium truncate max-w-[60%]">{taskTitle || entry.task_title || '...'}</span>
+              <span className="font-medium truncate max-w-[60%]">{taskTitle || currentEntry.task_title || '...'}</span>
               <span className="text-gray-400">•</span>
               <span>
-                {new Date(entry.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {entry.end_at ? ` - ${new Date(entry.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                {new Date(currentEntry.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {currentEntry.end_at ? ` - ${new Date(currentEntry.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
               </span>
               <span className="text-gray-400">•</span>
               <span>
                 {(() => {
-                  const startMs = new Date(entry.start_at).getTime()
-                  const endMs = new Date(entry.end_at || Date.now()).getTime()
-                  const mins = entry.duration_minutes ?? Math.max(0, Math.round((endMs - startMs) / 60000))
+                  const startMs = new Date(currentEntry.start_at).getTime()
+                  const endMs = new Date(currentEntry.end_at || Date.now()).getTime()
+                  const mins = currentEntry.duration_minutes ?? Math.max(0, Math.round((endMs - startMs) / 60000))
                   return `${mins} min`
                 })()}
               </span>
-              {((entry as any).category_name) && (
+              {((currentEntry as any).category_name) && (
                 <>
                   <span className="text-gray-400">•</span>
-                  <span>{(entry as any).category_name}</span>
+                  <span>{(currentEntry as any).category_name}</span>
                 </>
               )}
             </div>
           )}
+          
+          {/* Mobile time editing section */}
+          {currentEntry && (
+            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                  <span>⏰</span>
+                  {t.ui.timeEdit}
+                </h3>
+                {!isEditingTime ? (
+                  <button
+                    onClick={() => setIsEditingTime(true)}
+                    className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    {t.ui.editTime}
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCancelTimeEdit}
+                      className="text-xs px-2 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                    >
+                      {t.common.cancel}
+                    </button>
+                    <button
+                      onClick={handleSaveTime}
+                      disabled={isSavingTime || !!timeError}
+                      className="text-xs px-2 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    >
+                      {isSavingTime ? t.ui.saving : t.common.save}
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {isEditingTime ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.startTime}</label>
+                    <input
+                      type="datetime-local"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.endTime}</label>
+                    <input
+                      type="datetime-local"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  {timeError && (
+                    <div className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-md p-2">
+                      ⚠️ {timeError}
+                    </div>
+                  )}
+                  {timeSuccess && (
+                    <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
+                      ✅ {timeSuccess}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-sm text-blue-800 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{t.ui.startTime}:</span>
+                      <span>{new Date(currentEntry.start_at).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{t.ui.endTime}:</span>
+                      <span>{currentEntry.end_at ? new Date(currentEntry.end_at).toLocaleString() : t.ui.inProgress}</span>
+                    </div>
+                  </div>
+                  {timeSuccess && (
+                    <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
+                      ✅ {timeSuccess}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-2 overflow-hidden">
             <MobileEnergyChart
               curve={energyData.curve}

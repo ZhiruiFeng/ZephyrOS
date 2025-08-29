@@ -38,7 +38,7 @@ export default function ProfilePage() {
   
   // Extract display name from user data
   const displayName = React.useMemo(() => {
-    if (!user) return 'Your Profile'
+    if (!user) return t.profile.yourProfile
     
     // Try to get name from user metadata first
     const fullName = user.user_metadata?.full_name || user.user_metadata?.name
@@ -50,7 +50,7 @@ export default function ProfilePage() {
       return username.charAt(0).toUpperCase() + username.slice(1)
     }
     
-    return 'Your Profile'
+    return t.profile.yourProfile
   }, [user])
   
 
@@ -67,7 +67,7 @@ export default function ProfilePage() {
             <h1 className="text-3xl font-bold text-gray-900">
               {displayName}
             </h1>
-            <p className="text-gray-600">Personal productivity insights and statistics</p>
+            <p className="text-gray-600">{t.profile.personalProductivityInsights}</p>
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@ export default function ProfilePage() {
       <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-purple-600" />
-          Energy Spectrum
+          {t.ui.energySpectrumTitle}
         </h2>
         <div className="mb-3">
           <div className="flex items-center gap-4">

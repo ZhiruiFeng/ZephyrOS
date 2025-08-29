@@ -262,7 +262,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
                 <div className="text-xs text-gray-600">
                   {t.ui.editableRange}：
                   {currentTimeInfo.isFutureDate 
-                    ? 'Not editable (future date)' 
+                    ? t.ui.notEditableFutureDate 
                     : currentTimeInfo.isToday 
                       ? `00:00 - ${segmentToTimeLabel(currentTimeInfo.currentIndex+1)}` 
                       : t.ui.allDay
@@ -279,7 +279,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
                         style={{ backgroundColor: focusedTimeEntry.category_color || '#94a3b8' }}
                       />
                       <span className="text-xs text-blue-700 font-medium">
-                        Focused: {focusedTimeEntry.task_title || 'Unnamed Task'}
+                        {t.ui.focused}: {focusedTimeEntry.task_title || t.ui.unnamedTask}
                       </span>
                     </div>
                     <button
@@ -288,7 +288,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
                         setFocusedTimeEntry(null)
                       }}
                       className="ml-2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
-                      title="Close task focus"
+                      title={t.ui.closeTaskFocus}
                     >
                       <X className="w-3 h-3" />
                     </button>

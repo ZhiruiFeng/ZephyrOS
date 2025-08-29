@@ -450,7 +450,11 @@ export const timeTrackingApi = {
       body: JSON.stringify(body),
       ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
-    if (!res.ok) throw new Error('Failed to update time entry')
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error('API Error Response:', errorText)
+      throw new Error(`Failed to update time entry: ${res.status} ${res.statusText} - ${errorText}`)
+    }
     return res.json()
   },
 

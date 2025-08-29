@@ -194,6 +194,17 @@ export interface TranslationKeys {
     timeAxis: string;
     editableRange: string;
     allDay: string;
+    notEditableFutureDate: string;
+    closeTaskFocus: string;
+    focused: string;
+    unnamedTask: string;
+    // Energy Review Modal
+    energyReview: string;
+    timeEdit: string;
+    editTime: string;
+    timeSavedSuccessfully: string;
+    endTimeMustBeAfterStart: string;
+    saveFailed: string;
     // Archive page
     archiveOlderThan24h: string;
     backToHome: string;
@@ -297,6 +308,12 @@ export interface TranslationKeys {
     appTitle: string;
     appDescription: string;
     taskManagementWorkbench: string;
+  };
+
+  // Profile page
+  profile: {
+    yourProfile: string;
+    personalProductivityInsights: string;
   };
 
   // Speech to text
@@ -572,6 +589,17 @@ const translations: Record<Language, TranslationKeys> = {
       timeAxis: 'Time of day',
       editableRange: 'Editable range',
       allDay: 'All day',
+      notEditableFutureDate: 'Not editable (future date)',
+      closeTaskFocus: 'Close task focus',
+      focused: 'Focused',
+      unnamedTask: 'Unnamed Task',
+      // Energy Review Modal
+      energyReview: 'Energy Review',
+      timeEdit: 'Time Edit',
+      editTime: 'Edit Time',
+      timeSavedSuccessfully: 'Time saved successfully!',
+      endTimeMustBeAfterStart: 'End time must be after start time!',
+      saveFailed: 'Save failed, please try again.',
     },
     messages: {
       taskCreated: 'Task created successfully',
@@ -593,6 +621,10 @@ const translations: Record<Language, TranslationKeys> = {
       appTitle: 'ZFlow - Task Management System',
       appDescription: 'Personal AI operating system task management module',
       taskManagementWorkbench: 'Efficient task workbench (List / Grid / Kanban / Stats)',
+    },
+    profile: {
+      yourProfile: 'Your Profile',
+      personalProductivityInsights: 'Personal productivity insights and statistics',
     },
     speech: {
       title: 'Speech to Text (Batch Fallback Version)',
@@ -857,6 +889,17 @@ const translations: Record<Language, TranslationKeys> = {
       timeAxis: '一天中的时间',
       editableRange: '可编辑范围',
       allDay: '全天',
+      notEditableFutureDate: '不可编辑（未来日期）',
+      closeTaskFocus: '关闭任务专注',
+      focused: '专注中',
+      unnamedTask: '无名任务',
+      // Energy Review Modal
+      energyReview: '能量回顾',
+      timeEdit: '时间编辑',
+      editTime: '编辑时间',
+      timeSavedSuccessfully: '时间已保存成功！',
+      endTimeMustBeAfterStart: '结束时间必须晚于开始时间',
+      saveFailed: '保存失败，请重试。',
       // Subtasks
       subtasks: '子任务',
       addSubtask: '添加子任务',
@@ -885,6 +928,10 @@ const translations: Record<Language, TranslationKeys> = {
       appTitle: 'ZFlow - 任务管理系统',
       appDescription: '个人AI操作系统的任务管理模块',
       taskManagementWorkbench: '简洁高效的任务工作台（列表 / 网格 / 看板 / 统计）',
+    },
+    profile: {
+      yourProfile: '个人档案',
+      personalProductivityInsights: '个人生产力洞察和统计数据',
     },
     speech: {
       title: '语音转文字（批量回退版）',
