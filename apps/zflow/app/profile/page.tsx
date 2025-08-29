@@ -47,6 +47,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { statsApi } from '../../lib/api'
 import EnergySpectrum from '../components/EnergySpectrum'
+import { getUserTimezone, getTimezoneAbbr } from '../utils/timeUtils'
 
 interface StatCardProps {
   title: string
@@ -116,7 +117,26 @@ function PriorityBar({ label, value, total, color }: PriorityBarProps) {
 export default function ProfilePage() {
   const { user } = useAuth()
   const { t } = useTranslation()
-  const [selectedDate, setSelectedDate] = React.useState<string>(new Date().toISOString().slice(0,10))
+  
+  // Get current date in user's local timezone
+  const getCurrentLocalDate = React.useCallback(() => {
+    const now = new Date()
+    // Create a new date in local timezone (not UTC)
+    const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    return localDate.toISOString().slice(0, 10)
+  }, [])
+  
+  const [selectedDate, setSelectedDate] = React.useState<string>(getCurrentLocalDate())
+  
+  // Get max selectable date (today in user's timezone)
+  const maxDate = React.useMemo(() => getCurrentLocalDate(), [getCurrentLocalDate])
+  
+  // Ensure selected date doesn't exceed max date (handles day transitions)
+  React.useEffect(() => {
+    if (selectedDate > maxDate) {
+      setSelectedDate(maxDate)
+    }
+  }, [selectedDate, maxDate])
   
   // Extract display name from user data
   const displayName = React.useMemo(() => {
@@ -193,13 +213,27 @@ export default function ProfilePage() {
           Energy Spectrum
         </h2>
         <div className="mb-3">
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              className="border rounded px-2 py-1 text-sm"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                className="border rounded px-2 py-1 text-sm"
+                value={selectedDate}
+                max={maxDate}
+                onChange={(e) => {
+                  const newDate = e.target.value
+                  // Ensure the selected date doesn't exceed today in local timezone
+                  if (newDate <= maxDate) {
+                    setSelectedDate(newDate)
+                  }
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-sm text-gray-600">
+              <span>🌍</span>
+              <span className="font-medium">{getTimezoneAbbr()}</span>
+              <span className="text-gray-400 hidden sm:inline">({getUserTimezone()})</span>
+            </div>
           </div>
         </div>
         <EnergySpectrum date={selectedDate} onSaved={() => { /* no-op */ }} />

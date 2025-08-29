@@ -64,10 +64,40 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     position: { x: number; y: number }
   } | null>(null)
   const [focusedTimeEntry, setFocusedTimeEntry] = React.useState<TimeEntryWithCrossDay | null>(null)
+  const [crosshairPosition, setCrosshairPosition] = React.useState<{ x: number; time: string } | null>(null)
 
-  const current = now ?? new Date()
-  const isToday = date === new Date().toISOString().slice(0,10)
-  const currentIndex = isToday ? Math.min(SEGMENTS - 1, Math.floor((current.getHours() * 60 + current.getMinutes()) / 20)) : SEGMENTS - 1
+  // Get current time in user's timezone for the selected date
+  const getCurrentTimeInTimezone = React.useMemo(() => {
+    const now = new Date()
+    const selectedDateObj = new Date(date + 'T00:00:00') // Selected date at midnight in local timezone
+    const todayDateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Today at midnight in local timezone
+    
+    // Check if selected date is today in local timezone
+    const isSelectedDateToday = selectedDateObj.getTime() === todayDateObj.getTime()
+    
+    if (isSelectedDateToday) {
+      // For today, use current time in local timezone
+      return {
+        isToday: true,
+        currentHour: now.getHours(),
+        currentMinute: now.getMinutes(),
+        currentIndex: Math.min(SEGMENTS - 1, Math.floor((now.getHours() * 60 + now.getMinutes()) / 20))
+      }
+    } else {
+      // For past dates, all segments are editable; for future dates, none are editable
+      const isFutureDate = selectedDateObj.getTime() > todayDateObj.getTime()
+      return {
+        isToday: false,
+        isFutureDate,
+        currentHour: isFutureDate ? -1 : 23,
+        currentMinute: isFutureDate ? -1 : 59,
+        currentIndex: isFutureDate ? -1 : SEGMENTS - 1
+      }
+    }
+  }, [date])
+
+  const isToday = getCurrentTimeInTimezone.isToday
+  const currentIndex = getCurrentTimeInTimezone.currentIndex
 
   React.useEffect(() => {
     let mounted = true
@@ -147,7 +177,11 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
         console.debug(`Fetching time entries for ${date}:`, {
           localRange: { start: localMidnight.toISOString(), end: localEndOfDay.toISOString() },
           utcRange: { start: dayStart, end: dayEnd },
-          timezone: getUserTimezone()
+          timezone: getUserTimezone(),
+          currentTimeInTimezone: {
+            ...getCurrentTimeInTimezone,
+            currentTime: `${getCurrentTimeInTimezone.currentHour}:${String(getCurrentTimeInTimezone.currentMinute).padStart(2, '0')}`
+          }
         })
         
         const data = await timeTrackingApi.listDay({ from: dayStart, to: dayEnd })
@@ -182,6 +216,13 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   }, [date])
 
   function canEdit(index: number) {
+    // For future dates, nothing is editable
+    if (getCurrentTimeInTimezone.isFutureDate) {
+      return false
+    }
+    
+    // For past dates, everything is editable
+    // For today, only up to current time is editable
     const basicCanEdit = !isToday || index <= currentIndex
     
     // If a time entry is focused, only allow editing within its time range
@@ -228,19 +269,29 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+
+  // Adjust dimensions for better responsiveness
   React.useEffect(() => {
     if (!containerRef.current) return
     const ro = new (window as any).ResizeObserver((entries: any) => {
       for (const e of entries) {
         const cr = e.contentRect
-        const minWidth = isMobile ? 300 : 620
-        const maxHeight = isMobile ? Math.min(200, cr.width * 0.25) : Math.min(480, cr.width * 0.35)
-        setDims({ w: Math.max(minWidth, cr.width), h: Math.max(320, maxHeight) })
+        // More responsive width calculation
+        const minWidth = isMobile ? 320 : 600
+        const maxWidth = 1200
+        const optimalWidth = Math.min(maxWidth, Math.max(minWidth, cr.width - 24)) // Account for padding
+        const optimalHeight = isMobile ? 
+          Math.min(250, optimalWidth * 0.3) : 
+          Math.min(400, optimalWidth * 0.35)
+        setDims({ 
+          w: optimalWidth, 
+          h: Math.max(320, optimalHeight) 
+        })
       }
     })
     ro.observe(containerRef.current)
     return () => ro.disconnect()
-  }, [isMobile])
+  }, [isMobile, containerRef])
 
   const xForIdx = (i: number) => pad.left + (i * plotW) / (SEGMENTS - 1)
   const yForEnergy = (e: number) => pad.top + (1 - (e - 1) / 9) * plotH
@@ -291,7 +342,9 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     
     // Map to energy spectrum segments (20-minute intervals)
     const startSegment = Math.floor(startMinutes / 20)
-    const endSegment = Math.min(SEGMENTS - 1, Math.ceil(endMinutes / 20))
+    // For end segment, if the entry ends exactly on a segment boundary (e.g., 10:00),
+    // include the segment that contains the end time, not the next one
+    const endSegment = Math.min(SEGMENTS - 1, endMinutes === 0 ? SEGMENTS - 1 : Math.floor((endMinutes - 1) / 20))
     
     return { 
       startSegment, 
@@ -592,8 +645,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   // Mobile Compact View Component
   const MobileCompactView = () => (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-gray-700 font-medium tracking-tight">{date} {t.ui.energySpectrumTitle}</div>
+      <div className="flex items-center justify-end mb-3">
         <button
           onClick={() => setIsMobileModalOpen(true)}
           className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors"
@@ -710,7 +762,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
       <div className="fixed inset-0 z-50 bg-white">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">{date} {t.ui.energySpectrumTitle}</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{date}</h2>
           <button
             onClick={() => setIsMobileModalOpen(false)}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -739,7 +791,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                         <g key={i}>
                           <line x1={x} x2={x} y1={40} y2={240} stroke={isMajor ? '#e6eaf0' : '#f3f6fa'} strokeWidth={isMajor ? 1.25 : 1} />
                           {isMajor && (
-                            <text x={x} y={270} textAnchor="middle" fontSize={12} fill="#475569">
+                            <text x={x} y={255} textAnchor="middle" fontSize={12} fill="#475569">
                               {String(h).padStart(2, '0')}:00
                             </text>
                           )}
@@ -826,7 +878,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                       x={60}
                       y={40}
                       width={680}
-                      height={200}
+                      height={270}
                       fill="transparent"
                       style={{ cursor: 'crosshair' }}
                       onPointerDown={(e) => {
@@ -845,21 +897,48 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                         setMask(prev => { const next = prev.slice(); next[idx] = true; return next })
                       }}
                       onPointerMove={(e) => {
-                        if (dragging.current == null) return
+                        // Handle energy editing
+                        if (dragging.current != null) {
+                          const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
+                          const pt = svg.createSVGPoint()
+                          pt.x = e.clientX; pt.y = e.clientY
+                          const ctm = svg.getScreenCTM()
+                          if (!ctm) return
+                          const p = pt.matrixTransform(ctm.inverse())
+                          const idx = Math.round(((p.x - 60) / 680) * (SEGMENTS - 1))
+                          if (!canEdit(idx)) return
+                          const val = Math.round(10 - ((p.y - 40) / 200) * 9)
+                          setCurve(prev => { const next = prev.slice(); next[idx] = clamp(val); return next })
+                          setMask(prev => { const next = prev.slice(); next[idx] = true; return next })
+                        }
+                        
+                        // Handle crosshair positioning
                         const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
                         const pt = svg.createSVGPoint()
                         pt.x = e.clientX; pt.y = e.clientY
                         const ctm = svg.getScreenCTM()
                         if (!ctm) return
                         const p = pt.matrixTransform(ctm.inverse())
-                        const idx = Math.round(((p.x - 60) / 680) * (SEGMENTS - 1))
-                        if (!canEdit(idx)) return
-                        const val = Math.round(10 - ((p.y - 40) / 200) * 9)
-                        setCurve(prev => { const next = prev.slice(); next[idx] = clamp(val); return next })
-                        setMask(prev => { const next = prev.slice(); next[idx] = true; return next })
+                        const relativeX = p.x - 60
+                        if (relativeX >= 0 && relativeX <= 680) {
+                          const timePercent = relativeX / 680
+                          const totalMinutes = timePercent * 24 * 60
+                          const hours = Math.floor(totalMinutes / 60)
+                          const minutes = Math.floor(totalMinutes % 60)
+                          const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                          
+                          setCrosshairPosition({
+                            x: 60 + relativeX,
+                            time: timeString
+                          })
+                        }
                       }}
                       onPointerUp={() => { dragging.current = null }}
+                      onPointerLeave={() => setCrosshairPosition(null)}
                     />
+                    
+                    {/* Time axis for mobile (moved above time entries) */}
+                    <text x={400} y={260} textAnchor="middle" fontSize={12} fill="#475569">Time</text>
                     
                     {/* Time entries display in mobile modal */}
                     <TimeEntriesDisplay
@@ -867,12 +946,50 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                       height={40}
                       padLeft={60}
                       padRight={60}
-                      yOffset={300}
+                      yOffset={270}
                       isMobile={true}
                     />
+
+                    {/* Crosshair line and time label for mobile */}
+                    {crosshairPosition && (
+                      <g>
+                        {/* Vertical crosshair line */}
+                        <line
+                          x1={crosshairPosition.x}
+                          y1={40}
+                          x2={crosshairPosition.x}
+                          y2={310}
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          strokeDasharray="4,2"
+                          opacity={0.8}
+                          pointerEvents="none"
+                        />
+                        {/* Time label */}
+                        <g pointerEvents="none">
+                          <rect
+                            x={crosshairPosition.x - 25}
+                            y={15}
+                            width={50}
+                            height={22}
+                            rx={6}
+                            fill="#3b82f6"
+                            opacity={0.9}
+                          />
+                          <text
+                            x={crosshairPosition.x}
+                            y={29}
+                            textAnchor="middle"
+                            fontSize={12}
+                            fill="white"
+                            fontWeight="500"
+                          >
+                            {crosshairPosition.time}
+                          </text>
+                        </g>
+                      </g>
+                    )}
                     
-                    {/* Time entries label */}
-                    <text x={60} y={295} fontSize={12} fill="#64748b" fontWeight="500">Time Entries</text>
                   </svg>
                 </div>
               </div>
@@ -895,19 +1012,17 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                         </div>
                       ))}
                     </div>
-                    {timeEntries.some(e => e.isCrossDaySegment) && (
-                      <div className="pt-2 border-t border-gray-200">
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <div className="w-4 h-3 rounded border-dashed border-2 border-gray-400"></div>
-                          <span>Dashed border indicates cross-day entries</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
                 
                 <div className="text-xs text-gray-600">
-                  {t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}
+                  {t.ui.editableRange}：
+                  {getCurrentTimeInTimezone.isFutureDate 
+                    ? 'Not editable (future date)' 
+                    : isToday 
+                      ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` 
+                      : t.ui.allDay
+                  }
                 </div>
                 
                 {lastSaved && (
@@ -946,19 +1061,15 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   }
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-gray-700 font-medium tracking-tight">{date} {t.ui.energySpectrumTitle}</div>
-        <div className="text-xs text-gray-500">{lastSaved ? `${t.ui.lastSaved}: ${new Date(lastSaved).toLocaleString()}` : ''}</div>
-      </div>
+    <div className="w-full max-w-7xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
       {loading ? (
         <div className="h-40 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
       ) : error ? (
         <div className="h-40 flex items-center justify-center text-red-600">{error}</div>
       ) : (
-        <div>
-          <div ref={containerRef} className="rounded-lg border border-gray-100 bg-white p-3">
-          <svg width={dims.w} height={dims.h} className="block select-none">
+        <div className="w-full">
+          <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-3 overflow-hidden">
+          <svg width="100%" height={dims.h} viewBox={`0 0 ${dims.w} ${dims.h}`} className="block select-none" preserveAspectRatio="xMidYMid meet">
             {/* Hour grid lines */}
             {hourMarks.map((h, i) => {
               const x = pad.left + (h / 24) * plotW
@@ -967,7 +1078,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                 <g key={i}>
                   <line x1={x} x2={x} y1={pad.top} y2={pad.top + plotH} stroke={isMajor ? '#e6eaf0' : '#f3f6fa'} strokeWidth={isMajor ? 1.25 : 1} />
                   {isMajor && (
-                    <text x={x} y={dims.h - 14} textAnchor="middle" fontSize={11} fill="#475569">
+                    <text x={x} y={pad.top + plotH + 20} textAnchor="middle" fontSize={11} fill="#475569">
                       {String(h).padStart(2, '0')}:00
                     </text>
                   )}
@@ -1062,12 +1173,41 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               x={pad.left}
               y={pad.top}
               width={plotW}
-              height={plotH}
+              height={plotH + timeEntriesHeight + 25}
               fill="transparent"
               style={{ cursor: focusedTimeEntry ? 'default' : 'crosshair' }}
               onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
+              onPointerMove={(e) => {
+                handlePointerMove(e)
+                
+                // Calculate crosshair position using SVG coordinate transformation
+                const svg = e.currentTarget.closest('svg') as SVGSVGElement
+                if (svg) {
+                  const pt = svg.createSVGPoint()
+                  pt.x = e.clientX
+                  pt.y = e.clientY
+                  const ctm = svg.getScreenCTM()
+                  if (ctm) {
+                    const svgPoint = pt.matrixTransform(ctm.inverse())
+                    const relativeX = svgPoint.x - pad.left
+                    
+                    if (relativeX >= 0 && relativeX <= plotW) {
+                      const timePercent = relativeX / plotW
+                      const totalMinutes = timePercent * 24 * 60
+                      const hours = Math.floor(totalMinutes / 60)
+                      const minutes = Math.floor(totalMinutes % 60)
+                      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                      
+                      setCrosshairPosition({
+                        x: pad.left + relativeX,
+                        time: timeString
+                      })
+                    }
+                  }
+                }
+              }}
               onPointerUp={handlePointerUp}
+              onMouseLeave={() => setCrosshairPosition(null)}
               onClick={() => {
                 // Click on empty area to exit focus mode
                 if (focusedTimeEntry) {
@@ -1076,9 +1216,8 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               }}
             />
 
-            {/* Axis titles */}
+            {/* Energy axis title */}
             <text x={pad.left + plotW / 2} y={28} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.energyAxis}</text>
-            <text x={pad.left + plotW / 2} y={dims.h} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.timeAxis}</text>
             
             {/* Time entries display */}
             <TimeEntriesDisplay
@@ -1086,20 +1225,50 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
               height={timeEntriesHeight}
               padLeft={pad.left}
               padRight={pad.right}
-              yOffset={pad.top + plotH + 20}
+              yOffset={pad.top + plotH + 25}
               isMobile={false}
             />
+
+            {/* Crosshair line and time label */}
+            {crosshairPosition && (
+              <g>
+                {/* Vertical crosshair line */}
+                <line
+                  x1={crosshairPosition.x}
+                  y1={pad.top}
+                  x2={crosshairPosition.x}
+                  y2={pad.top + plotH + timeEntriesHeight + 25}
+                  stroke="#3b82f6"
+                  strokeWidth={1}
+                  strokeDasharray="4,2"
+                  opacity={0.8}
+                  pointerEvents="none"
+                />
+                {/* Time label */}
+                <g pointerEvents="none">
+                  <rect
+                    x={crosshairPosition.x - 20}
+                    y={pad.top - 25}
+                    width={40}
+                    height={20}
+                    rx={4}
+                    fill="#3b82f6"
+                    opacity={0.9}
+                  />
+                  <text
+                    x={crosshairPosition.x}
+                    y={pad.top - 12}
+                    textAnchor="middle"
+                    fontSize={11}
+                    fill="white"
+                    fontWeight="500"
+                  >
+                    {crosshairPosition.time}
+                  </text>
+                </g>
+              </g>
+            )}
             
-            {/* Time entries label */}
-            <text 
-              x={pad.left} 
-              y={pad.top + plotH + 15} 
-              fontSize={11} 
-              fill="#64748b" 
-              fontWeight="500"
-            >
-              Time Entries
-            </text>
           </svg>
           </div>
           <div className="mt-4 space-y-3">
@@ -1119,20 +1288,20 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                     </div>
                   ))}
                 </div>
-                {timeEntries.some(e => e.isCrossDaySegment) && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-4 h-3 rounded border-dashed border-2 border-gray-400"></div>
-                      <span>Dashed border indicates cross-day entries</span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="text-xs text-gray-600">{t.ui.editableRange}：{isToday ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` : t.ui.allDay}</div>
+                <div className="text-xs text-gray-600">
+                  {t.ui.editableRange}：
+                  {getCurrentTimeInTimezone.isFutureDate 
+                    ? 'Not editable (future date)' 
+                    : isToday 
+                      ? `00:00 - ${segmentToTimeLabel(currentIndex+1)}` 
+                      : t.ui.allDay
+                  }
+                </div>
                 {focusedTimeEntry && (
                   <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center gap-1.5">
@@ -1153,9 +1322,16 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                   </div>
                 )}
               </div>
-              <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
-                {saving ? t.ui.saving : t.common.save}
-              </button>
+              <div className="flex items-center gap-3">
+                {lastSaved && (
+                  <div className="text-xs text-gray-500">
+                    {t.ui.lastSaved}: {new Date(lastSaved).toLocaleString()}
+                  </div>
+                )}
+                <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
+                  {saving ? t.ui.saving : t.common.save}
+                </button>
+              </div>
             </div>
           </div>
         </div>
