@@ -215,12 +215,6 @@ export function DesktopEnergyChart({
         }}
         onPointerUp={handlePointerUp}
         onMouseLeave={() => setCrosshairPosition(null)}
-        onClick={() => {
-          // Click on empty area to exit focus mode
-          if (focusedTimeEntry) {
-            setFocusedTimeEntry(null)
-          }
-        }}
       />
 
       {/* Energy axis title */}

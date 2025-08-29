@@ -37,6 +37,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
 
   const containerRef = React.useRef<HTMLDivElement>(null)
   const dragging = React.useRef<number | null>(null)
+  const didEditDuringDrag = React.useRef<boolean>(false)
   const [dims, setDims] = React.useState({ w: 900, h: 400 })
   const pad = { left: 48, right: 24, top: 36, bottom: 42 }
   const timeEntriesHeight = 40
@@ -113,6 +114,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     ;(e.currentTarget as any).setPointerCapture?.(e.pointerId)
     const val = Math.round(energyForY(p.y, pad.top, plotH))
     energyData.updateCurve(idx, val)
+    didEditDuringDrag.current = true
   }
 
   function handlePointerMove(e: React.PointerEvent<SVGRectElement>) {
@@ -135,11 +137,25 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     })) return
     const val = Math.round(energyForY(p.y, pad.top, plotH))
     energyData.updateCurve(idx, val)
+    didEditDuringDrag.current = true
   }
 
   function handlePointerUp() { 
     dragging.current = null 
+    if (didEditDuringDrag.current) {
+      didEditDuringDrag.current = false
+      energyData.saveAll(onSaved)
+    }
   }
+
+  // Reset editable/focus state when date changes (e.g., switch day)
+  React.useEffect(() => {
+    setFocusedTimeEntry(null)
+    setHoveredTimeEntry(null)
+    setCrosshairPosition(null)
+    dragging.current = null
+    setInteractiveTooltip(null)
+  }, [date])
 
 
 
@@ -196,10 +212,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     <div 
       className="w-full max-w-7xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100"
       onClick={() => {
-        // Click anywhere to close focused task and tooltip
-        if (focusedTimeEntry) {
-          setFocusedTimeEntry(null)
-        }
+        // 点击空白不再取消锁定；仍清理悬停提示
         if (hoveredTimeEntry) {
           setHoveredTimeEntry(null)
         }
