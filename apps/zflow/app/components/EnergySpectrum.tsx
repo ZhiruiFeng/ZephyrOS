@@ -165,17 +165,17 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     ;(async () => {
       setLoadingTimeEntries(true)
       try {
-        // Create date range for the selected date in user's timezone
-        // We need to query UTC times that overlap with the local date
-        const localMidnight = new Date(date + 'T00:00:00')
-        const localEndOfDay = new Date(date + 'T23:59:59.999')
+        // Create date range for the selected date, same as DailyTimeModal
+        const currentDate = new Date(date + 'T00:00:00')
+        const startOfDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 0, 0, 0, 0)
+        const endOfDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 23, 59, 59, 999)
         
-        // Convert local times to UTC for API query
-        const dayStart = new Date(localMidnight.getTime() - localMidnight.getTimezoneOffset() * 60000).toISOString()
-        const dayEnd = new Date(localEndOfDay.getTime() - localEndOfDay.getTimezoneOffset() * 60000).toISOString()
+        // Convert to UTC ISO strings for API query (same as DailyTimeModal)
+        const dayStart = new Date(startOfDay).toISOString()
+        const dayEnd = new Date(endOfDay).toISOString()
         
         console.debug(`Fetching time entries for ${date}:`, {
-          localRange: { start: localMidnight.toISOString(), end: localEndOfDay.toISOString() },
+          localRange: { start: startOfDay.toISOString(), end: endOfDay.toISOString() },
           utcRange: { start: dayStart, end: dayEnd },
           timezone: getUserTimezone(),
           currentTimeInTimezone: {
@@ -197,7 +197,7 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
         }))
         
         // Process entries using cross-day logic from DailyTimeModal
-        const processedEntries = processDayEntries(rawEntries, localMidnight)
+        const processedEntries = processDayEntries(rawEntries, currentDate)
         
         console.debug(`Processed ${data.entries?.length || 0} entries to ${processedEntries.length} for local date ${date}`, {
           crossDayEntries: processedEntries.filter(e => e.isCrossDaySegment).length

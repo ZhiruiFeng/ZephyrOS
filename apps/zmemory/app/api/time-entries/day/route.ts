@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     if (!from || !to) return jsonWithCors(request, { error: 'from/to required' }, 400)
 
     // Fetch entries that overlap [from, to]
-    // start_at < to AND coalesce(end_at, now()) >= from
+    // start_at < to AND (end_at IS NULL OR end_at >= from)
     const { data, error } = await client
       .from('task_time_entries')
       .select(`
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('user_id', userId)
       .lt('start_at', to)
-      .gte('end_at', from)
+      .or(`end_at.is.null,end_at.gte.${from}`)
       .order('start_at', { ascending: true })
 
     if (error) {
