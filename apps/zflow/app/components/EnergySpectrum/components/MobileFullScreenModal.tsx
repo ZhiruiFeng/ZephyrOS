@@ -241,9 +241,6 @@ export function MobileFullScreenModal({
                     onPointerLeave={() => setCrosshairPosition(null)}
                   />
                   
-                  {/* Time axis for mobile (moved above time entries) */}
-                  <text x={400} y={260} textAnchor="middle" fontSize={12} fill="#475569">Time</text>
-                  
                   {/* Time entries display in mobile modal */}
                   <TimeEntriesDisplay
                     width={800}
