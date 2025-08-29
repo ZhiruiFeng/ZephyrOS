@@ -460,6 +460,7 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
                 t={t}
                 showTimeEntriesBar={!skipFetchDayEntries}
                 hideSmoothPath={true}
+                date={date}
               />
             ) : (
               <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-3 overflow-hidden">

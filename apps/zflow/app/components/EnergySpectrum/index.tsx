@@ -202,6 +202,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
           loading={energyData.loading}
           error={energyData.error}
           t={t}
+          date={date}
         />
         <TimeEntryTooltip hoveredTimeEntry={hoveredTimeEntry} />
       </>

@@ -28,6 +28,8 @@ export interface TranslationKeys {
     previous: string;
     start: string;
     stop: string;
+    today: string;
+    yesterday: string;
   };
 
   // Navigation
@@ -360,6 +362,8 @@ const translations: Record<Language, TranslationKeys> = {
       previous: 'Previous',
       start: 'Start',
       stop: 'Stop',
+      today: 'Today',
+      yesterday: 'Yesterday',
     },
     nav: {
       home: 'Home',
@@ -667,6 +671,8 @@ const translations: Record<Language, TranslationKeys> = {
       previous: '上一步',
       start: '开始',
       stop: '停止',
+      today: '今天',
+      yesterday: '昨天',
     },
     nav: {
       home: '首页',
