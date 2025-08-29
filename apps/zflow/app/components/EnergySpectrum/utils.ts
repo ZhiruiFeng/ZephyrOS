@@ -1,4 +1,4 @@
-import { getUserTimezone } from '../../utils/timezoneUtils'
+import { getUserTimezone } from '../../utils/timeUtils'
 
 export const SEGMENTS = 72
 export const MIN = 1

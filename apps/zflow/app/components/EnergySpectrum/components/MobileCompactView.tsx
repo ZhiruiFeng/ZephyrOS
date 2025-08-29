@@ -20,7 +20,7 @@ interface MobileCompactViewProps {
   interactiveTooltip: InteractiveTooltip | null
   setHoveredTimeEntry: (entry: HoveredTimeEntry | null) => void
   setFocusedTimeEntry: (entry: TimeEntryWithCrossDay | null) => void
-  setInteractiveTooltip: (tooltip: InteractiveTooltip | null) => void
+  setInteractiveTooltip: React.Dispatch<React.SetStateAction<InteractiveTooltip | null>>
   setIsMobileModalOpen: (open: boolean) => void
   loading: boolean
   error: string | null

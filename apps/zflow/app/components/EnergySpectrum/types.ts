@@ -7,13 +7,13 @@ export interface EnergySpectrumProps {
 export interface TimeEntryWithCrossDay {
   id: string
   start_at: string
-  end_at?: string
-  duration_minutes?: number
+  end_at?: string | null
+  duration_minutes?: number | null
   category_color?: string
   category_id?: string
   category_name?: string
   task_title?: string
-  note?: string
+  note?: string | null
   isCrossDaySegment?: boolean
 }
 
