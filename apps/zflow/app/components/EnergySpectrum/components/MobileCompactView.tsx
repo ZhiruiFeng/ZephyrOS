@@ -88,7 +88,7 @@ export function MobileCompactView({
   }
   
   const hideTooltip = () => {
-    setInteractiveTooltip(prev => prev ? { ...prev, visible: false } : null)
+    setInteractiveTooltip((prev: InteractiveTooltip | null) => prev ? { ...prev, visible: false } : null)
   }
   
   return (
