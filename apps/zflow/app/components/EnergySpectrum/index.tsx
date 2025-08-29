@@ -9,7 +9,7 @@ import { getCurrentTimeInTimezone, buildSmoothPath } from './utils'
 import { TimeEntryTooltip } from './components/TimeEntryTooltip'
 import { DesktopEnergyChart } from './components/DesktopEnergyChart'
 import { MobileCompactView } from './components/MobileCompactView'
-import { MobileFullScreenModal } from './components/MobileFullScreenModal'
+import { MobileEnergyChart } from './components/MobileEnergyChart'
 import { CategoryLegend } from './components/CategoryLegend'
 import type { 
   EnergySpectrumProps, 
@@ -179,31 +179,62 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
           error={energyData.error}
           t={t}
         />
-        <MobileFullScreenModal
-          isMobileModalOpen={isMobileModalOpen}
-          curve={energyData.curve}
-          hourMarks={hourMarks}
-          focusedTimeEntry={focusedTimeEntry}
-          crosshairPosition={crosshairPosition}
-          currentTimeInfo={currentTimeInfo}
-          timeEntryLayers={timeEntriesData.timeEntryLayers}
-          categorySummary={timeEntriesData.categorySummary}
-          hoveredTimeEntry={hoveredTimeEntry}
-          setHoveredTimeEntry={setHoveredTimeEntry}
-          setFocusedTimeEntry={setFocusedTimeEntry}
-          setCrosshairPosition={setCrosshairPosition}
-          setIsMobileModalOpen={setIsMobileModalOpen}
-          handlePointerDown={handlePointerDown}
-          handlePointerMove={handlePointerMove}
-          handlePointerUp={handlePointerUp}
-          saveAll={() => energyData.saveAll(onSaved)}
-          saving={energyData.saving}
-          lastSaved={energyData.lastSaved}
-          loading={energyData.loading}
-          error={energyData.error}
-          t={t}
-          date={date}
-        />
+        {isMobileModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex items-end">
+            <div className="w-full bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div className="flex flex-col">
+                  <h2 className="text-lg font-semibold text-gray-900">Energy Spectrum</h2>
+                  <p className="text-sm text-gray-500 mt-1">{date}</p>
+                </div>
+                <button
+                  onClick={() => setIsMobileModalOpen(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-auto">
+                <MobileEnergyChart
+                  curve={energyData.curve}
+                  hourMarks={hourMarks}
+                  focusedTimeEntry={focusedTimeEntry}
+                  crosshairPosition={crosshairPosition}
+                  currentTimeInfo={currentTimeInfo}
+                  timeEntryLayers={timeEntriesData.timeEntryLayers}
+                  categorySummary={timeEntriesData.categorySummary}
+                  hoveredTimeEntry={hoveredTimeEntry}
+                  setHoveredTimeEntry={setHoveredTimeEntry}
+                  setFocusedTimeEntry={setFocusedTimeEntry}
+                  setCrosshairPosition={setCrosshairPosition}
+                  handlePointerDown={handlePointerDown}
+                  handlePointerMove={handlePointerMove}
+                  handlePointerUp={handlePointerUp}
+                  showTimeEntriesBar={true}
+                  hideSmoothPath={false}
+                  showCategoryLegend={true}
+                  showEditableRange={true}
+                  showLastSaved={true}
+                  lastSaved={energyData.lastSaved}
+                  compactMode={false}
+                  t={t}
+                />
+              </div>
+              <div className="border-t border-gray-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white">
+                <button 
+                  onClick={() => {
+                    energyData.saveAll(onSaved)
+                    setIsMobileModalOpen(false)
+                  }} 
+                  disabled={energyData.saving} 
+                  className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm font-medium"
+                >
+                  {energyData.saving ? t.ui.saving : t.common.save}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <TimeEntryTooltip hoveredTimeEntry={hoveredTimeEntry} />
       </>
     )

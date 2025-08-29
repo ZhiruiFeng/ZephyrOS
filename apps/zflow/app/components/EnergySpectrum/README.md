@@ -21,7 +21,7 @@ EnergySpectrum/
     ├── CategoryLegend.tsx       # 分类图例组件
     ├── DesktopEnergyChart.tsx   # 桌面版能量图表
     ├── MobileCompactView.tsx    # 移动端紧凑视图
-    └── MobileFullScreenModal.tsx # 移动端全屏模态框
+    └── MobileEnergyChart.tsx    # 移动端能量图表（增强版）
 ```
 
 ### 主要改进
@@ -35,7 +35,7 @@ EnergySpectrum/
 #### 2. 桌面版和移动版分离
 - **DesktopEnergyChart**: 专门处理桌面版的能量图表渲染
 - **MobileCompactView**: 移动端紧凑视图，包含缩放和交互功能
-- **MobileFullScreenModal**: 移动端全屏模态框，提供完整的图表功能
+- **MobileEnergyChart**: 移动端能量图表（增强版），支持多种配置模式
 
 #### 3. 数据管理优化
 - **useEnergyData**: 管理能量数据的加载、保存和状态

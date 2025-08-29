@@ -1,6 +1,7 @@
 import React from 'react'
 import { energyToColor, buildSmoothPath, canEdit, segmentToTimeLabel } from '../utils'
 import { TimeEntriesDisplay } from './TimeEntriesDisplay'
+import { CategoryLegend } from './CategoryLegend'
 import type { 
   TimeEntryWithCrossDay, 
   HoveredTimeEntry, 
@@ -27,6 +28,11 @@ interface MobileEnergyChartProps {
   showTimeEntriesBar?: boolean
   visibleRange?: { start: number; end: number }
   hideSmoothPath?: boolean
+  showCategoryLegend?: boolean
+  showEditableRange?: boolean
+  showLastSaved?: boolean
+  lastSaved?: string | null
+  compactMode?: boolean
   t: any
 }
 
@@ -48,21 +54,45 @@ export function MobileEnergyChart({
   showTimeEntriesBar = true,
   visibleRange,
   hideSmoothPath,
+  showCategoryLegend = false,
+  showEditableRange = true,
+  showLastSaved = false,
+  lastSaved,
+  compactMode = false,
   t
 }: MobileEnergyChartProps) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <div className="min-w-[800px] bg-gray-50 rounded-lg p-4">
-          <svg width="800" height="360" className="block select-none">
+        <div className={`bg-gray-50 rounded-lg p-4 ${compactMode ? 'min-w-[600px]' : 'min-w-[800px]'}`}>
+          <svg 
+            width={compactMode ? 600 : 800} 
+            height={compactMode ? 280 : 360} 
+            className="block select-none"
+          >
+            {/* Hour grid lines */}
             {hourMarks.map((h, i) => {
-              const x = 60 + (h / 24) * 680
+              const chartWidth = compactMode ? 480 : 680
+              const x = 60 + (h / 24) * chartWidth
               const isMajor = h % 3 === 0
               return (
                 <g key={i}>
-                  <line x1={x} x2={x} y1={40} y2={240} stroke={isMajor ? '#e6eaf0' : '#f3f6fa'} strokeWidth={isMajor ? 1.25 : 1} />
+                  <line 
+                    x1={x} 
+                    x2={x} 
+                    y1={40} 
+                    y2={compactMode ? 180 : 240} 
+                    stroke={isMajor ? '#e6eaf0' : '#f3f6fa'} 
+                    strokeWidth={isMajor ? 1.25 : 1} 
+                  />
                   {isMajor && (
-                    <text x={x} y={255} textAnchor="middle" fontSize={12} fill="#475569">
+                    <text 
+                      x={x} 
+                      y={compactMode ? 195 : 255} 
+                      textAnchor="middle" 
+                      fontSize={12} 
+                      fill="#475569"
+                    >
                       {String(h).padStart(2, '0')}:00
                     </text>
                   )}
@@ -70,24 +100,30 @@ export function MobileEnergyChart({
               )
             })}
 
+            {/* Y grid */}
             {Array.from({ length: 10 }).map((_, k) => {
               const e = 1 + k
-              const y = 40 + (1 - (e - 1) / 9) * 200
+              const chartHeight = compactMode ? 140 : 200
+              const y = 40 + (1 - (e - 1) / 9) * chartHeight
+              const chartWidth = compactMode ? 480 : 680
               return (
                 <g key={k}>
-                  <line x1={60} x2={740} y1={y} y2={y} stroke="#eef2f7" />
+                  <line x1={60} x2={60 + chartWidth} y1={y} y2={y} stroke="#eef2f7" />
                   <text x={45} y={y + 4} textAnchor="end" fontSize={12} fill="#475569" className="tabular-nums">{e}</text>
                 </g>
               )
             })}
 
+            {/* Energy bars */}
             {curve.map((eVal, i) => {
               if (visibleRange && (i < visibleRange.start || i > visibleRange.end)) return null
               const eNum = Number(eVal) || 5
-              const x = 60 + (i * 680) / 71
-              const w = Math.max(6, 680 / 72 * 0.8)
-              const y = 40 + (1 - (eNum - 1) / 9) * 200
-              const h = 40 + 200 - y
+              const chartWidth = compactMode ? 480 : 680
+              const chartHeight = compactMode ? 140 : 200
+              const x = 60 + (i * chartWidth) / 71
+              const w = Math.max(6, chartWidth / 72 * 0.8)
+              const y = 40 + (1 - (eNum - 1) / 9) * chartHeight
+              const h = 40 + chartHeight - y
               const editable = canEdit(i, currentTimeInfo, focusedTimeEntry, (entry: any) => {
                 const startDate = new Date(entry.start_at)
                 const endDate = entry.end_at ? new Date(entry.end_at) : new Date()
@@ -142,13 +178,18 @@ export function MobileEnergyChart({
               )
             })}
 
+            {/* Smoothed line */}
             {!hideSmoothPath && (
               <path 
                 d={buildSmoothPath(
-                  curve.map((e, i) => ({ 
-                    x: 60 + (i * 680) / 71, 
-                    y: 40 + (1 - (Number(e) || 5 - 1) / 9) * 200 
-                  })), 0.8
+                  curve.map((e, i) => { 
+                    const chartWidth = compactMode ? 480 : 680
+                    const chartHeight = compactMode ? 140 : 200
+                    return {
+                      x: 60 + (i * chartWidth) / 71, 
+                      y: 40 + (1 - (Number(e) || 5 - 1) / 9) * chartHeight 
+                    }
+                  }), 0.8
                 )} 
                 fill="none" 
                 stroke="#111827" 
@@ -156,45 +197,55 @@ export function MobileEnergyChart({
               />
             )}
 
+            {/* Touch interaction overlay */}
             <rect
               x={60}
               y={40}
-              width={680}
-              height={270}
+              width={compactMode ? 480 : 680}
+              height={compactMode ? 180 : 270}
               fill="transparent"
               style={{ cursor: 'crosshair' }}
               onPointerDown={handlePointerDown}
               onPointerMove={(e) => {
+                // Handle energy editing
                 if ((e.currentTarget as any).getAttribute('data-dragging') === 'true') {
                   handlePointerMove(e)
                 }
+                
+                // Handle crosshair positioning
                 const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
                 const pt = svg.createSVGPoint()
                 pt.x = e.clientX; pt.y = e.clientY
                 const ctm = svg.getScreenCTM()
                 if (!ctm) return
                 const p = pt.matrixTransform(ctm.inverse())
+                const chartWidth = compactMode ? 480 : 680
                 const relativeX = p.x - 60
-                if (relativeX >= 0 && relativeX <= 680) {
-                  const timePercent = relativeX / 680
+                if (relativeX >= 0 && relativeX <= chartWidth) {
+                  const timePercent = relativeX / chartWidth
                   const totalMinutes = timePercent * 24 * 60
                   const hours = Math.floor(totalMinutes / 60)
                   const minutes = Math.floor(totalMinutes % 60)
                   const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-                  setCrosshairPosition({ x: 60 + relativeX, time: timeString })
+                  
+                  setCrosshairPosition({
+                    x: 60 + relativeX,
+                    time: timeString
+                  })
                 }
               }}
               onPointerUp={handlePointerUp}
               onPointerLeave={() => setCrosshairPosition(null)}
             />
 
+            {/* Time entries display */}
             {showTimeEntriesBar && (
               <TimeEntriesDisplay
-                width={800}
+                width={compactMode ? 600 : 800}
                 height={40}
                 padLeft={60}
                 padRight={60}
-                yOffset={270}
+                yOffset={compactMode ? 220 : 270}
                 isMobile={true}
                 timeEntryLayers={timeEntryLayers}
                 focusedTimeEntry={focusedTimeEntry}
@@ -203,13 +254,14 @@ export function MobileEnergyChart({
               />
             )}
 
+            {/* Crosshair line and time label */}
             {crosshairPosition && (
               <g>
                 <line
                   x1={crosshairPosition.x}
                   y1={40}
                   x2={crosshairPosition.x}
-                  y2={310}
+                  y2={compactMode ? 260 : 310}
                   stroke="#3b82f6"
                   strokeWidth={2}
                   strokeDasharray="4,2"
@@ -217,8 +269,23 @@ export function MobileEnergyChart({
                   pointerEvents="none"
                 />
                 <g pointerEvents="none">
-                  <rect x={crosshairPosition.x - 25} y={15} width={50} height={22} rx={6} fill="#3b82f6" opacity={0.9} />
-                  <text x={crosshairPosition.x} y={29} textAnchor="middle" fontSize={12} fill="white" fontWeight="500">
+                  <rect 
+                    x={crosshairPosition.x - 25} 
+                    y={15} 
+                    width={50} 
+                    height={22} 
+                    rx={6} 
+                    fill="#3b82f6" 
+                    opacity={0.9} 
+                  />
+                  <text 
+                    x={crosshairPosition.x} 
+                    y={29} 
+                    textAnchor="middle" 
+                    fontSize={12} 
+                    fill="white" 
+                    fontWeight="500"
+                  >
                     {crosshairPosition.time}
                   </text>
                 </g>
@@ -228,15 +295,31 @@ export function MobileEnergyChart({
         </div>
       </div>
 
+      {/* Information and controls */}
       <div className="mt-4 space-y-4">
-        <div className="text-xs text-gray-600">
-          {t.ui.editableRange}：
-          {currentTimeInfo.isFutureDate 
-            ? 'Not editable (future date)' 
-            : currentTimeInfo.isToday 
-              ? `00:00 - ${segmentToTimeLabel(currentTimeInfo.currentIndex+1)}` 
-              : t.ui.allDay}
-        </div>
+        {/* Category legend */}
+        {showCategoryLegend && (
+          <CategoryLegend categorySummary={categorySummary} isMobile={true} />
+        )}
+        
+        {/* Editable range info */}
+        {showEditableRange && (
+          <div className="text-xs text-gray-600">
+            {t.ui.editableRange}：
+            {currentTimeInfo.isFutureDate 
+              ? 'Not editable (future date)' 
+              : currentTimeInfo.isToday 
+                ? `00:00 - ${segmentToTimeLabel(currentTimeInfo.currentIndex+1)}` 
+                : t.ui.allDay}
+          </div>
+        )}
+        
+        {/* Last saved info */}
+        {showLastSaved && lastSaved && (
+          <div className="text-xs text-gray-500">
+            {t.ui.lastSaved}: {new Date(lastSaved).toLocaleString()}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -6,7 +6,6 @@ import { useTranslation } from '../../contexts/LanguageContext'
 import { useEnergyData } from './EnergySpectrum/hooks/useEnergyData'
 import { getCurrentTimeInTimezone, buildSmoothPath } from './EnergySpectrum/utils'
 import { DesktopEnergyChart } from './EnergySpectrum/components/DesktopEnergyChart'
-import { MobileFullScreenModal } from './EnergySpectrum/components/MobileFullScreenModal'
 import { MobileEnergyChart } from './EnergySpectrum/components/MobileEnergyChart'
 import { useTimeEntries } from './EnergySpectrum/hooks/useTimeEntries'
 import type { TimeEntry } from '../../lib/api'
@@ -25,10 +24,9 @@ type Props = {
   entry: TimeEntry | null
   onClose: () => void
   skipFetchDayEntries?: boolean
-  mobileMode?: 'sheet' | 'full'
 }
 
-export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEntries = true, mobileMode = 'sheet' }: Props) {
+export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEntries = true }: Props) {
   const { t } = useTranslation()
   const [isMobile, setIsMobile] = React.useState(false)
   const [isEditingTime, setIsEditingTime] = React.useState(false)
@@ -303,8 +301,8 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
     return null
   }
 
-  // Desktop or mobile-full
-  if (!isMobile || mobileMode === 'full') {
+  // Desktop version
+  if (!isMobile) {
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center">
         <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -435,33 +433,32 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
 
 
             {isMobile ? (
-              <MobileFullScreenModal
-                isMobileModalOpen={true}
-                curve={energyData.curve}
-                hourMarks={hourMarks}
-                focusedTimeEntry={focusedTimeEntry}
-                crosshairPosition={crosshairPosition}
-                currentTimeInfo={currentTimeInfo}
-                timeEntryLayers={timeEntriesData.timeEntryLayers}
-                categorySummary={timeEntriesData.categorySummary}
-                hoveredTimeEntry={hoveredTimeEntry}
-                setHoveredTimeEntry={setHoveredTimeEntry}
-                setFocusedTimeEntry={setFocusedTimeEntry}
-                setCrosshairPosition={setCrosshairPosition}
-                setIsMobileModalOpen={() => {}}
-                handlePointerDown={handlePointerDown}
-                handlePointerMove={handlePointerMove}
-                handlePointerUp={handlePointerUp}
-                saveAll={() => { energyData.saveAll(); onClose() }}
-                saving={energyData.saving}
-                lastSaved={energyData.lastSaved}
-                loading={energyData.loading}
-                error={energyData.error}
-                t={t}
-                showTimeEntriesBar={!skipFetchDayEntries}
-                hideSmoothPath={true}
-                date={date}
-              />
+              <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-3 overflow-hidden">
+                <MobileEnergyChart
+                  curve={energyData.curve}
+                  hourMarks={hourMarks}
+                  focusedTimeEntry={focusedTimeEntry}
+                  crosshairPosition={crosshairPosition}
+                  currentTimeInfo={currentTimeInfo}
+                  timeEntryLayers={timeEntriesData.timeEntryLayers}
+                  categorySummary={timeEntriesData.categorySummary}
+                  hoveredTimeEntry={hoveredTimeEntry}
+                  setHoveredTimeEntry={setHoveredTimeEntry}
+                  setFocusedTimeEntry={setFocusedTimeEntry}
+                  setCrosshairPosition={setCrosshairPosition}
+                  handlePointerDown={handlePointerDown}
+                  handlePointerMove={handlePointerMove}
+                  handlePointerUp={handlePointerUp}
+                  showTimeEntriesBar={!skipFetchDayEntries}
+                  hideSmoothPath={true}
+                  showCategoryLegend={true}
+                  showEditableRange={true}
+                  showLastSaved={true}
+                  lastSaved={energyData.lastSaved}
+                  compactMode={false}
+                  t={t}
+                />
+              </div>
             ) : (
               <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-3 overflow-hidden">
                 <DesktopEnergyChart
@@ -507,166 +504,180 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
     )
   }
 
-  // Mobile bottom sheet mode
-  return (
-    <div className="fixed inset-0 z-[60]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-0 right-0 bottom-0 max-h-[80vh] bg-white rounded-t-2xl shadow-2xl border-t border-gray-200">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="font-semibold text-gray-900 text-sm truncate">{t.ui.energyReview}</div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="p-3 overflow-y-auto">
-          {currentEntry && (
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-700">
-              {currentEntry.category_color && (
-                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: (currentEntry as any).category_color || currentEntry.category_color as any }} />
-              )}
-              <span className="font-medium truncate max-w-[60%]">{taskTitle || currentEntry.task_title || '...'}</span>
-              <span className="text-gray-400">•</span>
-              <span>
-                {new Date(currentEntry.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {currentEntry.end_at ? ` - ${new Date(currentEntry.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
-              </span>
-              <span className="text-gray-400">•</span>
-              <span>
-                {(() => {
-                  const startMs = new Date(currentEntry.start_at).getTime()
-                  const endMs = new Date(currentEntry.end_at || Date.now()).getTime()
-                  const mins = currentEntry.duration_minutes ?? Math.max(0, Math.round((endMs - startMs) / 60000))
-                  return `${mins} min`
-                })()}
-              </span>
-              {((currentEntry as any).category_name) && (
-                <>
-                  <span className="text-gray-400">•</span>
-                  <span>{(currentEntry as any).category_name}</span>
-                </>
-              )}
+  // Mobile full screen modal mode (consistent with profile page)
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 z-[60] bg-black bg-opacity-50 backdrop-blur-sm flex items-end">
+        <div className="w-full bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex flex-col">
+              <h2 className="text-lg font-semibold text-gray-900">{t.ui.energyReview}</h2>
             </div>
-          )}
-          
-          {/* Mobile time editing section */}
-          {currentEntry && (
-            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-                  <span>⏰</span>
-                  {t.ui.timeEdit}
-                </h3>
-                {!isEditingTime ? (
-                  <button
-                    onClick={() => setIsEditingTime(true)}
-                    className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    {t.ui.editTime}
-                  </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-4 overflow-auto">
+            {currentEntry && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-700">
+                {currentEntry.category_color && (
+                  <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: (currentEntry as any).category_color || currentEntry.category_color as any }} />
+                )}
+                <span className="font-medium truncate max-w-[60%]">{taskTitle || currentEntry.task_title || '...'}</span>
+                <span className="text-gray-400">•</span>
+                <span>
+                  {new Date(currentEntry.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {currentEntry.end_at ? ` - ${new Date(currentEntry.end_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                </span>
+                <span className="text-gray-400">•</span>
+                <span>
+                  {(() => {
+                    const startMs = new Date(currentEntry.start_at).getTime()
+                    const endMs = new Date(currentEntry.end_at || Date.now()).getTime()
+                    const mins = currentEntry.duration_minutes ?? Math.max(0, Math.round((endMs - startMs) / 60000))
+                    return `${mins} min`
+                  })()}
+                </span>
+                {((currentEntry as any).category_name) && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span>{(currentEntry as any).category_name}</span>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Mobile time editing section */}
+            {currentEntry && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                    <span>⏰</span>
+                    {t.ui.timeEdit}
+                  </h3>
+                  {!isEditingTime ? (
+                    <button
+                      onClick={() => setIsEditingTime(true)}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      {t.ui.editTime}
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCancelTimeEdit}
+                        className="text-xs px-2 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                      >
+                        {t.common.cancel}
+                      </button>
+                      <button
+                        onClick={handleSaveTime}
+                        disabled={isSavingTime || !!timeError}
+                        className="text-xs px-2 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        {isSavingTime ? t.ui.saving : t.common.save}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {isEditingTime ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.startTime}</label>
+                      <input
+                        type="datetime-local"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.endTime}</label>
+                      <input
+                        type="datetime-local"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      />
+                    </div>
+                    {timeError && (
+                      <div className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-md p-2">
+                        ⚠️ {timeError}
+                      </div>
+                    )}
+                    {timeSuccess && (
+                      <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
+                        ✅ {timeSuccess}
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCancelTimeEdit}
-                      className="text-xs px-2 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-                    >
-                      {t.common.cancel}
-                    </button>
-                    <button
-                      onClick={handleSaveTime}
-                      disabled={isSavingTime || !!timeError}
-                      className="text-xs px-2 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
-                    >
-                      {isSavingTime ? t.ui.saving : t.common.save}
-                    </button>
+                  <div className="space-y-2">
+                    <div className="text-sm text-blue-800 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{t.ui.startTime}:</span>
+                        <span>{new Date(currentEntry.start_at).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{t.ui.endTime}:</span>
+                        <span>{currentEntry.end_at ? new Date(currentEntry.end_at).toLocaleString() : t.ui.inProgress}</span>
+                      </div>
+                    </div>
+                    {timeSuccess && (
+                      <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
+                        ✅ {timeSuccess}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              
-              {isEditingTime ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.startTime}</label>
-                    <input
-                      type="datetime-local"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-blue-800 mb-2">{t.ui.endTime}</label>
-                    <input
-                      type="datetime-local"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    />
-                  </div>
-                  {timeError && (
-                    <div className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-md p-2">
-                      ⚠️ {timeError}
-                    </div>
-                  )}
-                  {timeSuccess && (
-                    <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
-                      ✅ {timeSuccess}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="text-sm text-blue-800 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{t.ui.startTime}:</span>
-                      <span>{new Date(currentEntry.start_at).toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{t.ui.endTime}:</span>
-                      <span>{currentEntry.end_at ? new Date(currentEntry.end_at).toLocaleString() : t.ui.inProgress}</span>
-                    </div>
-                  </div>
-                  {timeSuccess && (
-                    <div className="text-green-600 text-xs bg-green-50 border border-green-200 rounded-md p-2">
-                      ✅ {timeSuccess}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
-          <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-2 overflow-hidden">
-            <MobileEnergyChart
-              curve={energyData.curve}
-              hourMarks={hourMarks}
-              focusedTimeEntry={focusedTimeEntry}
-              crosshairPosition={crosshairPosition}
-              currentTimeInfo={currentTimeInfo}
-              timeEntryLayers={timeEntriesData.timeEntryLayers}
-              categorySummary={timeEntriesData.categorySummary}
-              hoveredTimeEntry={hoveredTimeEntry}
-              setHoveredTimeEntry={setHoveredTimeEntry}
-              setFocusedTimeEntry={setFocusedTimeEntry}
-              setCrosshairPosition={setCrosshairPosition}
-              handlePointerDown={handlePointerDown}
-              handlePointerMove={handlePointerMove}
-              handlePointerUp={handlePointerUp}
-              showTimeEntriesBar={!skipFetchDayEntries}
-              hideSmoothPath={true}
-              t={t}
-            />
+            <div ref={containerRef} className="w-full rounded-lg border border-gray-100 bg-white p-2 overflow-hidden">
+              <MobileEnergyChart
+                curve={energyData.curve}
+                hourMarks={hourMarks}
+                focusedTimeEntry={focusedTimeEntry}
+                crosshairPosition={crosshairPosition}
+                currentTimeInfo={currentTimeInfo}
+                timeEntryLayers={timeEntriesData.timeEntryLayers}
+                categorySummary={timeEntriesData.categorySummary}
+                hoveredTimeEntry={hoveredTimeEntry}
+                setHoveredTimeEntry={setHoveredTimeEntry}
+                setFocusedTimeEntry={setFocusedTimeEntry}
+                setCrosshairPosition={setCrosshairPosition}
+                handlePointerDown={handlePointerDown}
+                handlePointerMove={handlePointerMove}
+                handlePointerUp={handlePointerUp}
+                showTimeEntriesBar={!skipFetchDayEntries}
+                hideSmoothPath={false}
+                showCategoryLegend={true}
+                showEditableRange={true}
+                showLastSaved={true}
+                lastSaved={energyData.lastSaved}
+                compactMode={false}
+                t={t}
+              />
+            </div>
           </div>
-          <div className="mt-3">
-            <button
-              onClick={() => { energyData.saveAll(); onClose() }}
-              disabled={energyData.saving}
-              className="w-full px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 shadow-sm"
+          <div className="border-t border-gray-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white">
+            <button 
+              onClick={() => { energyData.saveAll(); onClose() }} 
+              disabled={energyData.saving} 
+              className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm font-medium"
             >
               {energyData.saving ? t.ui.saving : t.common.save}
             </button>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+
+  }
 }
 
 function canEditIdxWithFocused(idx: number, currentTimeInfo: any, focused: TimeEntryWithCrossDay | null) {
