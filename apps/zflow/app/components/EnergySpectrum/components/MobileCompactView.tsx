@@ -43,7 +43,7 @@ export function MobileCompactView({
   error,
   t
 }: MobileCompactViewProps) {
-  const [zoomLevel, setZoomLevel] = React.useState(1)
+  const [zoomLevel, setZoomLevel] = React.useState(2)
   const [scrollPosition, setScrollPosition] = React.useState(0)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const entriesScrollRef = React.useRef<HTMLDivElement>(null)
@@ -58,6 +58,13 @@ export function MobileCompactView({
     const newLeft = e.currentTarget.scrollLeft
     setScrollPosition(newLeft)
   }
+
+  // Reset editable-related states when date-driven data changes
+  React.useEffect(() => {
+    setFocusedTimeEntry(null)
+    setHoveredTimeEntry(null)
+    setInteractiveTooltip(null)
+  }, [curve, timeEntries, categorySummary])
   
   const zoomIn = () => setZoomLevel(prev => Math.min(3, prev + 0.5))
   const zoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.5))
@@ -80,6 +87,7 @@ export function MobileCompactView({
 
       // Compute logical x (center of the segment in content space, accounting for 1px gaps)
       const xLogical = segmentIndex * barWidth + segmentIndex + barWidth / 2
+      const clampedLeft = Math.max(12, Math.min(containerWidth - 12, xLogical - scrollPosition))
       
       setInteractiveTooltip({
         time,
@@ -177,17 +185,31 @@ export function MobileCompactView({
                 background: 'linear-gradient(to right, transparent 0%, transparent calc(100% - 1px), #e5e7eb calc(100% - 1px), #e5e7eb 100%), repeating-linear-gradient(to right, transparent 0px, transparent calc(4 * var(--bar-width) - 1px), #f3f4f6 calc(4 * var(--bar-width) - 1px), #f3f4f6 calc(4 * var(--bar-width)))',
                 backgroundSize: `${barWidth * 12}px 100%, ${barWidth * 4}px 100%`
               }}
-              onTouchStart={(e) => handleSpectrumInteraction(e, true)}
+              onTouchStart={(e) => { e.stopPropagation(); handleSpectrumInteraction(e, true) }}
               onTouchMove={(e) => {
                 e.preventDefault() // Prevent scrolling while showing tooltip
+                e.stopPropagation()
                 handleSpectrumInteraction(e, true)
               }}
-              onTouchEnd={hideTooltip}
+              // Keep tooltip after touch end (persist selection)
+              onClick={(e) => e.stopPropagation()}
               onMouseMove={(e) => handleSpectrumInteraction(e, false)}
               onMouseLeave={hideTooltip}
             >
 
               <div className="relative" style={{ width: `${totalWidth}px`, transform: `translateX(-${scrollPosition}px)` }}>
+                {/* Selection vertical line */}
+                {interactiveTooltip && interactiveTooltip.visible && (
+                  <div
+                    className="absolute top-0 bottom-0 z-10 pointer-events-none"
+                    style={{
+                      left: `${interactiveTooltip.x || 0}px`,
+                      width: '1px',
+                      backgroundColor: '#111827',
+                      opacity: 0.5
+                    }}
+                  />
+                )}
                 {/* Horizontal grid lines */}
                 <div className="absolute inset-0 pointer-events-none">
                   {[25, 50, 75].map((percent) => (
@@ -262,7 +284,7 @@ export function MobileCompactView({
                         className="absolute rounded cursor-pointer"
                         style={{
                           top: '7px',
-                          height: '6px',
+                          height: '10px',
                           left: `${left}px`,
                           width: `${width}px`,
                           backgroundColor: entry.category_color || '#94a3b8',
