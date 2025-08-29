@@ -47,6 +47,8 @@ export function MobileCompactView({
   const [scrollPosition, setScrollPosition] = React.useState(0)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const entriesScrollRef = React.useRef<HTMLDivElement>(null)
+  const longPressTimerRef = React.useRef<number | null>(null)
+  const longPressTriggeredRef = React.useRef(false)
   
   const barWidth = Math.max(3, 4 * zoomLevel)
   const totalWidth = 72 * barWidth
@@ -139,6 +141,33 @@ export function MobileCompactView({
         <div className="relative">
           {/* Interactive energy spectrum */}
           <div className="relative">
+            {/* Top spacer area for tooltip to avoid finger covering and overflow */}
+            <div
+              className="relative"
+              style={{ width: `${containerWidth}px`, height: '36px' }}
+            >
+              {interactiveTooltip && interactiveTooltip.visible && (
+                <div
+                  className="absolute z-20 pointer-events-none"
+                  style={{
+                    left: `${Math.max(12, Math.min(containerWidth - 12, (interactiveTooltip.x || 0) - scrollPosition))}px`,
+                    top: '6px',
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <div className="bg-gray-900 text-white text-xs rounded-md shadow px-2 py-1">
+                    <div className="text-center">
+                      <div className="font-mono font-extrabold text-[13px]">
+                        {interactiveTooltip.time}
+                      </div>
+                      <div className="text-[10px] text-gray-300">
+                        Energy: <span className="font-medium text-white">{interactiveTooltip.energy}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             {/* Grid background and energy bars */}
             <div 
               ref={scrollContainerRef}
@@ -157,28 +186,6 @@ export function MobileCompactView({
               onMouseMove={(e) => handleSpectrumInteraction(e, false)}
               onMouseLeave={hideTooltip}
             >
-              {/* Tooltip fixed at top of spectrum */}
-              {interactiveTooltip && interactiveTooltip.visible && (
-                <div
-                  className="absolute z-20 pointer-events-none"
-                  style={{
-                    left: `${(interactiveTooltip.x || 0) - scrollPosition}px`,
-                    top: '-4px',
-                    transform: 'translate(-50%, -100%)'
-                  }}
-                >
-                  <div className="bg-gray-900 text-white text-xs rounded-md shadow px-2 py-1">
-                    <div className="text-center">
-                      <div className="font-mono font-semibold">
-                        {interactiveTooltip.time}
-                      </div>
-                      <div className="text-[10px] text-gray-300">
-                        Energy: <span className="font-medium text-white">{interactiveTooltip.energy}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="relative" style={{ width: `${totalWidth}px`, transform: `translateX(-${scrollPosition}px)` }}>
                 {/* Horizontal grid lines */}
@@ -267,7 +274,7 @@ export function MobileCompactView({
                           const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                           setHoveredTimeEntry({
                             entry,
-                            position: { x: rect.left + rect.width / 2, y: rect.top }
+                            position: { x: rect.left + rect.width / 2, y: rect.top - 44 }
                           })
                         }}
                         onMouseLeave={() => setHoveredTimeEntry(null)}
@@ -277,6 +284,36 @@ export function MobileCompactView({
                             setFocusedTimeEntry(null)
                           } else {
                             setFocusedTimeEntry(entry)
+                          }
+                        }}
+                        onTouchStart={(e) => {
+                          longPressTriggeredRef.current = false
+                          if (longPressTimerRef.current) {
+                            window.clearTimeout(longPressTimerRef.current)
+                          }
+                          const target = e.currentTarget as HTMLDivElement
+                          longPressTimerRef.current = window.setTimeout(() => {
+                            longPressTriggeredRef.current = true
+                            const rect = target.getBoundingClientRect()
+                            setHoveredTimeEntry({
+                              entry,
+                              position: { x: rect.left + rect.width / 2, y: rect.top - 48 }
+                            })
+                          }, 400)
+                        }}
+                        onTouchMove={() => {
+                          if (longPressTimerRef.current) {
+                            window.clearTimeout(longPressTimerRef.current)
+                            longPressTimerRef.current = null
+                          }
+                        }}
+                        onTouchEnd={() => {
+                          if (longPressTimerRef.current) {
+                            window.clearTimeout(longPressTimerRef.current)
+                            longPressTimerRef.current = null
+                          }
+                          if (longPressTriggeredRef.current) {
+                            setHoveredTimeEntry(null)
                           }
                         }}
                       />
