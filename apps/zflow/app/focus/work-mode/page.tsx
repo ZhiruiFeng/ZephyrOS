@@ -16,6 +16,7 @@ import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { useTimer } from '../../../hooks/useTimer'
 import SubtaskSection from '../../components/SubtaskSection'
+import EnergyReviewModal from '../../components/EnergyReviewModal'
 
 interface TaskWithCategory extends TaskMemory {
   category?: Category
@@ -66,6 +67,8 @@ function WorkModeViewInner() {
 
   // Time tracking
   const timer = useTimer(5000)
+  const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
+  const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 
   // Auto-save functionality for notes
   const autoSaveNotes = useCallback(async () => {
@@ -132,6 +135,25 @@ function WorkModeViewInner() {
       setMobileSidebarOpen(false)
     }
   }, [selectedTask])
+
+  // Listen for timer stopped to open energy review modal
+  useEffect(() => {
+    const handler = (e: any) => {
+      const entry = e?.detail?.entry
+      if (entry) {
+        setEnergyReviewEntry(entry)
+        setEnergyReviewOpen(true)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('zflow:timerStopped', handler)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('zflow:timerStopped', handler)
+      }
+    }
+  }, [])
 
   // Filter tasks based on view mode
   const filteredTasks = React.useMemo(() => {
@@ -448,6 +470,7 @@ function WorkModeViewInner() {
   }
 
   return (
+    <>
     <div className="flex min-h-[calc(100vh-200px)] lg:min-h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Mobile Sidebar Overlay */}
       {mobileSidebarOpen && (
@@ -1080,6 +1103,13 @@ function WorkModeViewInner() {
         )}
       </div>
     </div>
+    {/* Energy Review Modal */}
+    <EnergyReviewModal
+      open={energyReviewOpen}
+      entry={energyReviewEntry}
+      onClose={() => setEnergyReviewOpen(false)}
+    />
+    </>
   )
 }
 

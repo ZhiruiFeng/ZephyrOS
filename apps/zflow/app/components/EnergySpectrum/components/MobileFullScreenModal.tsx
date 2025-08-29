@@ -34,6 +34,9 @@ interface MobileFullScreenModalProps {
   loading: boolean
   error: string | null
   t: any
+  showTimeEntriesBar?: boolean
+  visibleRange?: { start: number; end: number }
+  hideSmoothPath?: boolean
 }
 
 export function MobileFullScreenModal({
@@ -58,7 +61,10 @@ export function MobileFullScreenModal({
   lastSaved,
   loading,
   error,
-  t
+  t,
+  showTimeEntriesBar = true,
+  visibleRange,
+  hideSmoothPath
 }: MobileFullScreenModalProps) {
   if (!isMobileModalOpen) return null
 
@@ -128,6 +134,7 @@ export function MobileFullScreenModal({
 
                   {/* Energy bars */}
                   {curve.map((eVal, i) => {
+                    if (visibleRange && (i < visibleRange.start || i > visibleRange.end)) return null
                     const eNum = Number(eVal) || 5
                     const x = 60 + (i * 680) / 71
                     const w = Math.max(6, 680 / 72 * 0.8)
@@ -189,17 +196,19 @@ export function MobileFullScreenModal({
                   })}
 
                   {/* Smoothed line */}
-                  <path 
-                    d={buildSmoothPath(
-                      curve.map((e, i) => ({ 
-                        x: 60 + (i * 680) / 71, 
-                        y: 40 + (1 - (Number(e) || 5 - 1) / 9) * 200 
-                      })), 0.8
-                    )} 
-                    fill="none" 
-                    stroke="#111827" 
-                    strokeWidth={3} 
-                  />
+                  {!hideSmoothPath && (
+                    <path 
+                      d={buildSmoothPath(
+                        curve.map((e, i) => ({ 
+                          x: 60 + (i * 680) / 71, 
+                          y: 40 + (1 - (Number(e) || 5 - 1) / 9) * 200 
+                        })), 0.8
+                      )} 
+                      fill="none" 
+                      stroke="#111827" 
+                      strokeWidth={3} 
+                    />
+                  )}
 
                   {/* Touch interaction overlay */}
                   <rect
@@ -242,18 +251,20 @@ export function MobileFullScreenModal({
                   />
                   
                   {/* Time entries display in mobile modal */}
-                  <TimeEntriesDisplay
-                    width={800}
-                    height={40}
-                    padLeft={60}
-                    padRight={60}
-                    yOffset={270}
-                    isMobile={true}
-                    timeEntryLayers={timeEntryLayers}
-                    focusedTimeEntry={focusedTimeEntry}
-                    setHoveredTimeEntry={setHoveredTimeEntry}
-                    setFocusedTimeEntry={setFocusedTimeEntry}
-                  />
+                  {showTimeEntriesBar && (
+                    <TimeEntriesDisplay
+                      width={800}
+                      height={40}
+                      padLeft={60}
+                      padRight={60}
+                      yOffset={270}
+                      isMobile={true}
+                      timeEntryLayers={timeEntryLayers}
+                      focusedTimeEntry={focusedTimeEntry}
+                      setHoveredTimeEntry={setHoveredTimeEntry}
+                      setFocusedTimeEntry={setFocusedTimeEntry}
+                    />
+                  )}
 
                   {/* Crosshair line and time label for mobile */}
                   {crosshairPosition && (

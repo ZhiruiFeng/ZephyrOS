@@ -31,8 +31,16 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
   }, [mutate])
 
   const stop = useCallback(async (taskId: string, opts?: { overrideEndAt?: string }) => {
-    await timeTrackingApi.stop(taskId, { overrideEndAt: opts?.overrideEndAt })
+    const result = await timeTrackingApi.stop(taskId, { overrideEndAt: opts?.overrideEndAt })
+    try {
+      if (typeof window !== 'undefined') {
+        // 通知全局：计时已停止，携带本次 time entry 以便触发能量评估弹窗
+        const event = new CustomEvent('zflow:timerStopped', { detail: { entry: result?.entry || null } })
+        window.dispatchEvent(event)
+      }
+    } catch {}
     await mutate()
+    // 保持原签名不返回值，避免破坏现有调用点
   }, [mutate])
 
   const refresh = useCallback(() => { mutate() }, [mutate])

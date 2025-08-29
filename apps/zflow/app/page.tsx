@@ -13,6 +13,7 @@ import AddTaskModal from './components/AddTaskModal'
 import TaskEditor from './components/TaskEditor'
 import TaskTimeModal from './components/TaskTimeModal'
 import DailyTimeModal from './components/DailyTimeModal'
+import EnergyReviewModal from './components/EnergyReviewModal'
 import MobileCategorySheet from './components/MobileCategorySheet'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
@@ -60,6 +61,8 @@ function ZFlowPageContent() {
   const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
   const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
   const [showDailyModal, setShowDailyModal] = React.useState(false)
+  const [energyReviewOpen, setEnergyReviewOpen] = React.useState(false)
+  const [energyReviewEntry, setEnergyReviewEntry] = React.useState<any>(null)
 
   // Task description expansion
   const [expandedDescriptions, setExpandedDescriptions] = React.useState<Set<string>>(new Set())
@@ -82,6 +85,25 @@ function ZFlowPageContent() {
     window.addEventListener('zflow:addTaskFromPage', handler)
     return () => window.removeEventListener('zflow:addTaskFromPage', handler)
   }, [selectedCategory])
+
+  // 监听计时停止事件，打开能量评估弹窗
+  React.useEffect(() => {
+    const handler = (e: any) => {
+      const entry = e?.detail?.entry
+      if (entry) {
+        setEnergyReviewEntry(entry)
+        setEnergyReviewOpen(true)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('zflow:timerStopped', handler)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('zflow:timerStopped', handler)
+      }
+    }
+  }, [])
 
   // Navigate to work view with specific task
   const goToWork = (taskId: string) => {
@@ -1199,6 +1221,13 @@ function ZFlowPageContent() {
 
       {/* Daily Time Overview Modal */}
       <DailyTimeModal isOpen={showDailyModal} onClose={() => setShowDailyModal(false)} />
+
+      {/* Energy Review Modal */}
+      <EnergyReviewModal
+        open={energyReviewOpen}
+        entry={energyReviewEntry}
+        onClose={() => setEnergyReviewOpen(false)}
+      />
 
       {/* Mobile Category Selector Sheet */}
       <MobileCategorySheet

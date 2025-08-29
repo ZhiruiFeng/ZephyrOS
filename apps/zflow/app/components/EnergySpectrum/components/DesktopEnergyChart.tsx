@@ -35,6 +35,9 @@ interface DesktopEnergyChartProps {
   energyForY: (y: number) => number
   idxForX: (x: number) => number
   t: any
+  showTimeEntriesBar?: boolean
+  visibleRange?: { start: number; end: number }
+  hideSmoothPath?: boolean
 }
 
 export function DesktopEnergyChart({
@@ -60,7 +63,10 @@ export function DesktopEnergyChart({
   yForEnergy,
   energyForY,
   idxForX,
-  t
+  t,
+  showTimeEntriesBar = true,
+  visibleRange,
+  hideSmoothPath
 }: DesktopEnergyChartProps) {
   return (
     <svg width="100%" height={dims.h} viewBox={`0 0 ${dims.w} ${dims.h}`} className="block select-none" preserveAspectRatio="xMidYMid meet">
@@ -94,6 +100,7 @@ export function DesktopEnergyChart({
 
       {/* Bars */}
       {curve.map((eVal, i) => {
+        if (visibleRange && (i < visibleRange.start || i > visibleRange.end)) return null
         const eNum = Number(eVal) || 5
         const x = xForIdx(i)
         const w = Math.max(2, (plotW / 71) * 0.9)
@@ -158,7 +165,9 @@ export function DesktopEnergyChart({
       })}
 
       {/* Smoothed line */}
-      <path d={smoothPath} fill="none" stroke="#111827" strokeWidth={2} />
+      {!hideSmoothPath && (
+        <path d={smoothPath} fill="none" stroke="#111827" strokeWidth={2} />
+      )}
 
       {/* Legend gradient */}
       <defs>
@@ -221,18 +230,20 @@ export function DesktopEnergyChart({
       <text x={pad.left + plotW / 2} y={28} textAnchor="middle" fontSize={12} fill="#475569">{t.ui.energyAxis}</text>
       
       {/* Time entries display */}
-      <TimeEntriesDisplay
-        width={dims.w}
-        height={timeEntriesHeight}
-        padLeft={pad.left}
-        padRight={pad.right}
-        yOffset={pad.top + plotH + 25}
-        isMobile={false}
-        timeEntryLayers={timeEntryLayers}
-        focusedTimeEntry={focusedTimeEntry}
-        setHoveredTimeEntry={setHoveredTimeEntry}
-        setFocusedTimeEntry={setFocusedTimeEntry}
-      />
+      {showTimeEntriesBar && (
+        <TimeEntriesDisplay
+          width={dims.w}
+          height={timeEntriesHeight}
+          padLeft={pad.left}
+          padRight={pad.right}
+          yOffset={pad.top + plotH + 25}
+          isMobile={false}
+          timeEntryLayers={timeEntryLayers}
+          focusedTimeEntry={focusedTimeEntry}
+          setHoveredTimeEntry={setHoveredTimeEntry}
+          setFocusedTimeEntry={setFocusedTimeEntry}
+        />
+      )}
 
       {/* Crosshair line and time label */}
       {crosshairPosition && (

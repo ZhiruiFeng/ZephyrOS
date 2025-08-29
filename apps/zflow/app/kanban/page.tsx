@@ -21,6 +21,7 @@ import {
   shouldShowOverdue
 } from '../utils/taskUtils'
 import { useTranslation } from '../../contexts/LanguageContext'
+import EnergyReviewModal from '../components/EnergyReviewModal'
 
 type StatusKey = TaskContent['status']
 
@@ -38,6 +39,8 @@ export default function KanbanView() {
   const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
   const timer = useTimer()
+  const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
+  const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -258,6 +261,25 @@ export default function KanbanView() {
     setEditorOpen(true)
   }
 
+  // Listen for timer stopped to open energy review modal
+  useEffect(() => {
+    const handler = (e: any) => {
+      const entry = e?.detail?.entry
+      if (entry) {
+        setEnergyReviewEntry(entry)
+        setEnergyReviewOpen(true)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('zflow:timerStopped', handler)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('zflow:timerStopped', handler)
+      }
+    }
+  }, [])
+
   const closeEditor = () => {
     setEditorOpen(false)
     setSelected(null)
@@ -310,6 +332,7 @@ export default function KanbanView() {
   }
 
   return (
+    <>
     <div className="py-4 sm:py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-4 sm:mb-6">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 text-white">
@@ -793,6 +816,12 @@ export default function KanbanView() {
         title={t.task.editTask}
       />
     </div>
+    <EnergyReviewModal
+      open={energyReviewOpen}
+      entry={energyReviewEntry}
+      onClose={() => setEnergyReviewOpen(false)}
+    />
+    </>
   )
 }
 
