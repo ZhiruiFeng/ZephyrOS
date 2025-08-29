@@ -480,14 +480,17 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
     
     return (
       <div
-        className="fixed z-[100] pointer-events-none"
+        className="fixed z-[100]"
         style={{
           left: `${position.x}px`,
           top: `${position.y - 10}px`,
           transform: 'translate(-50%, -100%)'
         }}
       >
-        <div className="bg-gray-900 text-white text-sm rounded-lg shadow-xl px-3 py-2 max-w-xs">
+        <div 
+          className="bg-gray-900 text-white text-sm rounded-lg shadow-xl px-3 py-2 max-w-xs"
+          onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on tooltip
+        >
           <div className="font-medium truncate mb-1">
             {entry.task_title || 'Unnamed Task'}
           </div>
@@ -643,50 +646,164 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   }
 
   // Mobile Compact View Component
-  const MobileCompactView = () => (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-      <div className="flex items-center justify-end mb-3">
-        <button
-          onClick={() => setIsMobileModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors"
-        >
-          <Maximize2 className="w-4 h-4" />
-          View Full
-        </button>
-      </div>
-      {loading ? (
-        <div className="h-20 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
-      ) : error ? (
-        <div className="h-20 flex items-center justify-center text-red-600">{error}</div>
-      ) : (
-        <div className="relative">
-          {/* Simple curve preview */}
-          <div className="h-20 flex items-end gap-1 overflow-x-auto pb-2">
-            {curve.map((eVal, i) => {
-              const eNum = Number(eVal) || 5
-              const height = Math.max(4, (eNum / 10) * 60)
-              const editable = canEdit(i)
-              const fill = editable ? energyToColor(eNum) : '#cbd5e1'
-              return (
-                <div
-                  key={i}
-                  className="flex-shrink-0 w-2 rounded-t"
+  const MobileCompactView = () => {
+    const [zoomLevel, setZoomLevel] = React.useState(1)
+    const [scrollPosition, setScrollPosition] = React.useState(0)
+    const [interactiveTooltip, setInteractiveTooltip] = React.useState<{
+      time: string
+      energy: number
+      x: number
+      y: number
+      visible: boolean
+    } | null>(null)
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null)
+    
+    const barWidth = Math.max(3, 4 * zoomLevel)
+    const totalWidth = SEGMENTS * barWidth
+    const containerWidth = 280 // Fixed container width
+    
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+      setScrollPosition(e.currentTarget.scrollLeft)
+    }
+    
+    const zoomIn = () => setZoomLevel(prev => Math.min(3, prev + 0.5))
+    const zoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.5))
+    
+    const handleSpectrumInteraction = (e: React.TouchEvent | React.MouseEvent, isTouch = false) => {
+      const rect = scrollContainerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      
+      const clientX = 'touches' in e ? e.touches[0]?.clientX || e.changedTouches[0]?.clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0]?.clientY || e.changedTouches[0]?.clientY : e.clientY
+      
+      if (!clientX || !clientY) return
+      
+      const relativeX = clientX - rect.left + scrollPosition
+      const relativeY = clientY - rect.top
+      
+      // Calculate which segment and energy level
+      const segmentIndex = Math.floor(relativeX / barWidth)
+      if (segmentIndex >= 0 && segmentIndex < SEGMENTS) {
+        const energy = curve[segmentIndex] || 5
+        const time = segmentToTimeLabel(segmentIndex)
+        
+        // Position tooltip above finger/cursor
+        setInteractiveTooltip({
+          time,
+          energy: Number(energy),
+          x: clientX,
+          y: clientY - 60, // Above the finger/cursor
+          visible: true
+        })
+      }
+    }
+    
+    const hideTooltip = () => {
+      setInteractiveTooltip(prev => prev ? { ...prev, visible: false } : null)
+    }
+    
+    return (
+      <div 
+        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
+        onClick={() => {
+          // Click anywhere to close tooltip on mobile
+          if (interactiveTooltip) {
+            setInteractiveTooltip(null)
+          }
+          // Also close hovered time entry tooltip
+          if (hoveredTimeEntry) {
+            setHoveredTimeEntry(null)
+          }
+        }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <button onClick={(e) => { e.stopPropagation(); zoomOut(); }} className="w-6 h-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded text-xs font-bold">−</button>
+            <span className="text-xs text-gray-600">{zoomLevel}x</span>
+            <button onClick={(e) => { e.stopPropagation(); zoomIn(); }} className="w-6 h-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded text-xs font-bold">+</button>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsMobileModalOpen(true); }}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm text-gray-600 transition-colors"
+          >
+            <Maximize2 className="w-4 h-4" />
+            View Full
+          </button>
+        </div>
+        {loading ? (
+          <div className="h-20 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
+        ) : error ? (
+          <div className="h-20 flex items-center justify-center text-red-600">{error}</div>
+        ) : (
+          <div className="relative">
+            {/* Interactive energy spectrum */}
+            <div className="relative">
+              {/* Grid background and energy bars */}
+              <div 
+                ref={scrollContainerRef}
+                className="h-16 flex items-end overflow-x-auto pb-1 relative touch-none"
+                style={{ 
+                  width: `${containerWidth}px`,
+                  background: 'linear-gradient(to right, transparent 0%, transparent calc(100% - 1px), #e5e7eb calc(100% - 1px), #e5e7eb 100%), repeating-linear-gradient(to right, transparent 0px, transparent calc(4 * var(--bar-width) - 1px), #f3f4f6 calc(4 * var(--bar-width) - 1px), #f3f4f6 calc(4 * var(--bar-width)))',
+                  backgroundSize: `${barWidth * 12}px 100%, ${barWidth * 4}px 100%`
+                }}
+                onScroll={handleScroll}
+                onTouchStart={(e) => handleSpectrumInteraction(e, true)}
+                onTouchMove={(e) => {
+                  e.preventDefault() // Prevent scrolling while showing tooltip
+                  handleSpectrumInteraction(e, true)
+                }}
+                onTouchEnd={hideTooltip}
+                onMouseMove={(e) => handleSpectrumInteraction(e, false)}
+                onMouseLeave={hideTooltip}
+              >
+                {/* Horizontal grid lines */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {[25, 50, 75].map((percent) => (
+                    <div
+                      key={percent}
+                      className="absolute w-full border-t border-gray-200"
+                      style={{
+                        bottom: `${percent}%`,
+                        opacity: 0.3
+                      }}
+                    />
+                  ))}
+                </div>
+                
+                <div 
+                  className="flex items-end relative z-10" 
                   style={{ 
-                    height: `${height}px`,
-                    backgroundColor: fill,
-                    opacity: editable ? 0.9 : 0.4
-                  }}
-                />
-              )
-            })}
-          </div>
-          <div className="mt-2 flex justify-between text-xs text-gray-500">
-            <span>00:00</span>
-            <span>12:00</span>
-            <span>23:59</span>
-          </div>
-          {/* Mobile time entries preview */}
-          {!loadingTimeEntries && timeEntries.length > 0 && (
+                    width: `${totalWidth}px`,
+                    '--bar-width': `${barWidth}px`
+                  } as React.CSSProperties}
+                >
+                  {curve.map((eVal, i) => {
+                    const eNum = Number(eVal) || 5
+                    const height = Math.max(4, (eNum / 10) * 56)
+                    const editable = canEdit(i)
+                    const fill = editable ? energyToColor(eNum) : '#cbd5e1'
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-t flex-shrink-0 relative"
+                        style={{ 
+                          height: `${height}px`,
+                          width: `${barWidth}px`,
+                          backgroundColor: fill,
+                          opacity: editable ? 0.9 : 0.4,
+                          marginRight: '1px',
+                          border: '1px solid rgba(255,255,255,0.2)'
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile time entries preview */}
+            {!loadingTimeEntries && timeEntries.length > 0 && (
             <div className="mt-3 pt-2 border-t border-gray-100">
               <div className="text-xs text-gray-600 mb-2">{timeEntries.length} tasks tracked</div>
               <div className="flex gap-1 overflow-x-auto">
@@ -751,20 +868,65 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
           )}
         </div>
       )}
+      
+      {/* Interactive Tooltip */}
+      {interactiveTooltip && interactiveTooltip.visible && (
+        <div
+          className="fixed z-[200] pointer-events-none"
+          style={{
+            left: `${interactiveTooltip.x}px`,
+            top: `${interactiveTooltip.y}px`,
+            transform: 'translate(-50%, 0)'
+          }}
+        >
+          <div className="bg-gray-900 text-white text-sm rounded-lg shadow-xl px-3 py-2 min-w-[100px]">
+            <div className="text-center">
+              <div className="font-mono text-lg font-bold mb-1">
+                {interactiveTooltip.time}
+              </div>
+              <div className="text-xs text-gray-300">
+                Energy: <span className="font-semibold text-white">{interactiveTooltip.energy}</span>
+              </div>
+            </div>
+            {/* Tooltip arrow pointing down */}
+            <div 
+              className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0"
+              style={{
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: '6px solid #1f2937'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
+  }
+
 
   // Full Screen Mobile Modal Component  
   const MobileFullScreenModal = () => {
     if (!isMobileModalOpen) return null
 
     return (
-      <div className="fixed inset-0 z-50 bg-white">
+      <div 
+        className="fixed inset-0 z-50 bg-white"
+        onClick={() => {
+          // Click anywhere to close tooltip in mobile modal
+          if (hoveredTimeEntry) {
+            setHoveredTimeEntry(null)
+          }
+        }}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">{date}</h2>
           <button
-            onClick={() => setIsMobileModalOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation() // Prevent closing tooltip when closing modal
+              setIsMobileModalOpen(false)
+            }}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -1038,7 +1200,10 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
         {/* Sticky bottom actions */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button 
-            onClick={saveAll} 
+            onClick={(e) => {
+              e.stopPropagation() // Prevent closing tooltip when saving
+              saveAll()
+            }} 
             disabled={saving} 
             className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm font-medium"
           >
@@ -1061,7 +1226,18 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+    <div 
+      className="w-full max-w-7xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100"
+      onClick={() => {
+        // Click anywhere to close focused task and tooltip
+        if (focusedTimeEntry) {
+          setFocusedTimeEntry(null)
+        }
+        if (hoveredTimeEntry) {
+          setHoveredTimeEntry(null)
+        }
+      }}
+    >
       {loading ? (
         <div className="h-40 flex items-center justify-center text-gray-500">{t.common.loading}...</div>
       ) : error ? (
@@ -1303,7 +1479,10 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                   }
                 </div>
                 {focusedTimeEntry && (
-                  <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200">
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200"
+                    onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the box itself
+                  >
                     <div className="flex items-center gap-1.5">
                       <div 
                         className="w-2 h-2 rounded-full" 
@@ -1314,10 +1493,14 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                       </span>
                     </div>
                     <button
-                      onClick={() => setFocusedTimeEntry(null)}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      onClick={(e) => {
+                        e.stopPropagation() // Prevent event bubbling
+                        setFocusedTimeEntry(null)
+                      }}
+                      className="ml-2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
+                      title="Close task focus"
                     >
-                      Exit
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 )}
@@ -1328,7 +1511,14 @@ export default function EnergySpectrum({ date, now, onSaved }: Props) {
                     {t.ui.lastSaved}: {new Date(lastSaved).toLocaleString()}
                   </div>
                 )}
-                <button onClick={saveAll} disabled={saving} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation() // Prevent closing focused task when saving
+                    saveAll()
+                  }} 
+                  disabled={saving} 
+                  className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm"
+                >
                   {saving ? t.ui.saving : t.common.save}
                 </button>
               </div>
