@@ -104,11 +104,39 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const parsed = TimeEntryCreateSchema.safeParse(body)
     if (!parsed.success) return jsonWithCors(request, { error: 'Invalid body', details: parsed.error.errors }, 400)
 
-    const { start_at, end_at, note } = parsed.data
+    const { start_at, end_at, note, source } = parsed.data
 
     // If end_at provided, validate ordering client-side too (DB also enforces)
     if (end_at && new Date(end_at) <= new Date(start_at)) {
       return jsonWithCors(request, { error: 'end_at must be after start_at' }, 400)
+    }
+
+    // If this is a timer source and no end_at is provided (starting a timer), 
+    // check for running timers and stop them first
+    if (source === 'timer' && !end_at) {
+      const { data: running, error: runningErr } = await client
+        .from('time_entries')
+        .select('id, timeline_item_id, timeline_item_type')
+        .eq('user_id', userId)
+        .is('end_at', null)
+        .maybeSingle()
+
+      if (runningErr) {
+        return jsonWithCors(request, { error: 'Failed to check running timer' }, 500)
+      }
+
+      // If there's a running timer, stop it first
+      if (running) {
+        const { error: stopErr } = await client
+          .from('time_entries')
+          .update({ end_at: new Date().toISOString() })
+          .eq('id', running.id)
+          .eq('user_id', userId)
+        
+        if (stopErr) {
+          return jsonWithCors(request, { error: 'Failed to stop current timer' }, 500)
+        }
+      }
     }
 
     const { data, error } = await client
@@ -119,7 +147,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         start_at,
         end_at: end_at || null,
         note: note || null,
-        source: 'manual',
+        source: source || 'manual',
       })
       .select(`
         id, timeline_item_id, timeline_item_type, timeline_item_title,

@@ -238,7 +238,7 @@ describe('/api/tasks', () => {
   describe('GET /api/tasks/[id]', () => {
     it('should return a specific task', async () => {
       const request = new NextRequest('http://localhost:3001/api/tasks/1');
-      const response = await getTask(request, { params: { id: '1' } });
+      const response = await getTask(request, { params: Promise.resolve({ id: '1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -249,7 +249,7 @@ describe('/api/tasks', () => {
 
     it('should return 404 for non-existent task', async () => {
       const request = new NextRequest('http://localhost:3001/api/tasks/999');
-      const response = await getTask(request, { params: { id: '999' } });
+      const response = await getTask(request, { params: Promise.resolve({ id: '999' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -273,7 +273,7 @@ describe('/api/tasks', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await updateTask(request, { params: { id: '1' } });
+      const response = await updateTask(request, { params: Promise.resolve({ id: '1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -293,7 +293,7 @@ describe('/api/tasks', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await updateTask(request, { params: { id: '999' } });
+      const response = await updateTask(request, { params: Promise.resolve({ id: '999' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -315,7 +315,7 @@ describe('/api/tasks', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await updateStatus(request, { params: { id: '1' } });
+      const response = await updateStatus(request, { params: Promise.resolve({ id: '1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -335,7 +335,7 @@ describe('/api/tasks', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await updateStatus(request, { params: { id: '1' } });
+      const response = await updateStatus(request, { params: Promise.resolve({ id: '1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -354,7 +354,7 @@ describe('/api/tasks', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await updateStatus(request, { params: { id: '1' } });
+      const response = await updateStatus(request, { params: Promise.resolve({ id: '1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -368,7 +368,7 @@ describe('/api/tasks', () => {
         method: 'DELETE'
       });
 
-      const response = await deleteTask(request, { params: { id: '1' } });
+      const response = await deleteTask(request, { params: Promise.resolve({ id: '1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -381,7 +381,7 @@ describe('/api/tasks', () => {
         method: 'DELETE'
       });
 
-      const response = await deleteTask(request, { params: { id: '999' } });
+      const response = await deleteTask(request, { params: Promise.resolve({ id: '999' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);

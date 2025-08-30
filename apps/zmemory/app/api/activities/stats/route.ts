@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Get basic activity statistics
     const { data: basicStats } = await client
       .from('activities')
-      .select('id, activity_type, satisfaction_level, mood_before, mood_after, duration_minutes, status')
+      .select('id, activity_type, satisfaction_level, mood_before, mood_after, duration_minutes, status, created_at')
       .eq('user_id', userId)
       .gte('created_at', since)
 

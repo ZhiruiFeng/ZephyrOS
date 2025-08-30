@@ -38,7 +38,7 @@ const supabase = supabaseUrl && supabaseKey
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const clientIP = getClientIP(request);
@@ -46,7 +46,7 @@ export async function GET(
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!supabase) {
       // Return mock activity
@@ -130,7 +130,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const clientIP = getClientIP(request);
@@ -138,7 +138,7 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     console.log('=== UPDATE ACTIVITY API DEBUG ===');
@@ -232,7 +232,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const clientIP = getClientIP(request);
@@ -240,7 +240,7 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!supabase) {
       return jsonWithCors(request, { message: 'Activity deleted successfully' });

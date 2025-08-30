@@ -4,7 +4,7 @@ import { authManager } from './auth-manager'
 import { toUTC } from '../app/utils/timeUtils'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
-const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
+export const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
 const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
 
 // Compatible type definitions (for hooks and page references)
@@ -477,6 +477,68 @@ export const timeTrackingApi = {
     })
     if (!res.ok) throw new Error('Failed to fetch day entries')
     return res.json()
+  },
+}
+
+// Timeline Items Time Tracking API (for both tasks and activities)
+export const timelineItemsApi = {
+  async listTimeEntries(timelineItemId: string, params?: { from?: string; to?: string; limit?: number; offset?: number }): Promise<{ entries: TimeEntry[] }> {
+    const sp = new URLSearchParams()
+    if (params?.from) sp.set('from', params.from)
+    if (params?.to) sp.set('to', params.to)
+    if (params?.limit !== undefined) sp.set('limit', String(params.limit))
+    if (params?.offset !== undefined) sp.set('offset', String(params.offset))
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/timeline-items/${timelineItemId}/time-entries?${sp.toString()}`, {
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to fetch timeline item time entries')
+    return res.json()
+  },
+
+  async createTimeEntry(timelineItemId: string, body: { start_at: string; end_at?: string; note?: string; source?: string }): Promise<{ entry: TimeEntry }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/timeline-items/${timelineItemId}/time-entries`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ ...body, source: body.source || 'manual' }),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) throw new Error('Failed to create timeline item time entry')
+    return res.json()
+  },
+
+  async updateTimeEntry(entryId: string, body: { start_at?: string; end_at?: string; note?: string }): Promise<{ entry: TimeEntry }> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/time-entries/${entryId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify(body),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error('API Error Response:', errorText)
+      throw new Error(`Failed to update time entry: ${res.status} ${res.statusText} - ${errorText}`)
+    }
+    return res.json()
+  },
+
+  async removeTimeEntry(entryId: string): Promise<void> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/time-entries/${entryId}`, {
+      method: 'DELETE',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+      headers: authHeaders,
+    })
+    if (!res.ok) throw new Error('Failed to delete time entry')
   },
 }
 

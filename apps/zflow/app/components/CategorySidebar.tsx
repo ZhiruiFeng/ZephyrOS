@@ -23,7 +23,7 @@ interface CategorySidebarProps {
   categories: Category[]
   selected: string | SpecialCategory
   counts: CategoryCounts
-  view?: 'current' | 'future' | 'archive'
+  view?: 'current' | 'future' | 'archive' | 'activities'
   onSelect: (key: string | SpecialCategory) => void
   onCreate: (payload: { name: string; color?: string }) => Promise<void>
   onUpdate?: (id: string, payload: { name: string; color?: string; description?: string }) => Promise<void>

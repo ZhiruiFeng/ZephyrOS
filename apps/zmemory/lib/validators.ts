@@ -35,12 +35,12 @@ export const TimerStopSchema = z.object({
   overrideEndAt: isoDateTime.optional(),
 });
 
-// Create manual time entry (for any timeline item)
+// Create time entry (for any timeline item)
 export const TimeEntryCreateSchema = z.object({
   start_at: isoDateTime,
   end_at: isoDateTime.optional(),
   note: z.string().max(2000).optional(),
-  source: z.literal('manual').optional(),
+  source: z.enum(['manual', 'timer']).optional().default('manual'),
   // timeline_item_id is handled by the API route from the URL param
 });
 

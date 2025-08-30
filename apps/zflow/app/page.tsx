@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, ChevronRight, X, Timer, Pencil, Trash2, Info, Hourglass } from 'lucide-react'
+import { ListTodo, BarChart3, Tag, Calendar, Plus, Grid, List, Focus, Archive, Clock, CheckCircle, Settings, ChevronDown, ChevronRight, X, Timer, Pencil, Trash2, Info, Hourglass, Play, Square } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../contexts/LanguageContext'
 import LoginPage from './components/LoginPage'
@@ -11,18 +11,21 @@ import CategorySidebar from './components/CategorySidebar'
 import FloatingAddButton from './components/FloatingAddButton'
 import AddTaskModal from './components/AddTaskModal'
 import TaskEditor from './components/TaskEditor'
+import ActivityEditor from './components/ActivityEditor'
+import ActivityTimeModal from './components/ActivityTimeModal'
 import TaskTimeModal from './components/TaskTimeModal'
 import DailyTimeModal from './components/DailyTimeModal'
 import EnergyReviewModal from './components/EnergyReviewModal'
 import MobileCategorySheet from './components/MobileCategorySheet'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
+import { useActivities, useCreateActivity, useUpdateActivity, useDeleteActivity } from '../hooks/useActivities'
 import { useTimer } from '../hooks/useTimer'
 import { categoriesApi, TaskMemory, TaskContent } from '../lib/api'
 import { getPriorityIcon, getTimerIcon } from './components/TaskIcons'
 import { isOverdue, formatDate, getTaskDisplayDate, shouldShowOverdue } from './utils/taskUtils'
 
-type ViewKey = 'current' | 'future' | 'archive'
+type ViewKey = 'current' | 'future' | 'archive' | 'activities'
 type DisplayMode = 'list' | 'grid'
 
 function ZFlowPageContent() {
@@ -35,10 +38,14 @@ function ZFlowPageContent() {
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>('list')
 
   const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
+  const { activities, isLoading: activitiesLoading } = useActivities(user ? undefined : undefined)
   const { categories } = useCategories()
   const { createTask } = useCreateTask()
   const { updateTask } = useUpdateTask()
   const { deleteTask } = useDeleteTask()
+  const { createActivity } = useCreateActivity()
+  const { updateActivity } = useUpdateActivity()
+  const { deleteActivity } = useDeleteActivity()
   const { createCategory } = useCreateCategory()
   const { updateCategory } = useUpdateCategory()
   const { deleteCategory } = useDeleteCategory()
@@ -56,10 +63,15 @@ function ZFlowPageContent() {
   // Task editor
   const [editingTask, setEditingTask] = React.useState<any>(null)
   const [showTaskEditor, setShowTaskEditor] = React.useState(false)
+  
+  // Activity editor
+  const [editingActivity, setEditingActivity] = React.useState<any>(null)
+  const [showActivityEditor, setShowActivityEditor] = React.useState(false)
 
   // Mobile category selector
   const [showMobileCategorySelector, setShowMobileCategorySelector] = React.useState(false)
   const [timeModalTask, setTimeModalTask] = React.useState<{ id: string; title: string } | null>(null)
+  const [timeModalActivity, setTimeModalActivity] = React.useState<{ id: string; title: string } | null>(null)
   const [showDailyModal, setShowDailyModal] = React.useState(false)
   const [energyReviewOpen, setEnergyReviewOpen] = React.useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = React.useState<any>(null)
@@ -108,6 +120,31 @@ function ZFlowPageContent() {
   // Navigate to work view with specific task
   const goToWork = (taskId: string) => {
     router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
+  }
+
+  // Activity functions
+  const toggleActivityComplete = async (activityId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'completed' ? 'active' : 'completed'
+      await updateActivity(activityId, { status: newStatus })
+    } catch (error) {
+      console.error('Failed to toggle activity status:', error)
+    }
+  }
+
+  const openActivityEditor = (activity: any) => {
+    setEditingActivity(activity)
+    setShowActivityEditor(true)
+  }
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (confirm('确定要删除这个活动吗？')) {
+      try {
+        await deleteActivity(activityId)
+      } catch (error) {
+        console.error('Failed to delete activity:', error)
+      }
+    }
   }
 
   // Toggle task description expansion
@@ -314,8 +351,10 @@ function ZFlowPageContent() {
       return false
     }).length
 
-    return { current, future, archive }
-  }, [tasks])
+    const activitiesCount = activities?.filter(a => a.status === 'active' || a.status === 'completed').length || 0
+
+    return { current, future, archive, activities: activitiesCount }
+  }, [tasks, activities])
 
   // Calculate category counts based on current view
   const viewBasedCounts = React.useMemo(() => {
@@ -487,7 +526,7 @@ function ZFlowPageContent() {
           {/* Right: Main Content */}
           <div className="flex-1">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6 md:mb-8">
               <button
                 onClick={() => setView('current')}
                 className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
@@ -546,6 +585,26 @@ function ZFlowPageContent() {
                   </div>
                 </div>
                 <p className="text-xl md:text-3xl font-bold text-primary-800 text-center md:text-left">{stats.archive}</p>
+              </button>
+
+              <button
+                onClick={() => setView('activities')}
+                className={`glass rounded-lg md:rounded-xl p-3 md:p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                  view === 'activities' 
+                    ? 'border-emerald-300 shadow-md -translate-y-0.5' 
+                    : ''
+                }`}
+              >
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-100 rounded-lg flex items-center justify-center mx-auto md:mx-0">
+                    <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+                  </div>
+                  <div className="text-center md:text-left">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-600">Activities</h3>
+                    <p className="text-xs text-gray-500 hidden md:block">Life experiences</p>
+                  </div>
+                </div>
+                <p className="text-xl md:text-3xl font-bold text-emerald-600 text-center md:text-left">{stats.activities}</p>
               </button>
             </div>
 
@@ -1168,6 +1227,174 @@ function ZFlowPageContent() {
                 )}
               </div>
             )}
+
+            {view === 'activities' && (
+              <div className="space-y-3 md:space-y-4">
+                {activitiesLoading ? (
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
+                    加载中...
+                  </div>
+                ) : activities?.length === 0 ? (
+                  <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
+                    暂无活动记录
+                  </div>
+                ) : (
+                  <div className={displayMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4' : 'space-y-3 md:space-y-4'}>
+                    {activities?.map((activity) => {
+                      const isActive = activity.status === 'active'
+                      const isCompleted = activity.status === 'completed'
+                      const isTiming = timer.runningTimelineItemId === activity.id && timer.runningTimelineItemType === 'activity'
+                      return (
+                        <div 
+                          key={activity.id} 
+                          className={`${isTiming 
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-100 border-2 border-green-400 shadow-lg shadow-green-200/60 ring-2 ring-green-300/50' 
+                            : isActive 
+                              ? 'bg-gradient-to-r from-emerald-50 to-green-100 border-2 border-emerald-300 shadow-lg shadow-emerald-200/50' 
+                              : isCompleted 
+                                ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300' 
+                                : 'glass'
+                          } rounded-lg md:rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer ${isTiming ? 'hover:shadow-xl hover:shadow-green-200/70' : ''}`}
+                          onClick={(e) => {
+                            // Prevent click when clicking on buttons
+                            if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
+                              return
+                            }
+                            // Navigate to activity focus mode
+                            router.push(`/focus/activity?activityId=${encodeURIComponent(activity.id)}`)
+                          }}
+                        >
+                          {/* Header with action buttons */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => toggleActivityComplete(activity.id, activity.status)} 
+                                className="flex-shrink-0"
+                              >
+                                {isCompleted ? (
+                                  <svg className="w-4 h-4 md:w-5 md:h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.5-1.5z"/>
+                                  </svg>
+                                ) : isTiming ? (
+                                  <div className="relative">
+                                    <svg className="w-4 h-4 md:w-5 md:h-5 text-green-600" viewBox="0 0 24 24" fill="currentColor">
+                                      <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                    <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-green-600 rounded-full animate-ping"></div>
+                                    <div className="absolute inset-1 w-2 h-2 md:w-3 md:h-3 bg-green-600 rounded-full animate-pulse"></div>
+                                  </div>
+                                ) : (
+                                  <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="12" r="10"/>
+                                  </svg>
+                                )}
+                              </button>
+                              {/* Activity type icon */}
+                              <div className="text-lg">
+                                {activity.activity_type === 'exercise' && '🏃‍♂️'}
+                                {activity.activity_type === 'meditation' && '🧘‍♀️'}
+                                {activity.activity_type === 'reading' && '📚'}
+                                {activity.activity_type === 'music' && '🎵'}
+                                {activity.activity_type === 'socializing' && '👥'}
+                                {activity.activity_type === 'gaming' && '🎮'}
+                                {activity.activity_type === 'walking' && '🚶‍♀️'}
+                                {activity.activity_type === 'cooking' && '👨‍🍳'}
+                                {activity.activity_type === 'rest' && '😴'}
+                                {activity.activity_type === 'creative' && '🎨'}
+                                {activity.activity_type === 'learning' && '📖'}
+                                {(!activity.activity_type || activity.activity_type === 'other') && '✨'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openActivityEditor(activity)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
+                                title="编辑活动"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteActivity(activity.id)
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                                title="删除活动"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setTimeModalActivity({ id: activity.id, title: activity.title })
+                                }}
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md"
+                                title="查看活动时间"
+                              >
+                                <Clock className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (isTiming) {
+                                    timer.stopActivity(activity.id)
+                                  } else {
+                                    timer.startActivity(activity.id)
+                                  }
+                                }}
+                                className={`p-1.5 rounded-md ${
+                                  isTiming 
+                                    ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+                                    : 'text-green-600 hover:bg-green-50'
+                                }`}
+                                title={isTiming ? "停止计时" : "开始计时"}
+                              >
+                                {isTiming ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Title and description */}
+                          <div className="mb-3">
+                            <h3 className={`font-medium text-sm md:text-base ${isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                              {activity.title}
+                            </h3>
+                            {activity.description && (
+                              <p className="text-xs md:text-sm text-gray-600 mt-1 line-clamp-2">
+                                {activity.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Activity details */}
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="flex items-center gap-2">
+                              {activity.category_id && (
+                                <span className="flex items-center gap-1">
+                                  <div 
+                                    className="w-2 h-2 rounded-full" 
+                                    style={{ backgroundColor: categories.find(c => c.id === activity.category_id)?.color || '#gray' }}
+                                  />
+                                  {categories.find(c => c.id === activity.category_id)?.name}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {activity.started_at && (
+                                <span>{new Date(activity.started_at).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1211,12 +1438,37 @@ function ZFlowPageContent() {
         title={t.task.editTask}
       />
 
+      {/* Activity Editor */}
+      <ActivityEditor
+        isOpen={showActivityEditor}
+        onClose={() => { setShowActivityEditor(false); setEditingActivity(null) }}
+        activity={editingActivity}
+        categories={categories}
+        onSave={async (activityId, updates) => {
+          try {
+            await updateActivity(activityId, updates)
+            setShowActivityEditor(false)
+            setEditingActivity(null)
+          } catch (error) {
+            console.error('Failed to save activity:', error)
+          }
+        }}
+      />
+
       {/* Task Time Modal */}
       <TaskTimeModal
         isOpen={!!timeModalTask}
         onClose={() => setTimeModalTask(null)}
         taskId={timeModalTask?.id || ''}
         taskTitle={timeModalTask?.title}
+      />
+
+      {/* Activity Time Modal */}
+      <ActivityTimeModal
+        isOpen={!!timeModalActivity}
+        onClose={() => setTimeModalActivity(null)}
+        activityId={timeModalActivity?.id || ''}
+        activityTitle={timeModalActivity?.title}
       />
 
       {/* Daily Time Overview Modal */}
