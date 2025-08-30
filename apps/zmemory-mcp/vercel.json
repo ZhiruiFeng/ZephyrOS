@@ -1,14 +1,25 @@
 {
-  "buildCommand": "npm run build",
+  "version": 2,
+  "name": "zmemory-mcp",
+  "builds": [
+    {
+      "src": "api/mcp.js",
+      "use": "@vercel/node"
+    }
+  ],
   "functions": {
     "api/mcp.js": {
       "maxDuration": 30
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/health",
-      "destination": "/api/mcp"
+      "src": "/health",
+      "dest": "/api/mcp"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
     }
   ]
 }
