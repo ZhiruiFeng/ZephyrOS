@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "name": "zmemory-mcp",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api/mcp"
+    }
+  ],
+  "env": {
+    "ZMEMORY_API_URL": "@zmemory-api-url",
+    "OAUTH_CLIENT_ID": "@oauth-client-id", 
+    "OAUTH_CLIENT_SECRET": "@oauth-client-secret",
+    "OAUTH_REDIRECT_URI": "@oauth-redirect-uri",
+    "OAUTH_SCOPE": "@oauth-scope",
+    "ZMEMORY_TIMEOUT": "@zmemory-timeout"
+  }
+}

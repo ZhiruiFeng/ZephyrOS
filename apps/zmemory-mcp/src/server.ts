@@ -1341,4 +1341,274 @@ ${category.icon ? `图标: ${category.icon}` : ''}
   getServer() {
     return this.server;
   }
+
+  // HTTP API 处理方法
+  async handleInitialize(params: any = {}) {
+    return {
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        tools: {},
+        resources: {},
+      },
+      serverInfo: {
+        name: 'zmemory-mcp',
+        version: '1.0.0',
+      },
+    };
+  }
+
+  async handleListTools() {
+    const tools: Tool[] = [
+      // OAuth 认证工具
+      {
+        name: 'authenticate',
+        description: '启动 OAuth 认证流程，获取授权URL',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'exchange_code_for_token',
+        description: '使用授权码交换访问令牌',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: '授权码' },
+            state: { type: 'string', description: '状态参数（可选）' },
+          },
+          required: ['code'],
+        },
+      },
+      {
+        name: 'refresh_token',
+        description: '刷新访问令牌',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            refreshToken: { type: 'string', description: '刷新令牌' },
+          },
+          required: ['refreshToken'],
+        },
+      },
+      {
+        name: 'get_user_info',
+        description: '获取当前用户信息',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'set_access_token',
+        description: '手动设置访问令牌',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string', description: '访问令牌' },
+          },
+          required: ['accessToken'],
+        },
+      },
+      {
+        name: 'get_auth_status',
+        description: '获取当前认证状态',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'clear_auth',
+        description: '清除认证状态',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+
+      // 任务管理工具
+      {
+        name: 'create_task',
+        description: '创建新任务',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '任务标题' },
+            description: { type: 'string', description: '任务描述（可选）' },
+            category: { type: 'string', description: '任务分类（可选）' },
+            priority: { 
+              type: 'string', 
+              enum: ['low', 'medium', 'high', 'urgent'],
+              description: '任务优先级' 
+            },
+            due_date: { type: 'string', description: '截止日期 (YYYY-MM-DD)（可选）' },
+            tags: { 
+              type: 'array', 
+              items: { type: 'string' },
+              description: '任务标签（可选）' 
+            },
+          },
+          required: ['title'],
+        },
+      },
+      {
+        name: 'search_tasks',
+        description: '搜索和筛选任务',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            status: { 
+              type: 'string', 
+              enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+              description: '任务状态' 
+            },
+            priority: { 
+              type: 'string', 
+              enum: ['low', 'medium', 'high', 'urgent'],
+              description: '任务优先级' 
+            },
+            category: { type: 'string', description: '任务分类' },
+            keyword: { type: 'string', description: '关键词搜索' },
+            limit: { type: 'number', description: '返回结果数量限制' },
+            offset: { type: 'number', description: '分页偏移量' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'update_task',
+        description: '更新现有任务',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '任务ID' },
+            title: { type: 'string', description: '任务标题' },
+            description: { type: 'string', description: '任务描述' },
+            status: { 
+              type: 'string', 
+              enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+              description: '任务状态' 
+            },
+            priority: { 
+              type: 'string', 
+              enum: ['low', 'medium', 'high', 'urgent'],
+              description: '任务优先级' 
+            },
+            category: { type: 'string', description: '任务分类' },
+            due_date: { type: 'string', description: '截止日期 (YYYY-MM-DD)' },
+            tags: { 
+              type: 'array', 
+              items: { type: 'string' },
+              description: '任务标签' 
+            },
+          },
+          required: ['id'],
+        },
+      },
+
+      // 时间追踪工具
+      {
+        name: 'start_task_timer',
+        description: '开始任务计时',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'string', description: '任务ID' },
+            description: { type: 'string', description: '时间条目描述（可选）' },
+          },
+          required: ['taskId'],
+        },
+      },
+      {
+        name: 'stop_task_timer',
+        description: '停止任务计时',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'string', description: '任务ID' },
+          },
+          required: ['taskId'],
+        },
+      },
+
+      // 分类管理工具
+      {
+        name: 'get_categories',
+        description: '获取所有分类',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'create_category',
+        description: '创建新分类',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: '分类名称' },
+            color: { type: 'string', description: '分类颜色（可选）' },
+            description: { type: 'string', description: '分类描述（可选）' },
+          },
+          required: ['name'],
+        },
+      },
+    ];
+
+    return { tools };
+  }
+
+  async handleToolCall(name: string, args: any) {
+    try {
+      switch (name) {
+        // OAuth 认证工具
+        case 'authenticate':
+          return await this.handleAuthenticate(args);
+        case 'exchange_code_for_token':
+          return await this.handleExchangeCodeForToken(args);
+        case 'refresh_token':
+          return await this.handleRefreshToken(args);
+        case 'get_user_info':
+          return await this.handleGetUserInfo(args);
+        case 'set_access_token':
+          return await this.handleSetAccessToken(args);
+        case 'get_auth_status':
+          return await this.handleGetAuthStatus(args);
+        case 'clear_auth':
+          return await this.handleClearAuth(args);
+
+        // 任务管理工具
+        case 'create_task':
+          return await this.handleCreateTask(args);
+        case 'search_tasks':
+          return await this.handleSearchTasks(args);
+        case 'update_task':
+          return await this.handleUpdateTask(args);
+
+        // 时间追踪工具
+        case 'start_task_timer':
+          return await this.handleStartTaskTimer(args);
+        case 'stop_task_timer':
+          return await this.handleStopTaskTimer(args);
+
+        // 分类管理工具
+        case 'get_categories':
+          return await this.handleGetCategories(args);
+        case 'create_category':
+          return await this.handleCreateCategory(args);
+
+        default:
+          throw new Error(`未知的工具: ${name}`);
+      }
+    } catch (error) {
+      console.error(`Tool call error for ${name}:`, error);
+      throw error;
+    }
+  }
 }
