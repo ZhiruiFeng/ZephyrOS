@@ -1,8 +1,8 @@
 -- =====================================================
 -- ZephyrOS Database Schema
 -- Version: 2.0.0 with Timeline Items Architecture
--- Created: 2024
--- Last Updated: 2024-08-30
+-- Created: 2025
+-- Last Updated: 2025-08-30
 -- =====================================================
 
 -- =====================================================
@@ -167,6 +167,61 @@ CREATE TABLE IF NOT EXISTS time_entries (
 
 
 
+-- Activities table for chill time usage tracking (subtype of timeline_items)
+CREATE TABLE IF NOT EXISTS activities (
+  -- Core activity fields
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  
+  -- Timestamp fields
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  started_at TIMESTAMP WITH TIME ZONE,
+  ended_at TIMESTAMP WITH TIME ZONE,
+  duration_minutes INTEGER,
+  
+  -- Activity-specific fields
+  activity_type TEXT DEFAULT 'other' CHECK (activity_type IN (
+    'exercise', 'meditation', 'reading', 'music', 'socializing', 
+    'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'
+  )),
+  
+  -- Mood and energy tracking
+  mood_before INTEGER CHECK (mood_before >= 1 AND mood_before <= 10),
+  mood_after INTEGER CHECK (mood_after >= 1 AND mood_after <= 10),
+  energy_before INTEGER CHECK (energy_before >= 1 AND energy_before <= 10),
+  energy_after INTEGER CHECK (energy_after >= 1 AND energy_after <= 10),
+  
+  -- Experience tracking
+  satisfaction_level INTEGER CHECK (satisfaction_level >= 1 AND satisfaction_level <= 10),
+  intensity_level TEXT DEFAULT 'moderate' CHECK (intensity_level IN ('low', 'moderate', 'high')),
+  
+  -- Location and context
+  location TEXT,
+  weather TEXT,
+  companions TEXT[], -- who was with you
+  
+  -- Reflection and notes
+  notes TEXT,
+  insights TEXT, -- what did you learn or realize?
+  gratitude TEXT, -- what are you grateful for from this activity?
+  
+  -- Organization
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  tags TEXT[] DEFAULT '{}',
+  
+  -- User ownership
+  user_id UUID DEFAULT auth.uid(),
+  
+  -- Activity completion status
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+  
+  -- Supertype/subtype relationship
+  type TEXT DEFAULT 'activity' CHECK (type = 'activity'),
+  FOREIGN KEY (id, type) REFERENCES timeline_items(id, type) ON DELETE CASCADE
+);
+
 -- Memories table for knowledge management
 CREATE TABLE IF NOT EXISTS memories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -262,6 +317,14 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_user_date_type ON time_entries(
 );
 
 
+
+-- Activities indexes
+CREATE INDEX IF NOT EXISTS idx_activities_user_id ON activities(user_id);
+CREATE INDEX IF NOT EXISTS idx_activities_type ON activities(activity_type);
+CREATE INDEX IF NOT EXISTS idx_activities_started_at ON activities(user_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(user_id, category_id);
+CREATE INDEX IF NOT EXISTS idx_activities_status ON activities(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_activities_mood ON activities(user_id, mood_after) WHERE mood_after IS NOT NULL;
 
 -- Memories indexes
 CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
@@ -620,6 +683,94 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Activities synchronization functions
+CREATE OR REPLACE FUNCTION sync_activity_to_timeline_item_before()
+RETURNS TRIGGER AS $$
+DECLARE
+  target_user_id UUID;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    -- Ensure user_id is set
+    target_user_id := COALESCE(NEW.user_id, auth.uid());
+    
+    IF target_user_id IS NULL THEN
+      RAISE EXCEPTION 'user_id cannot be null. Either provide user_id explicitly or ensure proper authentication context.';
+    END IF;
+    
+    -- Update NEW.user_id if it was null
+    NEW.user_id := target_user_id;
+    
+    -- Create corresponding timeline_items entry
+    INSERT INTO timeline_items (
+      id, type, title, description, created_at, updated_at, 
+      start_time, end_time, category_id, tags, status, priority, user_id, metadata
+    ) VALUES (
+      NEW.id, 'activity', NEW.title, NEW.description, NEW.created_at, NEW.updated_at,
+      NEW.started_at, NEW.ended_at, NEW.category_id, NEW.tags,
+      NEW.status, 'medium', -- activities default to medium priority
+      NEW.user_id,
+      jsonb_build_object(
+        'activity_type', NEW.activity_type,
+        'mood_before', NEW.mood_before,
+        'mood_after', NEW.mood_after,
+        'energy_before', NEW.energy_before,
+        'energy_after', NEW.energy_after,
+        'satisfaction_level', NEW.satisfaction_level,
+        'intensity_level', NEW.intensity_level,
+        'location', NEW.location,
+        'weather', NEW.weather,
+        'companions', NEW.companions,
+        'insights', NEW.insights,
+        'gratitude', NEW.gratitude,
+        'duration_minutes', NEW.duration_minutes
+      )
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION sync_activity_to_timeline_item_after()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    -- Sync changes to timeline_items
+    UPDATE timeline_items SET
+      title = NEW.title,
+      description = NEW.description,
+      updated_at = NEW.updated_at,
+      start_time = NEW.started_at,
+      end_time = NEW.ended_at,
+      category_id = NEW.category_id,
+      tags = NEW.tags,
+      status = NEW.status,
+      metadata = metadata || jsonb_build_object(
+        'activity_type', NEW.activity_type,
+        'mood_before', NEW.mood_before,
+        'mood_after', NEW.mood_after,
+        'energy_before', NEW.energy_before,
+        'energy_after', NEW.energy_after,
+        'satisfaction_level', NEW.satisfaction_level,
+        'intensity_level', NEW.intensity_level,
+        'location', NEW.location,
+        'weather', NEW.weather,
+        'companions', NEW.companions,
+        'insights', NEW.insights,
+        'gratitude', NEW.gratitude,
+        'duration_minutes', NEW.duration_minutes
+      )
+    WHERE id = NEW.id AND type = 'activity';
+    
+  ELSIF TG_OP = 'DELETE' THEN
+    -- Delete corresponding timeline_items entry
+    DELETE FROM timeline_items WHERE id = OLD.id AND type = 'activity';
+  END IF;
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
 -- Subtasks hierarchy functions
 CREATE OR REPLACE FUNCTION update_task_hierarchy()
 RETURNS TRIGGER AS $$
@@ -964,6 +1115,22 @@ CREATE TRIGGER trg_update_task_time_cache
   FOR EACH ROW
   EXECUTE FUNCTION update_task_time_cache();
 
+-- Activities triggers
+CREATE TRIGGER trg_sync_activity_to_timeline_before_insert
+  BEFORE INSERT ON activities
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_activity_to_timeline_item_before();
+
+CREATE TRIGGER trg_sync_activity_to_timeline_after_update_delete
+  AFTER UPDATE OR DELETE ON activities
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_activity_to_timeline_item_after();
+
+CREATE TRIGGER update_activities_updated_at
+  BEFORE UPDATE ON activities
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- Subtasks hierarchy triggers
 CREATE TRIGGER trg_maintain_task_hierarchy
   BEFORE INSERT OR UPDATE OF parent_task_id ON tasks
@@ -990,6 +1157,7 @@ ALTER TABLE timeline_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_relations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
@@ -1064,6 +1232,20 @@ CREATE POLICY "Users can modify their entries" ON time_entries
 CREATE POLICY "Users can delete their entries" ON time_entries
   FOR DELETE USING (auth.uid() = user_id);
 
+-- Activities policies
+CREATE POLICY "Users can view their own activities" ON activities
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own activities" ON activities
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own activities" ON activities
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own activities" ON activities
+  FOR DELETE USING (auth.uid() = user_id);
+
 -- Memories policies
 CREATE POLICY "Users can view their own memories" ON memories
   FOR SELECT USING (auth.uid() = user_id);
@@ -1125,16 +1307,18 @@ ON CONFLICT DO NOTHING;
 
 -- Timeline Items Architecture Summary:
 -- 1. timeline_items: Supertype table for all time-related entities
--- 2. tasks: Subtype table (existing structure preserved)
--- 3. time_entries: Universal time tracking
--- 4. Automatic synchronization between supertype and subtypes
--- 5. Optimized queries with snapshot fields
+-- 2. tasks: Subtype table (existing structure preserved) - goal-oriented time usage
+-- 3. activities: Subtype table - chill/experience-oriented time usage
+-- 4. time_entries: Universal time tracking for all timeline_item types
+-- 5. Automatic synchronization between supertype and subtypes
+-- 6. Optimized queries with snapshot fields
 
 -- Migration completed:
 -- ✅ Tasks data backfilled to timeline_items
 -- ✅ Time entries migrated to universal time_entries table  
 -- ✅ Application APIs updated
 -- ✅ Legacy tables cleaned up
+-- ✅ Activities subtype added for chill time tracking
 
 -- =====================================================
 -- SCHEMA VERSION 2.0.0 COMPLETE
