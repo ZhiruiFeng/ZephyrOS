@@ -3,6 +3,11 @@
   "name": "zmemory-mcp",
   "buildCommand": "npm run build",
   "installCommand": "npm install",
+  "functions": {
+    "api/mcp.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/health",
