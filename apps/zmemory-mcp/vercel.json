@@ -5,25 +5,19 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "outputDirectory": "dist",
-  "builds": [
-    {
-      "src": "api/mcp.js",
-      "use": "@vercel/node"
-    }
-  ],
   "functions": {
     "api/mcp.js": {
       "maxDuration": 30
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/health",
-      "dest": "/api/mcp"
+      "source": "/health",
+      "destination": "/api/mcp"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
   ]
 }
