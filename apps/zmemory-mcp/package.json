@@ -11,7 +11,7 @@
     "build": "tsc && echo 'Build completed'",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "vercel-build": "npm run build",
+    "vercel-build": "tsc",
     "test": "jest",
     "test:oauth": "node scripts/test-oauth.js",
     "test:mcp": "node scripts/test-mcp.js",
