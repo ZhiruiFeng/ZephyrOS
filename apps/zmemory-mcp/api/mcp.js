@@ -1,4 +1,4 @@
-const { ZMemoryMCPServer } = require('../dist/server.js');
+import { ZMemoryMCPServer } from '../dist/server.js';
 
 // 配置CORS
 const corsHeaders = {
@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Vercel函数处理器
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // 处理预检请求
   if (req.method === 'OPTIONS') {
     return res.status(200).json({}).end();
@@ -116,4 +116,4 @@ module.exports = async (req, res) => {
       id: null
     });
   }
-};
+}
