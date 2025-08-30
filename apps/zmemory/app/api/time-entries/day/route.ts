@@ -25,17 +25,19 @@ export async function GET(request: NextRequest) {
     // Fetch entries that overlap [from, to]
     // start_at < to AND (end_at IS NULL OR end_at >= from)
     const { data, error } = await client
-      .from('task_time_entries')
+      .from('time_entries')
       .select(`
         id,
-        task_id,
+        timeline_item_id,
+        timeline_item_type,
+        timeline_item_title,
         start_at,
         end_at,
         duration_minutes,
         note,
         source,
         category_id_snapshot,
-        task:tasks(title),
+        timeline_item:timeline_items(title, type),
         category:categories(id, name, color)
       `)
       .eq('user_id', userId)
@@ -53,13 +55,15 @@ export async function GET(request: NextRequest) {
 
     // Map data to include joined fields
     const mappedEntries = (data || []).map((entry: any) => {
-      const task = Array.isArray(entry.task) ? entry.task[0] : entry.task
+      const timeline_item = Array.isArray(entry.timeline_item) ? entry.timeline_item[0] : entry.timeline_item
       const category = Array.isArray(entry.category) ? entry.category[0] : entry.category
       return {
         ...entry,
-        task_title: task?.title,
+        task_title: entry.timeline_item_title || timeline_item?.title,
         category_name: category?.name,
         category_color: category?.color,
+        // Keep task_id for backward compatibility if it's a task
+        task_id: entry.timeline_item_type === 'task' ? entry.timeline_item_id : undefined,
       }
     })
 

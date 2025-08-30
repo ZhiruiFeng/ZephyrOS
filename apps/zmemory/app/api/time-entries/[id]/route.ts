@@ -27,11 +27,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { data, error } = await client
-      .from('task_time_entries')
+      .from('time_entries')
       .update(updates)
       .eq('id', id)
       .eq('user_id', userId)
-      .select('id, task_id, start_at, end_at, duration_minutes, note, source')
+      .select('id, timeline_item_id, timeline_item_type, start_at, end_at, duration_minutes, note, source')
       .single()
     if (error) return jsonWithCors(request, { error: 'Failed to update entry' }, 500)
     return jsonWithCors(request, { entry: data })
@@ -49,7 +49,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
     const { error } = await client
-      .from('task_time_entries')
+      .from('time_entries')
       .delete()
       .eq('id', id)
       .eq('user_id', userId)

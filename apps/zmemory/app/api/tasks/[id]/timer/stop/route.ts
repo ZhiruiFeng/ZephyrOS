@@ -29,8 +29,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Find running entry for this user (optionally verify task id)
     const { data: running, error: runningErr } = await client
-      .from('task_time_entries')
-      .select('id, task_id, start_at')
+      .from('time_entries')
+      .select('id, timeline_item_id, timeline_item_type, start_at')
       .eq('user_id', userId)
       .is('end_at', null)
       .maybeSingle()
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Idempotent: nothing running
       return jsonWithCors(request, { entry: null })
     }
-    if (running.task_id !== taskId) {
+    if (running.timeline_item_id !== taskId) {
       // Allow stop via specific task endpoint only for its running entry
       return jsonWithCors(request, { error: 'No running timer for this task' }, 404)
     }
@@ -56,15 +56,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const { data: updated, error: updateErr } = await client
-      .from('task_time_entries')
+      .from('time_entries')
       .update({ end_at: endAt })
       .eq('id', running.id)
       .eq('user_id', userId)
-      .select('id, task_id, start_at, end_at, duration_minutes')
+      .select('id, timeline_item_id, timeline_item_type, start_at, end_at, duration_minutes')
       .single()
     if (updateErr) return jsonWithCors(request, { error: 'Failed to stop timer' }, 500)
 
-    return jsonWithCors(request, { entry: updated })
+    // Add backward compatibility field for frontend
+    const responseData = {
+      ...updated,
+      task_id: updated.timeline_item_id, // For task timers, timeline_item_id is the task_id
+    };
+    
+    return jsonWithCors(request, { entry: responseData })
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }

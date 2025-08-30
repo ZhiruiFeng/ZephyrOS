@@ -5,12 +5,11 @@ import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '../../../../../li
 import { createOptionsResponse, jsonWithCors } from '../../../../../lib/security'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id: taskId } = await params
+  const { id: timelineItemId } = await params
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
       if (process.env.NODE_ENV !== 'production') {
-        // Dev fallback: allow UI to open modal without auth and show empty entries
         return jsonWithCors(request, { entries: [] })
       }
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
@@ -23,6 +22,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!parsed.success) return jsonWithCors(request, { error: 'Invalid query', details: parsed.error.errors }, 400)
     const { from, to, limit, offset } = parsed.data
 
+    // Verify timeline item exists and belongs to user
+    const { data: timelineItem, error: timelineError } = await client
+      .from('timeline_items')
+      .select('id, type, title')
+      .eq('id', timelineItemId)
+      .eq('user_id', userId)
+      .single()
+
+    if (timelineError || !timelineItem) {
+      return jsonWithCors(request, { error: 'Timeline item not found' }, 404)
+    }
+
     let query = client
       .from('time_entries')
       .select(`
@@ -33,8 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         category:categories(name, color)
       `)
       .eq('user_id', userId)
-      .eq('timeline_item_id', taskId)
-      .eq('timeline_item_type', 'task')
+      .eq('timeline_item_id', timelineItemId)
       .order('start_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -56,11 +66,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const category = Array.isArray(entry.category) ? entry.category[0] : entry.category
       return {
         ...entry,
-        task_title: entry.timeline_item_title || timeline_item?.title,
+        timeline_item_title: entry.timeline_item_title || timeline_item?.title,
         category_name: category?.name,
         category_color: category?.color,
-        // Keep task_id for backward compatibility
-        task_id: entry.timeline_item_id,
+        // For backward compatibility, expose task_id if it's a task
+        ...(entry.timeline_item_type === 'task' && { task_id: entry.timeline_item_id }),
       }
     })
 
@@ -71,12 +81,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id: taskId } = await params
+  const { id: timelineItemId } = await params
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     const client = createClientForRequest(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
+
+    // Verify timeline item exists and belongs to user
+    const { data: timelineItem, error: timelineError } = await client
+      .from('timeline_items')
+      .select('id, type, title')
+      .eq('id', timelineItemId)
+      .eq('user_id', userId)
+      .single()
+
+    if (timelineError || !timelineItem) {
+      return jsonWithCors(request, { error: 'Timeline item not found' }, 404)
+    }
 
     const body = await request.json()
     const parsed = TimeEntryCreateSchema.safeParse(body)
@@ -93,7 +115,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from('time_entries')
       .insert({
         user_id: userId,
-        timeline_item_id: taskId,
+        timeline_item_id: timelineItemId,
         start_at,
         end_at: end_at || null,
         note: note || null,
@@ -114,11 +136,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const category = Array.isArray(data.category) ? data.category[0] : data.category
     const mappedEntry = {
       ...data,
-      task_title: data.timeline_item_title || timeline_item?.title,
+      timeline_item_title: data.timeline_item_title || timeline_item?.title,
       category_name: category?.name,
       category_color: category?.color,
-      // Keep task_id for backward compatibility
-      task_id: data.timeline_item_id,
+      // For backward compatibility, expose task_id if it's a task
+      ...(data.timeline_item_type === 'task' && { task_id: data.timeline_item_id }),
     }
     
     return jsonWithCors(request, { entry: mappedEntry }, 201)
@@ -130,5 +152,3 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 export async function OPTIONS(request: NextRequest) {
   return createOptionsResponse(request)
 }
-
-

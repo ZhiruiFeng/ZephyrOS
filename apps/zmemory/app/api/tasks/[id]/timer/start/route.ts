@@ -37,16 +37,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Check existing running entry
     const { data: running, error: runningErr } = await client
-      .from('task_time_entries')
-      .select('id, task_id, start_at')
+      .from('time_entries')
+      .select('id, timeline_item_id, timeline_item_type, start_at')
       .eq('user_id', userId)
       .is('end_at', null)
       .maybeSingle()
     if (runningErr) return jsonWithCors(request, { error: 'Failed to check running timer' }, 500)
 
-    if (running && running.task_id === taskId) {
+    if (running && running.timeline_item_id === taskId) {
       // Already running on this task: idempotent
-      return jsonWithCors(request, { entry: running })
+      const responseData = {
+        ...running,
+        task_id: running.timeline_item_id, // Add backward compatibility
+      };
+      return jsonWithCors(request, { entry: responseData })
     }
 
     if (running && !autoSwitch) {
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // If autoSwitch and there is a running entry, stop it first
     if (running && autoSwitch) {
       const { error: stopErr } = await client
-        .from('task_time_entries')
+        .from('time_entries')
         .update({ end_at: new Date().toISOString() })
         .eq('id', running.id)
         .eq('user_id', userId)
@@ -66,14 +70,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Start new entry
     const payload = {
       user_id: userId,
-      task_id: taskId,
+      timeline_item_id: taskId,
       start_at: new Date().toISOString(),
       source: 'timer' as const,
     }
     const { data: inserted, error: insertErr } = await client
-      .from('task_time_entries')
+      .from('time_entries')
       .insert(payload)
-      .select('id, task_id, start_at')
+      .select('id, timeline_item_id, timeline_item_type, start_at')
       .single()
     if (insertErr) {
       // Unique constraint may fail if race: surface 409
@@ -83,7 +87,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return jsonWithCors(request, { error: 'Failed to start timer' }, 500)
     }
 
-    return jsonWithCors(request, { entry: inserted }, 201)
+    // Add backward compatibility field for frontend
+    const responseData = {
+      ...inserted,
+      task_id: inserted.timeline_item_id, // For task timers, timeline_item_id is the task_id
+    };
+    
+    return jsonWithCors(request, { entry: responseData }, 201)
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
