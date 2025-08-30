@@ -104,3 +104,89 @@ export type TimeEntriesQuery = z.infer<typeof TimeEntriesQuerySchema>;
 export type TimelineItemCreateBody = z.infer<typeof TimelineItemCreateSchema>;
 export type TimelineItemUpdateBody = z.infer<typeof TimelineItemUpdateSchema>;
 export type TimelineItemsQuery = z.infer<typeof TimelineItemsQuerySchema>;
+
+// ===== Activities Schemas =====
+// Activity types
+const activityTypes = [
+  'exercise', 'meditation', 'reading', 'music', 'socializing', 
+  'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'
+] as const;
+
+const intensityLevels = ['low', 'moderate', 'high'] as const;
+const activityStatuses = ['active', 'completed', 'cancelled'] as const;
+
+// Mood/energy scale (1-10)
+const scaleRating = z.number().int().min(1).max(10).optional();
+
+// Create activity
+export const ActivityCreateSchema = z.object({
+  title: z.string().min(1).max(500),
+  description: z.string().optional(),
+  activity_type: z.enum(activityTypes).default('other'),
+  
+  // Time fields
+  started_at: isoDateTime.optional(),
+  ended_at: isoDateTime.optional(),
+  duration_minutes: z.number().int().positive().optional(),
+  
+  // Mood and energy tracking
+  mood_before: scaleRating,
+  mood_after: scaleRating,
+  energy_before: scaleRating,
+  energy_after: scaleRating,
+  
+  // Experience tracking
+  satisfaction_level: scaleRating,
+  intensity_level: z.enum(intensityLevels).default('moderate'),
+  
+  // Context
+  location: z.string().optional(),
+  weather: z.string().optional(),
+  companions: z.array(z.string()).default([]),
+  
+  // Reflection
+  notes: z.string().optional(),
+  insights: z.string().optional(),
+  gratitude: z.string().optional(),
+  
+  // Organization
+  category_id: z.string().uuid().optional(),
+  tags: z.array(z.string()).default([]),
+  status: z.enum(activityStatuses).default('active'),
+});
+
+// Update activity
+export const ActivityUpdateSchema = ActivityCreateSchema.partial();
+
+// Query activities
+export const ActivitiesQuerySchema = z.object({
+  activity_type: z.enum(activityTypes).optional(),
+  status: z.enum(activityStatuses).optional(),
+  intensity_level: z.enum(intensityLevels).optional(),
+  category_id: z.string().uuid().optional(),
+  location: z.string().optional(),
+  
+  // Date range
+  from: isoDateTime.optional(),
+  to: isoDateTime.optional(),
+  
+  // Rating filters
+  min_satisfaction: z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  min_mood_after: z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  
+  // Pagination
+  limit: z.string().optional().transform(v => parseInt(v || '50')),
+  offset: z.string().optional().transform(v => parseInt(v || '0')),
+  
+  // Sorting
+  sort_by: z.enum(['created_at', 'started_at', 'satisfaction_level', 'mood_after', 'title']).default('created_at'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+  
+  // Search
+  search: z.string().optional(),
+  tags: z.string().optional(), // comma-separated
+});
+
+export type ActivityCreateBody = z.infer<typeof ActivityCreateSchema>;
+export type ActivityUpdateBody = z.infer<typeof ActivityUpdateSchema>;
+export type ActivitiesQuery = z.infer<typeof ActivitiesQuerySchema>;

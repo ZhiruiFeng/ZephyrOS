@@ -749,6 +749,151 @@ export const energyDaysApi = {
   }
 }
 
+// Activities API
+export const activitiesApi = {
+  async getAll(params?: {
+    activity_type?: string;
+    status?: string;
+    intensity_level?: string;
+    category_id?: string;
+    location?: string;
+    from?: string;
+    to?: string;
+    min_satisfaction?: number;
+    min_mood_after?: number;
+    limit?: number;
+    offset?: number;
+    sort_by?: string;
+    sort_order?: string;
+    search?: string;
+    tags?: string;
+  }): Promise<any[]> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const searchParams = new URLSearchParams()
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value))
+        }
+      })
+    }
+    
+    const response = await fetch(`${API_BASE}/api/activities?${searchParams}`, {
+      headers: authHeaders,
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!response.ok) throw new Error('Failed to fetch activities')
+    const data = await response.json()
+    return Array.isArray(data) ? data : []
+  },
+
+  async getById(id: string): Promise<any> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const response = await fetch(`${API_BASE}/api/activities/${id}`, {
+      headers: authHeaders,
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!response.ok) throw new Error('Failed to fetch activity')
+    return response.json()
+  },
+
+  async create(activity: {
+    title: string;
+    description?: string;
+    activity_type?: string;
+    started_at?: string;
+    ended_at?: string;
+    duration_minutes?: number;
+    mood_before?: number;
+    mood_after?: number;
+    energy_before?: number;
+    energy_after?: number;
+    satisfaction_level?: number;
+    intensity_level?: string;
+    location?: string;
+    weather?: string;
+    companions?: string[];
+    notes?: string;
+    insights?: string;
+    gratitude?: string;
+    category_id?: string;
+    tags?: string[];
+    status?: string;
+  }): Promise<any> {
+    const authHeaders = await authManager.getAuthHeaders()
+    
+    const response = await fetch(`${API_BASE}/api/activities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify(activity),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!response.ok) throw new Error('Failed to create activity')
+    return response.json()
+  },
+
+  async update(id: string, updates: {
+    title?: string;
+    description?: string;
+    activity_type?: string;
+    started_at?: string;
+    ended_at?: string;
+    duration_minutes?: number;
+    mood_before?: number;
+    mood_after?: number;
+    energy_before?: number;
+    energy_after?: number;
+    satisfaction_level?: number;
+    intensity_level?: string;
+    location?: string;
+    weather?: string;
+    companions?: string[];
+    notes?: string;
+    insights?: string;
+    gratitude?: string;
+    category_id?: string;
+    tags?: string[];
+    status?: string;
+  }): Promise<any> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const response = await fetch(`${API_BASE}/api/activities/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify(updates),
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!response.ok) throw new Error('Failed to update activity')
+    return response.json()
+  },
+
+  async delete(id: string): Promise<void> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const response = await fetch(`${API_BASE}/api/activities/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders,
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!response.ok) throw new Error('Failed to delete activity')
+  },
+
+  async getStats(days: number = 30): Promise<any> {
+    const authHeaders = await authManager.getAuthHeaders()
+    const response = await fetch(`${API_BASE}/api/activities/stats?days=${days}`, {
+      headers: authHeaders,
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    })
+    if (!response.ok) throw new Error('Failed to fetch activity stats')
+    return response.json()
+  }
+}
+
 // Compatible export: maintain apiClient interface for legacy hooks
 export const apiClient = {
   getTasks: (params?: Parameters<typeof tasksApi.getAll>[0]) => tasksApi.getAll(params),
@@ -756,4 +901,10 @@ export const apiClient = {
   createTask: (data: CreateTaskRequest) => tasksApi.create({ ...(data.content), tags: data.tags }),
   updateTask: (id: string, data: UpdateTaskRequest) => tasksApi.update(id, { ...data.content, tags: data.tags }),
   deleteTask: (id: string) => tasksApi.delete(id),
+  // Activities
+  getActivities: (params?: Parameters<typeof activitiesApi.getAll>[0]) => activitiesApi.getAll(params),
+  getActivity: (id: string) => activitiesApi.getById(id),
+  createActivity: (data: Parameters<typeof activitiesApi.create>[0]) => activitiesApi.create(data),
+  updateActivity: (id: string, data: Parameters<typeof activitiesApi.update>[1]) => activitiesApi.update(id, data),
+  deleteActivity: (id: string) => activitiesApi.delete(id),
 } 
