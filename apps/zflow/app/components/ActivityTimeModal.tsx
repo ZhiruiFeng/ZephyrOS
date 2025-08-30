@@ -4,7 +4,7 @@ import React from 'react'
 import useSWR from 'swr'
 import { X, ChevronLeft, ChevronRight, Clock, List, Calendar as CalendarIcon, Minus, Plus, ArrowLeft, Play, Square } from 'lucide-react'
 import { timelineItemsApi, TimeEntry } from '../../lib/api'
-import { useTranslation } from '../../lib/i18n'
+import { useTranslation, type TranslationKeys } from '../../lib/i18n'
 import { 
   splitCrossDayEntries, 
   calculateTotalMinutes, 
@@ -86,12 +86,7 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
   const to = formatISO(endOfMonth(month))
   const { data, isLoading, error, mutate } = useSWR(
     isOpen ? ['timeline-item-time-entries', activityId, from, to] : null, 
-    async () => {
-      console.log('Fetching timeline item entries for:', activityId, { from, to })
-      const result = await timelineItemsApi.listTimeEntries(activityId, { from, to, limit: 500, offset: 0 })
-      console.log('Timeline item entries result:', result)
-      return result
-    }
+    () => timelineItemsApi.listTimeEntries(activityId, { from, to, limit: 500, offset: 0 })
   )
 
   const entries: any[] = data?.entries || []
@@ -152,10 +147,10 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
               <Clock className="w-5 h-5 text-emerald-600" />
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {mobileView === 'calendar' ? 'Activity Time' : selectedDay}
+                  {mobileView === 'calendar' ? t.activity.activityTime : selectedDay}
                 </h3>
                 <p className="text-xs text-gray-500">
-                  {mobileView === 'calendar' ? activityTitle || '' : 'View activity time segments by day'}
+                  {mobileView === 'calendar' ? activityTitle || '' : t.activity.activityTimeDesc}
                 </p>
               </div>
             </div>
@@ -195,6 +190,7 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
                   activityTitle={activityTitle}
                   isMobile={true}
                   activityId={activityId}
+                  t={t}
                 />
               </div>
             )}
@@ -216,8 +212,8 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-emerald-600" />
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Activity Time · {activityTitle || ''}</h3>
-              <p className="text-xs text-gray-500">View activity time segments by day</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t.activity.activityTime} · {activityTitle || ''}</h3>
+              <p className="text-xs text-gray-500">{t.activity.activityTimeDesc}</p>
             </div>
           </div>
           <button onClick={close} className="p-2 text-gray-500 hover:text-gray-700 rounded-md">
@@ -306,6 +302,7 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
             activityTitle={activityTitle}
             isMobile={false}
             activityId={activityId}
+            t={t}
           />
         </div>
       </div>
@@ -426,6 +423,7 @@ function DayTimeline({
   activityTitle,
   isMobile = false,
   activityId,
+  t,
 }: {
   selectedDay: string | null
   isLoading: boolean
@@ -442,6 +440,7 @@ function DayTimeline({
   activityTitle?: string
   isMobile?: boolean
   activityId: string
+  t: TranslationKeys
 }) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const [hover, setHover] = React.useState<{ x: number; y: number } | null>(null)
@@ -521,7 +520,7 @@ function DayTimeline({
       {/* Header controls */}
       <div className={`flex items-center justify-between mb-3 ${isMobile ? 'flex-col gap-3' : ''}`}>
         <div className={`text-sm font-medium text-gray-700 ${isMobile ? 'text-center' : ''}`}>
-          {selectedDay || 'Please select a date'}
+          {selectedDay || t.ui.pleaseSelectDate}
         </div>
         <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-center' : ''}`}>
           {/* View toggle */}
@@ -530,13 +529,13 @@ function DayTimeline({
               onClick={() => onModeChange('timeline')}
               className={`${isMobile ? 'px-3 py-2' : 'px-2 py-1'} text-xs flex items-center gap-1 ${mode === 'timeline' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              <CalendarIcon className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} /> Timeline
+              <CalendarIcon className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} /> {t.ui.timelineView}
             </button>
             <button
               onClick={() => onModeChange('list')}
               className={`${isMobile ? 'px-3 py-2' : 'px-2 py-1'} text-xs flex items-center gap-1 ${mode === 'list' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              <List className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} /> List
+              <List className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} /> {t.ui.timeListView}
             </button>
           </div>
           {/* Zoom controls for timeline */}
@@ -559,10 +558,10 @@ function DayTimeline({
         </div>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
-      {error && <div className="text-sm text-red-600">Failed to load time entries</div>}
+      {isLoading && <div className="text-sm text-gray-500">{t.common.loading}...</div>}
+      {error && <div className="text-sm text-red-600">{t.ui.loadFailed}</div>}
       {!isLoading && !error && (!selectedDay || dayEvents.length === 0) && (
-        <div className="text-sm text-gray-400">No time segments for this activity</div>
+        <div className="text-sm text-gray-400">{t.ui.noTimeSegments}</div>
       )}
 
       {/* Timeline view */}
@@ -661,9 +660,9 @@ function DayTimeline({
         <div className={`space-y-2 overflow-auto pr-1 ${
           isMobile ? 'max-h-[calc(100vh-200px)]' : 'max-h-[32rem]'
         }`}>
-          <CreateActivityItem activityId={activityId} dateKey={selectedDay} onCreated={refreshEntries} />
+          <CreateActivityItem activityId={activityId} dateKey={selectedDay} onCreated={refreshEntries} t={t} />
           {dayEvents.map((ev) => (
-            <ActivityListItem key={ev.id} entryId={ev.originalId || ev.id} label={ev.label} note={ev.note} onChanged={refreshEntries} />
+            <ActivityListItem key={ev.id} entryId={ev.originalId || ev.id} label={ev.label} note={ev.note} onChanged={refreshEntries} t={t} />
           ))}
         </div>
       )}
@@ -671,7 +670,7 @@ function DayTimeline({
   )
 }
 
-function ActivityListItem({ entryId, label, note, onChanged }: { entryId: string; label: string; note?: string | null; onChanged: () => void }) {
+function ActivityListItem({ entryId, label, note, onChanged, t }: { entryId: string; label: string; note?: string | null; onChanged: () => void; t: TranslationKeys }) {
   const [busy, setBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [start, setStart] = React.useState<string>('')
@@ -712,9 +711,9 @@ function ActivityListItem({ entryId, label, note, onChanged }: { entryId: string
         <span>{label}</span>
         <div className="flex items-center gap-2">
           {!editing && (
-            <button onClick={() => setEditing(true)} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">Edit</button>
+            <button onClick={() => setEditing(true)} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">{t.common.edit}</button>
           )}
-          <button onClick={onDelete} disabled={busy} className="px-2 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">Delete</button>
+          <button onClick={onDelete} disabled={busy} className="px-2 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">{t.common.delete}</button>
         </div>
       </div>
       {!editing ? (
@@ -724,17 +723,17 @@ function ActivityListItem({ entryId, label, note, onChanged }: { entryId: string
           <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder="Start time" />
           <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder="End time" />
           <div className="flex items-center gap-2">
-            <button onClick={onSave} disabled={busy} className="px-2 py-1 text-xs rounded-md border bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Save</button>
-            <button onClick={() => { setEditing(false); setStart(''); setEnd(''); setMemo(note || '') }} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button onClick={onSave} disabled={busy} className="px-2 py-1 text-xs rounded-md border bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">{t.common.save}</button>
+            <button onClick={() => { setEditing(false); setStart(''); setEnd(''); setMemo(note || '') }} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">{t.common.cancel}</button>
           </div>
-          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={2} className="sm:col-span-3 px-2 py-1 text-xs border rounded" placeholder="Note" />
+          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={2} className="sm:col-span-3 px-2 py-1 text-xs border rounded" placeholder={t.ui.note} />
         </div>
       )}
     </div>
   )
 }
 
-function CreateActivityItem({ activityId, dateKey, onCreated }: { activityId: string; dateKey: string; onCreated: () => void }) {
+function CreateActivityItem({ activityId, dateKey, onCreated, t }: { activityId: string; dateKey: string; onCreated: () => void; t: TranslationKeys }) {
   const [busy, setBusy] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const [start, setStart] = React.useState<string>('')
@@ -764,16 +763,16 @@ function CreateActivityItem({ activityId, dateKey, onCreated }: { activityId: st
   return (
     <div className="p-2 border border-dashed border-gray-300 rounded-md">
       {!open ? (
-        <button onClick={() => setOpen(true)} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">+ Add time entry</button>
+        <button onClick={() => setOpen(true)} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">+ {t.ui.addTimeEntry}</button>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder="Start time" min={`${datePrefix}00:00`} max={`${datePrefix}23:59`} />
-          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder="End time" min={`${datePrefix}00:00`} max={`${datePrefix}23:59`} />
+          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder={t.ui.startTime} min={`${datePrefix}00:00`} max={`${datePrefix}23:59`} />
+          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="px-2 py-1 text-xs border rounded" placeholder={t.ui.endTime} min={`${datePrefix}00:00`} max={`${datePrefix}23:59`} />
           <div className="flex items-center gap-2">
-            <button onClick={onSave} disabled={busy} className="px-2 py-1 text-xs rounded-md border bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Save</button>
-            <button onClick={() => { setOpen(false); setStart(''); setEnd(''); setMemo('') }} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button onClick={onSave} disabled={busy} className="px-2 py-1 text-xs rounded-md border bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">{t.common.save}</button>
+            <button onClick={() => { setOpen(false); setStart(''); setEnd(''); setMemo('') }} className="px-2 py-1 text-xs rounded-md border text-gray-700 hover:bg-gray-50">{t.common.cancel}</button>
           </div>
-          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={2} className="sm:col-span-3 px-2 py-1 text-xs border rounded" placeholder="Note" />
+          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={2} className="sm:col-span-3 px-2 py-1 text-xs border rounded" placeholder={t.ui.note} />
         </div>
       )}
     </div>

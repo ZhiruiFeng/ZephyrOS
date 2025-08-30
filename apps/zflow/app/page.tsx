@@ -1312,7 +1312,7 @@ function ZFlowPageContent() {
                                   openActivityEditor(activity)
                                 }}
                                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
-                                title="编辑活动"
+                                title={t.activity.editActivity}
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -1322,7 +1322,7 @@ function ZFlowPageContent() {
                                   handleDeleteActivity(activity.id)
                                 }}
                                 className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
-                                title="删除活动"
+                                title={t.activity.deleteActivity}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1332,7 +1332,7 @@ function ZFlowPageContent() {
                                   setTimeModalActivity({ id: activity.id, title: activity.title })
                                 }}
                                 className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md"
-                                title="查看活动时间"
+                                title={t.activity.viewActivityTime}
                               >
                                 <Clock className="w-4 h-4" />
                               </button>
@@ -1350,7 +1350,7 @@ function ZFlowPageContent() {
                                     ? 'text-red-600 bg-red-50 hover:bg-red-100' 
                                     : 'text-green-600 hover:bg-green-50'
                                 }`}
-                                title={isTiming ? "停止计时" : "开始计时"}
+                                title={isTiming ? t.activity.stopTimer : t.activity.startTimer}
                               >
                                 {isTiming ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                               </button>

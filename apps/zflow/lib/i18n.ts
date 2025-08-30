@@ -43,6 +43,60 @@ export interface TranslationKeys {
     workMode: string;
   };
 
+  // Activity Management
+  activity: {
+    title: string;
+    description: string;
+    activityType: string;
+    status: string;
+    createActivity: string;
+    editActivity: string;
+    deleteActivity: string;
+    startTimer: string;
+    stopTimer: string;
+    viewActivityTime: string;
+    activityTime: string;
+    activityTimeDesc: string;
+    
+    // Activity types
+    typeExercise: string;
+    typeWork: string;
+    typeStudy: string;
+    typeReading: string;
+    typeSocial: string;
+    typeRelax: string;
+    typeOther: string;
+    
+    // Activity Editor fields
+    activityTitle: string;
+    activityDescription: string;
+    selectActivityType: string;
+    location: string;
+    locationPlaceholder: string;
+    companions: string;
+    companionsPlaceholder: string;
+    notes: string;
+    notesPlaceholder: string;
+    insights: string;
+    insightsPlaceholder: string;
+    gratitude: string;
+    gratitudePlaceholder: string;
+    
+    // Mood and Energy
+    moodBefore: string;
+    moodAfter: string;
+    energyBefore: string;
+    energyAfter: string;
+    satisfactionLevel: string;
+    intensityLevel: string;
+    
+    // Intensity levels
+    intensityLow: string;
+    intensityModerate: string;
+    intensityHigh: string;
+    intensityIntense: string;
+  };
+
   // Task Management
   task: {
     title: string;
@@ -374,6 +428,58 @@ const translations: Record<Language, TranslationKeys> = {
       focusMode: 'Focus Mode',
       workMode: 'Work Mode',
     },
+    activity: {
+      title: 'Title',
+      description: 'Description',
+      activityType: 'Activity Type',
+      status: 'Status',
+      createActivity: 'Create Activity',
+      editActivity: 'Edit Activity',
+      deleteActivity: 'Delete Activity',
+      startTimer: 'Start Timer',
+      stopTimer: 'Stop Timer',
+      viewActivityTime: 'View Activity Time',
+      activityTime: 'Activity Time',
+      activityTimeDesc: 'View activity time segments by day',
+      
+      // Activity types
+      typeExercise: 'Exercise',
+      typeWork: 'Work',
+      typeStudy: 'Study',
+      typeReading: 'Reading',
+      typeSocial: 'Social',
+      typeRelax: 'Relax',
+      typeOther: 'Other',
+      
+      // Activity Editor fields
+      activityTitle: 'Activity title...',
+      activityDescription: 'Activity description...',
+      selectActivityType: 'Select activity type...',
+      location: 'Location',
+      locationPlaceholder: 'Where did this activity take place?',
+      companions: 'Companions',
+      companionsPlaceholder: 'Who were you with?',
+      notes: 'Notes',
+      notesPlaceholder: 'Any additional notes...',
+      insights: 'Insights',
+      insightsPlaceholder: 'What did you learn or realize?',
+      gratitude: 'Gratitude',
+      gratitudePlaceholder: 'What are you grateful for?',
+      
+      // Mood and Energy
+      moodBefore: 'Mood Before',
+      moodAfter: 'Mood After',
+      energyBefore: 'Energy Before',
+      energyAfter: 'Energy After',
+      satisfactionLevel: 'Satisfaction Level',
+      intensityLevel: 'Intensity Level',
+      
+      // Intensity levels
+      intensityLow: 'Low',
+      intensityModerate: 'Moderate',
+      intensityHigh: 'High',
+      intensityIntense: 'Intense',
+    },
     task: {
       title: 'Title',
       description: 'Description',
@@ -682,6 +788,58 @@ const translations: Record<Language, TranslationKeys> = {
       kanban: '看板',
       focusMode: '专注模式',
       workMode: '工作模式',
+    },
+    activity: {
+      title: '标题',
+      description: '描述',
+      activityType: '活动类型',
+      status: '状态',
+      createActivity: '创建活动',
+      editActivity: '编辑活动',
+      deleteActivity: '删除活动',
+      startTimer: '开始计时',
+      stopTimer: '停止计时',
+      viewActivityTime: '查看活动时间',
+      activityTime: '活动时间',
+      activityTimeDesc: '按日查看该活动的时间段',
+      
+      // Activity types
+      typeExercise: '运动',
+      typeWork: '工作',
+      typeStudy: '学习',
+      typeReading: '阅读',
+      typeSocial: '社交',
+      typeRelax: '放松',
+      typeOther: '其他',
+      
+      // Activity Editor fields
+      activityTitle: '活动标题...',
+      activityDescription: '活动描述...',
+      selectActivityType: '选择活动类型...',
+      location: '地点',
+      locationPlaceholder: '这个活动在哪里进行？',
+      companions: '同伴',
+      companionsPlaceholder: '你和谁在一起？',
+      notes: '备注',
+      notesPlaceholder: '任何额外的备注...',
+      insights: '感悟',
+      insightsPlaceholder: '你学到了什么或意识到了什么？',
+      gratitude: '感恩',
+      gratitudePlaceholder: '你感谢什么？',
+      
+      // Mood and Energy
+      moodBefore: '活动前心情',
+      moodAfter: '活动后心情',
+      energyBefore: '活动前能量',
+      energyAfter: '活动后能量',
+      satisfactionLevel: '满意度',
+      intensityLevel: '强度水平',
+      
+      // Intensity levels
+      intensityLow: '低',
+      intensityModerate: '中等',
+      intensityHigh: '高',
+      intensityIntense: '很高',
     },
     task: {
       title: '标题',
