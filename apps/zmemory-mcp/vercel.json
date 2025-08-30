@@ -1,9 +1,4 @@
 {
-  "version": 2,
-  "name": "zmemory-mcp",
-  "framework": null,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
   "functions": {
     "api/mcp.js": {
       "maxDuration": 30
