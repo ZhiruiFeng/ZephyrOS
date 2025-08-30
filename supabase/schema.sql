@@ -1,8 +1,8 @@
 -- =====================================================
 -- ZephyrOS Database Schema
--- Version: 1.0.0 with Subtasks Feature
+-- Version: 2.0.0 with Timeline Items Architecture
 -- Created: 2024
--- Last Updated: 2024-08-21
+-- Last Updated: 2024-08-30
 -- =====================================================
 
 -- =====================================================
@@ -37,7 +37,46 @@ CREATE TABLE IF NOT EXISTS categories (
   UNIQUE(name, user_id)
 );
 
--- Main tasks table with subtasks support
+-- =====================================================
+-- 2.1 TIMELINE ITEMS ARCHITECTURE
+-- =====================================================
+
+-- Supertype table: timeline_items
+-- Contains all time-related entities (tasks, activities, routines, habits, memories)
+CREATE TABLE IF NOT EXISTS timeline_items (
+  -- Core identification
+  id UUID PRIMARY KEY,
+  type TEXT NOT NULL CHECK (type IN ('task', 'activity', 'routine', 'habit', 'memory')),
+  
+  -- Basic information
+  title TEXT NOT NULL,
+  description TEXT,
+  
+  -- Time-related fields
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  start_time TIMESTAMP WITH TIME ZONE,
+  end_time TIMESTAMP WITH TIME ZONE,
+  
+  -- Organization
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  tags TEXT[] DEFAULT '{}',
+  
+  -- Common status and priority
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'completed', 'cancelled', 'archived')),
+  priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  
+  -- User ownership
+  user_id UUID NOT NULL,
+  
+  -- Flexible metadata storage
+  metadata JSONB DEFAULT '{}' NOT NULL,
+  
+  -- Constraints
+  UNIQUE(id, type)
+);
+
+-- Main tasks table with subtasks support (subtype of timeline_items)
 CREATE TABLE IF NOT EXISTS tasks (
   -- Core task fields
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -81,7 +120,11 @@ CREATE TABLE IF NOT EXISTS tasks (
   
   -- Subtasks cached counts
   subtask_count INTEGER DEFAULT 0,
-  completed_subtask_count INTEGER DEFAULT 0
+  completed_subtask_count INTEGER DEFAULT 0,
+  
+  -- Supertype/subtype relationship
+  type TEXT DEFAULT 'task' CHECK (type = 'task'),
+  FOREIGN KEY (id, type) REFERENCES timeline_items(id, type) ON DELETE CASCADE
 );
 
 -- Task relations table for complex relationships (beyond parent-child)
@@ -95,7 +138,34 @@ CREATE TABLE IF NOT EXISTS task_relations (
   UNIQUE(parent_task_id, child_task_id, relation_type)
 );
 
--- Time tracking entries table
+-- Universal time tracking entries table (replaces task_time_entries)
+-- Works with all timeline_items types
+CREATE TABLE IF NOT EXISTS time_entries (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL,
+  
+  -- Link to timeline_items (supertype)
+  timeline_item_id UUID NOT NULL REFERENCES timeline_items(id) ON DELETE CASCADE,
+  
+  -- Time tracking fields
+  start_at TIMESTAMPTZ NOT NULL,
+  end_at TIMESTAMPTZ,
+  duration_minutes INTEGER,
+  source TEXT DEFAULT 'timer' CHECK (source IN ('timer','manual','import')),
+  note TEXT,
+  
+  -- Snapshot fields for query performance
+  timeline_item_type TEXT NOT NULL,
+  timeline_item_title TEXT,
+  category_id_snapshot UUID REFERENCES categories(id) ON DELETE SET NULL,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  CONSTRAINT te_time_order_chk CHECK (end_at IS NULL OR end_at > start_at)
+);
+
+-- Legacy time tracking table (for backward compatibility during migration)
 CREATE TABLE IF NOT EXISTS task_time_entries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID DEFAULT auth.uid(),
@@ -162,6 +232,15 @@ CREATE TABLE IF NOT EXISTS tags (
 CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
+-- Timeline items indexes
+CREATE INDEX IF NOT EXISTS idx_timeline_items_user_id ON timeline_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_items_type ON timeline_items(type);
+CREATE INDEX IF NOT EXISTS idx_timeline_items_user_type ON timeline_items(user_id, type);
+CREATE INDEX IF NOT EXISTS idx_timeline_items_status ON timeline_items(status);
+CREATE INDEX IF NOT EXISTS idx_timeline_items_created_at ON timeline_items(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_timeline_items_end_time ON timeline_items(end_time);
+CREATE INDEX IF NOT EXISTS idx_timeline_items_tags ON timeline_items USING GIN(tags);
+
 -- Tasks indexes - Core fields
 CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
@@ -185,7 +264,18 @@ CREATE INDEX IF NOT EXISTS idx_task_relations_child ON task_relations(child_task
 CREATE INDEX IF NOT EXISTS idx_task_relations_type ON task_relations(relation_type);
 CREATE INDEX IF NOT EXISTS idx_task_relations_user_id ON task_relations(user_id);
 
--- Time tracking indexes
+-- Universal time entries indexes
+CREATE INDEX IF NOT EXISTS idx_time_entries_user_timeline_item ON time_entries(user_id, timeline_item_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_user_type ON time_entries(user_id, timeline_item_type);
+CREATE INDEX IF NOT EXISTS idx_time_entries_user_start ON time_entries(user_id, start_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_running_timer_time_entries ON time_entries(user_id) WHERE end_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_time_entries_user_date_type ON time_entries(
+  user_id, 
+  DATE(start_at AT TIME ZONE 'UTC'), 
+  timeline_item_type
+);
+
+-- Legacy time tracking indexes
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_running_timer 
   ON task_time_entries(user_id) WHERE end_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_tte_user_task ON task_time_entries(user_id, task_id);
@@ -219,6 +309,319 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- 4.1 TIMELINE ITEMS ARCHITECTURE FUNCTIONS
+-- =====================================================
+
+-- Supertype/subtype synchronization functions
+CREATE OR REPLACE FUNCTION sync_task_to_timeline_item_before()
+RETURNS TRIGGER AS $$
+DECLARE
+  target_user_id UUID;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    -- Ensure user_id is set
+    target_user_id := COALESCE(NEW.user_id, auth.uid());
+    
+    IF target_user_id IS NULL THEN
+      RAISE EXCEPTION 'user_id cannot be null. Either provide user_id explicitly or ensure proper authentication context.';
+    END IF;
+    
+    -- Update NEW record if user_id was null
+    IF NEW.user_id IS NULL THEN
+      NEW.user_id := target_user_id;
+    END IF;
+    
+    -- Create corresponding timeline_items record
+    INSERT INTO timeline_items (
+      id, type, title, description, created_at, updated_at,
+      end_time, category_id, tags, status, priority, user_id, metadata
+    ) VALUES (
+      NEW.id, 'task', NEW.title, NEW.description, NEW.created_at, NEW.updated_at,
+      NEW.due_date, NEW.category_id, NEW.tags,
+      CASE NEW.status
+        WHEN 'pending' THEN 'active'
+        WHEN 'in_progress' THEN 'active'
+        WHEN 'completed' THEN 'completed'
+        WHEN 'cancelled' THEN 'cancelled'
+        WHEN 'on_hold' THEN 'inactive'
+        ELSE 'active'
+      END,
+      NEW.priority, target_user_id,
+      jsonb_build_object(
+        'estimated_duration', NEW.estimated_duration,
+        'progress', NEW.progress,
+        'assignee', NEW.assignee
+      )
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION sync_task_to_timeline_item_after()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    -- Sync changes to timeline_items
+    UPDATE timeline_items SET
+      title = NEW.title,
+      description = NEW.description,
+      updated_at = NEW.updated_at,
+      end_time = NEW.due_date,
+      category_id = NEW.category_id,
+      tags = NEW.tags,
+      status = CASE NEW.status
+        WHEN 'pending' THEN 'active'
+        WHEN 'in_progress' THEN 'active'
+        WHEN 'completed' THEN 'completed'
+        WHEN 'cancelled' THEN 'cancelled'
+        WHEN 'on_hold' THEN 'inactive'
+        ELSE 'active'
+      END,
+      priority = NEW.priority,
+      metadata = metadata || jsonb_build_object(
+        'estimated_duration', NEW.estimated_duration,
+        'progress', NEW.progress,
+        'assignee', NEW.assignee
+      )
+    WHERE id = NEW.id AND type = 'task';
+    
+  ELSIF TG_OP = 'DELETE' THEN
+    -- Delete corresponding timeline_items record
+    DELETE FROM timeline_items WHERE id = OLD.id AND type = 'task';
+  END IF;
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Time entries snapshot management
+CREATE OR REPLACE FUNCTION set_timeline_item_snapshot()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only set snapshots on INSERT to avoid update loops
+  IF TG_OP = 'INSERT' THEN
+    SELECT type, title, category_id INTO 
+      NEW.timeline_item_type, 
+      NEW.timeline_item_title, 
+      NEW.category_id_snapshot
+    FROM timeline_items 
+    WHERE id = NEW.timeline_item_id;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Time entries cache update (avoid infinite recursion)
+CREATE OR REPLACE FUNCTION update_task_time_cache()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only process task-type timeline_items
+  IF COALESCE(NEW.timeline_item_type, OLD.timeline_item_type) != 'task' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+  
+  IF TG_OP = 'INSERT' AND NEW.end_at IS NOT NULL THEN
+    UPDATE tasks 
+    SET 
+      tracked_minutes_total = tracked_minutes_total + COALESCE(NEW.duration_minutes, 0),
+      tracked_segments_count = tracked_segments_count + 1
+    WHERE id = NEW.timeline_item_id;
+    
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- From running to completed
+    IF (OLD.end_at IS NULL) AND (NEW.end_at IS NOT NULL) THEN
+      UPDATE tasks
+      SET tracked_minutes_total = tracked_minutes_total + COALESCE(NEW.duration_minutes, 0),
+          tracked_segments_count = tracked_segments_count + 1
+      WHERE id = NEW.timeline_item_id;
+      
+    -- Modify completed entry
+    ELSIF (OLD.end_at IS NOT NULL) AND (NEW.end_at IS NOT NULL) THEN
+      UPDATE tasks
+      SET tracked_minutes_total = tracked_minutes_total + 
+          (COALESCE(NEW.duration_minutes,0) - COALESCE(OLD.duration_minutes,0))
+      WHERE id = NEW.timeline_item_id;
+      
+    -- From completed back to running
+    ELSIF (OLD.end_at IS NOT NULL) AND (NEW.end_at IS NULL) THEN
+      UPDATE tasks
+      SET tracked_minutes_total = GREATEST(0, tracked_minutes_total - COALESCE(OLD.duration_minutes,0)),
+          tracked_segments_count = GREATEST(0, tracked_segments_count - 1)
+      WHERE id = OLD.timeline_item_id;
+    END IF;
+    
+  ELSIF TG_OP = 'DELETE' AND OLD.end_at IS NOT NULL THEN
+    UPDATE tasks
+    SET tracked_minutes_total = GREATEST(0, tracked_minutes_total - COALESCE(OLD.duration_minutes,0)),
+        tracked_segments_count = GREATEST(0, tracked_segments_count - 1)
+    WHERE id = OLD.timeline_item_id;
+  END IF;
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Utility function to sync time_entries snapshots
+CREATE OR REPLACE FUNCTION sync_time_entries_snapshots(timeline_item_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  updated_count INTEGER;
+  item_title TEXT;
+  item_type TEXT;
+BEGIN
+  -- Get latest timeline_item information
+  SELECT title, type INTO item_title, item_type
+  FROM timeline_items 
+  WHERE id = timeline_item_id;
+  
+  -- Update related time_entries snapshots
+  UPDATE time_entries 
+  SET 
+    timeline_item_title = item_title,
+    timeline_item_type = item_type,
+    updated_at = NOW()
+  WHERE timeline_item_id = sync_time_entries_snapshots.timeline_item_id;
+  
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RETURN updated_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Data migration functions
+CREATE OR REPLACE FUNCTION backfill_tasks_to_timeline_items()
+RETURNS TABLE(migrated_count INTEGER, skipped_count INTEGER, error_count INTEGER) AS $$
+DECLARE
+  migrated INTEGER := 0;
+  skipped INTEGER := 0;
+  errors INTEGER := 0;
+  task_record RECORD;
+BEGIN
+  FOR task_record IN 
+    SELECT * FROM tasks 
+    ORDER BY created_at 
+  LOOP
+    BEGIN
+      -- Check if already exists
+      IF EXISTS (SELECT 1 FROM timeline_items WHERE id = task_record.id) THEN
+        skipped := skipped + 1;
+        CONTINUE;
+      END IF;
+      
+      -- Insert to timeline_items
+      INSERT INTO timeline_items (
+        id, type, title, description, created_at, updated_at,
+        end_time, category_id, tags, status, priority, user_id, metadata
+      ) VALUES (
+        task_record.id,
+        'task',
+        task_record.title,
+        task_record.description,
+        task_record.created_at,
+        task_record.updated_at,
+        task_record.due_date,
+        task_record.category_id,
+        task_record.tags,
+        CASE task_record.status
+          WHEN 'pending' THEN 'active'
+          WHEN 'in_progress' THEN 'active'
+          WHEN 'completed' THEN 'completed'
+          WHEN 'cancelled' THEN 'cancelled'
+          WHEN 'on_hold' THEN 'inactive'
+          ELSE 'active'
+        END,
+        task_record.priority,
+        task_record.user_id,
+        jsonb_build_object(
+          'estimated_duration', task_record.estimated_duration,
+          'progress', task_record.progress,
+          'assignee', task_record.assignee
+        )
+      );
+      
+      migrated := migrated + 1;
+      
+    EXCEPTION WHEN OTHERS THEN
+      errors := errors + 1;
+      RAISE WARNING 'Failed to migrate task %: %', task_record.id, SQLERRM;
+    END;
+  END LOOP;
+  
+  RETURN QUERY SELECT migrated, skipped, errors;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION backfill_task_time_entries_to_time_entries()
+RETURNS TABLE(migrated_count INTEGER, skipped_count INTEGER, error_count INTEGER) AS $$
+DECLARE
+  migrated INTEGER := 0;
+  skipped INTEGER := 0;
+  errors INTEGER := 0;
+  tte_record RECORD;
+  timeline_title TEXT;
+BEGIN
+  FOR tte_record IN 
+    SELECT * FROM task_time_entries 
+    ORDER BY created_at 
+  LOOP
+    BEGIN
+      -- Check if already exists
+      IF EXISTS (SELECT 1 FROM time_entries WHERE id = tte_record.id) THEN
+        skipped := skipped + 1;
+        CONTINUE;
+      END IF;
+      
+      -- Get timeline_item title
+      SELECT title INTO timeline_title 
+      FROM timeline_items 
+      WHERE id = tte_record.task_id AND type = 'task';
+      
+      -- Skip if no corresponding timeline_item
+      IF timeline_title IS NULL THEN
+        skipped := skipped + 1;
+        CONTINUE;
+      END IF;
+      
+      -- Insert to time_entries
+      INSERT INTO time_entries (
+        id, user_id, timeline_item_id, start_at, end_at, duration_minutes,
+        source, note, timeline_item_type, timeline_item_title, 
+        category_id_snapshot, created_at, updated_at
+      ) VALUES (
+        tte_record.id,
+        tte_record.user_id,
+        tte_record.task_id,
+        tte_record.start_at,
+        tte_record.end_at,
+        tte_record.duration_minutes,
+        tte_record.source,
+        tte_record.note,
+        'task',
+        timeline_title,
+        tte_record.category_id_snapshot,
+        tte_record.created_at,
+        tte_record.updated_at
+      );
+      
+      migrated := migrated + 1;
+      
+    EXCEPTION WHEN OTHERS THEN
+      errors := errors + 1;
+      RAISE WARNING 'Failed to migrate time entry %: %', tte_record.id, SQLERRM;
+    END;
+  END LOOP;
+  
+  RETURN QUERY SELECT migrated, skipped, errors;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- 4.2 LEGACY FUNCTIONS (for backward compatibility)
+-- =====================================================
 
 -- Energy day atomic update function
 CREATE OR REPLACE FUNCTION update_energy_segment(
@@ -275,7 +678,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Time tracking functions
+-- Legacy time tracking functions
 CREATE OR REPLACE FUNCTION set_category_snapshot()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -656,17 +1059,57 @@ CREATE TRIGGER update_memories_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_tte_updated_at 
-  BEFORE UPDATE ON task_time_entries 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_energy_day_updated_at
   BEFORE UPDATE ON energy_day
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Time tracking triggers
+CREATE TRIGGER update_timeline_items_updated_at 
+  BEFORE UPDATE ON timeline_items 
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_time_entries_updated_at 
+  BEFORE UPDATE ON time_entries 
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================
+-- 5.1 TIMELINE ITEMS ARCHITECTURE TRIGGERS
+-- =====================================================
+
+-- Tasks <-> timeline_items synchronization
+CREATE TRIGGER trg_sync_task_to_timeline_before_insert
+  BEFORE INSERT ON tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_task_to_timeline_item_before();
+
+CREATE TRIGGER trg_sync_task_to_timeline_after_update_delete
+  AFTER UPDATE OR DELETE ON tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_task_to_timeline_item_after();
+
+-- Time entries management
+CREATE TRIGGER trg_set_timeline_snapshot
+  BEFORE INSERT ON time_entries
+  FOR EACH ROW
+  EXECUTE FUNCTION set_timeline_item_snapshot();
+
+CREATE TRIGGER trg_update_task_time_cache
+  AFTER INSERT OR UPDATE OR DELETE ON time_entries
+  FOR EACH ROW
+  EXECUTE FUNCTION update_task_time_cache();
+
+-- =====================================================
+-- 5.2 LEGACY TRIGGERS (for backward compatibility)
+-- =====================================================
+
+CREATE TRIGGER update_tte_updated_at 
+  BEFORE UPDATE ON task_time_entries 
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Legacy time tracking triggers
 CREATE TRIGGER trg_tte_set_category_snapshot
   BEFORE INSERT ON task_time_entries
   FOR EACH ROW
@@ -704,8 +1147,10 @@ CREATE TRIGGER trg_auto_complete_parent
 
 -- Enable RLS on all tables
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timeline_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_relations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_time_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
@@ -722,6 +1167,19 @@ CREATE POLICY "Users can update their own categories" ON categories
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own categories" ON categories
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Timeline items policies
+CREATE POLICY "Users can view their own timeline items" ON timeline_items
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own timeline items" ON timeline_items
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own timeline items" ON timeline_items
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own timeline items" ON timeline_items
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Tasks policies
@@ -750,21 +1208,38 @@ CREATE POLICY "Users can update their own task relations" ON task_relations
 CREATE POLICY "Users can delete their own task relations" ON task_relations
   FOR DELETE USING (auth.uid() = user_id);
 
--- Time tracking policies
-CREATE POLICY "Users can view their entries" ON task_time_entries
+-- Universal time entries policies
+CREATE POLICY "Users can view their entries" ON time_entries
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their entries" ON task_time_entries
+CREATE POLICY "Users can insert their entries" ON time_entries
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+    AND timeline_item_id IN (SELECT id FROM timeline_items WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can modify their entries" ON time_entries
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their entries" ON time_entries
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Legacy time tracking policies
+CREATE POLICY "Users can view their task time entries" ON task_time_entries
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their task time entries" ON task_time_entries
   FOR INSERT WITH CHECK (
     auth.uid() = user_id
     AND task_id IN (SELECT id FROM tasks WHERE user_id = auth.uid())
   );
 
-CREATE POLICY "Users can modify their entries" ON task_time_entries
+CREATE POLICY "Users can modify their task time entries" ON task_time_entries
   FOR UPDATE USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their entries" ON task_time_entries
+CREATE POLICY "Users can delete their task time entries" ON task_time_entries
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Memories policies
@@ -823,5 +1298,24 @@ INSERT INTO categories (name, description, color, icon) VALUES
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- SCHEMA VERSION COMPLETE
+-- 8. MIGRATION NOTES
+-- =====================================================
+
+-- Timeline Items Architecture Summary:
+-- 1. timeline_items: Supertype table for all time-related entities
+-- 2. tasks: Subtype table (existing structure preserved)
+-- 3. time_entries: Universal time tracking (replaces task_time_entries)
+-- 4. Automatic synchronization between supertype and subtypes
+-- 5. Optimized queries with snapshot fields
+-- 6. Legacy tables preserved for backward compatibility
+
+-- To complete migration:
+-- 1. Run: SELECT * FROM backfill_tasks_to_timeline_items();
+-- 2. Run: SELECT * FROM backfill_task_time_entries_to_time_entries();
+-- 3. Verify data integrity
+-- 4. Update application code to use new tables
+-- 5. Drop legacy tables when ready
+
+-- =====================================================
+-- SCHEMA VERSION 2.0.0 COMPLETE
 -- =====================================================
