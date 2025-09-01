@@ -216,10 +216,7 @@ function ZFlowPageContent() {
 
   const handleCreateTaskAndStart = async (taskData: any) => {
     try {
-      const task = await taskActions.handleAddTask(taskData)
-      if (task && task.id) {
-        await timer.start(task.id, { autoSwitch: true })
-      }
+      await taskActions.handleAddTask(taskData)
       modalState.closeAddModal()
     } catch (error) {
       console.error('Failed to create task:', error)

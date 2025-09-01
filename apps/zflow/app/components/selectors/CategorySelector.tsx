@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Category } from '../types/task';
+import { Category } from '../../types/task';
 
 interface CategorySelectorProps {
   value?: string;
