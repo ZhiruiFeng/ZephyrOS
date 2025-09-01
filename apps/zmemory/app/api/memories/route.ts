@@ -1,168 +1,481 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
-import { z } from 'zod';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security';
+import { 
+  MemoryCreateSchema,
+  MemoriesQuerySchema,
+  type MemoryCreateBody,
+  type MemoriesQuery
+} from '../../../lib/validators';
+import { nowUTC } from '../../../lib/time-utils';
 
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Check environment variables
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('Missing Supabase environment variables. API will return mock data.');
-}
-
 const supabase = supabaseUrl && supabaseKey 
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
-const useMockData = !supabase || process.env.NODE_ENV === 'test';
+// Mock data for development/testing
+const generateMockMemories = () => [
+  {
+    id: '1',
+    title_override: null,
+    note: '今天和朋友一起爬山，风景很美，心情特别好',
+    memory_type: 'note',
+    captured_at: new Date(Date.now() - 3600000).toISOString(),
+    happened_range: null,
+    emotion_valence: 4,
+    emotion_arousal: 3,
+    energy_delta: 2,
+    place_name: '香山公园',
+    latitude: 39.9926,
+    longitude: 116.1929,
+    is_highlight: true,
+    salience_score: 0.8,
+    source: 'quick_capture',
+    context: '周末户外活动',
+    mood: 8,
+    importance_level: 'high',
+    related_to: [],
+    category_id: null,
+    tags: ['户外', '运动', '朋友'],
+    status: 'active',
+    type: 'memory',
+    user_id: 'mock-user',
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    updated_at: new Date(Date.now() - 3600000).toISOString()
+  },
+  {
+    id: '2', 
+    title_override: '阅读笔记',
+    note: '读《原子习惯》第三章，关于习惯循环的概念很有启发',
+    memory_type: 'quote',
+    captured_at: new Date(Date.now() - 7200000).toISOString(),
+    happened_range: {
+      start: new Date(Date.now() - 9000000).toISOString(),
+      end: new Date(Date.now() - 7200000).toISOString()
+    },
+    emotion_valence: 2,
+    emotion_arousal: 1,
+    energy_delta: 1,
+    place_name: null,
+    latitude: null,
+    longitude: null,
+    is_highlight: false,
+    salience_score: 0.6,
+    source: 'reading',
+    context: '学习时间',
+    mood: 7,
+    importance_level: 'medium',
+    related_to: [],
+    category_id: null,
+    tags: ['学习', '读书', '习惯'],
+    status: 'active',
+    type: 'memory',
+    user_id: 'mock-user',
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    updated_at: new Date(Date.now() - 7200000).toISOString()
+  }
+];
 
-// Data validation schema
-const MemorySchema = z.object({
-  type: z.string(),
-  content: z.any(),
-  tags: z.array(z.string()).optional(),
-  metadata: z.record(z.any()).optional(),
-});
-
-const MemoryUpdateSchema = MemorySchema.partial();
-
-// GET /api/memories - Get memories list
+/**
+ * @swagger
+ * /api/memories:
+ *   get:
+ *     summary: Get memories with advanced filtering and search
+ *     description: Retrieve memories with comprehensive filtering by type, emotions, location, dates, and more
+ *     tags: [Memories]
+ *     parameters:
+ *       - in: query
+ *         name: memory_type
+ *         schema:
+ *           type: string
+ *           enum: [note, link, file, thought, quote, insight]
+ *         description: Filter by memory type
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, archived, deleted]
+ *         description: Filter by memory status
+ *       - in: query
+ *         name: importance_level
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high]
+ *         description: Filter by importance level
+ *       - in: query
+ *         name: is_highlight
+ *         schema:
+ *           type: boolean
+ *         description: Filter highlight memories only
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Full-text search across memory content
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: string
+ *         description: Filter by tags (comma-separated)
+ *       - in: query
+ *         name: place_name
+ *         schema:
+ *           type: string
+ *         description: Filter by location name
+ *       - in: query
+ *         name: min_emotion_valence
+ *         schema:
+ *           type: integer
+ *           minimum: -5
+ *           maximum: 5
+ *         description: Minimum emotion valence (-5 to 5)
+ *       - in: query
+ *         name: min_salience
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 1
+ *         description: Minimum salience score (0.0 to 1.0)
+ *     responses:
+ *       200:
+ *         description: List of memories matching filters
+ */
 export async function GET(request: NextRequest) {
   try {
-    // If Supabase is not configured or in test mode, return mock data
-    if (useMockData) {
-      return NextResponse.json([
-        {
-          id: '1',
-          type: 'task',
-          content: {
-            title: 'Sample Task',
-            description: 'This is a sample task',
-            status: 'pending',
-            priority: 'medium'
-          },
-          tags: ['zflow', 'task'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]);
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const limit = searchParams.get('limit') || '50';
-    const offset = searchParams.get('offset') || '0';
+    
+    // Parse and validate query parameters
+    const queryResult = MemoriesQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: queryResult.error.errors },
+        { status: 400 }
+      );
+    }
 
-    const userId = await getUserIdFromRequest(request)
+    const query = queryResult.data;
+
+    // If Supabase is not configured, return filtered mock data
+    if (!supabase) {
+      let memories = generateMockMemories();
+      
+      // Apply basic filters to mock data
+      if (query.memory_type) {
+        memories = memories.filter(m => m.memory_type === query.memory_type);
+      }
+      if (query.status) {
+        memories = memories.filter(m => m.status === query.status);
+      }
+      if (query.is_highlight !== undefined) {
+        memories = memories.filter(m => m.is_highlight === query.is_highlight);
+      }
+      if (query.search) {
+        const searchLower = query.search.toLowerCase();
+        memories = memories.filter(m => 
+          m.note.toLowerCase().includes(searchLower) ||
+          (m.context && m.context.toLowerCase().includes(searchLower)) ||
+          (m.place_name && m.place_name.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      return jsonWithCors(request, memories.slice(query.offset, query.offset + query.limit));
+    }
+
+    // Enforce authentication
+    const userId = await getUserIdFromRequest(request);
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      if (process.env.NODE_ENV !== 'production') {
+        return jsonWithCors(request, generateMockMemories().slice(query.offset, query.offset + query.limit));
+      }
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
-    const client = createClientForRequest(request) || supabase
 
-    let query = client
+    const client = createClientForRequest(request) || supabase;
+
+    // Build comprehensive Supabase query
+    let dbQuery = client
       .from('memories')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+      .select(`
+        *,
+        category:categories(id, name, color, icon)
+      `)
+      .eq('user_id', userId);
 
-    if (type) {
-      query = query.eq('type', type);
+    // Apply filters
+    if (query.memory_type) {
+      dbQuery = dbQuery.eq('memory_type', query.memory_type);
+    }
+    if (query.status) {
+      dbQuery = dbQuery.eq('status', query.status);
+    }
+    if (query.importance_level) {
+      dbQuery = dbQuery.eq('importance_level', query.importance_level);
+    }
+    if (query.is_highlight !== undefined) {
+      dbQuery = dbQuery.eq('is_highlight', query.is_highlight);
+    }
+    
+    // Date range filters
+    if (query.captured_from) {
+      dbQuery = dbQuery.gte('captured_at', query.captured_from);
+    }
+    if (query.captured_to) {
+      dbQuery = dbQuery.lte('captured_at', query.captured_to);
+    }
+    
+    // Location filters
+    if (query.place_name) {
+      dbQuery = dbQuery.ilike('place_name', `%${query.place_name}%`);
+    }
+    if (query.near_lat && query.near_lng && query.distance_km) {
+      // Simple bounding box approximation for location filtering
+      const latRange = query.distance_km / 111; // Rough km to degree conversion
+      const lngRange = query.distance_km / (111 * Math.cos(query.near_lat * Math.PI / 180));
+      
+      dbQuery = dbQuery
+        .gte('latitude', query.near_lat - latRange)
+        .lte('latitude', query.near_lat + latRange)
+        .gte('longitude', query.near_lng - lngRange)
+        .lte('longitude', query.near_lng + lngRange);
+    }
+    
+    // Emotional/rating filters
+    if (query.min_emotion_valence !== undefined) {
+      dbQuery = dbQuery.gte('emotion_valence', query.min_emotion_valence);
+    }
+    if (query.max_emotion_valence !== undefined) {
+      dbQuery = dbQuery.lte('emotion_valence', query.max_emotion_valence);
+    }
+    if (query.min_salience !== undefined) {
+      dbQuery = dbQuery.gte('salience_score', query.min_salience);
+    }
+    if (query.min_mood !== undefined) {
+      dbQuery = dbQuery.gte('mood', query.min_mood);
+    }
+    
+    // Category and tags
+    if (query.category_id) {
+      dbQuery = dbQuery.eq('category_id', query.category_id);
+    }
+    if (query.tags) {
+      const filterTags = query.tags.split(',').map(tag => tag.trim());
+      dbQuery = dbQuery.overlaps('tags', filterTags);
+    }
+    if (query.related_to) {
+      dbQuery = dbQuery.contains('related_to', [query.related_to]);
+    }
+    
+    // Full-text search
+    if (query.search) {
+      switch (query.search_fields) {
+        case 'note':
+          dbQuery = dbQuery.ilike('note', `%${query.search}%`);
+          break;
+        case 'context':
+          dbQuery = dbQuery.ilike('context', `%${query.search}%`);
+          break;
+        case 'place_name':
+          dbQuery = dbQuery.ilike('place_name', `%${query.search}%`);
+          break;
+        case 'all':
+        default:
+          dbQuery = dbQuery.or(
+            `note.ilike.%${query.search}%,context.ilike.%${query.search}%,place_name.ilike.%${query.search}%,source.ilike.%${query.search}%`
+          );
+      }
     }
 
-    const { data, error } = await query;
+    // Apply sorting
+    const ascending = query.sort_order === 'asc';
+    switch (query.sort_by) {
+      case 'happened_at':
+        // Sort by the start of happened_range, fallback to captured_at
+        dbQuery = dbQuery.order('captured_at', { ascending, nullsFirst: false });
+        break;
+      case 'salience_score':
+        dbQuery = dbQuery.order('salience_score', { ascending, nullsFirst: false });
+        break;
+      case 'emotion_valence':
+        dbQuery = dbQuery.order('emotion_valence', { ascending, nullsFirst: false });
+        break;
+      case 'mood':
+        dbQuery = dbQuery.order('mood', { ascending, nullsFirst: false });
+        break;
+      case 'updated_at':
+        dbQuery = dbQuery.order('updated_at', { ascending });
+        break;
+      case 'captured_at':
+      default:
+        dbQuery = dbQuery.order('captured_at', { ascending });
+    }
 
+    // Apply pagination
+    dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
+
+    const { data, error } = await dbQuery;
+    
     if (error) {
       console.error('Database error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        return jsonWithCors(request, generateMockMemories().slice(query.offset, query.offset + query.limit));
+      }
       return NextResponse.json(
         { error: 'Failed to fetch memories' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(data);
+    return jsonWithCors(request, data || []);
   } catch (error) {
     console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
   }
 }
 
-// POST /api/memories - Create new memory
+/**
+ * @swagger
+ * /api/memories:
+ *   post:
+ *     summary: Create a new memory
+ *     description: Create a new memory with rich metadata including emotions, location, and context
+ *     tags: [Memories]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               note:
+ *                 type: string
+ *                 minLength: 1
+ *                 description: Main content of the memory
+ *               memory_type:
+ *                 type: string
+ *                 enum: [note, link, file, thought, quote, insight]
+ *                 default: note
+ *               emotion_valence:
+ *                 type: integer
+ *                 minimum: -5
+ *                 maximum: 5
+ *               place_name:
+ *                 type: string
+ *               is_highlight:
+ *                 type: boolean
+ *                 default: false
+ *               importance_level:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 default: medium
+ *             required: [note]
+ *     responses:
+ *       201:
+ *         description: Memory created successfully
+ */
 export async function POST(request: NextRequest) {
   try {
-    // 与用例保持一致：无效 JSON 视为 500
-    const raw = await request.text();
-    let body: any;
-    try {
-      body = JSON.parse(raw);
-    } catch (e) {
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-    if (!body || typeof body !== 'object' || !('type' in body) || !('content' in body)) {
-      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
-    }
-    
-    // If Supabase is not configured or in test mode, return mock response
-    if (useMockData) {
-      const mockMemory = {
-        id: Date.now().toString(),
-        type: body.type,
-        content: body.content,
-        tags: body.tags || [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      return NextResponse.json(mockMemory, { status: 201 });
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await request.json();
+    
+    console.log('=== CREATE MEMORY API DEBUG ===');
+    console.log('Received body:', JSON.stringify(body, null, 2));
+    
+    // Validate request body
+    const validationResult = MemoryCreateSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('CREATE MEMORY Validation failed:', validationResult.error.errors);
+      return NextResponse.json(
+        { error: 'Invalid memory data', details: validationResult.error.errors },
+        { status: 400 }
+      );
     }
-    const client = createClientForRequest(request) || supabase
+
+    const memoryData = validationResult.data;
+    const now = nowUTC();
+
+    // Transform happened_range for database storage
+    let transformedData = { ...memoryData };
+    if (memoryData.happened_range) {
+      // Convert to PostgreSQL tstzrange format
+      const start = memoryData.happened_range.start;
+      const end = memoryData.happened_range.end;
+      transformedData.happened_range = `[${start},${end || start})` as any;
+    }
+
+    // If Supabase is not configured, return mock response
+    if (!supabase) {
+      const mockMemory = {
+        id: Date.now().toString(),
+        ...transformedData,
+        captured_at: transformedData.captured_at || now,
+        type: 'memory',
+        user_id: 'mock-user',
+        created_at: now,
+        updated_at: now
+      };
+      return jsonWithCors(request, mockMemory, 201);
+    }
+
+    // Enforce authentication
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
+    }
+
+    const client = createClientForRequest(request) || supabase;
+
+    // Prepare insert payload
+    const insertPayload = {
+      ...transformedData,
+      captured_at: transformedData.captured_at || now,
+      type: 'memory',
+      user_id: userId,
+      created_at: now,
+      updated_at: now,
+    };
+
+    console.log('Creating memory with payload:', JSON.stringify(insertPayload, null, 2));
 
     const { data, error } = await client
       .from('memories')
-      .insert({
-        ...body,
-        user_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
+      .insert(insertPayload)
+      .select(`
+        *,
+        category:categories(id, name, color, icon)
+      `)
       .single();
 
     if (error) {
       console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create memory' },
-        { status: 500 }
-      );
+      return jsonWithCors(request, { error: 'Failed to create memory' }, 500);
     }
 
-    return NextResponse.json(data, { status: 201 });
+    console.log('Returning created memory:', JSON.stringify(data, null, 2));
+    return jsonWithCors(request, data, 201);
   } catch (error) {
     console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
   }
 }
 
-// OPTIONS - Handle CORS preflight requests
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
-} 
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request);
+}

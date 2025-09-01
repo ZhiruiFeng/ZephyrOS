@@ -11,10 +11,14 @@ const TimelineItemsQuerySchema = z.object({
   category_id: z.string().uuid().optional(),
   limit: z.coerce.number().min(1).max(100).default(50),
   offset: z.coerce.number().min(0).default(0),
-  sort_by: z.enum(['created_at', 'updated_at', 'title', 'priority']).default('created_at'),
+  sort_by: z.enum(['created_at', 'updated_at', 'title', 'priority', 'captured_at', 'salience_score']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
   search: z.string().optional(),
   tags: z.string().optional(), // comma-separated
+  // Memory-specific basic filters for general timeline viewing
+  is_highlight: z.string().optional().transform(v => v === 'true'),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional(),
+  render_on_timeline: z.string().optional().transform(v => v === 'true'),
 });
 
 // Create schema for timeline items
@@ -58,16 +62,40 @@ export async function GET(request: NextRequest) {
 
     const query = queryResult.data;
 
-    // Build Supabase query
+    // Build Supabase query with enhanced selection for Memory types
+    let selectClause = `
+      *,
+      category:categories(id, name, color, icon)
+    `;
+
+    // If filtering for memories or no type filter (include all types), join memory data
+    if (!query.type || query.type === 'memory') {
+      selectClause = `
+        *,
+        category:categories(id, name, color, icon),
+        memory:memories(
+          captured_at,
+          happened_range,
+          note,
+          title_override,
+          memory_type,
+          emotion_valence,
+          is_highlight,
+          salience_score,
+          place_name,
+          importance_level,
+          tags,
+          status
+        )
+      `;
+    }
+
     let dbQuery = client
       .from('timeline_items')
-      .select(`
-        *,
-        category:categories(id, name, color, icon)
-      `)
+      .select(selectClause)
       .eq('user_id', userId);
 
-    // Apply filters
+    // Apply basic filters
     if (query.type) {
       dbQuery = dbQuery.eq('type', query.type);
     }
@@ -80,17 +108,59 @@ export async function GET(request: NextRequest) {
     if (query.category_id) {
       dbQuery = dbQuery.eq('category_id', query.category_id);
     }
-    if (query.search) {
-      dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
+    if (query.render_on_timeline !== undefined) {
+      dbQuery = dbQuery.eq('render_on_timeline', query.render_on_timeline);
     }
+
+    // Enhanced search including Memory fields when applicable
+    if (query.search) {
+      let searchConditions = `title.ilike.%${query.search}%,description.ilike.%${query.search}%`;
+      
+      // If not filtering by type or filtering for memory, include memory-specific search
+      if (!query.type || query.type === 'memory') {
+        searchConditions += `,memories.note.ilike.%${query.search}%,memories.context.ilike.%${query.search}%,memories.place_name.ilike.%${query.search}%`;
+      }
+      
+      dbQuery = dbQuery.or(searchConditions);
+    }
+
     if (query.tags) {
       const filterTags = query.tags.split(',').map(tag => tag.trim());
       dbQuery = dbQuery.overlaps('tags', filterTags);
     }
 
-    // Apply sorting
+    // Memory-specific filters (only apply when filtering for memories or all types)
+    if (!query.type || query.type === 'memory') {
+      if (query.is_highlight !== undefined) {
+        dbQuery = dbQuery.eq('memories.is_highlight', query.is_highlight);
+      }
+      if (query.memory_type) {
+        dbQuery = dbQuery.eq('memories.memory_type', query.memory_type);
+      }
+    }
+
+    // Apply sorting with Memory-specific field support
     const ascending = query.sort_order === 'asc';
-    dbQuery = dbQuery.order(query.sort_by, { ascending });
+    switch (query.sort_by) {
+      case 'captured_at':
+        if (!query.type || query.type === 'memory') {
+          dbQuery = dbQuery.order('memories.captured_at', { ascending, nullsFirst: false });
+        } else {
+          // Fallback to created_at for non-memory items
+          dbQuery = dbQuery.order('created_at', { ascending });
+        }
+        break;
+      case 'salience_score':
+        if (!query.type || query.type === 'memory') {
+          dbQuery = dbQuery.order('memories.salience_score', { ascending, nullsFirst: false });
+        } else {
+          // Fallback to created_at for non-memory items
+          dbQuery = dbQuery.order('created_at', { ascending });
+        }
+        break;
+      default:
+        dbQuery = dbQuery.order(query.sort_by, { ascending });
+    }
 
     // Apply pagination
     dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
@@ -102,7 +172,39 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Failed to fetch timeline items' }, 500);
     }
 
-    return jsonWithCors(request, { items: data || [] });
+    // Transform data to flatten Memory fields for consistent API response
+    const transformedData = (data || []).map(item => {
+      if (item.type === 'memory' && item.memory) {
+        const memory = Array.isArray(item.memory) ? item.memory[0] : item.memory;
+        return {
+          ...item,
+          // Add Memory fields at top level for easier access
+          captured_at: memory?.captured_at,
+          happened_range: memory?.happened_range,
+          note: memory?.note,
+          title_override: memory?.title_override,
+          memory_type: memory?.memory_type,
+          emotion_valence: memory?.emotion_valence,
+          is_highlight: memory?.is_highlight,
+          salience_score: memory?.salience_score,
+          place_name: memory?.place_name,
+          importance_level: memory?.importance_level,
+          memory_tags: memory?.tags, // Rename to avoid conflict with timeline_items.tags
+          memory_status: memory?.status, // Rename to avoid conflict with timeline_items.status
+          // Computed display title
+          display_title: memory?.title_override || item.title,
+          // Remove nested memory object
+          memory: undefined
+        };
+      }
+      return item;
+    });
+
+    return jsonWithCors(request, { 
+      items: transformedData,
+      count: transformedData.length,
+      has_more: transformedData.length === query.limit
+    });
   } catch (error) {
     console.error('Timeline items API error:', error);
     return jsonWithCors(request, { error: 'Internal server error' }, 500);

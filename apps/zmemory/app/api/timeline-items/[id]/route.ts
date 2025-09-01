@@ -1,0 +1,475 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
+import { z } from 'zod';
+
+// Update schema for timeline items (including Memory-specific fields when type='memory')
+const TimelineItemUpdateSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().optional(),
+  start_time: z.string().datetime().optional(),
+  end_time: z.string().datetime().optional(),
+  category_id: z.string().uuid().optional(),
+  tags: z.array(z.string()).optional(),
+  status: z.enum(['active', 'inactive', 'completed', 'cancelled', 'archived']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  metadata: z.record(z.any()).optional(),
+  render_on_timeline: z.boolean().optional(),
+  // Memory-specific fields (when type='memory')
+  note: z.string().optional(),
+  title_override: z.string().optional(),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional(),
+  emotion_valence: z.number().int().min(-5).max(5).optional(),
+  emotion_arousal: z.number().int().min(0).max(5).optional(),
+  energy_delta: z.number().int().min(-5).max(5).optional(),
+  place_name: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  is_highlight: z.boolean().optional(),
+  salience_score: z.number().min(0).max(1).optional(),
+  source: z.string().optional(),
+  context: z.string().optional(),
+  mood: z.number().int().min(1).max(10).optional(),
+  importance_level: z.enum(['low', 'medium', 'high']).optional(),
+  related_to: z.array(z.string()).optional(),
+  memory_tags: z.array(z.string()).optional(), // Separate from timeline_items.tags
+  memory_status: z.enum(['active', 'archived', 'deleted']).optional(),
+  captured_at: z.string().datetime().optional(),
+  happened_range: z.object({
+    start: z.string().datetime(),
+    end: z.string().datetime().optional()
+  }).optional()
+});
+
+/**
+ * @swagger
+ * /api/timeline-items/{id}:
+ *   get:
+ *     summary: Get a specific timeline item by ID
+ *     description: Retrieve detailed information about a timeline item, including Memory-specific data if applicable
+ *     tags: [Timeline Items]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Timeline item ID
+ *     responses:
+ *       200:
+ *         description: Timeline item details with type-specific data
+ *       404:
+ *         description: Timeline item not found
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
+    }
+
+    const client = createClientForRequest(request);
+    if (!client) {
+      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
+    }
+
+    // First get the basic timeline item to determine its type
+    const { data: timelineItem, error: timelineError } = await client
+      .from('timeline_items')
+      .select('*, category:categories(id, name, color, icon)')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (timelineError) {
+      if (timelineError.code === 'PGRST116') {
+        return jsonWithCors(request, { error: 'Timeline item not found' }, 404);
+      }
+      console.error('Timeline item query error:', timelineError);
+      return jsonWithCors(request, { error: 'Failed to fetch timeline item' }, 500);
+    }
+
+    let enhancedItem = { ...timelineItem };
+
+    // If this is a memory, fetch memory-specific data
+    if (timelineItem.type === 'memory') {
+      const { data: memoryData, error: memoryError } = await client
+        .from('memories')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!memoryError && memoryData) {
+        // Merge memory data with timeline item data
+        enhancedItem = {
+          ...enhancedItem,
+          // Memory-specific fields
+          captured_at: memoryData.captured_at,
+          happened_range: memoryData.happened_range,
+          note: memoryData.note,
+          title_override: memoryData.title_override,
+          memory_type: memoryData.memory_type,
+          emotion_valence: memoryData.emotion_valence,
+          emotion_arousal: memoryData.emotion_arousal,
+          energy_delta: memoryData.energy_delta,
+          place_name: memoryData.place_name,
+          latitude: memoryData.latitude,
+          longitude: memoryData.longitude,
+          is_highlight: memoryData.is_highlight,
+          salience_score: memoryData.salience_score,
+          source: memoryData.source,
+          context: memoryData.context,
+          mood: memoryData.mood,
+          importance_level: memoryData.importance_level,
+          related_to: memoryData.related_to,
+          memory_tags: memoryData.tags,
+          memory_status: memoryData.status,
+          // Computed display title
+          display_title: memoryData.title_override || timelineItem.title
+        };
+      }
+    }
+
+    return jsonWithCors(request, enhancedItem);
+
+  } catch (error) {
+    console.error('Timeline item GET API error:', error);
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
+  }
+}
+
+/**
+ * @swagger
+ * /api/timeline-items/{id}:
+ *   put:
+ *     summary: Update a specific timeline item
+ *     description: Update timeline item data, including Memory-specific fields if applicable
+ *     tags: [Timeline Items]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Timeline item ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               note:
+ *                 type: string
+ *                 description: Memory-specific note content
+ *               memory_type:
+ *                 type: string
+ *                 enum: [note, link, file, thought, quote, insight]
+ *               emotion_valence:
+ *                 type: integer
+ *                 minimum: -5
+ *                 maximum: 5
+ *               is_highlight:
+ *                 type: boolean
+ *               salience_score:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 1
+ *     responses:
+ *       200:
+ *         description: Timeline item updated successfully
+ *       404:
+ *         description: Timeline item not found
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
+    const body = await request.json();
+    
+    console.log('=== UPDATE TIMELINE ITEM API DEBUG ===');
+    console.log('Timeline Item ID:', id);
+    console.log('Received body:', JSON.stringify(body, null, 2));
+    
+    // Validate request body
+    const validationResult = TimelineItemUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('UPDATE TIMELINE ITEM Validation failed:', validationResult.error.errors);
+      return NextResponse.json(
+        { error: 'Invalid timeline item data', details: validationResult.error.errors },
+        { status: 400 }
+      );
+    }
+    
+    const updateData = validationResult.data;
+
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
+    }
+
+    const client = createClientForRequest(request);
+    if (!client) {
+      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
+    }
+
+    // First get the timeline item to determine its type
+    const { data: existingItem, error: fetchError } = await client
+      .from('timeline_items')
+      .select('type')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return jsonWithCors(request, { error: 'Timeline item not found' }, 404);
+      }
+      console.error('Timeline item fetch error:', fetchError);
+      return jsonWithCors(request, { error: 'Failed to fetch timeline item' }, 500);
+    }
+
+    // Prepare timeline_items update payload
+    const timelineItemsUpdate: any = {};
+    const memoryUpdate: any = {};
+
+    // Separate fields by table
+    const timelineItemsFields = [
+      'title', 'description', 'start_time', 'end_time', 'category_id', 
+      'tags', 'status', 'priority', 'metadata', 'render_on_timeline'
+    ];
+    
+    const memoryFields = [
+      'note', 'title_override', 'memory_type', 'emotion_valence', 
+      'emotion_arousal', 'energy_delta', 'place_name', 'latitude', 
+      'longitude', 'is_highlight', 'salience_score', 'source', 
+      'context', 'mood', 'importance_level', 'related_to', 
+      'memory_tags', 'memory_status', 'captured_at'
+    ];
+
+    // Distribute updates to appropriate tables
+    for (const [key, value] of Object.entries(updateData)) {
+      if (value !== undefined) {
+        if (timelineItemsFields.includes(key)) {
+          timelineItemsUpdate[key] = value;
+        } else if (memoryFields.includes(key)) {
+          // Handle field name mapping
+          if (key === 'memory_tags') {
+            memoryUpdate.tags = value;
+          } else if (key === 'memory_status') {
+            memoryUpdate.status = value;
+          } else {
+            memoryUpdate[key] = value;
+          }
+        }
+      }
+    }
+
+    // Handle happened_range transformation
+    if (updateData.happened_range) {
+      const range = updateData.happened_range;
+      if (range.end) {
+        memoryUpdate.happened_range = `[${range.start}, ${range.end})`;
+      } else {
+        memoryUpdate.happened_range = `[${range.start}, ${range.start})`;
+      }
+    }
+
+    console.log('Timeline items update:', JSON.stringify(timelineItemsUpdate, null, 2));
+    console.log('Memory update:', JSON.stringify(memoryUpdate, null, 2));
+
+    let updatedTimelineItem;
+    
+    // Update timeline_items table
+    if (Object.keys(timelineItemsUpdate).length > 0) {
+      const { data, error } = await client
+        .from('timeline_items')
+        .update(timelineItemsUpdate)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('*, category:categories(id, name, color, icon)')
+        .single();
+
+      if (error) {
+        console.error('Timeline items update error:', error);
+        return jsonWithCors(request, { error: 'Failed to update timeline item' }, 500);
+      }
+      
+      updatedTimelineItem = data;
+    } else {
+      // If no timeline_items updates, fetch current data
+      const { data } = await client
+        .from('timeline_items')
+        .select('*, category:categories(id, name, color, icon)')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+      
+      updatedTimelineItem = data;
+    }
+
+    // Update memory table if this is a memory and there are memory updates
+    if (existingItem.type === 'memory' && Object.keys(memoryUpdate).length > 0) {
+      const { data: memoryData, error: memoryError } = await client
+        .from('memories')
+        .update(memoryUpdate)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (memoryError) {
+        console.error('Memory update error:', memoryError);
+        // Timeline item was updated, but memory failed - this is a partial failure
+        return jsonWithCors(request, { 
+          error: 'Failed to update memory data', 
+          timeline_item: updatedTimelineItem 
+        }, 500);
+      }
+
+      // Merge memory data with timeline item
+      if (memoryData) {
+        updatedTimelineItem = {
+          ...updatedTimelineItem,
+          captured_at: memoryData.captured_at,
+          happened_range: memoryData.happened_range,
+          note: memoryData.note,
+          title_override: memoryData.title_override,
+          memory_type: memoryData.memory_type,
+          emotion_valence: memoryData.emotion_valence,
+          emotion_arousal: memoryData.emotion_arousal,
+          energy_delta: memoryData.energy_delta,
+          place_name: memoryData.place_name,
+          latitude: memoryData.latitude,
+          longitude: memoryData.longitude,
+          is_highlight: memoryData.is_highlight,
+          salience_score: memoryData.salience_score,
+          source: memoryData.source,
+          context: memoryData.context,
+          mood: memoryData.mood,
+          importance_level: memoryData.importance_level,
+          related_to: memoryData.related_to,
+          memory_tags: memoryData.tags,
+          memory_status: memoryData.status,
+          display_title: memoryData.title_override || updatedTimelineItem.title
+        };
+      }
+    }
+
+    console.log('Returning updated timeline item:', JSON.stringify(updatedTimelineItem, null, 2));
+    return jsonWithCors(request, updatedTimelineItem);
+
+  } catch (error) {
+    console.error('Timeline item PUT API error:', error);
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
+  }
+}
+
+/**
+ * @swagger
+ * /api/timeline-items/{id}:
+ *   delete:
+ *     summary: Delete a specific timeline item
+ *     description: Delete a timeline item and all associated data (cascading delete)
+ *     tags: [Timeline Items]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Timeline item ID
+ *     responses:
+ *       200:
+ *         description: Timeline item deleted successfully
+ *       404:
+ *         description: Timeline item not found
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
+    }
+
+    const client = createClientForRequest(request);
+    if (!client) {
+      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
+    }
+
+    // Check if timeline item exists and belongs to user
+    const { data: itemCheck, error: checkError } = await client
+      .from('timeline_items')
+      .select('id, type')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (checkError || !itemCheck) {
+      return jsonWithCors(request, { error: 'Timeline item not found' }, 404);
+    }
+
+    // Delete the timeline item (cascading delete will handle associated data)
+    const { error } = await client
+      .from('timeline_items')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Timeline item deletion error:', error);
+      return jsonWithCors(request, { error: 'Failed to delete timeline item' }, 500);
+    }
+
+    return jsonWithCors(request, { 
+      message: 'Timeline item deleted successfully',
+      deleted_item: {
+        id,
+        type: itemCheck.type
+      }
+    });
+
+  } catch (error) {
+    console.error('Timeline item DELETE API error:', error);
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
+  }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request);
+}
