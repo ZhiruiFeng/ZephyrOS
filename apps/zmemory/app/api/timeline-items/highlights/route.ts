@@ -9,7 +9,7 @@ const HighlightsQuerySchema = z.object({
   from_date: z.string().datetime({ offset: true }).optional(),
   to_date: z.string().datetime({ offset: true }).optional(),
   min_salience: z.string().optional().transform(v => v ? parseFloat(v) : 0.7), // Default to high salience
-  include_manual_highlights: z.string().optional().transform(v => v === 'true').default(true),
+  include_manual_highlights: z.string().optional().transform(v => v === 'true').default('true'),
   limit: z.string().optional().transform(v => parseInt(v || '50')),
   offset: z.string().optional().transform(v => parseInt(v || '0')),
   memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional(),

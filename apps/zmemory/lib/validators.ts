@@ -191,7 +191,7 @@ export const QueryParamsSchema = z.object({
   offset: z.string().optional().transform(val => parseInt(val || '0')),
 });
 
-export type MemoryData = z.infer<typeof MemorySchema>;
+export type MemoryData = z.infer<typeof MemoryCreateSchema>;
 export type MemoryUpdateData = z.infer<typeof MemoryUpdateSchema>;
 export type QueryParams = z.infer<typeof QueryParamsSchema>; 
 

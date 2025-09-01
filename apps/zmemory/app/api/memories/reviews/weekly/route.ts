@@ -7,8 +7,8 @@ import { z } from 'zod';
 // Query schema for weekly review
 const WeeklyReviewQuerySchema = z.object({
   week_offset: z.string().optional().transform(v => parseInt(v || '0')), // 0 = current week, -1 = last week, etc.
-  include_emotional_details: z.string().optional().transform(v => v === 'true').default(true),
-  include_recommendations: z.string().optional().transform(v => v === 'true').default(true),
+  include_emotional_details: z.string().optional().transform(v => v === 'true').default('true'),
+  include_recommendations: z.string().optional().transform(v => v === 'true').default('true'),
   max_highlights: z.string().optional().transform(v => parseInt(v || '10')),
   max_insights: z.string().optional().transform(v => parseInt(v || '5')),
 });
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     const reviewData = await generateWeeklyReview(client, userId, query.week_offset);
 
     // Limit results based on query parameters
-    const limitedReviewData = {
+    const limitedReviewData: any = {
       ...reviewData,
       highlights: reviewData.highlights.slice(0, query.max_highlights),
       insights: reviewData.insights.slice(0, query.max_insights)

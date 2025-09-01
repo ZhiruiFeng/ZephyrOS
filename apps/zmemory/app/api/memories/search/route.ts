@@ -302,7 +302,7 @@ async function performFullTextSearch(client: any, userId: string, search: Memory
   }
 
   // Add relevance scoring and highlights
-  const results = (data || []).map(memory => ({
+  const results = (data || []).map((memory: any) => ({
     ...memory,
     relevance_score: calculateRelevanceScore(memory, search.q),
     match_type: determineMatchType(memory, search.q),
@@ -310,7 +310,7 @@ async function performFullTextSearch(client: any, userId: string, search: Memory
   }));
 
   // Sort by relevance score
-  results.sort((a, b) => b.relevance_score - a.relevance_score);
+  results.sort((a: any, b: any) => b.relevance_score - a.relevance_score);
 
   return {
     results,

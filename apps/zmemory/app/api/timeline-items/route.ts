@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data to flatten Memory fields for consistent API response
-    const transformedData = (data || []).map(item => {
+    const transformedData = (data || []).map((item: any) => {
       if (item.type === 'memory' && item.memory) {
         const memory = Array.isArray(item.memory) ? item.memory[0] : item.memory;
         return {

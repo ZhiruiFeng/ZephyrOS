@@ -161,12 +161,15 @@ export async function GET(request: NextRequest) {
     if (query.memory_type) {
       dbQuery = dbQuery.eq('memories.memory_type', query.memory_type);
     }
-    if (query.emotion_valence_min !== undefined) {
-      dbQuery = dbQuery.gte('memories.emotion_valence', query.emotion_valence_min);
+    if (query.min_emotion_valence !== undefined) {
+      dbQuery = dbQuery.gte('memories.emotion_valence', query.min_emotion_valence);
     }
-    if (query.emotion_valence_max !== undefined) {
-      dbQuery = dbQuery.lte('memories.emotion_valence', query.emotion_valence_max);
+    if (query.max_emotion_valence !== undefined) {
+      dbQuery = dbQuery.lte('memories.emotion_valence', query.max_emotion_valence);
     }
+    // Note: emotion_arousal and energy_delta filters are not available in MemoriesQuerySchema
+    // These filters are commented out until the schema is updated
+    /*
     if (query.emotion_arousal_min !== undefined) {
       dbQuery = dbQuery.gte('memories.emotion_arousal', query.emotion_arousal_min);
     }
@@ -179,38 +182,46 @@ export async function GET(request: NextRequest) {
     if (query.energy_delta_max !== undefined) {
       dbQuery = dbQuery.lte('memories.energy_delta', query.energy_delta_max);
     }
+    */
     if (query.is_highlight !== undefined) {
       dbQuery = dbQuery.eq('memories.is_highlight', query.is_highlight);
     }
     if (query.min_salience !== undefined) {
       dbQuery = dbQuery.gte('memories.salience_score', query.min_salience);
     }
-    if (query.max_salience !== undefined) {
-      dbQuery = dbQuery.lte('memories.salience_score', query.max_salience);
-    }
+    // Note: max_salience filter is not available in MemoriesQuerySchema
+    // if (query.max_salience !== undefined) {
+    //   dbQuery = dbQuery.lte('memories.salience_score', query.max_salience);
+    // }
     if (query.place_name) {
       dbQuery = dbQuery.ilike('memories.place_name', `%${query.place_name}%`);
     }
     if (query.importance_level) {
       dbQuery = dbQuery.eq('memories.importance_level', query.importance_level);
     }
-    if (query.mood_min !== undefined) {
-      dbQuery = dbQuery.gte('memories.mood', query.mood_min);
+    // Note: mood_min and mood_max filters are not available in MemoriesQuerySchema
+    // Only min_mood is available
+    if (query.min_mood !== undefined) {
+      dbQuery = dbQuery.gte('memories.mood', query.min_mood);
     }
-    if (query.mood_max !== undefined) {
-      dbQuery = dbQuery.lte('memories.mood', query.mood_max);
+    // Note: from_date and to_date filters are not available in MemoriesQuerySchema
+    // Use captured_from and captured_to instead
+    if (query.captured_from) {
+      dbQuery = dbQuery.gte('memories.captured_at', query.captured_from);
     }
-    if (query.from_date) {
-      dbQuery = dbQuery.gte('memories.captured_at', query.from_date);
+    if (query.captured_to) {
+      dbQuery = dbQuery.lte('memories.captured_at', query.captured_to);
     }
-    if (query.to_date) {
-      dbQuery = dbQuery.lte('memories.captured_at', query.to_date);
-    }
-    if (query.render_on_timeline !== undefined) {
-      dbQuery = dbQuery.eq('render_on_timeline', query.render_on_timeline);
-    }
-    if (query.tags && query.tags.length > 0) {
-      dbQuery = dbQuery.overlaps('memories.tags', query.tags);
+    // Note: render_on_timeline filter is not available in MemoriesQuerySchema
+    // if (query.render_on_timeline !== undefined) {
+    //   dbQuery = dbQuery.eq('render_on_timeline', query.render_on_timeline);
+    // }
+    if (query.tags) {
+      // tags is a comma-separated string in MemoriesQuerySchema
+      const tagArray = query.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+      if (tagArray.length > 0) {
+        dbQuery = dbQuery.overlaps('memories.tags', tagArray);
+      }
     }
     if (query.status) {
       dbQuery = dbQuery.eq('memories.status', query.status);
@@ -233,13 +244,13 @@ export async function GET(request: NextRequest) {
       case 'emotion_valence':
         dbQuery = dbQuery.order('memories.emotion_valence', { ascending });
         break;
-      case 'importance_level':
-        // Custom order for importance levels
-        dbQuery = dbQuery.order('memories.importance_level', { ascending });
-        break;
       default:
-        // Default timeline_items fields
-        dbQuery = dbQuery.order(sortField, { ascending });
+        // Default timeline_items fields or handle importance_level
+        if ((sortField as string) === 'importance_level') {
+          dbQuery = dbQuery.order('memories.importance_level', { ascending });
+        } else {
+          dbQuery = dbQuery.order(sortField, { ascending });
+        }
     }
 
     // Apply pagination

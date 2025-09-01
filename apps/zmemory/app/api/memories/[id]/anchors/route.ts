@@ -133,7 +133,7 @@ export async function GET(
         anchors = anchors.filter(a => a.timeline_item.type === query.anchor_item_type);
       }
       if (query.min_weight !== undefined) {
-        anchors = anchors.filter(a => a.weight >= query.min_weight);
+        anchors = anchors.filter(a => a.weight >= query.min_weight!);
       }
       
       return jsonWithCors(request, anchors.slice(query.offset, query.offset + query.limit));
@@ -187,7 +187,7 @@ export async function GET(
       dbQuery = dbQuery.eq('relation_type', query.relation_type);
     }
     if (query.min_weight !== undefined) {
-      dbQuery = dbQuery.gte('weight', query.min_weight);
+      dbQuery = dbQuery.gte('weight', query.min_weight!);
     }
     if (query.anchor_item_type) {
       // Filter by timeline item type (this requires the join)

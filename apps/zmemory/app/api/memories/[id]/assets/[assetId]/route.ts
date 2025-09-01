@@ -282,10 +282,11 @@ export async function DELETE(
 
     if (!remainingError && remainingAssets && remainingAssets.length > 0) {
       // Update order indices to remove gap
-      for (const [index, asset] of remainingAssets.entries()) {
+      for (let i = 0; i < remainingAssets.length; i++) {
+        const asset = remainingAssets[i];
         await client
           .from('memory_assets')
-          .update({ order_index: attachment.order_index + index })
+          .update({ order_index: attachment.order_index + i })
           .eq('memory_id', memoryId)
           .eq('asset_id', asset.asset_id);
       }

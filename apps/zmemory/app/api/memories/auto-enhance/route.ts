@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const result = {
+        const result: any = {
           memory_id: memoryItem.id,
           title: memoryItem.title || memory.note?.substring(0, 50) + '...',
           changes: changes,

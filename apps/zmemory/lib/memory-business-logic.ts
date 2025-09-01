@@ -222,7 +222,8 @@ export function suggestTags(memory: MemoryAnalysisInput): string[] {
   }
 
   // Remove duplicates and limit to 3 suggestions
-  return [...new Set(suggestions)].slice(0, 3);
+  const uniqueSuggestions = Array.from(new Set(suggestions));
+  return uniqueSuggestions.slice(0, 3);
 }
 
 /**
@@ -429,35 +430,35 @@ export async function generateWeeklyReview(
     }
 
     // Flatten memory data
-    const memories = weekMemories.map(item => ({
+    const memories = weekMemories.map((item: any) => ({
       ...item,
       ...item.memory[0]
     }));
 
     // Get highlights (high salience or manually marked)
-    const highlights = memories.filter(m => 
+    const highlights = memories.filter((m: any) => 
       m.is_highlight || m.salience_score >= 0.7
-    ).sort((a, b) => (b.salience_score || 0) - (a.salience_score || 0));
+    ).sort((a: any, b: any) => (b.salience_score || 0) - (a.salience_score || 0));
 
     // Get insights specifically
-    const insights = memories.filter(m => 
+    const insights = memories.filter((m: any) => 
       m.memory_type === 'insight'
-    ).sort((a, b) => (b.salience_score || 0) - (a.salience_score || 0));
+    ).sort((a: any, b: any) => (b.salience_score || 0) - (a.salience_score || 0));
 
     // Calculate emotional summary
-    const emotionalMemories = memories.filter(m => 
+    const emotionalMemories = memories.filter((m: any) => 
       m.emotion_valence !== null && m.emotion_arousal !== null
     );
     
     const emotionalSummary = {
       avg_valence: emotionalMemories.length > 0 
-        ? emotionalMemories.reduce((sum, m) => sum + m.emotion_valence, 0) / emotionalMemories.length
+        ? emotionalMemories.reduce((sum: number, m: any) => sum + m.emotion_valence, 0) / emotionalMemories.length
         : 0,
       avg_arousal: emotionalMemories.length > 0
-        ? emotionalMemories.reduce((sum, m) => sum + m.emotion_arousal, 0) / emotionalMemories.length
+        ? emotionalMemories.reduce((sum: number, m: any) => sum + m.emotion_arousal, 0) / emotionalMemories.length
         : 0,
-      avg_energy_delta: memories.filter(m => m.energy_delta !== null).length > 0
-        ? memories.filter(m => m.energy_delta !== null).reduce((sum, m) => sum + m.energy_delta, 0) / memories.filter(m => m.energy_delta !== null).length
+      avg_energy_delta: memories.filter((m: any) => m.energy_delta !== null).length > 0
+        ? memories.filter((m: any) => m.energy_delta !== null).reduce((sum: number, m: any) => sum + m.energy_delta, 0) / memories.filter((m: any) => m.energy_delta !== null).length
         : 0,
       total_memories: memories.length
     };
