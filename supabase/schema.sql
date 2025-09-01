@@ -1,8 +1,8 @@
 -- =====================================================
 -- ZephyrOS Database Schema
--- Version: 2.0.0 with Timeline Items Architecture
+-- Version: 2.1.0 with Memory Integration
 -- Created: 2025
--- Last Updated: 2025-08-30
+-- Last Updated: 2025-09-01
 -- =====================================================
 
 -- =====================================================
@@ -57,6 +57,17 @@ CREATE TABLE IF NOT EXISTS timeline_items (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   start_time TIMESTAMP WITH TIME ZONE,
   end_time TIMESTAMP WITH TIME ZONE,
+  
+  -- Memory-specific fields for unified timeline
+  is_time_consuming BOOLEAN DEFAULT true,
+  render_on_timeline BOOLEAN DEFAULT true,
+  time_range tstzrange GENERATED ALWAYS AS (
+    CASE 
+      WHEN start_time IS NOT NULL AND end_time IS NOT NULL 
+      THEN tstzrange(start_time, end_time, '[)')
+      ELSE NULL 
+    END
+  ) STORED,
   
   -- Organization
   category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
@@ -222,17 +233,94 @@ CREATE TABLE IF NOT EXISTS activities (
   FOREIGN KEY (id, type) REFERENCES timeline_items(id, type) ON DELETE CASCADE
 );
 
--- Memories table for knowledge management
+-- Memories table for knowledge management and lived experience (subtype of timeline_items)
 CREATE TABLE IF NOT EXISTS memories (
+  -- Primary key (links to timeline_items)
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  type TEXT DEFAULT 'note' CHECK (type IN ('note', 'link', 'file', 'thought')),
-  tags TEXT[] DEFAULT '{}',
+  
+  -- Time semantics specific to Memory
+  captured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  happened_range tstzrange, -- when it actually happened (optional)
+  
+  -- Content
+  note TEXT, -- main content
+  title_override TEXT, -- override timeline_items.title if needed
+  memory_type TEXT DEFAULT 'note' CHECK (memory_type IN ('note', 'link', 'file', 'thought', 'quote', 'insight')),
+  
+  -- Emotional/energy metadata
+  emotion_valence SMALLINT CHECK (emotion_valence BETWEEN -5 AND 5),
+  emotion_arousal SMALLINT CHECK (emotion_arousal BETWEEN 0 AND 5),
+  energy_delta SMALLINT CHECK (energy_delta BETWEEN -5 AND 5),
+  
+  -- Location (without PostGIS)
+  place_name TEXT,
+  latitude DECIMAL(10, 8), -- latitude coordinate
+  longitude DECIMAL(11, 8), -- longitude coordinate
+  
+  -- Highlight/salience
+  is_highlight BOOLEAN DEFAULT false,
+  salience_score REAL DEFAULT 0.0 CHECK (salience_score BETWEEN 0.0 AND 1.0),
+  
+  -- User ownership
+  user_id UUID DEFAULT auth.uid(),
+  
+  -- Supertype/subtype relationship
+  type TEXT DEFAULT 'memory' CHECK (type = 'memory'),
+  FOREIGN KEY (id, type) REFERENCES timeline_items(id, type) ON DELETE CASCADE
+);
+
+-- Memory anchors for linking memories to other timeline items
+CREATE TABLE IF NOT EXISTS memory_anchors (
+  memory_id UUID NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+  anchor_item_id UUID NOT NULL REFERENCES timeline_items(id) ON DELETE CASCADE,
+  
+  -- Relationship semantics
+  relation_type TEXT NOT NULL CHECK (relation_type IN (
+    'context_of',     -- memory provides context for the item
+    'result_of',      -- memory is a result/outcome of the item
+    'insight_from',   -- memory is an insight derived from the item
+    'about',          -- memory is about/concerning the item
+    'co_occurred',    -- memory happened during/alongside the item
+    'triggered_by',   -- memory was triggered by the item
+    'reflects_on'     -- memory reflects on/reviews the item
+  )),
+  
+  -- Time slice within the anchor item (optional)
+  local_time_range tstzrange,
+  
+  -- Relationship strength/importance (optional)
+  weight REAL DEFAULT 1.0 CHECK (weight BETWEEN 0.0 AND 10.0),
+  
+  -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  metadata JSONB DEFAULT '{}',
-  user_id UUID DEFAULT auth.uid()
+  notes TEXT, -- additional context about this relationship
+  
+  PRIMARY KEY (memory_id, anchor_item_id, relation_type)
+);
+
+-- Assets for media attachments
+CREATE TABLE IF NOT EXISTS assets (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  url TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  kind TEXT CHECK (kind IN ('image', 'audio', 'video', 'document', 'link')),
+  duration_seconds INTEGER, -- for audio/video
+  file_size_bytes BIGINT,
+  hash_sha256 TEXT, -- for deduplication
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  user_id UUID NOT NULL DEFAULT auth.uid()
+);
+
+-- Memory-asset relationships
+CREATE TABLE IF NOT EXISTS memory_assets (
+  memory_id UUID NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+  asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  caption TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  PRIMARY KEY (memory_id, asset_id),
+  UNIQUE (memory_id, order_index)
 );
 
 -- Energy day table for per-day energy curve (72 x 20-minute slots)
@@ -328,9 +416,32 @@ CREATE INDEX IF NOT EXISTS idx_activities_mood ON activities(user_id, mood_after
 
 -- Memories indexes
 CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
-CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
-CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_memories_tags ON memories USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type);
+CREATE INDEX IF NOT EXISTS idx_memories_captured_at ON memories(captured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_happened_range ON memories USING GIST(happened_range);
+CREATE INDEX IF NOT EXISTS idx_memories_is_highlight ON memories(user_id, is_highlight) WHERE is_highlight = true;
+CREATE INDEX IF NOT EXISTS idx_memories_salience_score ON memories(user_id, salience_score DESC) WHERE salience_score > 0;
+CREATE INDEX IF NOT EXISTS idx_memories_emotion_valence ON memories(user_id, emotion_valence) WHERE emotion_valence IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_memories_place ON memories(user_id, place_name) WHERE place_name IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_memories_location ON memories(latitude, longitude) WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- Memory anchors indexes
+CREATE INDEX IF NOT EXISTS idx_memory_anchors_memory_id ON memory_anchors(memory_id);
+CREATE INDEX IF NOT EXISTS idx_memory_anchors_anchor_item_id ON memory_anchors(anchor_item_id);
+CREATE INDEX IF NOT EXISTS idx_memory_anchors_relation_type ON memory_anchors(relation_type);
+CREATE INDEX IF NOT EXISTS idx_memory_anchors_weight ON memory_anchors(weight DESC) WHERE weight > 1.0;
+CREATE INDEX IF NOT EXISTS idx_memory_anchors_local_time_range ON memory_anchors USING GIST(local_time_range);
+
+-- Assets indexes
+CREATE INDEX IF NOT EXISTS idx_assets_user_id ON assets(user_id);
+CREATE INDEX IF NOT EXISTS idx_assets_kind ON assets(kind);
+CREATE INDEX IF NOT EXISTS idx_assets_created_at ON assets(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_assets_hash ON assets(hash_sha256) WHERE hash_sha256 IS NOT NULL;
+
+-- Memory assets indexes
+CREATE INDEX IF NOT EXISTS idx_memory_assets_memory_id ON memory_assets(memory_id);
+CREATE INDEX IF NOT EXISTS idx_memory_assets_asset_id ON memory_assets(asset_id);
+CREATE INDEX IF NOT EXISTS idx_memory_assets_order ON memory_assets(memory_id, order_index);
 
 -- Tags indexes
 CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
@@ -533,6 +644,146 @@ BEGIN
   
   GET DIAGNOSTICS updated_count = ROW_COUNT;
   RETURN updated_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Memory synchronization functions
+CREATE OR REPLACE FUNCTION sync_memory_to_timeline_item_before()
+RETURNS TRIGGER AS $$
+DECLARE
+  target_user_id UUID;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    -- Ensure user_id is set
+    target_user_id := COALESCE(NEW.user_id, auth.uid());
+    
+    IF target_user_id IS NULL THEN
+      RAISE EXCEPTION 'user_id cannot be null. Either provide user_id explicitly or ensure proper authentication context.';
+    END IF;
+    
+    -- Update NEW.user_id if it was null
+    NEW.user_id := target_user_id;
+    
+    -- Create corresponding timeline_items entry
+    INSERT INTO timeline_items (
+      id, type, title, description, created_at, updated_at,
+      start_time, category_id, tags, status, priority, user_id, metadata,
+      is_time_consuming, render_on_timeline
+    ) VALUES (
+      NEW.id, 'memory', 
+      COALESCE(NEW.title_override, 'Memory'), 
+      NEW.note, 
+      NEW.captured_at, 
+      NOW(),
+      CASE WHEN NEW.happened_range IS NOT NULL THEN lower(NEW.happened_range) ELSE NULL END, -- start of range if exists
+      NULL, -- no category for now, can be added later
+      '{}', -- no tags for now, can be added later
+      'active',
+      CASE 
+        WHEN NEW.is_highlight THEN 'high'
+        WHEN NEW.salience_score > 0.7 THEN 'high'
+        WHEN NEW.salience_score > 0.3 THEN 'medium'
+        ELSE 'low'
+      END,
+      NEW.user_id,
+      jsonb_build_object(
+        'memory_type', NEW.memory_type,
+        'emotion_valence', NEW.emotion_valence,
+        'emotion_arousal', NEW.emotion_arousal,
+        'energy_delta', NEW.energy_delta,
+        'place_name', NEW.place_name,
+        'latitude', NEW.latitude,
+        'longitude', NEW.longitude,
+        'is_highlight', NEW.is_highlight,
+        'salience_score', NEW.salience_score
+      ),
+      false, -- memories are not time consuming
+      true   -- memories render on timeline
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION sync_memory_to_timeline_item_after()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    -- Sync changes to timeline_items
+    UPDATE timeline_items SET
+      title = COALESCE(NEW.title_override, 'Memory'),
+      description = NEW.note,
+      updated_at = NOW(),
+      start_time = CASE 
+        WHEN NEW.happened_range IS NOT NULL 
+        THEN lower(NEW.happened_range)
+        ELSE NULL
+      END,
+      status = 'active',
+      priority = CASE 
+        WHEN NEW.is_highlight THEN 'high'
+        WHEN NEW.salience_score > 0.7 THEN 'high'
+        WHEN NEW.salience_score > 0.3 THEN 'medium'
+        ELSE 'low'
+      END,
+      metadata = metadata || jsonb_build_object(
+        'memory_type', NEW.memory_type,
+        'emotion_valence', NEW.emotion_valence,
+        'emotion_arousal', NEW.emotion_arousal,
+        'energy_delta', NEW.energy_delta,
+        'place_name', NEW.place_name,
+        'latitude', NEW.latitude,
+        'longitude', NEW.longitude,
+        'is_highlight', NEW.is_highlight,
+        'salience_score', NEW.salience_score
+      ),
+      is_time_consuming = false -- ensure memories are never time consuming
+    WHERE id = NEW.id AND type = 'memory';
+    
+  ELSIF TG_OP = 'DELETE' THEN
+    -- Delete corresponding timeline_items entry
+    DELETE FROM timeline_items WHERE id = OLD.id AND type = 'memory';
+  END IF;
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Memory invariant enforcement functions
+CREATE OR REPLACE FUNCTION prevent_memory_time_entries()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM timeline_items 
+    WHERE id = NEW.timeline_item_id AND type = 'memory'
+  ) THEN
+    RAISE EXCEPTION 'Cannot create time entries for memory items';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_memory_time_consuming()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.type = 'memory' AND NEW.is_time_consuming = true THEN
+    NEW.is_time_consuming = false;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION prevent_memory_to_memory_anchors()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM timeline_items 
+    WHERE id = NEW.anchor_item_id AND type = 'memory'
+  ) THEN
+    RAISE EXCEPTION 'Cannot create anchors from memory to memory items';
+  END IF;
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1147,6 +1398,49 @@ CREATE TRIGGER trg_auto_complete_parent
   FOR EACH ROW
   EXECUTE FUNCTION auto_complete_parent_task();
 
+-- Memory synchronization triggers
+CREATE TRIGGER trg_sync_memory_to_timeline_before_insert
+  BEFORE INSERT ON memories
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_memory_to_timeline_item_before();
+
+CREATE TRIGGER trg_sync_memory_to_timeline_after_update_delete
+  AFTER UPDATE OR DELETE ON memories
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_memory_to_timeline_item_after();
+
+CREATE TRIGGER update_memories_updated_at
+  BEFORE UPDATE ON memories
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Memory invariant enforcement triggers
+CREATE TRIGGER trg_prevent_memory_time_entries
+  BEFORE INSERT ON time_entries
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_memory_time_entries();
+
+CREATE TRIGGER trg_enforce_memory_time_consuming
+  BEFORE INSERT OR UPDATE ON timeline_items
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_memory_time_consuming();
+
+CREATE TRIGGER trg_prevent_memory_to_memory_anchors
+  BEFORE INSERT OR UPDATE ON memory_anchors
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_memory_to_memory_anchors();
+
+-- Assets updated_at triggers
+CREATE TRIGGER update_assets_updated_at
+  BEFORE UPDATE ON assets
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_memory_assets_updated_at
+  BEFORE UPDATE ON memory_assets
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- =====================================================
 -- 6. ROW LEVEL SECURITY (RLS)
 -- =====================================================
@@ -1160,6 +1454,9 @@ ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memory_anchors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memory_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE energy_day ENABLE ROW LEVEL SECURITY;
 
@@ -1259,6 +1556,72 @@ CREATE POLICY "Users can update their own memories" ON memories
 CREATE POLICY "Users can delete their own memories" ON memories
   FOR DELETE USING (auth.uid() = user_id);
 
+-- Memory anchors policies
+CREATE POLICY "Users can view their own memory anchors" ON memory_anchors
+  FOR SELECT USING (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can insert their own memory anchors" ON memory_anchors
+  FOR INSERT WITH CHECK (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+    AND anchor_item_id IN (SELECT id FROM timeline_items WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can update their own memory anchors" ON memory_anchors
+  FOR UPDATE USING (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  )
+  WITH CHECK (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+    AND anchor_item_id IN (SELECT id FROM timeline_items WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can delete their own memory anchors" ON memory_anchors
+  FOR DELETE USING (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  );
+
+-- Assets policies
+CREATE POLICY "Users can view their own assets" ON assets
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own assets" ON assets
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own assets" ON assets
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own assets" ON assets
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Memory assets policies
+CREATE POLICY "Users can view their own memory assets" ON memory_assets
+  FOR SELECT USING (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can insert their own memory assets" ON memory_assets
+  FOR INSERT WITH CHECK (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+    AND asset_id IN (SELECT id FROM assets WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can update their own memory assets" ON memory_assets
+  FOR UPDATE USING (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  )
+  WITH CHECK (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+    AND asset_id IN (SELECT id FROM assets WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can delete their own memory assets" ON memory_assets
+  FOR DELETE USING (
+    memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  );
+
 -- Tags policies
 CREATE POLICY "Users can view their own tags" ON tags
   FOR SELECT USING (auth.uid() = user_id);
@@ -1309,9 +1672,26 @@ ON CONFLICT DO NOTHING;
 -- 1. timeline_items: Supertype table for all time-related entities
 -- 2. tasks: Subtype table (existing structure preserved) - goal-oriented time usage
 -- 3. activities: Subtype table - chill/experience-oriented time usage
--- 4. time_entries: Universal time tracking for all timeline_item types
--- 5. Automatic synchronization between supertype and subtypes
--- 6. Optimized queries with snapshot fields
+-- 4. memories: Subtype table - lived experience capture and knowledge management
+-- 5. time_entries: Universal time tracking for all timeline_item types
+-- 6. Automatic synchronization between supertype and subtypes
+-- 7. Optimized queries with snapshot fields
+
+-- Memory Architecture Features:
+-- ✅ Non-time-consuming items (is_time_consuming = false)
+-- ✅ Emotional/energy metadata tracking
+-- ✅ Location support (lat/lng coordinates)
+-- ✅ Highlight/salience scoring for reviews
+-- ✅ Anchor system for linking to other timeline items
+-- ✅ Asset attachments (images, audio, video, documents)
+-- ✅ Semantic search ready (vector embedding field commented out)
+-- ✅ Time range semantics (happened_range vs captured_at)
+
+-- Memory Key Invariants:
+-- ✅ Memories cannot have time entries
+-- ✅ Memories are never time consuming
+-- ✅ Memories cannot anchor to other memories (prevents cycles)
+-- ✅ Full RLS security for user data isolation
 
 -- Migration completed:
 -- ✅ Tasks data backfilled to timeline_items
@@ -1319,7 +1699,10 @@ ON CONFLICT DO NOTHING;
 -- ✅ Application APIs updated
 -- ✅ Legacy tables cleaned up
 -- ✅ Activities subtype added for chill time tracking
+-- ✅ Memories subtype added for lived experience capture
+-- ✅ Memory anchors for contextual linking
+-- ✅ Assets system for media attachments
 
 -- =====================================================
--- SCHEMA VERSION 2.0.0 COMPLETE
+-- SCHEMA VERSION 2.1.0 COMPLETE
 -- =====================================================
