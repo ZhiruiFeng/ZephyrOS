@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
 import { useAuth } from '../../contexts/AuthContext'
-import LoginPage from '../components/LoginPage'
+import LoginPage from '../components/auth/LoginPage'
 import { TaskContent } from '../../lib/api'
 import { useTranslation } from '../../contexts/LanguageContext'
 

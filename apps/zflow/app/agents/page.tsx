@@ -4,7 +4,7 @@ import React from 'react'
 import { Bot, Clock, Sparkles } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
-import LoginPage from '../components/LoginPage'
+import LoginPage from '../components/auth/LoginPage'
 
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()

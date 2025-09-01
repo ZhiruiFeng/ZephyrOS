@@ -8,11 +8,11 @@ import { useCategories } from '../../hooks/useCategories'
 import { useTimer } from '../../hooks/useTimer'
 import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
-import LoginPage from '../components/LoginPage'
+import LoginPage from '../components/auth/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../lib/api'
 import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag, Hourglass } from 'lucide-react'
-import TaskEditor from '../components/TaskEditor'
-import { getPriorityIcon, getTimerIcon } from '../components/TaskIcons'
+import TaskEditor from '../components/editors/TaskEditor'
+import { getPriorityIcon, getTimerIcon } from '../components/ui/TaskIcons'
 import { 
   isOverdue, 
   formatDate,
@@ -21,7 +21,7 @@ import {
   shouldShowOverdue
 } from '../utils/taskUtils'
 import { useTranslation } from '../../contexts/LanguageContext'
-import EnergyReviewModal from '../components/EnergyReviewModal'
+import EnergyReviewModal from '../components/modals/EnergyReviewModal'
 
 type StatusKey = TaskContent['status']
 

@@ -4,7 +4,7 @@ import React from 'react'
 import { Mic } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
-import LoginPage from '../components/LoginPage'
+import LoginPage from '../components/auth/LoginPage'
 import BatchTranscriber from './components/BatchTranscriber'
 
 export default function SpeechDemoPage() {

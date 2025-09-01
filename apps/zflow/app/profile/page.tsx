@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
-import EnergySpectrum from '../components/EnergySpectrum'
+import EnergySpectrum from '../components/ui/EnergySpectrum'
 import { getUserTimezone, getTimezoneAbbr } from '../utils/timeUtils'
 
 

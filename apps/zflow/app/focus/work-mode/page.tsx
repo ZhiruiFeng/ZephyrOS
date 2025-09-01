@@ -8,15 +8,15 @@ import { useAutoSave } from '../../../hooks/useAutoSave'
 import { useCategories } from '../../../hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
-import LoginPage from '../../components/LoginPage'
+import LoginPage from '../../components/auth/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
 import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle, ListTodo } from 'lucide-react'
 import MarkdownEditor from './NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { useTimer } from '../../../hooks/useTimer'
-import SubtaskSection from '../../components/SubtaskSection'
-import EnergyReviewModal from '../../components/EnergyReviewModal'
+import SubtaskSection from '../../components/editors/SubtaskSection'
+import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
 
 interface TaskWithCategory extends TaskMemory {
   category?: Category
