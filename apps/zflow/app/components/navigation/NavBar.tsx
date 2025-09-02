@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Mic, LayoutDashboard, Target, Bot, Zap, User } from 'lucide-react'
+import { Mic, LayoutDashboard, Target, Bot, Zap, User, BookOpen } from 'lucide-react'
 import AuthButton from '../auth/AuthButton'
 import LanguageSelector from '../selectors/LanguageSelector'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -39,6 +39,11 @@ export default function NavBar() {
               <NavLink href="/focus?view=work">
                 <span className="inline-flex items-center gap-1">
                   <Target className="w-4 h-4" /> {t.nav.focus}
+                </span>
+              </NavLink>
+              <NavLink href="/memories">
+                <span className="inline-flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" /> Memories
                 </span>
               </NavLink>
               <NavLink href="/agents">

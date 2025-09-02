@@ -235,16 +235,20 @@ CREATE TABLE IF NOT EXISTS activities (
 
 -- Memories table for knowledge management and lived experience (subtype of timeline_items)
 CREATE TABLE IF NOT EXISTS memories (
-  -- Primary key (links to timeline_items)
+  -- Core memory fields
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
   
-  -- Time semantics specific to Memory
+  -- Timestamp fields
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   captured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   happened_range tstzrange, -- when it actually happened (optional)
   
   -- Content
   note TEXT, -- main content
-  title_override TEXT, -- override timeline_items.title if needed
+  title_override TEXT, -- override title if needed
   memory_type TEXT DEFAULT 'note' CHECK (memory_type IN ('note', 'link', 'file', 'thought', 'quote', 'insight')),
   
   -- Emotional/energy metadata
@@ -261,8 +265,15 @@ CREATE TABLE IF NOT EXISTS memories (
   is_highlight BOOLEAN DEFAULT false,
   salience_score REAL DEFAULT 0.0 CHECK (salience_score BETWEEN 0.0 AND 1.0),
   
+  -- Organization
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  tags TEXT[] DEFAULT '{}',
+  
   -- User ownership
   user_id UUID DEFAULT auth.uid(),
+  
+  -- Memory status
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')),
   
   -- Supertype/subtype relationship
   type TEXT DEFAULT 'memory' CHECK (type = 'memory'),
@@ -476,6 +487,11 @@ DECLARE
   target_user_id UUID;
 BEGIN
   IF TG_OP = 'INSERT' THEN
+    -- Ensure id is set (generate if null due to DEFAULT)
+    IF NEW.id IS NULL THEN
+      NEW.id := gen_random_uuid();
+    END IF;
+    
     -- Ensure user_id is set
     target_user_id := COALESCE(NEW.user_id, auth.uid());
     
@@ -654,6 +670,11 @@ DECLARE
   target_user_id UUID;
 BEGIN
   IF TG_OP = 'INSERT' THEN
+    -- Ensure id is set (generate if null due to DEFAULT)
+    IF NEW.id IS NULL THEN
+      NEW.id := gen_random_uuid();
+    END IF;
+    
     -- Ensure user_id is set
     target_user_id := COALESCE(NEW.user_id, auth.uid());
     
@@ -671,14 +692,14 @@ BEGIN
       is_time_consuming, render_on_timeline
     ) VALUES (
       NEW.id, 'memory', 
-      COALESCE(NEW.title_override, 'Memory'), 
-      NEW.note, 
-      NEW.captured_at, 
-      NOW(),
-      CASE WHEN NEW.happened_range IS NOT NULL THEN lower(NEW.happened_range) ELSE NULL END, -- start of range if exists
-      NULL, -- no category for now, can be added later
-      '{}', -- no tags for now, can be added later
-      'active',
+      COALESCE(NEW.title, NEW.title_override, 'Memory'), 
+      COALESCE(NEW.description, NEW.note), 
+      NEW.created_at, 
+      NEW.updated_at,
+      CASE WHEN NEW.happened_range IS NOT NULL THEN lower(NEW.happened_range) ELSE NULL END,
+      NEW.category_id,
+      NEW.tags,
+      NEW.status,
       CASE 
         WHEN NEW.is_highlight THEN 'high'
         WHEN NEW.salience_score > 0.7 THEN 'high'
@@ -712,15 +733,17 @@ BEGIN
   IF TG_OP = 'UPDATE' THEN
     -- Sync changes to timeline_items
     UPDATE timeline_items SET
-      title = COALESCE(NEW.title_override, 'Memory'),
-      description = NEW.note,
-      updated_at = NOW(),
+      title = COALESCE(NEW.title, NEW.title_override, 'Memory'),
+      description = COALESCE(NEW.description, NEW.note),
+      updated_at = NEW.updated_at,
       start_time = CASE 
         WHEN NEW.happened_range IS NOT NULL 
         THEN lower(NEW.happened_range)
         ELSE NULL
       END,
-      status = 'active',
+      category_id = NEW.category_id,
+      tags = NEW.tags,
+      status = NEW.status,
       priority = CASE 
         WHEN NEW.is_highlight THEN 'high'
         WHEN NEW.salience_score > 0.7 THEN 'high'
@@ -941,6 +964,11 @@ DECLARE
   target_user_id UUID;
 BEGIN
   IF TG_OP = 'INSERT' THEN
+    -- Ensure id is set (generate if null due to DEFAULT)
+    IF NEW.id IS NULL THEN
+      NEW.id := gen_random_uuid();
+    END IF;
+    
     -- Ensure user_id is set
     target_user_id := COALESCE(NEW.user_id, auth.uid());
     

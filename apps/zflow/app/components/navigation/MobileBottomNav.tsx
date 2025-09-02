@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Target, ListTodo, Mic, Plus, Bot } from 'lucide-react'
+import { Home, Target, ListTodo, Mic, Plus, Bot, BookOpen } from 'lucide-react'
 import { useTranslation } from '../../../contexts/LanguageContext'
 
 function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: any }) {
@@ -58,7 +58,7 @@ export default function MobileBottomNav() {
           </button>
 
           <div className="flex-1" />
-          <NavItem href="/agents" label="Agents" icon={Bot} />
+          <NavItem href="/memories" label="Memories" icon={BookOpen} />
           <NavItem href="/speech" label={t.nav.speech} icon={Mic} />
         </div>
       </div>

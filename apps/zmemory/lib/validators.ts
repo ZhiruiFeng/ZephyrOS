@@ -19,7 +19,7 @@ const salienceScore = z.number().min(0.0).max(1.0).optional();
 // Create memory schema
 export const MemoryCreateSchema = z.object({
   // Core content
-  title: z.string().min(1).max(500).optional(), // for title_override
+  title: z.string().min(1).max(500).optional(), // Memory title
   note: z.string().min(1, 'Note content is required'),
   memory_type: z.enum(memoryTypes).default('note'),
   
@@ -44,9 +44,9 @@ export const MemoryCreateSchema = z.object({
   is_highlight: z.boolean().default(false),
   salience_score: salienceScore.default(0.0),
   
-  // Context and relationships
+  // Context and relationships (these will be filtered out for DB operations)
   source: z.string().optional(),
-  context: z.string().optional(),
+  context: z.string().optional(), 
   mood: z.number().int().min(1).max(10).optional(),
   importance_level: z.enum(importanceLevels).default('medium'),
   related_to: z.array(z.string()).default([]),
@@ -65,7 +65,7 @@ export const MemoriesQuerySchema = z.object({
   memory_type: z.enum(memoryTypes).optional(),
   status: z.enum(memoryStatuses).optional(),
   importance_level: z.enum(importanceLevels).optional(),
-  is_highlight: z.boolean().optional(),
+  is_highlight: z.string().transform((val) => val === 'true').optional(),
   
   // Date ranges
   captured_from: isoDateTime.optional(),
@@ -75,15 +75,15 @@ export const MemoriesQuerySchema = z.object({
   
   // Location filters
   place_name: z.string().optional(),
-  near_lat: z.number().min(-90).max(90).optional(),
-  near_lng: z.number().min(-180).max(180).optional(),
-  distance_km: z.number().positive().optional().default(10),
+  near_lat: z.string().optional().transform(v => v ? parseFloat(v) : undefined).pipe(z.number().min(-90).max(90).optional()),
+  near_lng: z.string().optional().transform(v => v ? parseFloat(v) : undefined).pipe(z.number().min(-180).max(180).optional()),
+  distance_km: z.string().optional().transform(v => v ? parseFloat(v) : 10).pipe(z.number().positive().optional().default(10)),
   
   // Emotional/rating filters
-  min_emotion_valence: z.number().int().min(-5).max(5).optional(),
-  max_emotion_valence: z.number().int().min(-5).max(5).optional(),
-  min_salience: z.number().min(0.0).max(1.0).optional(),
-  min_mood: z.number().int().min(1).max(10).optional(),
+  min_emotion_valence: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().min(-5).max(5).optional()),
+  max_emotion_valence: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().min(-5).max(5).optional()),
+  min_salience: z.string().optional().transform(v => v ? parseFloat(v) : undefined).pipe(z.number().min(0.0).max(1.0).optional()),
+  min_mood: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().min(1).max(10).optional()),
   
   // Category and tags
   category_id: z.string().uuid().optional(),
