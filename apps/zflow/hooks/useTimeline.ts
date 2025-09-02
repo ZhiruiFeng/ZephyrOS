@@ -1,6 +1,7 @@
 import useSWR from 'swr'
 import { timeTrackingApi, timelineItemsApi } from '../lib/api'
 import { memoriesApi } from '../lib/memories-api'
+import { processDayEntries, type TimeEntryWithCrossDay } from '../app/utils/crossDayUtils'
 
 export interface TimelineItem {
   id: string
@@ -54,14 +55,17 @@ export function useTimeline(selectedDate: Date) {
 
 async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
   try {
-    const startOfDay = new Date(selectedDate)
-    startOfDay.setHours(0, 0, 0, 0)
+    // Normalize the selected date to start of day
+    const normalizedDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0)
     
-    const endOfDay = new Date(selectedDate)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Query for EXACT local day converted to UTC
+    // For Sept 2nd PDT: from Sept 2, 00:00 PDT to Sept 2, 23:59 PDT
+    // Which becomes: Sept 2, 07:00 UTC to Sept 3, 06:59 UTC
+    const startOfLocalDay = new Date(normalizedDate.getFullYear(), normalizedDate.getMonth(), normalizedDate.getDate(), 0, 0, 0, 0)
+    const endOfLocalDay = new Date(normalizedDate.getFullYear(), normalizedDate.getMonth(), normalizedDate.getDate(), 23, 59, 59, 999)
     
-    const from = startOfDay.toISOString()
-    const to = endOfDay.toISOString()
+    const from = startOfLocalDay.toISOString()
+    const to = endOfLocalDay.toISOString()
 
     // Fetch all data in parallel
     const [timeEntriesResult, memoriesResult, tasksResult] = await Promise.all([
@@ -75,8 +79,12 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
       Promise.resolve({ tasks: [] })
     ])
 
-    // Transform time entries
-    const timeEntryItems: TimelineItem[] = timeEntriesResult.entries.map(entry => ({
+    // Since we queried the exact local day range, we can use the entries directly
+    // but still apply cross-day processing to handle any entries that span midnight
+    const processedTimeEntries = processDayEntries(timeEntriesResult.entries, normalizedDate)
+    
+    // Transform processed time entries
+    const timeEntryItems: TimelineItem[] = processedTimeEntries.map(entry => ({
       id: entry.id,
       type: 'time_entry' as const,
       title: entry.task_title || 'Time Entry',
@@ -84,47 +92,75 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
       startTime: entry.start_at,
       endTime: entry.end_at || undefined,
       duration: entry.duration_minutes || undefined,
-      category: entry.category ? {
-        id: entry.category.id,
-        name: entry.category.name,
-        color: entry.category.color
+      category: entry.category_id ? {
+        id: entry.category_id,
+        name: entry.category_name || 'Unknown Category',
+        color: entry.category_color || '#C6D2DE'
       } : undefined,
       tags: [],
       location: undefined,
       isHighlight: false,
       metadata: {
         source: entry.source,
-        taskId: entry.task_id
+        taskId: entry.task_id,
+        isCrossDaySegment: entry.isCrossDaySegment,
+        originalId: entry.originalId,
+        // Include timeline item type information from the API
+        timelineItemType: (entry as any).timeline_item_type,
+        timelineItemTitle: (entry as any).timeline_item_title,
+        timelineItemId: (entry as any).timeline_item_id
       }
     }))
 
-    // Transform memories
-    const memoryItems: TimelineItem[] = memoriesResult.memories.map(memory => ({
-      id: memory.id,
-      type: 'memory' as const,
-      title: memory.title_override || memory.note.split('\n')[0],
-      description: memory.note,
-      startTime: memory.happened_range?.start || memory.captured_at,
-      endTime: memory.happened_range?.end,
-      duration: undefined,
-      category: memory.category ? {
-        id: memory.category.id,
-        name: memory.category.name,
-        color: memory.category.color,
-        icon: memory.category.icon
-      } : undefined,
-      tags: memory.tags,
-      location: memory.place_name,
-      isHighlight: memory.is_highlight,
-      metadata: {
-        memoryType: memory.memory_type,
-        emotionValence: memory.emotion_valence,
-        emotionArousal: memory.emotion_arousal,
-        mood: memory.mood,
-        importance: memory.importance_level,
-        salience: memory.salience_score
-      }
-    }))
+    // Filter and transform memories to only include those within the normalized selected day
+    const dayStart = new Date(normalizedDate.getFullYear(), normalizedDate.getMonth(), normalizedDate.getDate(), 0, 0, 0, 0)
+    const dayEnd = new Date(normalizedDate.getFullYear(), normalizedDate.getMonth(), normalizedDate.getDate(), 23, 59, 59, 999)
+    
+    const memoryItems: TimelineItem[] = memoriesResult.memories
+      .filter(memory => {
+        const startTime = new Date(memory.happened_range?.start || memory.captured_at)
+        const endTime = memory.happened_range?.end ? new Date(memory.happened_range.end) : startTime
+        // Only include memories that overlap with the selected day
+        return startTime <= dayEnd && endTime >= dayStart
+      })
+      .map(memory => {
+        const startTime = new Date(memory.happened_range?.start || memory.captured_at)
+        const endTime = memory.happened_range?.end ? new Date(memory.happened_range.end) : undefined
+        
+        // Clip times to day boundaries if they extend beyond
+        const clippedStart = startTime < dayStart ? dayStart : startTime
+        const clippedEnd = endTime && endTime > dayEnd ? dayEnd : endTime
+        
+        return {
+          id: memory.id,
+          type: 'memory' as const,
+          title: memory.title_override || memory.note.split('\n')[0],
+          description: memory.note,
+          startTime: clippedStart.toISOString(),
+          endTime: clippedEnd?.toISOString(),
+          duration: undefined,
+          category: memory.category ? {
+            id: memory.category.id,
+            name: memory.category.name,
+            color: memory.category.color,
+            icon: memory.category.icon
+          } : undefined,
+          tags: memory.tags,
+          location: memory.place_name,
+          isHighlight: memory.is_highlight,
+          metadata: {
+            memoryType: memory.memory_type,
+            emotionValence: memory.emotion_valence,
+            emotionArousal: memory.emotion_arousal,
+            mood: memory.mood,
+            importance: memory.importance_level,
+            salience: memory.salience_score,
+            isCrossDaySegment: endTime && (startTime < dayStart || endTime > dayEnd),
+            originalStart: memory.happened_range?.start || memory.captured_at,
+            originalEnd: memory.happened_range?.end
+          }
+        }
+      })
 
     // Transform tasks (placeholder for now)
     const taskItems: TimelineItem[] = (tasksResult.tasks || []).map((task: any) => ({
@@ -232,10 +268,15 @@ export function useTimelineRange(startDate: Date, endDate: Date) {
 
 async function fetchTimelineRangeData(startDate: Date, endDate: Date): Promise<TimelineData> {
   try {
-    const start = startDate.toISOString()
-    const end = endDate.toISOString()
+    // Normalize dates to start of day
+    const normalizedStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0)
+    const normalizedEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999)
+    
+    // Query for EXACT local date range converted to UTC
+    const start = normalizedStartDate.toISOString()
+    const end = normalizedEndDate.toISOString()
 
-    // Fetch data for the date range
+    // Fetch data for the extended date range
     const [timeEntriesResult, memoriesResult] = await Promise.all([
       timeTrackingApi.listDay({ from: start, to: end }),
       memoriesApi.search({ 
@@ -245,55 +286,87 @@ async function fetchTimelineRangeData(startDate: Date, endDate: Date): Promise<T
       })
     ])
 
-    // Transform and combine data similar to single day
-    const timeEntryItems: TimelineItem[] = timeEntriesResult.entries.map(entry => ({
-      id: entry.id,
-      type: 'time_entry' as const,
-      title: entry.task_title || 'Time Entry',
-      description: entry.note,
-      startTime: entry.start_at,
-      endTime: entry.end_at || undefined,
-      duration: entry.duration_minutes || undefined,
-      category: entry.category ? {
-        id: entry.category.id,
-        name: entry.category.name,
-        color: entry.category.color
-      } : undefined,
-      tags: [],
-      location: undefined,
-      isHighlight: false,
-      metadata: {
-        source: entry.source,
-        taskId: entry.task_id
-      }
-    }))
+    // Since we queried exact range, transform entries directly but apply cross-day logic per day
+    const allDaysEntries: TimelineItem[] = []
+    
+    // Process each day in the range separately  
+    for (let currentDay = new Date(normalizedStartDate); currentDay <= new Date(normalizedEndDate.getFullYear(), normalizedEndDate.getMonth(), normalizedEndDate.getDate()); currentDay.setDate(currentDay.getDate() + 1)) {
+      const dayEntries = processDayEntries(timeEntriesResult.entries, currentDay)
+      
+      const dayTimelineItems: TimelineItem[] = dayEntries.map(entry => ({
+        id: entry.id,
+        type: 'time_entry' as const,
+        title: entry.task_title || 'Time Entry',
+        description: entry.note,
+        startTime: entry.start_at,
+        endTime: entry.end_at || undefined,
+        duration: entry.duration_minutes || undefined,
+        category: entry.category_id ? {
+          id: entry.category_id,
+          name: entry.category_name || 'Unknown Category',
+          color: entry.category_color || '#C6D2DE'
+        } : undefined,
+        tags: [],
+        location: undefined,
+        isHighlight: false,
+        metadata: {
+          source: entry.source,
+          taskId: entry.task_id,
+          isCrossDaySegment: entry.isCrossDaySegment,
+          originalId: entry.originalId
+        }
+      }))
+      
+      allDaysEntries.push(...dayTimelineItems)
+    }
+    
+    const timeEntryItems = allDaysEntries
 
-    const memoryItems: TimelineItem[] = memoriesResult.memories.map(memory => ({
-      id: memory.id,
-      type: 'memory' as const,
-      title: memory.title_override || memory.note.split('\n')[0],
-      description: memory.note,
-      startTime: memory.happened_range?.start || memory.captured_at,
-      endTime: memory.happened_range?.end,
-      duration: undefined,
-      category: memory.category ? {
-        id: memory.category.id,
-        name: memory.category.name,
-        color: memory.category.color,
-        icon: memory.category.icon
-      } : undefined,
-      tags: memory.tags,
-      location: memory.place_name,
-      isHighlight: memory.is_highlight,
-      metadata: {
-        memoryType: memory.memory_type,
-        emotionValence: memory.emotion_valence,
-        emotionArousal: memory.emotion_arousal,
-        mood: memory.mood,
-        importance: memory.importance_level,
-        salience: memory.salience_score
-      }
-    }))
+    // Filter and clip memories to the requested range
+    const memoryItems: TimelineItem[] = memoriesResult.memories
+      .filter(memory => {
+        const startTime = new Date(memory.happened_range?.start || memory.captured_at)
+        const endTime = memory.happened_range?.end ? new Date(memory.happened_range.end) : startTime
+        return startTime <= normalizedEndDate && endTime >= normalizedStartDate
+      })
+      .map(memory => {
+        const startTime = new Date(memory.happened_range?.start || memory.captured_at)
+        const endTime = memory.happened_range?.end ? new Date(memory.happened_range.end) : undefined
+        
+        // Clip times to range boundaries
+        const clippedStart = startTime < normalizedStartDate ? normalizedStartDate : startTime
+        const clippedEnd = endTime && endTime > normalizedEndDate ? normalizedEndDate : endTime
+        
+        return {
+          id: memory.id,
+          type: 'memory' as const,
+          title: memory.title_override || memory.note.split('\n')[0],
+          description: memory.note,
+          startTime: clippedStart.toISOString(),
+          endTime: clippedEnd?.toISOString(),
+          duration: undefined,
+          category: memory.category ? {
+            id: memory.category.id,
+            name: memory.category.name,
+            color: memory.category.color,
+            icon: memory.category.icon
+          } : undefined,
+          tags: memory.tags,
+          location: memory.place_name,
+          isHighlight: memory.is_highlight,
+          metadata: {
+            memoryType: memory.memory_type,
+            emotionValence: memory.emotion_valence,
+            emotionArousal: memory.emotion_arousal,
+            mood: memory.mood,
+            importance: memory.importance_level,
+            salience: memory.salience_score,
+            isCrossDaySegment: endTime && (startTime < normalizedStartDate || endTime > normalizedEndDate),
+            originalStart: memory.happened_range?.start || memory.captured_at,
+            originalEnd: memory.happened_range?.end
+          }
+        }
+      })
 
     const allItems = [...timeEntryItems, ...memoryItems].sort(
       (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()

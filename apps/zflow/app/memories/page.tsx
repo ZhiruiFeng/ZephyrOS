@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Plus, Search, Filter, Calendar, BookOpen, Star, Heart, TrendingUp, Loader2, RefreshCw, Clock } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, BookOpen, Star, Heart, TrendingUp, Loader2, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { Memory, MemoryFilters } from '../types/memory'
@@ -12,7 +12,7 @@ import MemoryCard from '../components/memories/MemoryCard'
 export default function MemoriesPage() {
   const { user } = useAuth()
   const { t } = useTranslation()
-  const [selectedView, setSelectedView] = React.useState<'timeline' | 'search' | 'collections' | 'stream'>('timeline')
+  const [selectedView, setSelectedView] = React.useState<'timeline' | 'search' | 'collections'>('timeline')
   const [isCaptureOpen, setIsCaptureOpen] = React.useState(false)
   const [editingMemory, setEditingMemory] = React.useState<Memory | undefined>()
   const [memories, setMemories] = React.useState<Memory[]>([])
@@ -271,17 +271,6 @@ export default function MemoriesPage() {
             >
               <Filter className="w-4 h-4" />
               Collections
-            </button>
-            <button
-              onClick={() => setSelectedView('stream')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedView === 'stream'
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              Stream
             </button>
           </div>
         </div>
@@ -572,24 +561,6 @@ export default function MemoriesPage() {
               </div>
             )}
 
-            {selectedView === 'stream' && (
-              <div className="space-y-6">
-                <div className="text-center py-8">
-                  <Clock className="w-12 h-12 text-primary-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Stream 视图</h3>
-                  <p className="text-gray-600 mb-6">
-                    这是一个纵向流式的时间线视图，展示您选中一天的所有记录
-                  </p>
-                  <a
-                    href="/timeline"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    <Clock className="w-4 h-4" />
-                    查看完整时间线
-                  </a>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>

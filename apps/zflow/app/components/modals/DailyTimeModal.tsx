@@ -10,9 +10,16 @@ import {
   type TimeEntryWithCrossDay 
 } from '../../utils/crossDayUtils'
 
-function startOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0) }
-function endOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999) }
-function fmtISO(d: Date) { return new Date(d).toISOString() }
+// 创建本地时区的日期边界，然后转换为UTC用于API查询
+function startOfDay(d: Date) { 
+  const localStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+  return localStart
+}
+function endOfDay(d: Date) { 
+  const localEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+  return localEnd
+}
+function fmtISO(d: Date) { return d.toISOString() }
 
 export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boolean; onClose: () => void; day?: Date }) {
   const { t } = useTranslation()
@@ -22,8 +29,15 @@ export default function DailyTimeModal({ isOpen, onClose, day }: { isOpen: boole
 
   React.useEffect(() => { if (day) setCurrent(startOfDay(day)) }, [day])
 
-  const from = fmtISO(startOfDay(current))
-  const to = fmtISO(endOfDay(current))
+  // 为了处理时区差异，我们需要扩展查询范围
+  // 查询当前日期前后各一天，然后在客户端过滤到精确的本地日期
+  const queryStart = new Date(current)
+  queryStart.setDate(queryStart.getDate() - 1)
+  const queryEnd = new Date(current)
+  queryEnd.setDate(queryEnd.getDate() + 1)
+  
+  const from = fmtISO(startOfDay(queryStart))
+  const to = fmtISO(endOfDay(queryEnd))
   const { data, isLoading, error } = useSWR(isOpen ? ['day-entries', from, to] : null, () => timeTrackingApi.listDay({ from, to }))
 
   if (!isOpen) return null

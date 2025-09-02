@@ -298,6 +298,7 @@ function ZFlowPageContent() {
                 // Handle timeline item deletion
                 console.log('Delete timeline item:', item)
               }}
+              refetchTimeline={refetchTimeline}
               t={t}
             />
           </div>

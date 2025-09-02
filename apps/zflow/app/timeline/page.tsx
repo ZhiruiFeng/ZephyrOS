@@ -121,6 +121,7 @@ export default function TimelinePage() {
                 onItemClick={handleItemClick}
                 onEditItem={handleEditItem}
                 onDeleteItem={handleDeleteItem}
+                refetchTimeline={refetch}
                 t={t}
               />
             ) : (

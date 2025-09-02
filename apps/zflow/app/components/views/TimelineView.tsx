@@ -3,6 +3,8 @@
 import React from 'react'
 import { TimelineItem } from '@/hooks/useTimeline'
 import ModernTimelineView, { TimelineEvent, Category } from './ModernTimelineView'
+import { getCrossDayBorderClass } from '../../utils/crossDayUtils'
+import { timeTrackingApi } from '../../../lib/api'
 
 interface TimelineViewProps {
   selectedDate: Date
@@ -11,30 +13,50 @@ interface TimelineViewProps {
   onItemClick: (item: TimelineItem) => void
   onEditItem: (item: TimelineItem) => void
   onDeleteItem: (item: TimelineItem) => void
+  onDateChange?: (date: Date) => void
+  refetchTimeline?: () => void
   t: any
 }
 
-// Transform TimelineItem to TimelineEvent
+// Transform TimelineItem to TimelineEvent (use timeline_item_type for time-entries)
 const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
-  return items.map(item => ({
-    id: item.id,
-    title: item.title,
-    start: item.startTime,
-    end: item.endTime || new Date(new Date(item.startTime).getTime() + (item.duration || 30) * 60000).toISOString(),
-    type: item.type as 'task' | 'activity' | 'routine' | 'habit' | 'memory',
-    categoryId: item.category?.id,
-    source: item.metadata?.source as string,
-    energy: item.metadata?.energy ? {
-      avg: item.metadata.energy.avg,
-      min: item.metadata.energy.min,
-      max: item.metadata.energy.max,
-      samples: item.metadata.energy.samples
-    } : undefined,
-    meta: {
-      note: item.description || undefined,
-      tags: item.tags
+  return items.map(item => {
+    // For time-entries, use the timeline_item_type from metadata
+    let displayType = item.type
+    if (item.type === 'time_entry' && item.metadata?.timelineItemType) {
+      displayType = item.metadata.timelineItemType
     }
-  }))
+
+    return {
+      id: item.id,
+      title: item.title,
+      start: item.startTime,
+      end: item.endTime || new Date(new Date(item.startTime).getTime() + (item.duration || 30) * 60000).toISOString(),
+      type: displayType as 'task' | 'activity' | 'memory',
+      categoryId: item.category?.id,
+      source: item.metadata?.source as string,
+      energy: item.metadata?.energy ? {
+        avg: item.metadata.energy.avg,
+        min: item.metadata.energy.min,
+        max: item.metadata.energy.max,
+        samples: item.metadata.energy.samples
+      } : undefined,
+      meta: {
+        note: item.description || undefined,
+        tags: item.tags,
+        isCrossDaySegment: item.metadata?.isCrossDaySegment,
+        originalId: item.metadata?.originalId,
+        originalStart: item.metadata?.originalStart,
+        originalEnd: item.metadata?.originalEnd,
+        // Track original type information for time-entries
+        originalType: item.type,
+        relatedItemId: item.type === 'time_entry' ? item.metadata?.taskId : undefined,
+        timelineItemType: item.metadata?.timelineItemType,
+        timelineItemTitle: item.metadata?.timelineItemTitle,
+        timelineItemId: item.metadata?.timelineItemId
+      }
+    }
+  })
 }
 
 // Transform categories
@@ -42,15 +64,15 @@ const transformCategories = (items: TimelineItem[]): Category[] => {
   const categoryMap = new Map<string, Category>()
   
   items.forEach(item => {
-    if (item.category && !categoryMap.has(item.category.id)) {
-      categoryMap.set(item.category.id, {
-        id: item.category.id,
-        name: item.category.name,
-        color: item.category.color,
-        icon: item.category.icon
-      })
-    }
-  })
+      if (item.category && !categoryMap.has(item.category.id)) {
+        categoryMap.set(item.category.id, {
+          id: item.category.id,
+          name: item.category.name,
+          color: item.category.color,
+          icon: item.category.icon
+        })
+      }
+    })
 
   // Add default categories if none exist
   if (categoryMap.size === 0) {
@@ -72,6 +94,8 @@ export default function TimelineView({
   onItemClick,
   onEditItem,
   onDeleteItem,
+  onDateChange,
+  refetchTimeline,
   t
 }: TimelineViewProps) {
   if (loading) {
@@ -101,6 +125,33 @@ export default function TimelineView({
     console.log('Create event:', start, end)
   }
 
+  const handleUpdateTimeEntry = async (timeEntryId: string, start: string, end: string) => {
+    try {
+      // Call the API to update the time entry
+      const response = await timeTrackingApi.update(timeEntryId, {
+        start_at: start,
+        end_at: end
+      })
+      
+      console.log('Time entry updated successfully:', response)
+      
+      // Refresh the timeline data silently
+      if (refetchTimeline) {
+        console.log('Refreshing timeline data...')
+        await refetchTimeline()
+        console.log('Timeline data refreshed successfully')
+      } else {
+        console.warn('refetchTimeline function not provided - timeline will not refresh')
+      }
+      
+    } catch (error) {
+      console.error('Failed to update time entry:', error)
+      // Only show error messages, not success messages
+      alert(`Failed to update time entry: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw error // Re-throw to keep edit mode open
+    }
+  }
+
   return (
     <ModernTimelineView
       selectedDate={selectedDate}
@@ -108,6 +159,7 @@ export default function TimelineView({
       categories={categories}
       onEventClick={handleEventClick}
       onCreateEvent={handleCreateEvent}
+      onUpdateTimeEntry={handleUpdateTimeEntry}
     />
   )
 }
