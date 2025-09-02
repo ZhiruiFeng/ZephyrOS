@@ -4,6 +4,7 @@ import React, { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../contexts/LanguageContext'
+import { Grid, BarChart3 } from 'lucide-react'
 import {
   // Auth components
   LoginPage,
@@ -18,6 +19,7 @@ import {
   FloatingAddButton,
   StatisticsCards,
   FilterControls,
+  DateSelector,
 } from './components/ui'
 import {
   // Modal components
@@ -38,6 +40,7 @@ import {
   FutureView,
   ArchiveView,
   ActivitiesView,
+  TimelineView,
 } from './components/views'
 import { useTasks } from '../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
@@ -47,9 +50,11 @@ import { useTaskFiltering } from '../hooks/useTaskFiltering'
 import { useTaskActions } from '../hooks/useTaskActions'
 import { useActivityActions } from '../hooks/useActivityActions'
 import { useModalState } from '../hooks/useModalState'
+import { useTimeline, TimelineItem } from '../hooks/useTimeline'
 
 export type ViewKey = 'current' | 'future' | 'archive' | 'activities'
 export type DisplayMode = 'list' | 'grid'
+export type MainViewMode = 'tasks' | 'timeline'
 
 function ZFlowPageContent() {
   const { user, loading: authLoading } = useAuth()
@@ -59,6 +64,8 @@ function ZFlowPageContent() {
   const view = (params.get('view') as ViewKey) || 'current'
   const setView = (v: ViewKey) => router.push(`/?view=${v}`)
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>('list')
+  const [mainViewMode, setMainViewMode] = React.useState<MainViewMode>('tasks')
+  const [selectedDate, setSelectedDate] = React.useState(new Date())
 
   // Data hooks
   const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
@@ -68,6 +75,7 @@ function ZFlowPageContent() {
   const { updateCategory } = useUpdateCategory()
   const { deleteCategory } = useDeleteCategory()
   const timer = useTimer()
+  const { timelineData, isLoading: timelineLoading, error: timelineError, refetch: refetchTimeline } = useTimeline(selectedDate)
 
   // Shared filters
   const [selectedCategory, setSelectedCategory] = React.useState<'all' | 'uncategorized' | string>('all')
@@ -233,122 +241,183 @@ function ZFlowPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
-        <div className="flex gap-4 md:gap-6">
-          {/* Left: Category sidebar */}
-          <CategorySidebar
-            categories={categories}
-            selected={selectedCategory}
-            counts={viewBasedCounts}
-            view={view}
-            onSelect={(key) => setSelectedCategory(key as any)}
-            onCreate={async (payload) => { await createCategory({ name: payload.name, color: payload.color }) }}
-            onUpdate={async (id, payload) => { await updateCategory(id, payload) }}
-            onDelete={async (id) => { await deleteCategory(id); if (selectedCategory === id) setSelectedCategory('all') }}
-            className="hidden md:block rounded-lg"
-          />
-
-          {/* Right: Main Content */}
-          <div className="flex-1">
-            {/* Statistics Cards */}
-            <StatisticsCards
-              stats={stats}
-              activeView={view}
-              onViewChange={setView}
-              t={t}
-            />
-
-            {/* Filter Controls */}
-            <FilterControls
-              search={search}
-              filterPriority={filterPriority}
-              selectedCategory={selectedCategory}
-              displayMode={displayMode}
-              sortMode={sortMode}
-              onSearchChange={setSearch}
-              onPriorityChange={setFilterPriority}
-              onDisplayModeChange={setDisplayMode}
-              onSortModeChange={setSortMode}
-              onOpenMobileCategorySelector={() => modalState.setShowMobileCategorySelector(true)}
-              onOpenDailyModal={() => modalState.setShowDailyModal(true)}
-              categories={categories}
-              t={t}
-            />
-
-
-
-            {/* View content */}
-            <div className="space-y-3 md:space-y-4">
-              {view === 'current' && (
-                <CurrentView
-                  tasks={currentList}
-                  categories={categories}
-                  timer={timer}
-                  displayMode={displayMode}
-                  expandedDescriptions={modalState.expandedDescriptions}
-                  t={t}
-                  onTaskClick={goToWork}
-                  onToggleComplete={taskActions.toggleComplete}
-                  onHoldTask={taskActions.holdTask}
-                  onEditTask={handleTaskEdit}
-                  onDeleteTask={taskActions.handleDeleteTask}
-                  onShowTime={modalState.setTimeModalTask}
-                  onToggleDescription={modalState.toggleDescriptionExpansion}
-                />
-              )}
-
-              {view === 'future' && (
-                <FutureView
-                  tasks={futureList}
-                  categories={categories}
-                  timer={timer}
-                  displayMode={displayMode}
-                  expandedDescriptions={modalState.expandedDescriptions}
-                  t={t}
-                  onTaskClick={goToWork}
-                  onEditTask={handleTaskEdit}
-                  onDeleteTask={taskActions.handleDeleteTask}
-                  onShowTime={modalState.setTimeModalTask}
-                  onToggleDescription={modalState.toggleDescriptionExpansion}
-                  onActivateTask={taskActions.activate}
-                  onUpdateCategory={taskActions.handleUpdateCategory}
-                />
-              )}
-
-              {view === 'archive' && (
-                <ArchiveView
-                  groupedArchiveList={groupedArchiveList}
-                  categories={categories}
-                  timer={timer}
-                  displayMode={displayMode}
-                  expandedDescriptions={modalState.expandedDescriptions}
-                  t={t}
-                  onTaskClick={goToWork}
-                  onEditTask={handleTaskEdit}
-                  onDeleteTask={taskActions.handleDeleteTask}
-                  onShowTime={modalState.setTimeModalTask}
-                  onToggleDescription={modalState.toggleDescriptionExpansion}
-                  onReopenTask={taskActions.reopen}
-                />
-              )}
-
-              {view === 'activities' && (
-                <ActivitiesView
-                  activities={activities}
-                  activitiesLoading={activitiesLoading}
-                  categories={categories}
-                  timer={timer}
-                  displayMode={displayMode}
-                  t={t}
-                  onActivityClick={goToActivityFocus}
-                  onToggleActivityComplete={activityActions.toggleActivityComplete}
-                  onEditActivity={modalState.openActivityEditor}
-                  onDeleteActivity={activityActions.handleDeleteActivity}
-                  onShowActivityTime={modalState.setTimeModalActivity}
-                />
-              )}
-            </div>
+        {/* Main View Mode Toggle at the top */}
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex items-center glass rounded-full p-1">
+            <button
+              onClick={() => setMainViewMode('tasks')}
+              className={`flex items-center gap-2 px-4 py-3 rounded-full text-base font-medium transition-all duration-200 ${
+                mainViewMode === 'tasks'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-white/50'
+              }`}
+            >
+              <Grid className="w-5 h-5" />
+              任务视图
+            </button>
+            <button
+              onClick={() => setMainViewMode('timeline')}
+              className={`flex items-center gap-2 px-4 py-3 rounded-full text-base font-medium transition-all duration-200 ${
+                mainViewMode === 'timeline'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-white/50'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              时间线视图
+            </button>
           </div>
         </div>
+
+        {/* Content based on view mode */}
+        {mainViewMode === 'timeline' ? (
+          /* Timeline View - Just date selector and timeline */
+          <div className="space-y-6">
+            {/* Date Selector */}
+            <div className="flex items-center justify-center">
+              <DateSelector
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+              />
+            </div>
+            
+            {/* Timeline Content */}
+            <TimelineView
+              selectedDate={selectedDate}
+              timelineItems={timelineData.items}
+              loading={timelineLoading}
+              onItemClick={(item: TimelineItem) => {
+                // Handle timeline item click - could navigate to focus mode or edit
+                console.log('Timeline item clicked:', item)
+              }}
+              onEditItem={(item: TimelineItem) => {
+                // Handle timeline item edit
+                console.log('Edit timeline item:', item)
+              }}
+              onDeleteItem={(item: TimelineItem) => {
+                // Handle timeline item deletion
+                console.log('Delete timeline item:', item)
+              }}
+              t={t}
+            />
+          </div>
+        ) : (
+          /* Task View - Categories sidebar + main content */
+          <div className="flex gap-4 md:gap-6">
+            {/* Left: Category sidebar */}
+            <CategorySidebar
+              categories={categories}
+              selected={selectedCategory}
+              counts={viewBasedCounts}
+              view={view}
+              onSelect={(key) => setSelectedCategory(key as any)}
+              onCreate={async (payload) => { await createCategory({ name: payload.name, color: payload.color }) }}
+              onUpdate={async (id, payload) => { await updateCategory(id, payload) }}
+              onDelete={async (id) => { await deleteCategory(id); if (selectedCategory === id) setSelectedCategory('all') }}
+              className="hidden md:block rounded-lg"
+            />
+
+            {/* Right: Main Content */}
+            <div className="flex-1">
+              {/* Statistics Cards */}
+              <StatisticsCards
+                stats={stats}
+                activeView={view}
+                onViewChange={setView}
+                t={t}
+              />
+
+              {/* Filter Controls */}
+              <FilterControls
+                search={search}
+                filterPriority={filterPriority}
+                selectedCategory={selectedCategory}
+                displayMode={displayMode}
+                sortMode={sortMode}
+                onSearchChange={setSearch}
+                onPriorityChange={setFilterPriority}
+                onDisplayModeChange={setDisplayMode}
+                onSortModeChange={setSortMode}
+                onOpenMobileCategorySelector={() => modalState.setShowMobileCategorySelector(true)}
+                onOpenDailyModal={() => modalState.setShowDailyModal(true)}
+                categories={categories}
+                t={t}
+              />
+
+              {/* View content */}
+              <div className="space-y-3 md:space-y-4">
+                {view === 'current' && (
+                  <CurrentView
+                    tasks={currentList}
+                    categories={categories}
+                    timer={timer}
+                    displayMode={displayMode}
+                    expandedDescriptions={modalState.expandedDescriptions}
+                    t={t}
+                    onTaskClick={goToWork}
+                    onToggleComplete={taskActions.toggleComplete}
+                    onHoldTask={taskActions.holdTask}
+                    onEditTask={handleTaskEdit}
+                    onDeleteTask={taskActions.handleDeleteTask}
+                    onShowTime={modalState.setTimeModalTask}
+                    onToggleDescription={modalState.toggleDescriptionExpansion}
+                  />
+                )}
+
+                {view === 'future' && (
+                  <FutureView
+                    tasks={futureList}
+                    categories={categories}
+                    timer={timer}
+                    displayMode={displayMode}
+                    expandedDescriptions={modalState.expandedDescriptions}
+                    t={t}
+                    onTaskClick={goToWork}
+                    onEditTask={handleTaskEdit}
+                    onDeleteTask={taskActions.handleDeleteTask}
+                    onShowTime={modalState.setTimeModalTask}
+                    onToggleDescription={modalState.toggleDescriptionExpansion}
+                    onActivateTask={taskActions.activate}
+                    onUpdateCategory={taskActions.handleUpdateCategory}
+                  />
+                )}
+
+                {view === 'archive' && (
+                  <ArchiveView
+                    groupedArchiveList={groupedArchiveList}
+                    categories={categories}
+                    timer={timer}
+                    displayMode={displayMode}
+                    expandedDescriptions={modalState.expandedDescriptions}
+                    t={t}
+                    onTaskClick={goToWork}
+                    onEditTask={handleTaskEdit}
+                    onDeleteTask={taskActions.handleDeleteTask}
+                    onShowTime={modalState.setTimeModalTask}
+                    onToggleDescription={modalState.toggleDescriptionExpansion}
+                    onReopenTask={taskActions.reopen}
+                  />
+                )}
+
+                {view === 'activities' && (
+                  <ActivitiesView
+                    activities={activities}
+                    activitiesLoading={activitiesLoading}
+                    categories={categories}
+                    timer={timer}
+                    displayMode={displayMode}
+                    t={t}
+                    onActivityClick={goToActivityFocus}
+                    onToggleActivityComplete={activityActions.toggleActivityComplete}
+                    onEditActivity={modalState.openActivityEditor}
+                    onDeleteActivity={activityActions.handleDeleteActivity}
+                    onShowActivityTime={modalState.setTimeModalActivity}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating Add Button (desktop only) */}

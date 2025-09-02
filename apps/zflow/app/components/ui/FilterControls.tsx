@@ -115,7 +115,7 @@ export default function FilterControls({
 
         {/* Right: View Controls and Current View Indicator */}
         <div className="flex items-center justify-center sm:justify-end gap-2 md:gap-4">
-          {/* View Mode Toggle */}
+          {/* Display Mode Toggle */}
           <div className="flex items-center glass rounded-full p-1">
             <button
               onClick={() => onDisplayModeChange('list')}

@@ -35,14 +35,6 @@ export function jsonWithCors(request: NextRequest, body: any, status = 200): Nex
   const allowedOrigins = getAllowedOrigins();
   
   const res = NextResponse.json(body, { status });
-  
-  // Debug logging for CORS
-  console.log('CORS Debug:', {
-    origin,
-    allowedOrigins,
-    isAllowed: origin && allowedOrigins.includes(origin),
-    NODE_ENV: process.env.NODE_ENV
-  });
 
   // Only set CORS headers if origin is allowed
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
