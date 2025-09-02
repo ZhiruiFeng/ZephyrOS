@@ -79,7 +79,7 @@ export function createOptionsResponse(request: NextRequest): NextResponse {
   };
 
   // Only set CORS headers if origin is allowed
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Vary'] = 'Origin';
     headers['Access-Control-Allow-Credentials'] = 'true';
