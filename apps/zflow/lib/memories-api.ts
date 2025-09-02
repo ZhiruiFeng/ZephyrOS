@@ -8,7 +8,21 @@ import {
 } from '../app/types/memory'
 import { authManager } from './auth-manager'
 
-const MEMORIES_API_BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/memories`
+// Use the same pattern as api.ts for consistency
+const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
+const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
+const MEMORIES_API_BASE = API_BASE ? `${API_BASE}/memories` : '/api/memories'
+
+// Debug logging
+if (typeof window !== 'undefined') {
+  console.log('Memories API Configuration:', {
+    API_BASE,
+    IS_CROSS_ORIGIN,
+    MEMORIES_API_BASE,
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE
+  })
+}
 
 class MemoryAPIError extends Error {
   constructor(public status: number, message: string) {
@@ -32,7 +46,7 @@ async function memoryApiRequest<T>(
       ...authHeaders,
       ...options.headers,
     },
-    credentials: 'include',
+    ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     ...options,
   })
 
@@ -172,7 +186,7 @@ export const memoriesApi = {
       method: 'POST',
       body: formData,
       headers: authHeaders,
-      credentials: 'include',
+      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
 
     if (!response.ok) {
