@@ -2,7 +2,7 @@
 
 import React from 'react'
 import TimelineView from '../components/views/TimelineView'
-import { TimelineItem } from '../../hooks/useTimeline'
+import { TimelineItem } from '@/hooks/useTimeline'
 import DateSelector from '../components/ui/DateSelector'
 import TimelineStats from '../components/ui/TimelineStats'
 

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Calendar, Clock, Star, Activity, CheckCircle } from 'lucide-react'
 
-import { TimelineItem } from '../../../hooks/useTimeline'
+import { TimelineItem } from '@/hooks/useTimeline'
 
 interface TimelineViewProps {
   selectedDate: Date
