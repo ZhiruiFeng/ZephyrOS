@@ -10,6 +10,8 @@ export function getAllowedOrigins(): string[] {
     const productionOrigins = [
       process.env.NEXT_PUBLIC_APP_URL,
       process.env.PRODUCTION_FRONTEND_URL,
+      // Add your Vercel frontend domain
+      'https://zephyr-os.vercel.app',
     ].filter(Boolean);
     
     return productionOrigins.length > 0 
@@ -34,8 +36,16 @@ export function jsonWithCors(request: NextRequest, body: any, status = 200): Nex
   
   const res = NextResponse.json(body, { status });
   
+  // Debug logging for CORS
+  console.log('CORS Debug:', {
+    origin,
+    allowedOrigins,
+    isAllowed: origin && allowedOrigins.includes(origin),
+    NODE_ENV: process.env.NODE_ENV
+  });
+
   // Only set CORS headers if origin is allowed
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
     res.headers.set('Access-Control-Allow-Origin', origin);
     res.headers.set('Vary', 'Origin');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
