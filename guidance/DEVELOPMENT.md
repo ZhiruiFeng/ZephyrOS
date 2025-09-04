@@ -34,6 +34,7 @@ Edit `.env.local` with your Supabase credentials:
 ```env
 # Supabase Configuration (Required)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # API Configuration
@@ -46,9 +47,10 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 # Start all applications (recommended)
 npm run dev
 
-# Or start individually
-npm run dev --filter=zflow        # Frontend on :3000
-npm run dev --filter=zmemory      # Backend API on :3001
+# Or start individually via workspaces
+npm run dev -w @zephyros/zflow         # Frontend on :3000
+npm run dev -w @zephyros/zmemory-api   # Backend API on :3001
+npm run dev -w @zephyros/zmemory-mcp   # MCP server (stdio)
 ```
 
 **Access Points:**
@@ -325,7 +327,7 @@ npm install --save-dev jest @testing-library/react @testing-library/jest-dom
 
 # Run tests
 npm test                 # All packages
-npm test --filter=zflow  # Specific package
+npm test -w @zephyros/zmemory-api  # Run API package tests
 ```
 
 ### Example Test
@@ -543,8 +545,8 @@ npm run build
 npm run type-check
 
 # Test production build locally
-npm run start --filter=zflow
-npm run start --filter=zmemory
+npm run start -w @zephyros/zflow
+npm run start -w @zephyros/zmemory-api
 ```
 
 ### Environment Variables for Production
@@ -577,7 +579,7 @@ npm install
 3. **TypeScript Errors**:
 ```bash
 # Rebuild shared package
-npm run build --filter=shared
+npm run build -w @zephyros/shared
 npm run type-check
 ```
 

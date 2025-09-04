@@ -123,8 +123,8 @@ curl http://localhost:3001/api/health
 ```bash
 # Development
 npm run dev                    # Start all apps
-npm run dev --filter=zflow     # Frontend only
-npm run dev --filter=zmemory   # Backend only
+npm run dev -w @zephyros/zflow         # Frontend only
+npm run dev -w @zephyros/zmemory-api   # Backend only
 
 # Quality Assurance
 npm run type-check            # TypeScript checking
@@ -182,7 +182,7 @@ interface Memory {
 3. **TypeScript Errors**:
    ```bash
    # Rebuild shared package
-   npm run build --filter=shared
+   npm run build -w @zephyros/shared
    npm run type-check
    ```
 

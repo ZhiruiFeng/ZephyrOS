@@ -87,9 +87,10 @@ cp env.example .env.local
 # Start all applications
 npm run dev
 
-# Or start individual apps
-npm run dev --filter=zflow     # Frontend only
-npm run dev --filter=zmemory   # Backend only
+# Or start individual apps (workspaces)
+npm run dev -w @zephyros/zflow         # Frontend only (:3000)
+npm run dev -w @zephyros/zmemory-api   # Backend only  (:3001)
+npm run dev -w @zephyros/zmemory-mcp   # MCP server (stdio)
 ```
 
 ### 5. Verify Setup
@@ -468,17 +469,15 @@ describe('/api/memories', () => {
 ### Running Tests
 
 ```bash
-# Run all tests
-npm test
+# ZMemory API tests (Jest)
+npm test -w @zephyros/zmemory-api
+npm run test:coverage -w @zephyros/zmemory-api
+npm run test:watch -w @zephyros/zmemory-api
 
-# Run tests with coverage
-npm run test:coverage
+# MCP server tests (Jest)
+npm test -w @zephyros/zmemory-mcp
 
-# Run tests in watch mode
-npm run test:watch
-
-# Run specific test file
-npm test TaskItem.test.tsx
+# Frontend (zflow): add tests if/when configured
 ```
 
 ## Documentation
@@ -592,7 +591,7 @@ rm -rf node_modules apps/*/node_modules packages/*/node_modules
 npm install
 
 # TypeScript issues
-npm run build --filter=shared
+npm run build -w @zephyros/shared
 npm run type-check
 
 # Port conflicts

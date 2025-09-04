@@ -150,6 +150,7 @@ Configure environment variables:
 ```env
 # Supabase configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # API configuration
@@ -165,12 +166,13 @@ npm install
 ### 3. Start Development Server
 
 ```bash
-# Start all applications
+# Start all applications (Turbo monorepo)
 npm run dev
 
-# Or start individually
-npm run dev --filter=@zephyros/zflow
-npm run dev --filter=@zephyros/zmemory-api
+# Or start individually via workspaces
+npm run dev -w @zephyros/zflow           # Frontend on :3000
+npm run dev -w @zephyros/zmemory-api     # API on :3001
+npm run dev -w @zephyros/zmemory-mcp     # MCP server (stdio)
 ```
 
 ### 4. Access Applications
@@ -314,7 +316,7 @@ npm start
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Vercel
 - **Build Tool**: Turbo
-- **Code Quality**: ESLint, Prettier, TypeScript strict mode
+- **Code Quality**: ESLint, TypeScript strict mode
 
 ## Contributing
 
@@ -333,9 +335,8 @@ npm start
 
 ---
 
-**Current Version**: 2.1.0  
 **Architecture**: Modular monorepo with AI integration support  
-**Status**: Production-ready with MCP integration for AI agents
+**Status**: Active development with MCP integration for AI agents
 
 ## 📄 License
 
