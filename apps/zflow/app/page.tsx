@@ -205,6 +205,42 @@ function ZFlowPageContent() {
     router.push(`/focus/activity?activityId=${encodeURIComponent(activityId)}`)
   }
 
+  // Timeline item click -> navigate to corresponding focus page
+  const handleTimelineItemClick = (item: TimelineItem) => {
+    try {
+      if (item.type === 'task') {
+        goToWork(item.id)
+        return
+      }
+
+      if (item.type === 'activity') {
+        goToActivityFocus(item.id)
+        return
+      }
+
+      if (item.type === 'time_entry') {
+        const timelineItemType = item.metadata?.timelineItemType
+        const relatedId = item.metadata?.timelineItemId || item.metadata?.taskId
+        if (timelineItemType === 'task' && relatedId) {
+          goToWork(relatedId)
+          return
+        }
+        if (timelineItemType === 'activity' && relatedId) {
+          goToActivityFocus(relatedId)
+          return
+        }
+        // fallback: if只拿到taskId也跳任务专注
+        if (relatedId) {
+          goToWork(relatedId)
+          return
+        }
+      }
+      // memory 或未匹配则暂不跳转
+    } catch (e) {
+      console.error('Failed to open editor from timeline item:', e)
+    }
+  }
+
   // Task event handlers
   const handleTaskEdit = (task: any) => {
     const convertedTask = taskActions.openEditor(task)
@@ -286,10 +322,7 @@ function ZFlowPageContent() {
               selectedDate={selectedDate}
               timelineItems={timelineData.items}
               loading={timelineLoading}
-              onItemClick={(item: TimelineItem) => {
-                // Handle timeline item click - could navigate to focus mode or edit
-                console.log('Timeline item clicked:', item)
-              }}
+              onItemClick={(item: TimelineItem) => handleTimelineItemClick(item)}
               onEditItem={(item: TimelineItem) => {
                 // Handle timeline item edit
                 console.log('Edit timeline item:', item)
