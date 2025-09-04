@@ -30,6 +30,7 @@ export interface TranslationKeys {
     stop: string;
     today: string;
     yesterday: string;
+    refresh?: string;
   };
 
   // Navigation
@@ -49,6 +50,7 @@ export interface TranslationKeys {
     description: string;
     activityType: string;
     status: string;
+    notFound?: string;
     createActivity: string;
     editActivity: string;
     deleteActivity: string;
@@ -65,6 +67,14 @@ export interface TranslationKeys {
     typeReading: string;
     typeSocial: string;
     typeRelax: string;
+    typeMeditation?: string;
+    typeMusic?: string;
+    typeGaming?: string;
+    typeWalking?: string;
+    typeCooking?: string;
+    typeRest?: string;
+    typeCreative?: string;
+    typeLearning?: string;
     typeOther: string;
     
     // Activity Editor fields
@@ -167,6 +177,7 @@ export interface TranslationKeys {
     sidebar: string;
     listView: string;
     gridView: string;
+    statistics?: string;
     noTasks: string;
     createdAt: string;
     overdue: string;
@@ -320,11 +331,21 @@ export interface TranslationKeys {
     noTimeSegments: string;
     timelineView: string;
     timeListView: string;
+    now?: string;
+    recorded?: string;
+    invalidTimeFormat?: string;
     weekdays: string[];
     startTime?: string;
     endTime?: string;
     note?: string;
     addTimeEntry?: string;
+    // Auth prompts
+    loginRequired?: string;
+    loginToViewTimeline?: string;
+    // Category selector
+    clearSelection?: string;
+    noCategoriesFound?: string;
+    searchCategories?: string;
     // Daily Time Modal
     unknownTask: string;
     summaryByCategory: string;
@@ -349,6 +370,7 @@ export interface TranslationKeys {
     taskCreateFailed: string;
     taskUpdateFailed: string;
     taskDeleteFailed: string;
+    titleRequired?: string;
     confirmDelete: string;
     noTasksYet: string;
     loadingTasks: string;
@@ -418,6 +440,7 @@ const translations: Record<Language, TranslationKeys> = {
       stop: 'Stop',
       today: 'Today',
       yesterday: 'Yesterday',
+      refresh: 'Refresh',
     },
     nav: {
       home: 'Home',
@@ -433,6 +456,7 @@ const translations: Record<Language, TranslationKeys> = {
       description: 'Description',
       activityType: 'Activity Type',
       status: 'Status',
+      notFound: 'Activity not found',
       createActivity: 'Create Activity',
       editActivity: 'Edit Activity',
       deleteActivity: 'Delete Activity',
@@ -449,6 +473,14 @@ const translations: Record<Language, TranslationKeys> = {
       typeReading: 'Reading',
       typeSocial: 'Social',
       typeRelax: 'Relax',
+      typeMeditation: 'Meditation',
+      typeMusic: 'Music',
+      typeGaming: 'Gaming',
+      typeWalking: 'Walking',
+      typeCooking: 'Cooking',
+      typeRest: 'Rest',
+      typeCreative: 'Creative',
+      typeLearning: 'Learning',
       typeOther: 'Other',
       
       // Activity Editor fields
@@ -643,6 +675,16 @@ const translations: Record<Language, TranslationKeys> = {
       noTimeSegments: 'No time segments',
       timelineView: 'Timeline View',
       timeListView: 'List View',
+      statistics: 'Statistics',
+      now: 'Now',
+      recorded: 'Recorded',
+      invalidTimeFormat: 'Invalid time format',
+      loginRequired: 'Please sign in',
+      loginToViewTimeline: 'Sign in to view your timeline records',
+      clearSelection: 'Clear selection',
+      noCategoriesFound: 'No categories found',
+      searchCategories: 'Search categories...',
+      timeRange: 'Time Range',
       weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       startTime: 'Start time',
       endTime: 'End time',
@@ -718,6 +760,8 @@ const translations: Record<Language, TranslationKeys> = {
       taskCreateFailed: 'Failed to create task, please try again',
       taskUpdateFailed: 'Failed to update task, please try again',
       taskDeleteFailed: 'Failed to delete task, please try again',
+      titleRequired: 'Title is required',
+      activityCreateFailed: 'Failed to create activity, please try again',
       confirmDelete: 'Are you sure you want to delete this task?',
       noTasksYet: 'No tasks yet, start by adding your first task!',
       loadingTasks: 'Loading tasks...',
@@ -779,6 +823,7 @@ const translations: Record<Language, TranslationKeys> = {
       stop: '停止',
       today: '今天',
       yesterday: '昨天',
+      refresh: '刷新',
     },
     nav: {
       home: '首页',
@@ -794,6 +839,7 @@ const translations: Record<Language, TranslationKeys> = {
       description: '描述',
       activityType: '活动类型',
       status: '状态',
+      notFound: '活动不存在',
       createActivity: '创建活动',
       editActivity: '编辑活动',
       deleteActivity: '删除活动',
@@ -810,6 +856,14 @@ const translations: Record<Language, TranslationKeys> = {
       typeReading: '阅读',
       typeSocial: '社交',
       typeRelax: '放松',
+      typeMeditation: '冥想',
+      typeMusic: '音乐',
+      typeGaming: '游戏',
+      typeWalking: '散步',
+      typeCooking: '烹饪',
+      typeRest: '休息',
+      typeCreative: '创作',
+      typeLearning: '学习',
       typeOther: '其他',
       
       // Activity Editor fields
@@ -997,6 +1051,16 @@ const translations: Record<Language, TranslationKeys> = {
       noTimeSegments: '无时间段',
       timelineView: '日历视图',
       timeListView: '列表视图',
+      statistics: '统计',
+      now: '此刻',
+      recorded: '记录时长',
+      invalidTimeFormat: '时间格式无效',
+      loginRequired: '请先登录',
+      loginToViewTimeline: '登录后即可查看您的时间线记录',
+      clearSelection: '清除选择',
+      noCategoriesFound: '没有找到分类',
+      searchCategories: '搜索分类...',
+      timeRange: '时间范围',
       weekdays: ['日', '一', '二', '三', '四', '五', '六'],
       startTime: '开始时间',
       endTime: '结束时间',
@@ -1079,6 +1143,7 @@ const translations: Record<Language, TranslationKeys> = {
       taskCreateFailed: '创建任务失败，请重试',
       taskUpdateFailed: '更新任务失败，请重试',
       taskDeleteFailed: '删除任务失败，请重试',
+      titleRequired: '标题不能为空',
       confirmDelete: '确定要删除这个任务吗？',
       noTasksYet: '还没有任务，开始添加你的第一个任务！',
       loadingTasks: '加载任务中...',

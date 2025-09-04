@@ -5,6 +5,7 @@
 'use client'
 
 import * as React from "react";
+import { TranslationKeys, Language } from "../../../lib/i18n";
 
 // ===== Design Tokens (Light Theme) =====
 const TOKENS = {
@@ -165,6 +166,8 @@ interface ModernTimelineViewProps {
   onEventClick?: (event: TimelineEvent) => void
   onCreateEvent?: (start: string, end: string) => void
   onUpdateTimeEntry?: (timeEntryId: string, start: string, end: string) => Promise<void>
+  t?: TranslationKeys
+  lang?: Language
 }
 
 const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
@@ -173,7 +176,9 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
   categories: categoriesProp = categories,
   onEventClick,
   onCreateEvent,
-  onUpdateTimeEntry
+  onUpdateTimeEntry,
+  t,
+  lang = 'en'
 }) => {
   const [events, setEvents] = React.useState<TimelineEvent[]>(() => [...eventsProp].sort(byStart));
   const [now, setNow] = React.useState<Date>(new Date());
@@ -229,7 +234,7 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 
   return (
     <div style={{ background: TOKENS.color.canvas, color: TOKENS.color.text }} className="min-h-screen">
-      <Header day={day} events={dayEvents} onCreateEvent={onCreateEvent} />
+      <Header day={day} events={dayEvents} onCreateEvent={onCreateEvent} t={t} lang={lang} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-32">
         {/* vertical guide */}
@@ -238,7 +243,7 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 
           <div className="space-y-2">
             {blocks.map((b, idx) => (
-              <BlockView key={idx} block={b} onEventClick={onEventClick} categories={categoriesProp} onUpdateTimeEntry={onUpdateTimeEntry} onCreateEvent={onCreateEvent} />
+              <BlockView key={idx} block={b} onEventClick={onEventClick} categories={categoriesProp} onUpdateTimeEntry={onUpdateTimeEntry} onCreateEvent={onCreateEvent} t={t} />
             ))}
           </div>
         </div>
@@ -249,19 +254,20 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 }
 
 // ===== Sub-Views =====
-function BlockView({ block, onEventClick, categories, onUpdateTimeEntry, onCreateEvent }: { 
+function BlockView({ block, onEventClick, categories, onUpdateTimeEntry, onCreateEvent, t }: { 
   block: any; 
   onEventClick?: (event: TimelineEvent) => void; 
   categories: Category[];
   onUpdateTimeEntry?: (timeEntryId: string, start: string, end: string) => Promise<void>;
   onCreateEvent?: (start: string, end: string) => void;
+  t?: TranslationKeys;
 }) {
-  if (block.kind === 'gap') return <Gap from={block.from} to={block.to} onCreateEvent={onCreateEvent} />;
-  if (block.kind === 'now') return <NowMarker />;
+  if (block.kind === 'gap') return <Gap from={block.from} to={block.to} onCreateEvent={onCreateEvent} t={t} />;
+  if (block.kind === 'now') return <NowMarker t={t} />;
   return <EventCard ev={block.ev} onEventClick={onEventClick} categories={categories} onUpdateTimeEntry={onUpdateTimeEntry} />;
 }
 
-function Header({ day, events, onCreateEvent }: { day: Date; events: TimelineEvent[]; onCreateEvent?: (start: string, end: string) => void }) {
+function Header({ day, events, onCreateEvent, t, lang }: { day: Date; events: TimelineEvent[]; onCreateEvent?: (start: string, end: string) => void; t?: TranslationKeys; lang?: Language }) {
   const totalMin = events.reduce((acc, ev) => acc + spanMinutes(toDate(ev.start), toDate(ev.end)), 0);
 
   return (
@@ -269,12 +275,12 @@ function Header({ day, events, onCreateEvent }: { day: Date; events: TimelineEve
       <div className="max-w-3xl mx-auto h-16 flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <h1 className="text-[18px] sm:text-[20px] font-semibold tracking-[-0.2px]">
-            {day.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+            {day.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
           </h1>
         </div>
         <div className="flex items-center gap-3 text-sm" style={{ color: TOKENS.color.text2 }}>
-          <div className="hidden sm:block">Recorded: <span style={{ color: TOKENS.color.text }} className="font-medium">{Math.round(totalMin/60*10)/10}h</span></div>
-          <input placeholder="Search…" className="hidden sm:block px-3 py-2 rounded-xl outline-none" style={{ background: 'rgba(0,0,0,0.04)', border: `1px solid ${TOKENS.color.border}` }} />
+          <div className="hidden sm:block">{t?.ui?.recorded ?? 'Recorded'}: <span style={{ color: TOKENS.color.text }} className="font-medium">{Math.round(totalMin/60*10)/10}h</span></div>
+          <input placeholder={(t?.common?.search ?? 'Search') + '…'} className="hidden sm:block px-3 py-2 rounded-xl outline-none" style={{ background: 'rgba(0,0,0,0.04)', border: `1px solid ${TOKENS.color.border}` }} />
           <button 
             onClick={() => {
               const now = new Date();
@@ -285,7 +291,7 @@ function Header({ day, events, onCreateEvent }: { day: Date; events: TimelineEve
             className="px-3 py-2 rounded-xl text-sm font-medium" 
             style={{ background: TOKENS.color.accent, color: 'white' }}
           >
-            + New
+            + {(t?.common?.create ?? 'New')}
           </button>
         </div>
       </div>
@@ -293,7 +299,7 @@ function Header({ day, events, onCreateEvent }: { day: Date; events: TimelineEve
   );
 }
 
-function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?: (start: string, end: string) => void }) {
+function Gap({ from, to, onCreateEvent, t }: { from: Date; to: Date; onCreateEvent?: (start: string, end: string) => void; t?: TranslationKeys }) {
   const mins = spanMinutes(from, to);
   const h = gapToSpace(mins);
   
@@ -322,7 +328,7 @@ function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?
                backdropFilter: 'blur(4px)'
              }}>
           <span className="opacity-80">{fmtHM(from)} – {fmtHM(to)}</span>
-          <span className="opacity-60">No records · {mins}m</span>
+          <span className="opacity-60">{t?.ui?.noData ?? 'No records'} · {mins}{t?.ui?.minutes ?? 'm'}</span>
           <button 
             onClick={() => onCreateEvent?.(from.toISOString(), to.toISOString())}
             className="px-2 py-1 rounded-lg text-[11px] font-medium transition-all hover:scale-105" 
@@ -331,7 +337,7 @@ function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?
               color: TOKENS.color.accent 
             }}
           >
-            + Add
+            + {(t?.ui?.addTimeEntry ?? 'Add')}
           </button>
         </div>
       </div>
@@ -339,13 +345,13 @@ function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?
   );
 }
 
-function NowMarker() {
+function NowMarker({ t }: { t?: TranslationKeys }) {
   return (
     <div className="relative my-5">
       <div className="absolute left-[12px] sm:left-[22px] right-0 top-1/2 -translate-y-1/2 h-px" style={{ background: `${TOKENS.color.now}99` }} />
       <div className="ml-4 sm:ml-12 inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-[12px]" style={{ background: 'rgba(43,212,189,0.12)', color: TOKENS.color.now, border: `1px solid ${TOKENS.color.now}66` }}>
         <div className="w-1.5 h-1.5 rounded-full" style={{ background: TOKENS.color.now }} />
-        Now
+        {t?.ui?.now ?? 'Now'}
       </div>
     </div>
   );
@@ -365,7 +371,7 @@ function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry }: {
   const s = toDate(ev.start); 
   const e = toDate(ev.end);
   const mins = spanMinutes(s, e);
-  const cat = categories.find(c => c.id === ev.categoryId) || { name: 'Default', color: '#C6D2DE' };
+  const cat = categories.find(c => c.id === ev.categoryId) || { name: 'General', color: '#C6D2DE' };
   const typeProps = getTypeProperties(ev.type);
   
   const isTimeEntry = ev.meta?.originalType === 'time_entry';
@@ -376,12 +382,12 @@ function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry }: {
     const endTime = new Date(editEnd);
     
     if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-      alert('Invalid time format');
+      alert(t?.ui?.invalidTimeFormat ?? 'Invalid time format');
       return;
     }
     
     if (endTime <= startTime) {
-      alert('End time must be after start time');
+      alert(t?.ui?.endTimeMustBeAfterStart ?? 'End time must be after start time');
       return;
     }
     

@@ -20,7 +20,7 @@ export default function LanguageSelector({
 
   const languages: { value: Language; label: string; nativeLabel: string }[] = [
     { value: 'en', label: 'English', nativeLabel: 'English' },
-    { value: 'zh', label: 'Chinese', nativeLabel: '中文' },
+  { value: 'zh', label: 'Chinese', nativeLabel: '中文' },
   ];
 
   const handleLanguageChange = (lang: Language) => {

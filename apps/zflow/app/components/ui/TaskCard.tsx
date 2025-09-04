@@ -363,7 +363,9 @@ export default function TaskCard({
               } else {
                 timer.start(task.id, { autoSwitch: true })
               }
-            }
+            },
+            undefined,
+            { start: t.activity?.startTimer || 'Start Timer', stop: t.activity?.stopTimer || 'Stop Timer' }
           )}
         </div>
         {getActionButtons()}
@@ -399,12 +401,12 @@ export default function TaskCard({
             {isTiming ? (
               <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded-full">
                 <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
-                {t.ui?.timing || '计时中'} {formatElapsedTime(timer.elapsedMs)}
+                {t.ui?.timing || 'Timing'} {formatElapsedTime(timer.elapsedMs)}
               </span>
             ) : isInProgress && (
               <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded-full">
                 <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                {t.ui?.inProgress || '进行中'}
+                {t.ui?.inProgress || 'In Progress'}
               </span>
             )}
           </div>

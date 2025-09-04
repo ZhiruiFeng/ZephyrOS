@@ -3,6 +3,7 @@
 import React from 'react'
 import { TimelineItem } from '@/hooks/useTimeline'
 import ModernTimelineView, { TimelineEvent, Category } from './ModernTimelineView'
+import { Language } from '../../../lib/i18n'
 import { getCrossDayBorderClass } from '../../utils/crossDayUtils'
 import { timeTrackingApi } from '../../../lib/api'
 import CreateTimelineItemModal from '../modals/CreateTimelineItemModal'
@@ -17,6 +18,7 @@ interface TimelineViewProps {
   onDateChange?: (date: Date) => void
   refetchTimeline?: () => void
   t: any
+  lang?: Language
 }
 
 // Transform TimelineItem to TimelineEvent (use timeline_item_type for time-entries)
@@ -97,7 +99,8 @@ export default function TimelineView({
   onDeleteItem,
   onDateChange,
   refetchTimeline,
-  t
+  t,
+  lang
 }: TimelineViewProps) {
   const [createEventModalData, setCreateEventModalData] = React.useState<{ start: string; end: string } | null>(null)
   if (loading) {
@@ -105,7 +108,7 @@ export default function TimelineView({
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-3 text-gray-500">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-          <span>{t?.ui?.loading || '加载中...'}</span>
+          <span>{t?.common?.loading || 'Loading...'}</span>
         </div>
       </div>
     )
@@ -162,6 +165,8 @@ export default function TimelineView({
         onEventClick={handleEventClick}
         onCreateEvent={handleCreateEvent}
         onUpdateTimeEntry={handleUpdateTimeEntry}
+        t={t}
+        lang={lang}
       />
       
       {createEventModalData && (

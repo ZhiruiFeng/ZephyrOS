@@ -57,7 +57,7 @@ export type MainViewMode = 'tasks' | 'timeline'
 
 function ZFlowPageContent() {
   const { user, loading: authLoading } = useAuth()
-  const { t } = useTranslation()
+  const { t, currentLang } = useTranslation()
   const router = useRouter()
   const params = useSearchParams()
   const view = (params.get('view') as ViewKey) || 'current'
@@ -269,10 +269,10 @@ function ZFlowPageContent() {
 
 
   // Authentication/loading guards
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">{t.common.loading}</div>
   if (!user) return <LoginPage />
-  if (isLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  if (error) return <div className="flex items-center justify-center min-h-screen text-red-600">Failed to load</div>
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">{t.common.loading}</div>
+  if (error) return <div className="flex items-center justify-center min-h-screen text-red-600">{t.messages.failedToLoadTasks || 'Failed to load'}</div>
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
@@ -289,7 +289,7 @@ function ZFlowPageContent() {
               }`}
             >
               <Grid className="w-5 h-5" />
-              任务视图
+              {t.ui.taskList}
             </button>
             <button
               onClick={() => setMainViewMode('timeline')}
@@ -300,7 +300,7 @@ function ZFlowPageContent() {
               }`}
             >
               <BarChart3 className="w-5 h-5" />
-              时间线视图
+              {t.ui.timelineView}
             </button>
           </div>
         </div>
@@ -333,6 +333,7 @@ function ZFlowPageContent() {
               }}
               refetchTimeline={refetchTimeline}
               t={t}
+              lang={currentLang}
             />
           </div>
         ) : (
@@ -464,7 +465,7 @@ function ZFlowPageContent() {
         task={modalState.editingTask}
         categories={categories}
         onSave={handleSaveTask}
-        title={t.task?.editTask || '编辑任务'}
+        title={t.task?.editTask || 'Edit Task'}
       />
 
       {/* Activity Editor */}

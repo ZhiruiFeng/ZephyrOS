@@ -24,14 +24,15 @@ export const getTimerIcon = (
   isRunning: boolean, 
   isCurrentTask: boolean, 
   onClick: (e: React.MouseEvent) => void,
-  className?: string
+  className?: string,
+  labels?: { start: string; stop: string }
 ) => {
   const baseClasses = "w-4 h-4 transition-colors duration-200 cursor-pointer"
   const customClasses = className || ""
   
   if (isRunning && isCurrentTask) {
     return (
-      <div title="停止计时">
+      <div title={labels?.stop || 'Stop timing'}>
         <Square 
           className={`${baseClasses} text-red-500 hover:text-red-600 ${customClasses}`}
           onClick={onClick}
@@ -40,7 +41,7 @@ export const getTimerIcon = (
     )
   } else {
     return (
-      <div title="开始计时">
+      <div title={labels?.start || 'Start timing'}>
         <Play 
           className={`${baseClasses} text-green-500 hover:text-green-600 ${customClasses}`}
           onClick={onClick}

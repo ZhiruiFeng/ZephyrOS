@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Save, Edit, Timer, Play, Pause, Square, Heart, Star, Smile, Frown } from 'lucide-react'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useTranslation } from '../../../contexts/LanguageContext'
 import { useActivity, useUpdateActivity } from '../../../hooks/useActivities'
 import { useCategories } from '../../../hooks/useCategories'
 import { useTimer } from '../../../hooks/useTimer'
@@ -35,6 +36,7 @@ interface ActivityWithCategory {
 }
 
 export default function ActivityFocusView() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -208,7 +210,7 @@ export default function ActivityFocusView() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+        <div className="text-gray-500">{t.common.loading}</div>
       </div>
     )
   }
@@ -217,12 +219,12 @@ export default function ActivityFocusView() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-gray-500 mb-4">活动不存在</div>
+          <div className="text-gray-500 mb-4">{t.activity?.notFound ?? 'Activity not found'}</div>
           <button
             onClick={() => router.push('/')}
             className="text-blue-600 hover:text-blue-700"
           >
-            返回首页
+            {t.ui.backToHome}
           </button>
         </div>
       </div>
@@ -248,18 +250,18 @@ export default function ActivityFocusView() {
                 <h1 className="text-xl font-semibold text-gray-900">{activity.title}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <span>
-                    {activity.activity_type === 'exercise' && '🏃‍♂️ 运动'}
-                    {activity.activity_type === 'meditation' && '🧘‍♀️ 冥想'}
-                    {activity.activity_type === 'reading' && '📚 阅读'}
-                    {activity.activity_type === 'music' && '🎵 音乐'}
-                    {activity.activity_type === 'socializing' && '👥 社交'}
-                    {activity.activity_type === 'gaming' && '🎮 游戏'}
-                    {activity.activity_type === 'walking' && '🚶‍♀️ 散步'}
-                    {activity.activity_type === 'cooking' && '👨‍🍳 烹饪'}
-                    {activity.activity_type === 'rest' && '😴 休息'}
-                    {activity.activity_type === 'creative' && '🎨 创作'}
-                    {activity.activity_type === 'learning' && '📖 学习'}
-                    {(!activity.activity_type || activity.activity_type === 'other') && '✨ 其他'}
+                    {activity.activity_type === 'exercise' && `🏃‍♂️ ${t.activity.typeExercise}`}
+                    {activity.activity_type === 'meditation' && `🧘‍♀️ ${t.activity.typeMeditation ?? 'Meditation'}`}
+                    {activity.activity_type === 'reading' && `📚 ${t.activity.typeReading}`}
+                    {activity.activity_type === 'music' && `🎵 ${t.activity.typeMusic ?? 'Music'}`}
+                    {activity.activity_type === 'socializing' && `👥 ${t.activity.typeSocial}`}
+                    {activity.activity_type === 'gaming' && `🎮 ${t.activity.typeGaming ?? 'Gaming'}`}
+                    {activity.activity_type === 'walking' && `🚶‍♀️ ${t.activity.typeWalking ?? 'Walking'}`}
+                    {activity.activity_type === 'cooking' && `👨‍🍳 ${t.activity.typeCooking ?? 'Cooking'}`}
+                    {activity.activity_type === 'rest' && `😴 ${t.activity.typeRest ?? 'Rest'}`}
+                    {activity.activity_type === 'creative' && `🎨 ${t.activity.typeCreative ?? 'Creative'}`}
+                    {activity.activity_type === 'learning' && `📖 ${t.activity.typeLearning ?? 'Learning'}`}
+                    {(!activity.activity_type || activity.activity_type === 'other') && `✨ ${t.activity.typeOther}`}
                   </span>
                   {category && (
                     <>
@@ -278,13 +280,13 @@ export default function ActivityFocusView() {
             </div>
             <div className="flex items-center gap-2">
               {isSaving && (
-                <div className="text-sm text-gray-500">保存中...</div>
+                <div className="text-sm text-gray-500">{t.ui.saving}</div>
               )}
               <button
                 onClick={() => router.push(`/?view=activities`)}
                 className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
-                编辑
+                {t.common.edit}
               </button>
             </div>
           </div>
@@ -298,7 +300,7 @@ export default function ActivityFocusView() {
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Timer className="w-5 h-5" />
-              活动计时
+              {t.activity.activityTime}
             </h3>
             
             <div className="text-center">
@@ -313,7 +315,7 @@ export default function ActivityFocusView() {
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                   >
                     <Play className="w-4 h-4" />
-                    开始计时
+                    {t.activity.startTimer}
                   </button>
                 ) : (
                   <button
@@ -321,7 +323,7 @@ export default function ActivityFocusView() {
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                   >
                     <Square className="w-4 h-4" />
-                    结束计时
+                    {t.activity.stopTimer}
                   </button>
                 )}
               </div>
@@ -330,76 +332,76 @@ export default function ActivityFocusView() {
 
           {/* Mood & Energy Tracking */}
           <div className="bg-white rounded-xl p-6 shadow-sm space-y-6">
-            <h3 className="text-lg font-semibold">心情与能量</h3>
+            <h3 className="text-lg font-semibold">{t.activity.moodBefore} & {t.activity.energyBefore}</h3>
             
             <RatingScale
               value={moodBefore}
               onChange={setMoodBefore}
-              label="开始前心情"
+              label={t.activity.moodBefore}
               icon={<Smile className="w-4 h-4" />}
             />
             
             <RatingScale
               value={energyBefore}
               onChange={setEnergyBefore}
-              label="开始前能量"
+              label={t.activity.energyBefore}
               icon={<Star className="w-4 h-4" />}
             />
             
             <RatingScale
               value={moodAfter}
               onChange={setMoodAfter}
-              label="结束后心情"
+              label={t.activity.moodAfter}
               icon={<Heart className="w-4 h-4" />}
             />
             
             <RatingScale
               value={energyAfter}
               onChange={setEnergyAfter}
-              label="结束后能量"
+              label={t.activity.energyAfter}
               icon={<Star className="w-4 h-4" />}
             />
             
             <RatingScale
               value={satisfaction}
               onChange={setSatisfaction}
-              label="满意度"
-              icon={<Heart className="w-4 h-4" />}
-            />
-          </div>
+              label={t.activity.satisfactionLevel}
+            icon={<Heart className="w-4 h-4" />}
+          />
+        </div>
         </div>
 
         {/* Right: Journal */}
         <div className="lg:col-span-2 space-y-6">
           {/* Notes */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">活动记录</h3>
+            <h3 className="text-lg font-semibold mb-4">{t.activity.notes}</h3>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="记录活动过程、感受、收获..."
+              placeholder={t.activity.notesPlaceholder}
               className="w-full h-40 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           {/* Insights */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">心得体会</h3>
+            <h3 className="text-lg font-semibold mb-4">{t.activity.insights}</h3>
             <textarea
               value={insights}
               onChange={(e) => setInsights(e.target.value)}
-              placeholder="这次活动让你学到了什么？有什么新的认识？"
+              placeholder={t.activity.insightsPlaceholder}
               className="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           {/* Gratitude */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">感恩记录</h3>
+            <h3 className="text-lg font-semibold mb-4">{t.activity.gratitude}</h3>
             <textarea
               value={gratitude}
               onChange={(e) => setGratitude(e.target.value)}
-              placeholder="感恩这次活动带来的美好时光..."
+              placeholder={t.activity.gratitudePlaceholder}
               className="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

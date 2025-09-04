@@ -88,13 +88,13 @@ export function useTaskActions({ t }: UseTaskActionsProps) {
 
   // Delete task
   const handleDeleteTask = useCallback(async (taskId: string) => {
-    if (!confirm(t.messages?.confirmDelete || '确定要删除这个任务吗？')) return
+    if (!confirm(t.messages?.confirmDelete || 'Are you sure you want to delete this task?')) return
 
     try {
       await deleteTask(taskId)
     } catch (error) {
       console.error('Failed to delete task:', error)
-      alert(t.messages?.taskDeleteFailed || '删除任务失败')
+      alert(t.messages?.taskDeleteFailed || 'Failed to delete task')
     }
   }, [deleteTask, t])
 

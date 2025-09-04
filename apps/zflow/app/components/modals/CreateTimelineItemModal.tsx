@@ -103,7 +103,7 @@ export default function CreateTimelineItemModal({
       onActivityCreated()
     } catch (error) {
       console.error('Failed to create activity:', error)
-      alert('Failed to create activity. Please try again.')
+      alert(t.messages?.activityCreateFailed || 'Failed to create activity, please try again')
     } finally {
       setLoading(false)
     }
@@ -125,8 +125,8 @@ export default function CreateTimelineItemModal({
               <Clock className="w-4 h-4 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Add Timeline Item</h3>
-              <p className="text-sm text-gray-500">Create a new activity with time tracking</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t.activity?.createActivity || 'Create Activity'}</h3>
+              <p className="text-sm text-gray-500">{t.activity?.activityTime || 'Activity Time'}</p>
             </div>
           </div>
           <button
@@ -143,7 +143,7 @@ export default function CreateTimelineItemModal({
             {/* Title */}
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                Title *
+                {t.activity?.title || 'Title'} *
               </label>
               <input
                 id="title"
@@ -151,7 +151,7 @@ export default function CreateTimelineItemModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="What did you do?"
+                placeholder={t.activity?.activityTitle || 'Activity title...'}
                 required
               />
             </div>
@@ -159,7 +159,7 @@ export default function CreateTimelineItemModal({
             {/* Description */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                Description
+                {t.activity?.description || 'Description'}
               </label>
               <textarea
                 id="description"
@@ -167,7 +167,7 @@ export default function CreateTimelineItemModal({
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="Describe your activity..."
+                placeholder={t.activity?.activityDescription || 'Describe your activity...'}
               />
             </div>
 
@@ -175,7 +175,7 @@ export default function CreateTimelineItemModal({
             {categories.length > 0 && (
               <div>
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
+                  {t.task?.category || 'Category'}
                 </label>
                 <select
                   id="category"
@@ -183,7 +183,7 @@ export default function CreateTimelineItemModal({
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
-                  <option value="">No category</option>
+                  <option value="">{t.ui?.noCategory || 'No Category'}</option>
                   {categories.map(category => (
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
@@ -194,13 +194,13 @@ export default function CreateTimelineItemModal({
             {/* Time Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time Range *
+                {t.ui?.timeRange || 'Time Range'} *
               </label>
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="startTime" className="block text-xs font-medium text-gray-600 mb-1">
-                    Start
+                    {t.ui?.startTime || 'Start time'}
                   </label>
                   <input
                     id="startTime"
@@ -214,7 +214,7 @@ export default function CreateTimelineItemModal({
 
                 <div>
                   <label htmlFor="endTime" className="block text-xs font-medium text-gray-600 mb-1">
-                    End
+                    {t.ui?.endTime || 'End time'}
                   </label>
                   <input
                     id="endTime"
@@ -236,7 +236,7 @@ export default function CreateTimelineItemModal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
             >
-              Cancel
+              {t.common?.cancel || 'Cancel'}
             </button>
             <button
               type="submit"
@@ -246,12 +246,12 @@ export default function CreateTimelineItemModal({
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating...
+                  {t.ui?.creating || 'Creating...'}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Create
+                  {t.common?.create || 'Create'}
                 </>
               )}
             </button>

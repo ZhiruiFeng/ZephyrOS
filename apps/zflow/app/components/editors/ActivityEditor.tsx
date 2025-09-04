@@ -2,21 +2,22 @@
 
 import React, { useState, useEffect } from 'react'
 import { X, Save } from 'lucide-react'
+import { useTranslation } from '../../../contexts/LanguageContext'
 
 // Activity types with icons and labels
 const ACTIVITY_TYPES = [
-  { value: 'exercise', label: '运动', icon: '🏃‍♂️' },
-  { value: 'meditation', label: '冥想', icon: '🧘‍♀️' },
-  { value: 'reading', label: '阅读', icon: '📚' },
-  { value: 'music', label: '音乐', icon: '🎵' },
-  { value: 'socializing', label: '社交', icon: '👥' },
-  { value: 'gaming', label: '游戏', icon: '🎮' },
-  { value: 'walking', label: '散步', icon: '🚶‍♀️' },
-  { value: 'cooking', label: '烹饪', icon: '👨‍🍳' },
-  { value: 'rest', label: '休息', icon: '😴' },
-  { value: 'creative', label: '创作', icon: '🎨' },
-  { value: 'learning', label: '学习', icon: '📖' },
-  { value: 'other', label: '其他', icon: '✨' },
+  { value: 'exercise', labelKey: 'typeExercise', icon: '🏃‍♂️' },
+  { value: 'meditation', labelKey: 'typeMeditation', icon: '🧘‍♀️' },
+  { value: 'reading', labelKey: 'typeReading', icon: '📚' },
+  { value: 'music', labelKey: 'typeMusic', icon: '🎵' },
+  { value: 'socializing', labelKey: 'typeSocial', icon: '👥' },
+  { value: 'gaming', labelKey: 'typeGaming', icon: '🎮' },
+  { value: 'walking', labelKey: 'typeWalking', icon: '🚶‍♀️' },
+  { value: 'cooking', labelKey: 'typeCooking', icon: '👨‍🍳' },
+  { value: 'rest', labelKey: 'typeRest', icon: '😴' },
+  { value: 'creative', labelKey: 'typeCreative', icon: '🎨' },
+  { value: 'learning', labelKey: 'typeLearning', icon: '📖' },
+  { value: 'other', labelKey: 'typeOther', icon: '✨' },
 ]
 
 interface ActivityEditorProps {
@@ -34,6 +35,7 @@ export default function ActivityEditor({
   categories = [],
   onSave
 }: ActivityEditorProps) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -106,7 +108,7 @@ export default function ActivityEditor({
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 shrink-0">
-          <h2 className="text-xl font-semibold text-gray-900">编辑活动</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t.activity.editActivity}</h2>
           <button
             onClick={onClose}
             disabled={isSaving}
@@ -121,13 +123,13 @@ export default function ActivityEditor({
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              标题 *
+              {t.activity.title} *
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="活动名称"
+              placeholder={t.activity.activityTitle}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
@@ -136,12 +138,12 @@ export default function ActivityEditor({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              描述
+              {t.activity.description}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="描述一下这个活动..."
+              placeholder={t.activity.activityDescription}
               rows={3}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
@@ -150,7 +152,7 @@ export default function ActivityEditor({
           {/* Activity Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              活动类型
+              {t.activity.activityType}
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {ACTIVITY_TYPES.map((type) => (
@@ -165,7 +167,7 @@ export default function ActivityEditor({
                   }`}
                 >
                   <div className="text-xl mb-1">{type.icon}</div>
-                  <div className="text-xs font-medium">{type.label}</div>
+                  <div className="text-xs font-medium">{(t.activity as any)[type.labelKey] ?? type.labelKey}</div>
                 </button>
               ))}
             </div>
@@ -176,14 +178,14 @@ export default function ActivityEditor({
             {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                分类
+                {t.task.category}
               </label>
               <select
                 value={formData.category_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">无分类</option>
+                <option value="">{t.ui.noCategory}</option>
                 {categories.map((cat: any) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -195,43 +197,43 @@ export default function ActivityEditor({
             {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                状态
+                {t.activity.status}
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="active">进行中</option>
-                <option value="completed">已完成</option>
-                <option value="cancelled">已取消</option>
+                <option value="active">{t.task.statusInProgress}</option>
+                <option value="completed">{t.task.statusCompleted}</option>
+                <option value="cancelled">{t.task.statusCancelled}</option>
               </select>
             </div>
           </div>
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              地点
-            </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t.activity.location}
+              </label>
             <input
               type="text"
               value={formData.location}
               onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-              placeholder="活动地点"
+              placeholder={t.activity.locationPlaceholder}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              备注
-            </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t.activity.notes}
+              </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="活动备注或心得..."
+              placeholder={t.activity.notesPlaceholder}
               rows={4}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
@@ -242,7 +244,7 @@ export default function ActivityEditor({
         <div className="shrink-0 bg-white border-t border-gray-200 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-gray-500">
-              Ctrl+Enter 保存, Esc 取消
+              Ctrl+Enter {t.common.save}, Esc {t.common.cancel}
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -251,7 +253,7 @@ export default function ActivityEditor({
                 disabled={isSaving}
                 className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors disabled:opacity-50"
               >
-                取消
+                {t.common.cancel}
               </button>
               <button
                 type="submit"
@@ -261,7 +263,7 @@ export default function ActivityEditor({
                 className="px-5 py-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                {isSaving ? '保存中...' : '保存'}
+                {isSaving ? (t.ui?.saving ?? 'Saving...') : t.common.save}
               </button>
             </div>
           </div>

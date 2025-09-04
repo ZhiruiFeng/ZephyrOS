@@ -565,7 +565,9 @@ export default function KanbanView() {
                                       } else {
                                         timer.start(task.id, { autoSwitch: true })
                                       }
-                                    }
+                                    },
+                                    undefined,
+                                    { start: t.activity?.startTimer || 'Start Timer', stop: t.activity?.stopTimer || 'Stop Timer' }
                                   )}
                                   {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
                                     <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
@@ -752,7 +754,9 @@ export default function KanbanView() {
                                 } else {
                                   timer.start(task.id, { autoSwitch: true })
                                 }
-                              }
+                              },
+                              undefined,
+                              { start: t.activity?.startTimer || 'Start Timer', stop: t.activity?.stopTimer || 'Stop Timer' }
                             )}
                             {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
                               <span className={`${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''} inline-flex items-center gap-1`}>
@@ -824,5 +828,3 @@ export default function KanbanView() {
     </>
   )
 }
-
-

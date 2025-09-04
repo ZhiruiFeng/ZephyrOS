@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../../../contexts/LanguageContext';
 import { Category } from '../../types/task';
 
 interface CategorySelectorProps {
@@ -15,9 +16,10 @@ export default function CategorySelector({
   value,
   onChange,
   categories,
-  placeholder = '选择分类...',
+  placeholder,
   className = ''
 }: CategorySelectorProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -54,7 +56,7 @@ export default function CategorySelector({
               <span className="text-gray-900">{selectedCategory.name}</span>
             </>
           ) : (
-            <span className="text-gray-500">{placeholder}</span>
+            <span className="text-gray-500">{placeholder || t.task?.selectCategory || 'Select category...'}</span>
           )}
         </div>
         <svg
@@ -72,7 +74,7 @@ export default function CategorySelector({
           <div className="p-2">
             <input
               type="text"
-              placeholder="搜索分类..."
+              placeholder={t.ui?.searchCategories ?? 'Search categories...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -101,7 +103,7 @@ export default function CategorySelector({
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-gray-500">没有找到分类</div>
+              <div className="px-3 py-2 text-sm text-gray-500">{t.ui?.noCategoriesFound ?? 'No categories found'}</div>
             )}
           </div>
           
@@ -111,7 +113,7 @@ export default function CategorySelector({
                 onClick={handleClear}
                 className="w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
               >
-                清除选择
+                {t.ui?.clearSelection ?? 'Clear selection'}
               </button>
             </div>
           )}

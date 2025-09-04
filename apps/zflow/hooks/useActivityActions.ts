@@ -22,7 +22,7 @@ export function useActivityActions({ t }: UseActivityActionsProps) {
 
   // Delete activity with confirmation
   const handleDeleteActivity = useCallback(async (activityId: string) => {
-    if (confirm(t.activity?.confirmDelete || '确定要删除这个活动吗？')) {
+    if (confirm(t.activity?.confirmDelete || 'Are you sure you want to delete this activity?')) {
       try {
         await deleteActivity(activityId)
       } catch (error) {

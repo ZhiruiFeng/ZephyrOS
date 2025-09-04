@@ -55,7 +55,7 @@ export default function TaskEditor({
     if (!task) return
 
     if (!form.title.trim()) {
-      alert('Task title cannot be empty')
+      alert(t.messages?.titleRequired ?? 'Title is required')
       return
     }
 
@@ -85,7 +85,7 @@ export default function TaskEditor({
       onClose()
     } catch (error) {
       console.error('Failed to save task:', error)
-      alert('Save failed, please try again')
+      alert(t.messages?.taskUpdateFailed ?? 'Save failed, please try again')
     }
   }
 
