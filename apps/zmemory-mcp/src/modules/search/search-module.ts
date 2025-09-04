@@ -19,36 +19,29 @@ export class SearchModule {
 
     const searchParams = new URLSearchParams();
     
-    if (params.type) searchParams.set('type', params.type);
-    if (params.limit) searchParams.set('limit', params.limit.toString());
-    if (params.offset) searchParams.set('offset', params.offset.toString());
+    // Enhanced parameters that match ZMemory API
+    if (params.memory_type) searchParams.set('memory_type', params.memory_type);
+    if (params.status) searchParams.set('status', params.status);
+    if (params.is_highlight !== undefined) searchParams.set('is_highlight', params.is_highlight.toString());
+    if (params.search) searchParams.set('search', params.search);
+    if (params.tags) searchParams.set('tags', params.tags);
+    if (params.place_name) searchParams.set('place_name', params.place_name);
+    if (params.min_emotion_valence !== undefined) searchParams.set('min_emotion_valence', params.min_emotion_valence.toString());
+    if (params.max_emotion_valence !== undefined) searchParams.set('max_emotion_valence', params.max_emotion_valence.toString());
+    if (params.min_salience !== undefined) searchParams.set('min_salience', params.min_salience.toString());
+    if (params.captured_from) searchParams.set('captured_from', params.captured_from);
+    if (params.captured_to) searchParams.set('captured_to', params.captured_to);
+    if (params.near_lat !== undefined) searchParams.set('near_lat', params.near_lat.toString());
+    if (params.near_lng !== undefined) searchParams.set('near_lng', params.near_lng.toString());
+    if (params.distance_km !== undefined) searchParams.set('distance_km', params.distance_km.toString());
+    if (params.category_id) searchParams.set('category_id', params.category_id);
+    if (params.sort_by) searchParams.set('sort_by', params.sort_by);
+    if (params.sort_order) searchParams.set('sort_order', params.sort_order);
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
     
     const response = await this.client.get(`/api/memories?${searchParams.toString()}`);
-    let memories: Memory[] = response.data;
-
-    if (params.status || params.priority || params.category || params.tags || params.keyword) {
-      memories = memories.filter(memory => {
-        if (params.status && memory.content?.status !== params.status) return false;
-        if (params.priority && memory.content?.priority !== params.priority) return false;
-        if (params.category && memory.content?.category !== params.category) return false;
-        
-        if (params.tags && params.tags.length > 0) {
-          const memoryTags = memory.tags || [];
-          if (!params.tags.some(tag => memoryTags.includes(tag))) return false;
-        }
-        
-        if (params.keyword) {
-          const keyword = params.keyword.toLowerCase();
-          const title = (memory.content?.title || '').toLowerCase();
-          const description = (memory.content?.description || '').toLowerCase();
-          if (!title.includes(keyword) && !description.includes(keyword)) return false;
-        }
-        
-        return true;
-      });
-    }
-
-    return memories;
+    return response.data || [];
   }
 
   private isAuthenticated(): boolean {

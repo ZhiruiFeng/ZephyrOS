@@ -6,16 +6,52 @@
 
 import { z } from 'zod';
 
-// 基础记忆类型定义
+// 基础记忆类型定义 - 匹配ZMemory API返回的记忆对象
 export const MemorySchema = z.object({
   id: z.string(),
-  type: z.string(),
-  content: z.any(),
+  type: z.string().optional(), // 兼容性字段
+  
+  // 核心内容字段
+  note: z.string().optional(),
+  title: z.string().optional(),
+  title_override: z.string().optional(),
+  description: z.string().optional(),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional(),
+  
+  // 情感和能量字段
+  emotion_valence: z.number().optional(),
+  emotion_arousal: z.number().optional(),
+  energy_delta: z.number().optional(),
+  
+  // 位置字段
+  place_name: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  
+  // 重要性和状态字段
+  is_highlight: z.boolean().optional(),
+  salience_score: z.number().optional(),
+  status: z.enum(['active', 'archived', 'deleted']).optional(),
+  
+  // 时间字段
+  captured_at: z.string().optional(),
+  happened_range: z.object({
+    start: z.string(),
+    end: z.string().optional()
+  }).optional(),
+  
+  // 组织字段
+  category_id: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  
+  // 元数据和系统字段
   metadata: z.record(z.any()).optional(),
   created_at: z.string(),
   updated_at: z.string(),
   user_id: z.string().optional(),
+  
+  // 兼容性字段
+  content: z.any().optional(),
 });
 
 export type Memory = z.infer<typeof MemorySchema>;
@@ -35,34 +71,61 @@ export interface TaskMemory extends Memory {
 
 // MCP工具参数类型
 export const AddMemoryParamsSchema = z.object({
-  type: z.string().describe('记忆类型，如 task, note, bookmark 等'),
-  content: z.object({
-    title: z.string().describe('标题'),
-    description: z.string().optional().describe('详细描述'),
-    status: z.enum(['pending', 'in_progress', 'completed', 'on_hold', 'cancelled']).optional().describe('状态'),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('优先级'),
-    category: z.string().optional().describe('分类'),
-  }).passthrough().describe('记忆内容'),
+  note: z.string().min(1).describe('记忆的主要内容'),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).default('note').describe('记忆类型'),
+  title: z.string().optional().describe('记忆标题（可选，用于覆盖自动生成的标题）'),
+  emotion_valence: z.number().int().min(-5).max(5).optional().describe('情感效价（-5到5，负值表示消极，正值表示积极）'),
+  emotion_arousal: z.number().int().min(-5).max(5).optional().describe('情感唤醒度（-5到5，负值表示平静，正值表示兴奋）'),
+  energy_delta: z.number().int().min(-5).max(5).optional().describe('能量变化（-5到5，记忆对能量水平的影响）'),
+  place_name: z.string().optional().describe('地点名称'),
+  latitude: z.number().optional().describe('地理位置纬度'),
+  longitude: z.number().optional().describe('地理位置经度'),
+  is_highlight: z.boolean().default(false).describe('是否为重要记忆'),
+  salience_score: z.number().min(0).max(1).optional().describe('重要性评分（0.0-1.0）'),
+  category_id: z.string().optional().describe('分类ID'),
   tags: z.array(z.string()).optional().describe('标签列表'),
-  metadata: z.record(z.any()).optional().describe('额外元数据'),
+  happened_range: z.object({
+    start: z.string().datetime().describe('事件开始时间'),
+    end: z.string().datetime().optional().describe('事件结束时间')
+  }).optional().describe('事件发生的时间范围'),
+  captured_at: z.string().datetime().optional().describe('记录时间（默认为当前时间）'),
 });
 
 export const SearchMemoriesParamsSchema = z.object({
-  type: z.string().optional().describe('按类型筛选'),
-  status: z.string().optional().describe('按状态筛选'),
-  priority: z.string().optional().describe('按优先级筛选'),
-  category: z.string().optional().describe('按分类筛选'),
-  tags: z.array(z.string()).optional().describe('按标签筛选'),
-  keyword: z.string().optional().describe('关键词搜索'),
-  limit: z.number().optional().describe('返回数量限制'),
-  offset: z.number().optional().describe('分页偏移'),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional().describe('按记忆类型筛选'),
+  status: z.enum(['active', 'archived', 'deleted']).optional().describe('按状态筛选'),
+  is_highlight: z.boolean().optional().describe('只显示重要记忆'),
+  search: z.string().optional().describe('全文搜索记忆内容'),
+  tags: z.string().optional().describe('按标签筛选（逗号分隔）'),
+  place_name: z.string().optional().describe('按地点名称筛选'),
+  min_emotion_valence: z.number().int().min(-5).max(5).optional().describe('最低情感效价'),
+  max_emotion_valence: z.number().int().min(-5).max(5).optional().describe('最高情感效价'),
+  min_salience: z.number().min(0).max(1).optional().describe('最低重要性评分'),
+  captured_from: z.string().datetime().optional().describe('记录时间起始范围'),
+  captured_to: z.string().datetime().optional().describe('记录时间结束范围'),
+  near_lat: z.number().optional().describe('搜索位置纬度（配合near_lng和distance_km使用）'),
+  near_lng: z.number().optional().describe('搜索位置经度'),
+  distance_km: z.number().optional().describe('搜索半径（公里）'),
+  category_id: z.string().optional().describe('按分类ID筛选'),
+  sort_by: z.enum(['captured_at', 'happened_at', 'salience_score', 'emotion_valence', 'updated_at']).default('captured_at').describe('排序字段'),
+  sort_order: z.enum(['asc', 'desc']).default('desc').describe('排序方向'),
+  limit: z.number().min(1).max(100).default(20).describe('返回数量限制'),
+  offset: z.number().min(0).default(0).describe('分页偏移'),
 }).default({});
 
 export const UpdateMemoryParamsSchema = z.object({
   id: z.string().describe('记忆ID'),
-  content: z.any().optional().describe('要更新的内容'),
-  tags: z.array(z.string()).optional().describe('要更新的标签'),
-  metadata: z.record(z.any()).optional().describe('要更新的元数据'),
+  note: z.string().optional().describe('记忆内容'),
+  title: z.string().optional().describe('记忆标题'),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional().describe('记忆类型'),
+  emotion_valence: z.number().int().min(-5).max(5).optional().describe('情感效价'),
+  emotion_arousal: z.number().int().min(-5).max(5).optional().describe('情感唤醒度'),
+  energy_delta: z.number().int().min(-5).max(5).optional().describe('能量变化'),
+  place_name: z.string().optional().describe('地点名称'),
+  is_highlight: z.boolean().optional().describe('是否为重要记忆'),
+  salience_score: z.number().min(0).max(1).optional().describe('重要性评分'),
+  tags: z.array(z.string()).optional().describe('标签列表'),
+  category_id: z.string().optional().describe('分类ID'),
 });
 
 export const GetMemoryParamsSchema = z.object({
@@ -170,6 +233,114 @@ export const CreateCategoryParamsSchema = z.object({
   icon: z.string().optional().describe('分类图标'),
 });
 
+// 活动管理相关类型
+export const CreateActivityParamsSchema = z.object({
+  title: z.string().max(500).describe('活动标题'),
+  description: z.string().optional().describe('活动描述'),
+  activity_type: z.enum(['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other']).describe('活动类型'),
+  started_at: z.string().datetime().optional().describe('活动开始时间'),
+  ended_at: z.string().datetime().optional().describe('活动结束时间'),
+  duration_minutes: z.number().optional().describe('持续时间（分钟）'),
+  mood_before: z.number().int().min(1).max(10).optional().describe('活动前心情（1-10）'),
+  mood_after: z.number().int().min(1).max(10).optional().describe('活动后心情（1-10）'),
+  energy_before: z.number().int().min(1).max(10).optional().describe('活动前能量水平（1-10）'),
+  energy_after: z.number().int().min(1).max(10).optional().describe('活动后能量水平（1-10）'),
+  satisfaction_level: z.number().int().min(1).max(10).optional().describe('满意度（1-10）'),
+  intensity_level: z.enum(['low', 'moderate', 'high']).optional().describe('强度水平'),
+  location: z.string().optional().describe('地点'),
+  weather: z.string().optional().describe('天气情况'),
+  companions: z.array(z.string()).optional().describe('同伴列表'),
+  notes: z.string().optional().describe('活动备注'),
+  insights: z.string().optional().describe('活动感悟或收获'),
+  gratitude: z.string().optional().describe('感恩记录'),
+  status: z.enum(['active', 'completed', 'cancelled']).default('completed').describe('活动状态'),
+  tags: z.array(z.string()).optional().describe('标签列表'),
+  category_id: z.string().optional().describe('分类ID'),
+});
+
+export const SearchActivitiesParamsSchema = z.object({
+  activity_type: z.enum(['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other']).optional().describe('按活动类型筛选'),
+  status: z.enum(['active', 'completed', 'cancelled']).optional().describe('按活动状态筛选'),
+  intensity_level: z.enum(['low', 'moderate', 'high']).optional().describe('按强度水平筛选'),
+  min_satisfaction: z.number().int().min(1).max(10).optional().describe('最低满意度'),
+  min_mood_after: z.number().int().min(1).max(10).optional().describe('活动后最低心情'),
+  location: z.string().optional().describe('按地点筛选'),
+  from: z.string().datetime().optional().describe('活动开始时间晚于此时间'),
+  to: z.string().datetime().optional().describe('活动开始时间早于此时间'),
+  search: z.string().optional().describe('在标题、描述、备注中搜索关键词'),
+  tags: z.string().optional().describe('按标签筛选（逗号分隔）'),
+  category_id: z.string().optional().describe('按分类ID筛选'),
+  sort_by: z.enum(['started_at', 'satisfaction_level', 'mood_after', 'title', 'created_at']).default('started_at').describe('排序字段'),
+  sort_order: z.enum(['asc', 'desc']).default('desc').describe('排序方向'),
+  limit: z.number().min(1).max(100).default(20).describe('返回数量限制'),
+  offset: z.number().min(0).default(0).describe('分页偏移'),
+}).default({});
+
+export const GetActivityParamsSchema = z.object({
+  id: z.string().describe('活动ID'),
+});
+
+export const UpdateActivityParamsSchema = z.object({
+  id: z.string().describe('活动ID'),
+  title: z.string().optional().describe('活动标题'),
+  description: z.string().optional().describe('活动描述'),
+  activity_type: z.enum(['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other']).optional().describe('活动类型'),
+  ended_at: z.string().datetime().optional().describe('活动结束时间'),
+  mood_after: z.number().int().min(1).max(10).optional().describe('活动后心情'),
+  energy_after: z.number().int().min(1).max(10).optional().describe('活动后能量水平'),
+  satisfaction_level: z.number().int().min(1).max(10).optional().describe('满意度'),
+  intensity_level: z.enum(['low', 'moderate', 'high']).optional().describe('强度水平'),
+  notes: z.string().optional().describe('活动备注'),
+  insights: z.string().optional().describe('活动感悟'),
+  gratitude: z.string().optional().describe('感恩记录'),
+  status: z.enum(['active', 'completed', 'cancelled']).optional().describe('活动状态'),
+  tags: z.array(z.string()).optional().describe('标签列表'),
+});
+
+// 时间线系统相关类型
+export const GetTimelineItemsParamsSchema = z.object({
+  type: z.enum(['task', 'activity', 'routine', 'habit', 'memory']).optional().describe('按条目类型筛选'),
+  status: z.enum(['active', 'inactive', 'completed', 'cancelled', 'archived']).optional().describe('按状态筛选'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('按优先级筛选'),
+  category_id: z.string().optional().describe('按分类ID筛选'),
+  search: z.string().optional().describe('跨所有类型的全文搜索'),
+  tags: z.string().optional().describe('按标签筛选（逗号分隔）'),
+  is_highlight: z.boolean().optional().describe('只显示重要条目（适用于记忆）'),
+  memory_type: z.enum(['note', 'link', 'file', 'thought', 'quote', 'insight']).optional().describe('记忆类型筛选'),
+  render_on_timeline: z.boolean().optional().describe('是否在时间线上显示'),
+  sort_by: z.enum(['created_at', 'updated_at', 'title', 'priority', 'captured_at', 'salience_score']).default('created_at').describe('排序字段'),
+  sort_order: z.enum(['asc', 'desc']).default('desc').describe('排序方向'),
+  limit: z.number().min(1).max(100).default(50).describe('返回数量限制'),
+  offset: z.number().min(0).default(0).describe('分页偏移'),
+}).default({});
+
+export const CreateTimelineItemParamsSchema = z.object({
+  type: z.enum(['task', 'activity', 'routine', 'habit', 'memory']).describe('条目类型'),
+  title: z.string().min(1).max(500).describe('标题'),
+  description: z.string().optional().describe('描述'),
+  start_time: z.string().datetime().optional().describe('开始时间'),
+  end_time: z.string().datetime().optional().describe('结束时间'),
+  category_id: z.string().optional().describe('分类ID'),
+  tags: z.array(z.string()).default([]).describe('标签列表'),
+  status: z.enum(['active', 'inactive', 'completed', 'cancelled', 'archived']).default('active').describe('状态'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium').describe('优先级'),
+  metadata: z.record(z.any()).default({}).describe('额外元数据'),
+});
+
+export const GetTimelineInsightsParamsSchema = z.object({
+  date_range: z.enum(['today', 'week', 'month', 'quarter', 'year']).default('week').describe('分析时间范围'),
+  timezone: z.string().optional().describe('时区标识符'),
+}).default({});
+
+export const SearchAcrossTimelineParamsSchema = z.object({
+  query: z.string().describe('搜索查询（支持自然语言）'),
+  include_types: z.array(z.enum(['task', 'activity', 'routine', 'habit', 'memory'])).optional().describe('包含的条目类型'),
+  date_from: z.string().datetime().optional().describe('搜索起始日期'),
+  date_to: z.string().datetime().optional().describe('搜索结束日期'),
+  context_depth: z.number().int().min(1).max(5).default(2).describe('上下文深度（相关度搜索范围）'),
+  limit: z.number().min(1).max(100).default(20).describe('返回数量限制'),
+});
+
 // OAuth 认证相关类型
 export const AuthenticateParamsSchema = z.object({
   client_id: z.string().describe('OAuth客户端ID'),
@@ -206,6 +377,18 @@ export type StopTaskTimerParams = z.infer<typeof StopTaskTimerParamsSchema>;
 export type GetCategoriesParams = z.infer<typeof GetCategoriesParamsSchema>;
 export type CreateCategoryParams = z.infer<typeof CreateCategoryParamsSchema>;
 
+// 活动管理类型
+export type CreateActivityParams = z.infer<typeof CreateActivityParamsSchema>;
+export type SearchActivitiesParams = z.infer<typeof SearchActivitiesParamsSchema>;
+export type GetActivityParams = z.infer<typeof GetActivityParamsSchema>;
+export type UpdateActivityParams = z.infer<typeof UpdateActivityParamsSchema>;
+
+// 时间线系统类型
+export type GetTimelineItemsParams = z.infer<typeof GetTimelineItemsParamsSchema>;
+export type CreateTimelineItemParams = z.infer<typeof CreateTimelineItemParamsSchema>;
+export type GetTimelineInsightsParams = z.infer<typeof GetTimelineInsightsParamsSchema>;
+export type SearchAcrossTimelineParams = z.infer<typeof SearchAcrossTimelineParamsSchema>;
+
 // API响应类型
 export interface ApiResponse<T = any> {
   data?: T;
@@ -219,7 +402,20 @@ export interface MemoryStats {
   by_type: Record<string, number>;
   by_status: Record<string, number>;
   by_priority: Record<string, number>;
+  by_emotion?: Record<string, number>;
   recent_count: number;
+  highlights?: number;
+}
+
+// 活动统计类型
+export interface ActivityStats {
+  total: number;
+  by_type: Record<string, number>;
+  by_status: Record<string, number>;
+  by_intensity?: Record<string, number>;
+  recent_count: number;
+  avg_satisfaction?: number;
+  avg_mood_improvement?: number;
 }
 
 // 任务统计类型

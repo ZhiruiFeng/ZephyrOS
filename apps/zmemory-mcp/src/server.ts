@@ -13,11 +13,11 @@ import {
 import { ZMemoryClient } from './zmemory-client.js';
 import {
   ZMemoryConfig,
-  // AddMemoryParamsSchema, // DISABLED - Memory API not available
-  // SearchMemoriesParamsSchema, // DISABLED - Memory API not available
-  // UpdateMemoryParamsSchema, // DISABLED - Memory API not available
-  // GetMemoryParamsSchema, // DISABLED - Memory API not available
-  // DeleteMemoryParamsSchema, // DISABLED - Memory API not available
+  AddMemoryParamsSchema,
+  SearchMemoriesParamsSchema,
+  UpdateMemoryParamsSchema,
+  GetMemoryParamsSchema,
+  DeleteMemoryParamsSchema,
   AuthenticateParamsSchema,
   RefreshTokenParamsSchema,
   CreateTaskParamsSchema,
@@ -29,6 +29,14 @@ import {
   StopTaskTimerParamsSchema,
   GetCategoriesParamsSchema,
   CreateCategoryParamsSchema,
+  CreateActivityParamsSchema,
+  SearchActivitiesParamsSchema,
+  GetActivityParamsSchema,
+  UpdateActivityParamsSchema,
+  GetTimelineItemsParamsSchema,
+  CreateTimelineItemParamsSchema,
+  GetTimelineInsightsParamsSchema,
+  SearchAcrossTimelineParamsSchema,
   ZMemoryError,
   OAuthError,
 } from './types.js';
@@ -85,17 +93,41 @@ export class ZMemoryMCPServer {
           case 'clear_auth':
             return await this.handleClearAuth(args);
           
-          // 记忆管理工具 - DISABLED (API not available)
-          // case 'add_memory':
-          //   return await this.handleAddMemory(args);
-          // case 'search_memories':
-          //   return await this.handleSearchMemories(args);
-          // case 'get_memory':
-          //   return await this.handleGetMemory(args);
-          // case 'update_memory':
-          //   return await this.handleUpdateMemory(args);
-          // case 'get_memory_stats':
-          //   return await this.handleGetMemoryStats(args);
+          // Memory management tools
+          case 'add_memory':
+            return await this.handleAddMemory(args);
+          case 'search_memories':
+            return await this.handleSearchMemories(args);
+          case 'get_memory':
+            return await this.handleGetMemory(args);
+          case 'update_memory':
+            return await this.handleUpdateMemory(args);
+          case 'delete_memory':
+            return await this.handleDeleteMemory(args);
+          case 'get_memory_stats':
+            return await this.handleGetMemoryStats(args);
+          
+          // Activity tracking tools
+          case 'create_activity':
+            return await this.handleCreateActivity(args);
+          case 'search_activities':
+            return await this.handleSearchActivities(args);
+          case 'get_activity':
+            return await this.handleGetActivity(args);
+          case 'update_activity':
+            return await this.handleUpdateActivity(args);
+          case 'get_activity_stats':
+            return await this.handleGetActivityStats(args);
+          
+          // Timeline system tools
+          case 'get_timeline_items':
+            return await this.handleGetTimelineItems(args);
+          case 'create_timeline_item':
+            return await this.handleCreateTimelineItem(args);
+          case 'get_timeline_insights':
+            return await this.handleGetTimelineInsights(args);
+          case 'search_across_timeline':
+            return await this.handleSearchAcrossTimeline(args);
           
           // Task management tools
           case 'create_task':
@@ -244,47 +276,122 @@ export class ZMemoryMCPServer {
         },
       },
       
-      // 记忆管理工具 - DISABLED (API not available)
-      /*
+      // Memory Management Tools
       {
         name: 'add_memory',
-        description: '添加新的记忆或任务到ZMemory系统',
+        description: '创建新的记忆，支持多种记忆类型和丰富的元数据，包括情感、位置、重要性等信息',
         inputSchema: {
           type: 'object',
           properties: {
-            type: { type: 'string', description: '记忆类型，如 task, note, bookmark 等' },
-            content: {
+            note: { type: 'string', description: '记忆的主要内容', minLength: 1 },
+            memory_type: { 
+              type: 'string', 
+              enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
+              default: 'note',
+              description: '记忆类型' 
+            },
+            title: { type: 'string', description: '记忆标题（可选，用于覆盖自动生成的标题）' },
+            emotion_valence: { 
+              type: 'integer', 
+              minimum: -5, 
+              maximum: 5, 
+              description: '情感效价（-5到5，负值表示消极，正值表示积极）' 
+            },
+            emotion_arousal: { 
+              type: 'integer', 
+              minimum: -5, 
+              maximum: 5, 
+              description: '情感唤醒度（-5到5，负值表示平静，正值表示兴奋）' 
+            },
+            energy_delta: { 
+              type: 'integer', 
+              minimum: -5, 
+              maximum: 5, 
+              description: '能量变化（-5到5，记忆对能量水平的影响）' 
+            },
+            place_name: { type: 'string', description: '地点名称' },
+            latitude: { type: 'number', description: '地理位置纬度' },
+            longitude: { type: 'number', description: '地理位置经度' },
+            is_highlight: { type: 'boolean', default: false, description: '是否为重要记忆' },
+            salience_score: { 
+              type: 'number', 
+              minimum: 0, 
+              maximum: 1, 
+              description: '重要性评分（0.0-1.0）' 
+            },
+            category_id: { type: 'string', description: '分类ID' },
+            tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+            happened_range: {
               type: 'object',
               properties: {
-                title: { type: 'string', description: '标题' },
-                description: { type: 'string', description: '详细描述' },
-                status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'], description: '状态' },
-                priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: '优先级' },
-                category: { type: 'string', description: '分类' },
+                start: { type: 'string', format: 'date-time', description: '事件开始时间' },
+                end: { type: 'string', format: 'date-time', description: '事件结束时间' }
               },
-              required: ['title'],
-              description: '记忆内容',
+              description: '事件发生的时间范围'
             },
-            tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
-            metadata: { type: 'object', description: '额外元数据' },
+            captured_at: { type: 'string', format: 'date-time', description: '记录时间（默认为当前时间）' }
           },
-          required: ['type', 'content'],
+          required: ['note'],
         },
       },
       {
         name: 'search_memories',
-        description: '搜索和筛选ZMemory中的记忆',
+        description: '搜索和筛选记忆，支持多种条件组合，包括类型、情感、位置、时间范围等高级筛选',
         inputSchema: {
           type: 'object',
           properties: {
-            type: { type: 'string', description: '按类型筛选' },
-            status: { type: 'string', description: '按状态筛选' },
-            priority: { type: 'string', description: '按优先级筛选' },
-            category: { type: 'string', description: '按分类筛选' },
-            tags: { type: 'array', items: { type: 'string' }, description: '按标签筛选' },
-            keyword: { type: 'string', description: '关键词搜索' },
-            limit: { type: 'number', description: '返回数量限制' },
-            offset: { type: 'number', description: '分页偏移' },
+            memory_type: { 
+              type: 'string', 
+              enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
+              description: '按记忆类型筛选' 
+            },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'archived', 'deleted'],
+              description: '按状态筛选' 
+            },
+            is_highlight: { type: 'boolean', description: '只显示重要记忆' },
+            search: { type: 'string', description: '全文搜索记忆内容' },
+            tags: { type: 'string', description: '按标签筛选（逗号分隔）' },
+            place_name: { type: 'string', description: '按地点名称筛选' },
+            min_emotion_valence: { 
+              type: 'integer', 
+              minimum: -5, 
+              maximum: 5, 
+              description: '最低情感效价' 
+            },
+            max_emotion_valence: { 
+              type: 'integer', 
+              minimum: -5, 
+              maximum: 5, 
+              description: '最高情感效价' 
+            },
+            min_salience: { 
+              type: 'number', 
+              minimum: 0, 
+              maximum: 1, 
+              description: '最低重要性评分' 
+            },
+            captured_from: { type: 'string', format: 'date-time', description: '记录时间起始范围' },
+            captured_to: { type: 'string', format: 'date-time', description: '记录时间结束范围' },
+            near_lat: { type: 'number', description: '搜索位置纬度（配合near_lng和distance_km使用）' },
+            near_lng: { type: 'number', description: '搜索位置经度' },
+            distance_km: { type: 'number', description: '搜索半径（公里）' },
+            category_id: { type: 'string', description: '按分类ID筛选' },
+            sort_by: { 
+              type: 'string', 
+              enum: ['captured_at', 'happened_at', 'salience_score', 'emotion_valence', 'updated_at'],
+              default: 'captured_at',
+              description: '排序字段' 
+            },
+            sort_order: { 
+              type: 'string', 
+              enum: ['asc', 'desc'],
+              default: 'desc',
+              description: '排序方向' 
+            },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: '返回数量限制' },
+            offset: { type: 'number', minimum: 0, default: 0, description: '分页偏移' },
           },
           required: [],
         },
@@ -302,28 +409,329 @@ export class ZMemoryMCPServer {
       },
       {
         name: 'update_memory',
-        description: '更新现有记忆的内容',
+        description: '更新现有记忆的内容，支持修改所有记忆属性包括情感、位置、重要性等',
         inputSchema: {
           type: 'object',
           properties: {
             id: { type: 'string', description: '记忆ID' },
-            content: { type: 'object', description: '要更新的内容' },
-            tags: { type: 'array', items: { type: 'string' }, description: '要更新的标签' },
-            metadata: { type: 'object', description: '要更新的元数据' },
+            note: { type: 'string', description: '记忆内容' },
+            title: { type: 'string', description: '记忆标题' },
+            memory_type: { 
+              type: 'string', 
+              enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
+              description: '记忆类型' 
+            },
+            emotion_valence: { type: 'integer', minimum: -5, maximum: 5, description: '情感效价' },
+            emotion_arousal: { type: 'integer', minimum: -5, maximum: 5, description: '情感唤醒度' },
+            energy_delta: { type: 'integer', minimum: -5, maximum: 5, description: '能量变化' },
+            place_name: { type: 'string', description: '地点名称' },
+            is_highlight: { type: 'boolean', description: '是否为重要记忆' },
+            salience_score: { type: 'number', minimum: 0, maximum: 1, description: '重要性评分' },
+            tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+            category_id: { type: 'string', description: '分类ID' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'delete_memory',
+        description: '删除指定的记忆',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '要删除的记忆ID' },
           },
           required: ['id'],
         },
       },
       {
         name: 'get_memory_stats',
-        description: '获取记忆统计信息，包括总数、类型分布、状态分布等',
+        description: '获取记忆统计信息，包括总数、类型分布、状态分布、情感分布等',
         inputSchema: {
           type: 'object',
           properties: {},
           required: [],
         },
       },
-      */
+
+      // Activity Tracking Tools
+      {
+        name: 'create_activity',
+        description: '记录一项活动，支持详细的心情、能量、满意度跟踪以及上下文信息',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '活动标题', maxLength: 500 },
+            description: { type: 'string', description: '活动描述' },
+            activity_type: { 
+              type: 'string', 
+              enum: ['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'],
+              description: '活动类型' 
+            },
+            started_at: { type: 'string', format: 'date-time', description: '活动开始时间' },
+            ended_at: { type: 'string', format: 'date-time', description: '活动结束时间' },
+            duration_minutes: { type: 'number', description: '持续时间（分钟）' },
+            mood_before: { type: 'integer', minimum: 1, maximum: 10, description: '活动前心情（1-10）' },
+            mood_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后心情（1-10）' },
+            energy_before: { type: 'integer', minimum: 1, maximum: 10, description: '活动前能量水平（1-10）' },
+            energy_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后能量水平（1-10）' },
+            satisfaction_level: { type: 'integer', minimum: 1, maximum: 10, description: '满意度（1-10）' },
+            intensity_level: { 
+              type: 'string', 
+              enum: ['low', 'moderate', 'high'],
+              description: '强度水平' 
+            },
+            location: { type: 'string', description: '地点' },
+            weather: { type: 'string', description: '天气情况' },
+            companions: { type: 'array', items: { type: 'string' }, description: '同伴列表' },
+            notes: { type: 'string', description: '活动备注' },
+            insights: { type: 'string', description: '活动感悟或收获' },
+            gratitude: { type: 'string', description: '感恩记录' },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'completed', 'cancelled'],
+              default: 'completed',
+              description: '活动状态' 
+            },
+            tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+            category_id: { type: 'string', description: '分类ID' },
+          },
+          required: ['title', 'activity_type'],
+        },
+      },
+      {
+        name: 'search_activities',
+        description: '搜索和筛选活动记录，支持按类型、状态、心情、满意度、时间等条件筛选',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            activity_type: { 
+              type: 'string', 
+              enum: ['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'],
+              description: '按活动类型筛选' 
+            },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'completed', 'cancelled'],
+              description: '按活动状态筛选' 
+            },
+            intensity_level: { 
+              type: 'string', 
+              enum: ['low', 'moderate', 'high'],
+              description: '按强度水平筛选' 
+            },
+            min_satisfaction: { 
+              type: 'integer', 
+              minimum: 1, 
+              maximum: 10, 
+              description: '最低满意度' 
+            },
+            min_mood_after: { 
+              type: 'integer', 
+              minimum: 1, 
+              maximum: 10, 
+              description: '活动后最低心情' 
+            },
+            location: { type: 'string', description: '按地点筛选' },
+            from: { type: 'string', format: 'date-time', description: '活动开始时间晚于此时间' },
+            to: { type: 'string', format: 'date-time', description: '活动开始时间早于此时间' },
+            search: { type: 'string', description: '在标题、描述、备注中搜索关键词' },
+            tags: { type: 'string', description: '按标签筛选（逗号分隔）' },
+            category_id: { type: 'string', description: '按分类ID筛选' },
+            sort_by: { 
+              type: 'string', 
+              enum: ['started_at', 'satisfaction_level', 'mood_after', 'title', 'created_at'],
+              default: 'started_at',
+              description: '排序字段' 
+            },
+            sort_order: { 
+              type: 'string', 
+              enum: ['asc', 'desc'],
+              default: 'desc',
+              description: '排序方向' 
+            },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: '返回数量限制' },
+            offset: { type: 'number', minimum: 0, default: 0, description: '分页偏移' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_activity',
+        description: '根据ID获取特定活动的详细信息',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '活动ID' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'update_activity',
+        description: '更新现有活动的信息',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: '活动ID' },
+            title: { type: 'string', description: '活动标题' },
+            description: { type: 'string', description: '活动描述' },
+            activity_type: { 
+              type: 'string', 
+              enum: ['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'],
+              description: '活动类型' 
+            },
+            ended_at: { type: 'string', format: 'date-time', description: '活动结束时间' },
+            mood_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后心情' },
+            energy_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后能量水平' },
+            satisfaction_level: { type: 'integer', minimum: 1, maximum: 10, description: '满意度' },
+            intensity_level: { type: 'string', enum: ['low', 'moderate', 'high'], description: '强度水平' },
+            notes: { type: 'string', description: '活动备注' },
+            insights: { type: 'string', description: '活动感悟' },
+            gratitude: { type: 'string', description: '感恩记录' },
+            status: { type: 'string', enum: ['active', 'completed', 'cancelled'], description: '活动状态' },
+            tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'get_activity_stats',
+        description: '获取活动统计信息，包括类型分布、心情能量趋势、满意度等数据',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+
+      // Timeline System Tools
+      {
+        name: 'get_timeline_items',
+        description: '获取统一时间线视图，包含任务、记忆、活动等所有类型的条目，支持高级筛选和排序',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            type: { 
+              type: 'string', 
+              enum: ['task', 'activity', 'routine', 'habit', 'memory'],
+              description: '按条目类型筛选' 
+            },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'inactive', 'completed', 'cancelled', 'archived'],
+              description: '按状态筛选' 
+            },
+            priority: { 
+              type: 'string', 
+              enum: ['low', 'medium', 'high', 'urgent'],
+              description: '按优先级筛选' 
+            },
+            category_id: { type: 'string', description: '按分类ID筛选' },
+            search: { type: 'string', description: '跨所有类型的全文搜索' },
+            tags: { type: 'string', description: '按标签筛选（逗号分隔）' },
+            is_highlight: { type: 'boolean', description: '只显示重要条目（适用于记忆）' },
+            memory_type: { 
+              type: 'string', 
+              enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
+              description: '记忆类型筛选' 
+            },
+            render_on_timeline: { type: 'boolean', description: '是否在时间线上显示' },
+            sort_by: { 
+              type: 'string', 
+              enum: ['created_at', 'updated_at', 'title', 'priority', 'captured_at', 'salience_score'],
+              default: 'created_at',
+              description: '排序字段' 
+            },
+            sort_order: { 
+              type: 'string', 
+              enum: ['asc', 'desc'],
+              default: 'desc',
+              description: '排序方向' 
+            },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 50, description: '返回数量限制' },
+            offset: { type: 'number', minimum: 0, default: 0, description: '分页偏移' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'create_timeline_item',
+        description: '创建新的时间线条目，支持创建任务、活动、习惯、记忆等各种类型',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            type: { 
+              type: 'string', 
+              enum: ['task', 'activity', 'routine', 'habit', 'memory'],
+              description: '条目类型' 
+            },
+            title: { type: 'string', minLength: 1, maxLength: 500, description: '标题' },
+            description: { type: 'string', description: '描述' },
+            start_time: { type: 'string', format: 'date-time', description: '开始时间' },
+            end_time: { type: 'string', format: 'date-time', description: '结束时间' },
+            category_id: { type: 'string', description: '分类ID' },
+            tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'inactive', 'completed', 'cancelled', 'archived'],
+              default: 'active',
+              description: '状态' 
+            },
+            priority: { 
+              type: 'string', 
+              enum: ['low', 'medium', 'high', 'urgent'],
+              default: 'medium',
+              description: '优先级' 
+            },
+            metadata: { type: 'object', description: '额外元数据' },
+          },
+          required: ['type', 'title'],
+        },
+      },
+      {
+        name: 'get_timeline_insights',
+        description: '获取时间线数据洞察，包括生产力趋势、活动模式、时间分配等智能分析',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            date_range: { 
+              type: 'string', 
+              enum: ['today', 'week', 'month', 'quarter', 'year'],
+              default: 'week',
+              description: '分析时间范围' 
+            },
+            timezone: { type: 'string', description: '时区标识符' },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'search_across_timeline',
+        description: '跨时间线条目的智能搜索，支持语义搜索和复杂查询条件组合',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '搜索查询（支持自然语言）' },
+            include_types: { 
+              type: 'array', 
+              items: { type: 'string', enum: ['task', 'activity', 'routine', 'habit', 'memory'] },
+              description: '包含的条目类型' 
+            },
+            date_from: { type: 'string', format: 'date-time', description: '搜索起始日期' },
+            date_to: { type: 'string', format: 'date-time', description: '搜索结束日期' },
+            context_depth: { 
+              type: 'integer', 
+              minimum: 1, 
+              maximum: 5, 
+              default: 2,
+              description: '上下文深度（相关度搜索范围）' 
+            },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: '返回数量限制' },
+          },
+          required: ['query'],
+        },
+      },
 
       // Task management tools
       {
@@ -688,8 +1096,7 @@ export class ZMemoryMCPServer {
     };
   }
 
-  // Memory management handlers - DISABLED (API not available)
-  /*
+  // Memory management handlers
   private async handleAddMemory(args: any) {
     const params = AddMemoryParamsSchema.parse(args);
     const memory = await this.zmemoryClient.addMemory(params);
@@ -698,11 +1105,17 @@ export class ZMemoryMCPServer {
       content: [
         {
           type: 'text',
-          text: `成功添加记忆: ${memory.content?.title || memory.id}`,
+          text: `成功添加记忆: ${memory.title || memory.note?.substring(0, 50) + '...' || memory.id}`,
         },
         {
           type: 'text',
-          text: `记忆详情:\nID: ${memory.id}\n类型: ${memory.type}\n创建时间: ${memory.created_at}`,
+          text: `记忆详情:
+ID: ${memory.id}
+类型: ${memory.memory_type}
+${memory.emotion_valence ? `情感效价: ${memory.emotion_valence}` : ''}
+${memory.place_name ? `地点: ${memory.place_name}` : ''}
+${memory.is_highlight ? '✨ 重要记忆' : ''}
+创建时间: ${memory.created_at}`,
         },
       ],
     };
@@ -724,11 +1137,13 @@ export class ZMemoryMCPServer {
     }
 
     const memoryList = memories
-      .map(memory => {
-        const title = memory.content?.title || `未命名${memory.type}`;
-        const status = memory.content?.status ? ` (${memory.content.status})` : '';
-        const priority = memory.content?.priority ? ` [${memory.content.priority}]` : '';
-        return `• ${title}${status}${priority} (ID: ${memory.id})`;
+      .map((memory: any) => {
+        const title = memory.title_override || memory.note?.substring(0, 60) + '...' || `记忆-${memory.id.substring(0, 8)}`;
+        const type = memory.memory_type ? ` [${memory.memory_type}]` : '';
+        const emotion = memory.emotion_valence ? ` (情感: ${memory.emotion_valence > 0 ? '+' : ''}${memory.emotion_valence})` : '';
+        const place = memory.place_name ? ` @${memory.place_name}` : '';
+        const highlight = memory.is_highlight ? ' ✨' : '';
+        return `• ${title}${type}${emotion}${place}${highlight} (ID: ${memory.id})`;
       })
       .join('\n');
 
@@ -746,22 +1161,28 @@ export class ZMemoryMCPServer {
     const params = GetMemoryParamsSchema.parse(args);
     const memory = await this.zmemoryClient.getMemory(params.id);
 
-    const content = JSON.stringify(memory.content, null, 2);
     const tags = memory.tags?.join(', ') || '无';
-
+    
     return {
       content: [
         {
           type: 'text',
           text: `记忆详情:
 ID: ${memory.id}
-类型: ${memory.type}
+类型: ${memory.memory_type}
+标题: ${memory.title_override || '（自动生成）'}
 标签: ${tags}
+${memory.emotion_valence ? `情感效价: ${memory.emotion_valence}` : ''}
+${memory.emotion_arousal ? `情感唤醒: ${memory.emotion_arousal}` : ''}
+${memory.energy_delta ? `能量影响: ${memory.energy_delta}` : ''}
+${memory.place_name ? `地点: ${memory.place_name}` : ''}
+${memory.salience_score ? `重要性: ${(memory.salience_score * 100).toFixed(1)}%` : ''}
+${memory.is_highlight ? '✨ 重要记忆' : ''}
 创建时间: ${memory.created_at}
 更新时间: ${memory.updated_at}
 
 内容:
-${content}`,
+${memory.note}`,
         },
       ],
     };
@@ -775,7 +1196,7 @@ ${content}`,
       content: [
         {
           type: 'text',
-          text: `成功更新记忆: ${memory.content?.title || memory.id}`,
+          text: `成功更新记忆: ${memory.title_override || memory.note?.substring(0, 50) + '...' || memory.id}`,
         },
         {
           type: 'text',
@@ -785,20 +1206,34 @@ ${content}`,
     };
   }
 
+  private async handleDeleteMemory(args: any) {
+    const params = DeleteMemoryParamsSchema.parse(args);
+    await this.zmemoryClient.deleteMemory(params.id);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功删除记忆: ${params.id}`,
+        },
+      ],
+    };
+  }
+
   private async handleGetMemoryStats(args: any) {
     const stats = await this.zmemoryClient.getStats();
 
-    const typeStats = Object.entries(stats.by_type)
+    const typeStats = Object.entries(stats.by_type || {})
       .map(([type, count]) => `  ${type}: ${count}`)
       .join('\n');
 
-    const statusStats = Object.entries(stats.by_status)
+    const statusStats = Object.entries(stats.by_status || {})
       .map(([status, count]) => `  ${status}: ${count}`)
       .join('\n');
 
-    const priorityStats = Object.entries(stats.by_priority)
-      .map(([priority, count]) => `  ${priority}: ${count}`)
-      .join('\n');
+    const emotionStats = stats.by_emotion ? Object.entries(stats.by_emotion)
+      .map(([emotion, count]) => `  ${emotion}: ${count}`)
+      .join('\n') : '';
 
     return {
       content: [
@@ -806,22 +1241,307 @@ ${content}`,
           type: 'text',
           text: `记忆统计信息:
 
-总记忆数: ${stats.total}
-最近24小时新增: ${stats.recent_count}
+总记忆数: ${stats.total || 0}
+最近24小时新增: ${stats.recent_count || 0}
+重要记忆数: ${stats.highlights || 0}
 
 按类型分布:
-${typeStats}
+${typeStats || '  暂无数据'}
 
 按状态分布:
-${statusStats}
+${statusStats || '  暂无数据'}
 
-按优先级分布:
-${priorityStats}`,
+${emotionStats ? `按情感分布:\n${emotionStats}` : ''}`,
         },
       ],
     };
   }
-  */
+
+  // Activity tracking handlers
+  private async handleCreateActivity(args: any) {
+    const params = CreateActivityParamsSchema.parse(args);
+    const activity = await this.zmemoryClient.createActivity(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功创建活动: ${activity.title}`,
+        },
+        {
+          type: 'text',
+          text: `活动详情:
+ID: ${activity.id}
+类型: ${activity.activity_type}
+${activity.mood_before && activity.mood_after ? `心情变化: ${activity.mood_before} → ${activity.mood_after}` : ''}
+${activity.energy_before && activity.energy_after ? `能量变化: ${activity.energy_before} → ${activity.energy_after}` : ''}
+${activity.satisfaction_level ? `满意度: ${activity.satisfaction_level}/10` : ''}
+状态: ${activity.status}
+创建时间: ${activity.created_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleSearchActivities(args: any) {
+    const params = SearchActivitiesParamsSchema.parse(args);
+    const activities = await this.zmemoryClient.searchActivities(params);
+
+    if (activities.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '未找到匹配的活动',
+          },
+        ],
+      };
+    }
+
+    const activityList = activities
+      .map((activity: any) => {
+        const title = activity.title || `活动-${activity.id.substring(0, 8)}`;
+        const type = activity.activity_type ? ` [${activity.activity_type}]` : '';
+        const mood = activity.mood_after ? ` (心情: ${activity.mood_after}/10)` : '';
+        const satisfaction = activity.satisfaction_level ? ` (满意: ${activity.satisfaction_level}/10)` : '';
+        const duration = activity.duration_minutes ? ` (${activity.duration_minutes}分钟)` : '';
+        return `• ${title}${type}${mood}${satisfaction}${duration} (ID: ${activity.id})`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `找到 ${activities.length} 项活动:\n\n${activityList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetActivity(args: any) {
+    const params = GetActivityParamsSchema.parse(args);
+    const activity = await this.zmemoryClient.getActivity(params.id);
+
+    const tags = activity.tags?.join(', ') || '无';
+    const companions = activity.companions?.join(', ') || '无';
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `活动详情:
+ID: ${activity.id}
+标题: ${activity.title}
+类型: ${activity.activity_type}
+${activity.description ? `描述: ${activity.description}` : ''}
+${activity.started_at ? `开始时间: ${activity.started_at}` : ''}
+${activity.ended_at ? `结束时间: ${activity.ended_at}` : ''}
+${activity.duration_minutes ? `持续时间: ${activity.duration_minutes}分钟` : ''}
+${activity.mood_before ? `活动前心情: ${activity.mood_before}/10` : ''}
+${activity.mood_after ? `活动后心情: ${activity.mood_after}/10` : ''}
+${activity.energy_before ? `活动前能量: ${activity.energy_before}/10` : ''}
+${activity.energy_after ? `活动后能量: ${activity.energy_after}/10` : ''}
+${activity.satisfaction_level ? `满意度: ${activity.satisfaction_level}/10` : ''}
+${activity.intensity_level ? `强度: ${activity.intensity_level}` : ''}
+${activity.location ? `地点: ${activity.location}` : ''}
+${activity.weather ? `天气: ${activity.weather}` : ''}
+同伴: ${companions}
+标签: ${tags}
+状态: ${activity.status}
+${activity.notes ? `备注: ${activity.notes}` : ''}
+${activity.insights ? `感悟: ${activity.insights}` : ''}
+${activity.gratitude ? `感恩: ${activity.gratitude}` : ''}
+创建时间: ${activity.created_at}
+更新时间: ${activity.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleUpdateActivity(args: any) {
+    const params = UpdateActivityParamsSchema.parse(args);
+    const activity = await this.zmemoryClient.updateActivity(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功更新活动: ${activity.title}`,
+        },
+        {
+          type: 'text',
+          text: `更新时间: ${activity.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetActivityStats(args: any) {
+    const stats = await this.zmemoryClient.getActivityStats();
+
+    const typeStats = Object.entries(stats.by_type || {})
+      .map(([type, count]) => `  ${type}: ${count}`)
+      .join('\n');
+
+    const statusStats = Object.entries(stats.by_status || {})
+      .map(([status, count]) => `  ${status}: ${count}`)
+      .join('\n');
+
+    const intensityStats = stats.by_intensity ? Object.entries(stats.by_intensity)
+      .map(([intensity, count]) => `  ${intensity}: ${count}`)
+      .join('\n') : '';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `活动统计信息:
+
+总活动数: ${stats.total || 0}
+最近7天活动: ${stats.recent_count || 0}
+${stats.avg_satisfaction ? `平均满意度: ${stats.avg_satisfaction.toFixed(1)}/10` : ''}
+${stats.avg_mood_improvement ? `平均心情提升: +${stats.avg_mood_improvement.toFixed(1)}` : ''}
+
+按类型分布:
+${typeStats || '  暂无数据'}
+
+按状态分布:
+${statusStats || '  暂无数据'}
+
+${intensityStats ? `按强度分布:\n${intensityStats}` : ''}`,
+        },
+      ],
+    };
+  }
+
+  // Timeline system handlers
+  private async handleGetTimelineItems(args: any) {
+    const params = GetTimelineItemsParamsSchema.parse(args);
+    const items = await this.zmemoryClient.getTimelineItems(params);
+
+    if (items.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '未找到匹配的时间线条目',
+          },
+        ],
+      };
+    }
+
+    const itemList = items
+      .map((item: any) => {
+        const title = item.display_title || item.title || `${item.type}-${item.id.substring(0, 8)}`;
+        const type = item.type ? ` [${item.type}]` : '';
+        const status = item.status ? ` (${item.status})` : '';
+        const priority = item.priority && item.priority !== 'medium' ? ` [${item.priority}]` : '';
+        const highlight = item.is_highlight ? ' ✨' : '';
+        const time = item.captured_at || item.created_at;
+        const timeStr = time ? ` - ${new Date(time).toLocaleDateString()}` : '';
+        return `• ${title}${type}${status}${priority}${highlight}${timeStr} (ID: ${item.id})`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `找到 ${items.length} 个时间线条目:\n\n${itemList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleCreateTimelineItem(args: any) {
+    const params = CreateTimelineItemParamsSchema.parse(args);
+    const item = await this.zmemoryClient.createTimelineItem(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `成功创建时间线条目: ${item.title}`,
+        },
+        {
+          type: 'text',
+          text: `条目详情:
+ID: ${item.id}
+类型: ${item.type}
+状态: ${item.status}
+优先级: ${item.priority}
+创建时间: ${item.created_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetTimelineInsights(args: any) {
+    const params = GetTimelineInsightsParamsSchema.parse(args);
+    const insights = await this.zmemoryClient.getTimelineInsights(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `时间线数据洞察 (${params.date_range || 'week'}):
+
+📊 总体统计:
+- 总条目数: ${insights.total_items || 0}
+- 已完成: ${insights.completed_items || 0}
+- 完成率: ${insights.completion_rate ? (insights.completion_rate * 100).toFixed(1) : 0}%
+
+📈 生产力趋势:
+${insights.productivity_trend ? insights.productivity_trend.map((day: any) => 
+  `- ${day.date}: ${day.score}/10`).join('\n') : '- 暂无数据'}
+
+⏰ 时间分配:
+${insights.time_distribution ? Object.entries(insights.time_distribution)
+  .map(([type, time]) => `- ${type}: ${time}小时`)
+  .join('\n') : '- 暂无数据'}
+
+🎯 建议:
+${insights.recommendations ? insights.recommendations.join('\n- ') : '暂无建议'}`,
+        },
+      ],
+    };
+  }
+
+  private async handleSearchAcrossTimeline(args: any) {
+    const params = SearchAcrossTimelineParamsSchema.parse(args);
+    const results = await this.zmemoryClient.searchAcrossTimeline(params);
+
+    if (results.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `未找到与 "${params.query}" 相关的内容`,
+          },
+        ],
+      };
+    }
+
+    const resultList = results
+      .map((result: any) => {
+        const title = result.title || `${result.type}-${result.id.substring(0, 8)}`;
+        const type = result.type ? ` [${result.type}]` : '';
+        const relevance = result.relevance_score ? ` (相关度: ${(result.relevance_score * 100).toFixed(0)}%)` : '';
+        const snippet = result.snippet ? `\n  "${result.snippet}..."` : '';
+        return `• ${title}${type}${relevance}${snippet}`;
+      })
+      .join('\n\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `搜索 "${params.query}" 找到 ${results.length} 个相关结果:\n\n${resultList}`,
+        },
+      ],
+    };
+  }
 
   // Task management handlers
   private async handleCreateTask(args: any) {

@@ -62,7 +62,8 @@ export class StatsModule {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     memories.forEach(memory => {
-      stats.by_type[memory.type] = (stats.by_type[memory.type] || 0) + 1;
+      const memoryType = memory.memory_type || memory.type || 'unknown';
+      stats.by_type[memoryType] = (stats.by_type[memoryType] || 0) + 1;
       
       const status = memory.content?.status || 'unknown';
       stats.by_status[status] = (stats.by_status[status] || 0) + 1;

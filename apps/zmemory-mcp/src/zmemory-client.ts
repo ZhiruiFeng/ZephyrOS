@@ -12,6 +12,14 @@ import {
   AddMemoryParams,
   SearchMemoriesParams,
   UpdateMemoryParams,
+  CreateActivityParams,
+  SearchActivitiesParams,
+  UpdateActivityParams,
+  ActivityStats,
+  GetTimelineItemsParams,
+  CreateTimelineItemParams,
+  GetTimelineInsightsParams,
+  SearchAcrossTimelineParams,
   OAuthTokens,
   UserInfo,
   AuthState,
@@ -24,6 +32,8 @@ import { StatsModule } from './modules/stats/stats-module.js';
 import { TaskModule } from './modules/task/task-module.js';
 import { TimeModule } from './modules/time/time-module.js';
 import { CategoryModule } from './modules/category/category-module.js';
+import { ActivityModule } from './modules/activity/activity-module.js';
+import { TimelineModule } from './modules/timeline/timeline-module.js';
 import { setupResponseInterceptor, setupRequestInterceptor } from './modules/utils/http-utils.js';
 
 export class ZMemoryClient {
@@ -36,6 +46,8 @@ export class ZMemoryClient {
   private taskModule: TaskModule;
   private timeModule: TimeModule;
   private categoryModule: CategoryModule;
+  private activityModule: ActivityModule;
+  private timelineModule: TimelineModule;
 
   constructor(private config: ZMemoryConfig) {
     this.client = axios.create({
@@ -66,6 +78,8 @@ export class ZMemoryClient {
     this.taskModule = new TaskModule(this.client, this.authState);
     this.timeModule = new TimeModule(this.client, this.authState);
     this.categoryModule = new CategoryModule(this.client, this.authState);
+    this.activityModule = new ActivityModule(this.client, this.authState);
+    this.timelineModule = new TimelineModule(this.client, this.authState);
   }
 
   // Authentication methods - delegated to AuthModule
@@ -117,6 +131,10 @@ export class ZMemoryClient {
 
   async updateMemory(params: UpdateMemoryParams): Promise<Memory> {
     return this.memoryModule.updateMemory(params);
+  }
+
+  async deleteMemory(id: string): Promise<void> {
+    return this.memoryModule.deleteMemory(id);
   }
 
   // Statistics and health methods - delegated to StatsModule
@@ -193,5 +211,43 @@ export class ZMemoryClient {
 
   async updateCategory(id: string, updates: any): Promise<any> {
     return this.categoryModule.updateCategory(id, updates);
+  }
+
+  // Activity management methods - delegated to ActivityModule
+  async createActivity(params: CreateActivityParams): Promise<any> {
+    return this.activityModule.createActivity(params);
+  }
+
+  async searchActivities(params: Partial<SearchActivitiesParams> = {}): Promise<any[]> {
+    return this.activityModule.searchActivities(params);
+  }
+
+  async getActivity(id: string): Promise<any> {
+    return this.activityModule.getActivity(id);
+  }
+
+  async updateActivity(params: UpdateActivityParams): Promise<any> {
+    return this.activityModule.updateActivity(params);
+  }
+
+  async getActivityStats(): Promise<ActivityStats> {
+    return this.activityModule.getActivityStats();
+  }
+
+  // Timeline system methods - delegated to TimelineModule
+  async getTimelineItems(params: Partial<GetTimelineItemsParams> = {}): Promise<any[]> {
+    return this.timelineModule.getTimelineItems(params);
+  }
+
+  async createTimelineItem(params: CreateTimelineItemParams): Promise<any> {
+    return this.timelineModule.createTimelineItem(params);
+  }
+
+  async getTimelineInsights(params: Partial<GetTimelineInsightsParams> = {}): Promise<any> {
+    return this.timelineModule.getTimelineInsights(params);
+  }
+
+  async searchAcrossTimeline(params: SearchAcrossTimelineParams): Promise<any[]> {
+    return this.timelineModule.searchAcrossTimeline(params);
   }
 }
