@@ -40,9 +40,9 @@ export interface Memory {
 }
 
 export interface MemoryCreateInput {
-  note: string
+  title: string  // Title is required
+  note?: string  // Content is optional
   memory_type?: 'note' | 'link' | 'file' | 'thought' | 'quote' | 'insight'
-  title?: string  // Use title instead of title_override
   title_override?: string  // Keep for backward compatibility
   happened_range?: {
     start: string

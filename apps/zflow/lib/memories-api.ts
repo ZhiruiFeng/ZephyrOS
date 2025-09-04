@@ -11,7 +11,8 @@ import { authManager } from './auth-manager'
 // Use the same pattern as api.ts for consistency
 const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
 const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
-const MEMORIES_API_BASE = API_BASE ? `${API_BASE}/memories` : '/api/memories'
+// Ensure we target the Next.js API routes under /api when using a cross-origin base
+const MEMORIES_API_BASE = API_BASE ? `${API_BASE}/api/memories` : '/api/memories'
 
 // Debug logging
 if (typeof window !== 'undefined') {
@@ -225,9 +226,9 @@ export const memoriesApi = {
 
 // Hook-like utilities for common operations
 export const useMemoryOperations = () => {
-  const createMemory = async (note: string, options: Partial<MemoryCreateInput> = {}) => {
+  const createMemory = async (title: string, options: Partial<MemoryCreateInput> = {}) => {
     const data: MemoryCreateInput = {
-      note,
+      title,
       memory_type: 'note',
       source: 'manual',
       importance_level: 'medium',

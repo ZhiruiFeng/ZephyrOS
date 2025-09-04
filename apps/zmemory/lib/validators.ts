@@ -19,8 +19,8 @@ const salienceScore = z.number().min(0.0).max(1.0).optional();
 // Create memory schema
 export const MemoryCreateSchema = z.object({
   // Core content
-  title: z.string().min(1).max(500).optional(), // Memory title
-  note: z.string().min(1, 'Note content is required'),
+  title: z.string().min(1, 'Title is required').max(500), // Memory title (required)
+  note: z.string().min(1).optional(), // Content optional; if provided, must be non-empty
   memory_type: z.enum(memoryTypes).default('note'),
   
   // Time semantics

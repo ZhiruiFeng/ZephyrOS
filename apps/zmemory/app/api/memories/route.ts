@@ -343,10 +343,13 @@ export async function GET(request: NextRequest) {
  *           schema:
  *             type: object
  *             properties:
- *               note:
+ *               title:
  *                 type: string
  *                 minLength: 1
- *                 description: Main content of the memory
+ *                 description: Title of the memory
+ *               note:
+ *                 type: string
+ *                 description: Optional content/details of the memory
  *               memory_type:
  *                 type: string
  *                 enum: [note, link, file, thought, quote, insight]
@@ -364,7 +367,7 @@ export async function GET(request: NextRequest) {
  *                 type: string
  *                 enum: [low, medium, high]
  *                 default: medium
- *             required: [note]
+ *             required: [title]
  *     responses:
  *       201:
  *         description: Memory created successfully

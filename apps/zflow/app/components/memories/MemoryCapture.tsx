@@ -149,13 +149,15 @@ export default function MemoryCapture({
   }
 
   const handleSave = async () => {
-    if (!content.trim()) return
+    if (!title.trim()) return
 
     setIsSaving(true)
     try {
       const memoryData: MemoryCreateInput = {
-        note: content.trim(),
-        title: title.trim() || undefined,  // Use title instead of title_override
+        // Title required
+        title: title.trim(),
+        // Content optional
+        note: content.trim() ? content.trim() : undefined,
         memory_type: memoryType,
         tags,
         category_id: categoryId || undefined,
@@ -171,7 +173,7 @@ export default function MemoryCapture({
         memory = await memoriesApi.update(editingMemory.id, memoryData)
         onMemoryUpdated?.(memory)
       } else {
-        memory = await createMemory(content.trim(), memoryData)
+        memory = await createMemory(title.trim(), memoryData)
         onMemoryCreated(memory)
       }
       onClose()
@@ -243,10 +245,10 @@ export default function MemoryCapture({
             </div>
           </div>
 
-          {/* Title */}
+          {/* Title (required) */}
           <div className="mb-4">
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-              Title (optional)
+              Title *
             </label>
             <input
               id="title"
@@ -258,10 +260,10 @@ export default function MemoryCapture({
             />
           </div>
 
-          {/* Content */}
+          {/* Content (optional) */}
           <div className="mb-4">
             <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-              Content *
+              Content
             </label>
             <div className="relative">
               <textarea
@@ -436,7 +438,7 @@ export default function MemoryCapture({
         <div className="border-t border-gray-100 p-4 md:p-6 bg-white">
           <div className="flex items-center justify-between">
             <div className="text-xs text-gray-500">
-              {content.length} characters • Cmd+Enter to save
+              {title.length} title chars • Cmd+Enter to save
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -447,7 +449,7 @@ export default function MemoryCapture({
               </button>
               <button
                 onClick={handleSave}
-                disabled={!content.trim() || isSaving}
+                disabled={!title.trim() || isSaving}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
               >
                 <Save className="w-4 h-4" />
