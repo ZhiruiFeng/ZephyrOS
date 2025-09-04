@@ -146,10 +146,10 @@ export default function MemoriesPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(memory => 
-        memory.note.toLowerCase().includes(query) ||
-        memory.title_override?.toLowerCase().includes(query) ||
+        (memory.note ?? '').toLowerCase().includes(query) ||
+        (memory.title ?? memory.title_override ?? '').toLowerCase().includes(query) ||
         memory.tags.some(tag => tag.toLowerCase().includes(query)) ||
-        memory.place_name?.toLowerCase().includes(query)
+        (memory.place_name ?? '').toLowerCase().includes(query)
       )
     }
 
@@ -428,7 +428,7 @@ export default function MemoriesPage() {
                             className="block w-full text-left p-2 hover:bg-amber-50 rounded-lg transition-colors"
                           >
                             <div className="text-sm font-medium text-gray-900 truncate">
-                              {memory.title_override || memory.note.split('\n')[0]}
+                              {memory.title || memory.title_override || (memory.note?.split('\n')[0] || 'Untitled')}
                             </div>
                             <div className="text-xs text-gray-500">
                               {new Date(memory.created_at).toLocaleDateString()}
@@ -469,7 +469,7 @@ export default function MemoriesPage() {
                             className="block w-full text-left p-2 hover:bg-blue-50 rounded-lg transition-colors"
                           >
                             <div className="text-sm font-medium text-gray-900 truncate">
-                              {memory.title_override || memory.note.split('\n')[0]}
+                              {memory.title || memory.title_override || (memory.note?.split('\n')[0] || 'Untitled')}
                             </div>
                             <div className="text-xs text-gray-500">
                               {new Date(memory.created_at).toLocaleDateString()}

@@ -321,7 +321,13 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('GET memories - Returning data:', data?.length || 0, 'items');
-    return jsonWithCors(request, data || []);
+    const safeData = (data || []).map((m: any) => ({
+      ...m,
+      note: m?.note ?? '',
+      title: m?.title ?? null,
+      title_override: m?.title_override ?? null,
+    }));
+    return jsonWithCors(request, safeData);
   } catch (error) {
     console.error('API error:', error);
     const errorMessage = sanitizeErrorMessage(error);

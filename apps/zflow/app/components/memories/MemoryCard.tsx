@@ -133,25 +133,26 @@ export default function MemoryCard({
 
   // Get display title
   const getDisplayTitle = () => {
-    if (memory.title) return memory.title  // Use title instead of title_override
-    
-    // Generate title from first line of note
-    const firstLine = memory.note.split('\n')[0].trim()
-    if (firstLine.length > 50) {
-      return firstLine.substring(0, 47) + '...'
+    if (memory.title && memory.title.trim()) return memory.title  // Prefer explicit title
+
+    // Generate title safely from note or fallback to title_override
+    const firstLine = (memory.note ?? '').split('\n')[0]?.trim() || ''
+    const base = firstLine || (memory.title_override ?? '')
+    if (base.length > 50) {
+      return base.substring(0, 47) + '...'
     }
-    return firstLine || 'Untitled Memory'
+    return base || 'Untitled Memory'
   }
 
   // Get preview text
   const getPreviewText = () => {
-    if (memory.title) {  // Use title instead of title_override
+    if (memory.title && memory.title.trim()) {  // Use title instead of title_override
       // If there's a custom title, show the note as preview
-      const text = memory.note.replace(/\n/g, ' ').trim()
+      const text = (memory.note ?? '').replace(/\n/g, ' ').trim()
       return text.length > 120 ? text.substring(0, 117) + '...' : text
     } else {
       // If no custom title, show remaining text after first line
-      const lines = memory.note.split('\n')
+      const lines = (memory.note ?? '').split('\n')
       if (lines.length > 1) {
         const remainingText = lines.slice(1).join(' ').trim()
         return remainingText.length > 120 ? remainingText.substring(0, 117) + '...' : remainingText

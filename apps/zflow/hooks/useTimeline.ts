@@ -135,8 +135,8 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
         return {
           id: memory.id,
           type: 'memory' as const,
-          title: memory.title_override || memory.note.split('\n')[0],
-          description: memory.note,
+          title: memory.title || memory.title_override || (memory.note?.split('\n')[0] || 'Untitled'),
+          description: memory.note ?? '',
           startTime: clippedStart.toISOString(),
           endTime: clippedEnd?.toISOString(),
           duration: undefined,
@@ -342,8 +342,8 @@ async function fetchTimelineRangeData(startDate: Date, endDate: Date): Promise<T
         return {
           id: memory.id,
           type: 'memory' as const,
-          title: memory.title_override || memory.note.split('\n')[0],
-          description: memory.note,
+          title: memory.title || memory.title_override || (memory.note?.split('\n')[0] || 'Untitled'),
+          description: memory.note ?? '',
           startTime: clippedStart.toISOString(),
           endTime: clippedEnd?.toISOString(),
           duration: undefined,
