@@ -610,7 +610,7 @@ function DayTimeline({
                   width: `calc(${width}% - 8px)`,
                   height: `${ev.height}px`,
                 }}
-                title={`${ev.activityTitle || activityTitle || 'Activity'} - ${ev.label}${ev.isCrossDaySegment ? ' (跨天活动片段)' : ''}`}
+                title={`${ev.activityTitle || activityTitle || 'Activity'} - ${ev.label}${ev.isCrossDaySegment ? ` (${t.ui?.crossDaySegment || 'Cross-day Task Segment'})` : ''}`}
               >
                 {/* Activity title */}
                 {ev.activityTitle && (

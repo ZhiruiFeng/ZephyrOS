@@ -596,7 +596,7 @@ function DayTimeline({
                   width: `calc(${width}% - 8px)`,
                   height: `${ev.height}px`,
                 }}
-                title={`${ev.taskTitle || taskTitle || '任务'} - ${ev.label}${ev.isCrossDaySegment ? ' (跨天任务片段)' : ''}`}
+                title={`${ev.taskTitle || taskTitle || (t.ui?.unknownTask || 'Unknown Task')} - ${ev.label}${ev.isCrossDaySegment ? ` (${t.ui?.crossDaySegment || 'Cross-day Task Segment'})` : ''}`}
               >
                 {/* 任务标题 */}
                 {ev.taskTitle && (
@@ -762,5 +762,4 @@ function CreateItem({ taskId, dateKey, onCreated }: { taskId: string; dateKey: s
     </div>
   )
 }
-
 

@@ -7,11 +7,13 @@ import { TimelineData } from '@/hooks/useTimeline'
 interface TimelineStatsProps {
   timelineData: TimelineData
   className?: string
+  t?: any
 }
 
 export default function TimelineStats({
   timelineData,
-  className = ''
+  className = '',
+  t
 }: TimelineStatsProps) {
   const { totalDuration, categories, tags, items } = timelineData
 
@@ -43,7 +45,7 @@ export default function TimelineStats({
             <Clock className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-600">总时长</p>
+            <p className="text-sm text-gray-600">{t?.ui?.recorded || 'Total Duration'}</p>
             <p className="text-xl font-semibold text-gray-900">
               {formatDuration(totalDuration)}
             </p>
@@ -58,7 +60,7 @@ export default function TimelineStats({
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-600">总记录</p>
+            <p className="text-sm text-gray-600">{t?.ui?.statistics || 'Total Items'}</p>
             <p className="text-xl font-semibold text-gray-900">
               {items.length}
             </p>
@@ -73,7 +75,7 @@ export default function TimelineStats({
             <FolderOpen className="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-600">分类</p>
+            <p className="text-sm text-gray-600">{t?.ui?.categories || 'Categories'}</p>
             <p className="text-xl font-semibold text-gray-900">
               {categories.length}
             </p>
@@ -88,7 +90,7 @@ export default function TimelineStats({
             <Tag className="w-5 h-5 text-amber-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-600">标签</p>
+            <p className="text-sm text-gray-600">{t?.task?.tags || 'Tags'}</p>
             <p className="text-xl font-semibold text-gray-900">
               {tags.length}
             </p>
@@ -100,7 +102,7 @@ export default function TimelineStats({
 }
 
 // Detailed stats component for showing breakdown
-export function TimelineDetailedStats({ timelineData }: { timelineData: TimelineData }) {
+export function TimelineDetailedStats({ timelineData, t }: { timelineData: TimelineData, t?: any }) {
   const { items, categories, tags } = timelineData
 
   const getItemTypeCount = (type: string) => {
@@ -126,10 +128,10 @@ export function TimelineDetailedStats({ timelineData }: { timelineData: Timeline
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Item Types Breakdown */}
       <div className="bg-white/70 backdrop-blur-md border border-gray-200/60 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">记录类型分布</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t?.ui?.statistics || 'Record Type Breakdown'}</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">时间记录</span>
+            <span className="text-sm text-gray-600">Time Entries</span>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-900">
                 {getItemTypeCount('time_entry')}
@@ -140,19 +142,19 @@ export function TimelineDetailedStats({ timelineData }: { timelineData: Timeline
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">记忆</span>
+            <span className="text-sm text-gray-600">Memories</span>
             <span className="text-sm font-medium text-gray-900">
               {getItemTypeCount('memory')}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">任务</span>
+            <span className="text-sm text-gray-600">{t?.ui?.task || 'Task'}</span>
             <span className="text-sm font-medium text-gray-900">
               {getItemTypeCount('task')}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">活动</span>
+            <span className="text-sm text-gray-600">{t?.ui?.activity || 'Activity'}</span>
             <span className="text-sm font-medium text-gray-900">
               {getItemTypeCount('activity')}
             </span>
@@ -162,7 +164,7 @@ export function TimelineDetailedStats({ timelineData }: { timelineData: Timeline
 
       {/* Top Categories */}
       <div className="bg-white/70 backdrop-blur-md border border-gray-200/60 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">热门分类</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Categories</h3>
         <div className="space-y-3">
           {categories.slice(0, 5).map(category => (
             <div key={category.id} className="flex items-center justify-between">
@@ -179,14 +181,14 @@ export function TimelineDetailedStats({ timelineData }: { timelineData: Timeline
             </div>
           ))}
           {categories.length === 0 && (
-            <p className="text-sm text-gray-500">暂无分类数据</p>
+            <p className="text-sm text-gray-500">{t?.ui?.noData || 'No data'}</p>
           )}
         </div>
       </div>
 
       {/* Top Tags */}
       <div className="bg-white/70 backdrop-blur-md border border-gray-200/60 rounded-lg p-6 lg:col-span-2">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">热门标签</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Tags</h3>
         <div className="flex flex-wrap gap-2">
           {tags.slice(0, 10).map(tag => (
             <div
@@ -198,7 +200,7 @@ export function TimelineDetailedStats({ timelineData }: { timelineData: Timeline
             </div>
           ))}
           {tags.length === 0 && (
-            <p className="text-sm text-gray-500">暂无标签数据</p>
+            <p className="text-sm text-gray-500">{t?.ui?.noData || 'No data'}</p>
           )}
         </div>
       </div>

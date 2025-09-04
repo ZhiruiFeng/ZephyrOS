@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useTranslation } from '../../../contexts/LanguageContext'
 
 interface DateSelectorProps {
   selectedDate: Date
@@ -14,6 +15,7 @@ export default function DateSelector({
   onDateChange,
   className = ''
 }: DateSelectorProps) {
+  const { t, currentLang } = useTranslation()
   const goToPreviousDay = () => {
     const newDate = new Date(selectedDate)
     newDate.setDate(selectedDate.getDate() - 1)
@@ -38,13 +40,13 @@ export default function DateSelector({
     tomorrow.setDate(today.getDate() + 1)
 
     if (date.toDateString() === today.toDateString()) {
-      return '今天'
+      return t.common?.today || 'Today'
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return '昨天'
+      return t.common?.yesterday || 'Yesterday'
     } else if (date.toDateString() === tomorrow.toDateString()) {
-      return '明天'
+      return 'Tomorrow'
     } else {
-      return date.toLocaleDateString('zh-CN', {
+      return date.toLocaleDateString(currentLang === 'zh' ? 'zh-CN' : 'en-US', {
         month: 'short',
         day: 'numeric',
         weekday: 'short'
@@ -53,7 +55,7 @@ export default function DateSelector({
   }
 
   const formatFullDate = (date: Date) => {
-    return date.toLocaleDateString('zh-CN', {
+    return date.toLocaleDateString(currentLang === 'zh' ? 'zh-CN' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -67,7 +69,7 @@ export default function DateSelector({
       <button
         onClick={goToPreviousDay}
         className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-        title="前一天"
+        title={t.common?.previous || 'Previous'}
       >
         <ChevronLeft className="w-5 h-5" />
       </button>
@@ -89,7 +91,7 @@ export default function DateSelector({
       <button
         onClick={goToNextDay}
         className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-        title="后一天"
+        title={t.common?.next || 'Next'}
       >
         <ChevronRight className="w-5 h-5" />
       </button>
@@ -98,10 +100,10 @@ export default function DateSelector({
       <button
         onClick={goToToday}
         className="px-3 py-2 text-sm text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors border border-primary-200"
-        title="回到今天"
+        title={t.common?.today || 'Today'}
       >
         <Calendar className="w-4 h-4 inline mr-1" />
-        今天
+        {t.common?.today || 'Today'}
       </button>
     </div>
   )

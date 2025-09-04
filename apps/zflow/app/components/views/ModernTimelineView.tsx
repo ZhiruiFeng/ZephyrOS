@@ -264,7 +264,7 @@ function BlockView({ block, onEventClick, categories, onUpdateTimeEntry, onCreat
 }) {
   if (block.kind === 'gap') return <Gap from={block.from} to={block.to} onCreateEvent={onCreateEvent} t={t} />;
   if (block.kind === 'now') return <NowMarker t={t} />;
-  return <EventCard ev={block.ev} onEventClick={onEventClick} categories={categories} onUpdateTimeEntry={onUpdateTimeEntry} />;
+  return <EventCard ev={block.ev} onEventClick={onEventClick} categories={categories} onUpdateTimeEntry={onUpdateTimeEntry} t={t} />;
 }
 
 function Header({ day, events, onCreateEvent, t, lang }: { day: Date; events: TimelineEvent[]; onCreateEvent?: (start: string, end: string) => void; t?: TranslationKeys; lang?: Language }) {
@@ -357,11 +357,12 @@ function NowMarker({ t }: { t?: TranslationKeys }) {
   );
 }
 
-function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry }: { 
+function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry, t }: { 
   ev: TimelineEvent; 
   onEventClick?: (event: TimelineEvent) => void; 
   categories: Category[];
   onUpdateTimeEntry?: (timeEntryId: string, start: string, end: string) => Promise<void>;
+  t?: TranslationKeys;
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);

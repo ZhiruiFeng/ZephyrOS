@@ -51,6 +51,7 @@ export interface TranslationKeys {
     activityType: string;
     status: string;
     notFound?: string;
+    noActivities?: string;
     createActivity: string;
     editActivity: string;
     deleteActivity: string;
@@ -291,6 +292,9 @@ export interface TranslationKeys {
     backlogLimitExceeded: string;
     focusToMaintainProductivity: string;
     simplifyForClarity: string;
+    // Generic entity labels
+    task?: string;
+    activity?: string;
     // Work Mode specific
     taskExplorer: string;
     selectTaskToWork: string;
@@ -331,6 +335,7 @@ export interface TranslationKeys {
     noTimeSegments: string;
     timelineView: string;
     timeListView: string;
+    timeRange?: string;
     now?: string;
     recorded?: string;
     invalidTimeFormat?: string;
@@ -370,6 +375,7 @@ export interface TranslationKeys {
     taskCreateFailed: string;
     taskUpdateFailed: string;
     taskDeleteFailed: string;
+    activityCreateFailed?: string;
     titleRequired?: string;
     confirmDelete: string;
     noTasksYet: string;
@@ -457,6 +463,7 @@ const translations: Record<Language, TranslationKeys> = {
       activityType: 'Activity Type',
       status: 'Status',
       notFound: 'Activity not found',
+      noActivities: 'No activities yet',
       createActivity: 'Create Activity',
       editActivity: 'Edit Activity',
       deleteActivity: 'Delete Activity',
@@ -719,6 +726,8 @@ const translations: Record<Language, TranslationKeys> = {
       backlogLimitExceeded: 'Backlog exceeds 10 tasks, consider simplifying for clarity.',
       focusToMaintainProductivity: 'focusing to maintain productivity',
       simplifyForClarity: 'simplifying for clarity',
+      task: 'Task',
+      activity: 'Activity',
       responsiveLayout: 'Responsive Layout',
       responsiveLayoutDesc: 'Adaptive to different screen sizes, from mobile to desktop',
       touchFriendlyInteraction: 'Touch Friendly Interaction',
@@ -840,6 +849,7 @@ const translations: Record<Language, TranslationKeys> = {
       activityType: '活动类型',
       status: '状态',
       notFound: '活动不存在',
+      noActivities: '暂无活动记录',
       createActivity: '创建活动',
       editActivity: '编辑活动',
       deleteActivity: '删除活动',
@@ -1095,6 +1105,8 @@ const translations: Record<Language, TranslationKeys> = {
       backlogLimitExceeded: '待办池已超过 10 个，考虑精简以提升清晰度。',
       focusToMaintainProductivity: '收敛以保持专注',
       simplifyForClarity: '精简以提升清晰度',
+      task: '任务',
+      activity: '活动',
       responsiveLayout: '响应式布局',
       responsiveLayoutDesc: '自适应不同屏幕尺寸，从手机到桌面',
       touchFriendlyInteraction: '触摸友好交互',

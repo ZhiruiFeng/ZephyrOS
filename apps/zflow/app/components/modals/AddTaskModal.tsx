@@ -18,18 +18,18 @@ type TabType = 'task' | 'activity'
 
 // Activity types with icons and labels
 const ACTIVITY_TYPES = [
-  { value: 'exercise', label: '运动', icon: '🏃‍♂️' },
-  { value: 'meditation', label: '冥想', icon: '🧘‍♀️' },
-  { value: 'reading', label: '阅读', icon: '📚' },
-  { value: 'music', label: '音乐', icon: '🎵' },
-  { value: 'socializing', label: '社交', icon: '👥' },
-  { value: 'gaming', label: '游戏', icon: '🎮' },
-  { value: 'walking', label: '散步', icon: '🚶‍♀️' },
-  { value: 'cooking', label: '烹饪', icon: '👨‍🍳' },
-  { value: 'rest', label: '休息', icon: '😴' },
-  { value: 'creative', label: '创作', icon: '🎨' },
-  { value: 'learning', label: '学习', icon: '📖' },
-  { value: 'other', label: '其他', icon: '✨' },
+  { value: 'exercise', labelKey: 'typeExercise', icon: '🏃‍♂️' },
+  { value: 'meditation', labelKey: 'typeMeditation', icon: '🧘‍♀️' },
+  { value: 'reading', labelKey: 'typeReading', icon: '📚' },
+  { value: 'music', labelKey: 'typeMusic', icon: '🎵' },
+  { value: 'socializing', labelKey: 'typeSocial', icon: '👥' },
+  { value: 'gaming', labelKey: 'typeGaming', icon: '🎮' },
+  { value: 'walking', labelKey: 'typeWalking', icon: '🚶‍♀️' },
+  { value: 'cooking', labelKey: 'typeCooking', icon: '👨‍🍳' },
+  { value: 'rest', labelKey: 'typeRest', icon: '😴' },
+  { value: 'creative', labelKey: 'typeCreative', icon: '🎨' },
+  { value: 'learning', labelKey: 'typeLearning', icon: '📖' },
+  { value: 'other', labelKey: 'typeOther', icon: '✨' },
 ]
 
 export default function AddTaskModal({ 
@@ -209,7 +209,7 @@ export default function AddTaskModal({
         <div className="shrink-0 border-b border-gray-200">
           <div className="flex items-center justify-between p-6 pb-0">
             <h2 className="text-xl font-semibold text-gray-900">
-              {activeTab === 'task' ? t.task.createTask : '创建活动'}
+              {activeTab === 'task' ? t.task.createTask : (t.activity?.createActivity || 'Create Activity')}
             </h2>
             <button
               onClick={handleClose}
@@ -233,7 +233,7 @@ export default function AddTaskModal({
                 }`}
               >
                 <Star className="w-4 h-4" />
-                任务
+                {t.ui?.task || 'Task'}
               </button>
               <button
                 type="button"
@@ -245,7 +245,7 @@ export default function AddTaskModal({
                 }`}
               >
                 <Activity className="w-4 h-4" />
-                活动
+                {t.ui?.activity || 'Activity'}
               </button>
             </div>
           </div>
@@ -511,13 +511,13 @@ export default function AddTaskModal({
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  标题 *
+                  {t.activity?.title || 'Title'} *
                 </label>
                 <input
                   type="text"
                   value={activityFormData.title}
                   onChange={(e) => setActivityFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="请输入活动名称"
+                  placeholder={t.activity?.activityTitle || 'Activity title...'}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -526,12 +526,12 @@ export default function AddTaskModal({
               {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  描述
+                  {t.activity?.description || 'Description'}
                 </label>
                 <textarea
                   value={activityFormData.description}
                   onChange={(e) => setActivityFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="描述一下这个活动..."
+                  placeholder={t.activity?.activityDescription || 'Describe your activity...'}
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
@@ -540,7 +540,7 @@ export default function AddTaskModal({
               {/* Activity Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  活动类型
+                  {t.activity?.activityType || 'Activity Type'}
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {ACTIVITY_TYPES.map((type) => (
@@ -555,7 +555,7 @@ export default function AddTaskModal({
                       }`}
                     >
                       <div className="text-xl mb-1">{type.icon}</div>
-                      <div className="text-xs font-medium">{type.label}</div>
+                      <div className="text-xs font-medium">{(t.activity as any)[type.labelKey] ?? type.labelKey}</div>
                     </button>
                   ))}
                 </div>
@@ -564,7 +564,7 @@ export default function AddTaskModal({
               {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  分类
+                  {t.task?.category || 'Category'}
                 </label>
                 {/* Desktop: custom searchable dropdown */}
                 <div className="relative hidden sm:block" ref={desktopCatRef}>
@@ -584,7 +584,7 @@ export default function AddTaskModal({
                             </>
                           )
                         }
-                        return <span className="text-gray-500 text-sm">无分类</span>
+                        return <span className="text-gray-500 text-sm">{t.ui?.noCategory || 'No Category'}</span>
                       })()}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showDesktopCategory ? 'rotate-180' : ''}`} />
@@ -593,10 +593,10 @@ export default function AddTaskModal({
                     <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl p-3">
                       <div className="relative mb-2">
                         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          value={desktopCategoryQuery}
-                          onChange={(e) => setDesktopCategoryQuery(e.target.value)}
-                          placeholder="搜索分类"
+                      <input
+                        value={desktopCategoryQuery}
+                        onChange={(e) => setDesktopCategoryQuery(e.target.value)}
+                        placeholder={t.ui?.searchCategories || 'Search categories...'}
                           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -606,7 +606,7 @@ export default function AddTaskModal({
                           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm"
                         >
                           <span className="w-3 h-3 rounded-full bg-gray-300" />
-                          <span className="text-gray-700">无分类</span>
+                          <span className="text-gray-700">{t.ui?.noCategory || 'No Category'}</span>
                         </button>
                         {categories
                           .filter((c: any) => !desktopCategoryQuery || c.name.toLowerCase().includes(desktopCategoryQuery.toLowerCase()))
@@ -642,7 +642,7 @@ export default function AddTaskModal({
                           </>
                         )
                       }
-                      return <span className="text-gray-500 text-base sm:text-sm">无分类</span>
+                      return <span className="text-gray-500 text-base sm:text-sm">{t.ui?.noCategory || 'No Category'}</span>
                     })()}
                   </span>
                   <Folder className="w-4 h-4 text-gray-400" />
@@ -687,7 +687,7 @@ export default function AddTaskModal({
                   `${t.common.create}...` : 
                   activeTab === 'task' 
                     ? (createMode === 'current' ? t.task.createAndStart : t.task.createTask)
-                    : '创建活动'
+                    : (t.activity?.createActivity || 'Create Activity')
                 }
               </button>
             </div>

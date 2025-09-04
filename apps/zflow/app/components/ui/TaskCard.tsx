@@ -148,7 +148,7 @@ export default function TaskCard({
             onEditTask(task)
           }}
           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
-          title={t.task?.editTask || "编辑任务"}
+          title={t.task?.editTask || 'Edit Task'}
         >
           <Pencil className="w-4 h-4" />
         </button>
@@ -158,7 +158,7 @@ export default function TaskCard({
             onDeleteTask(task.id)
           }}
           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
-          title={t.task?.deleteTask || "删除任务"}
+          title={t.task?.deleteTask || 'Delete Task'}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -168,7 +168,7 @@ export default function TaskCard({
             onShowTime({ id: task.id, title: c.title })
           }}
           className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
-          title={t.task?.viewTime || "查看专注时间"}
+          title={t.task?.viewTime || 'View focus time'}
         >
           <Timer className="w-4 h-4" />
         </button>
@@ -185,7 +185,7 @@ export default function TaskCard({
                 onHoldTask(task.id)
               }}
               className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-md"
-              title={t.task?.holdTask || "暂停任务"}
+              title={t.task?.holdTask || 'Hold task'}
             >
               <Hourglass className="w-4 h-4" />
             </button>
@@ -223,7 +223,7 @@ export default function TaskCard({
       return (
         <div className={`text-xs text-gray-500 space-y-1 ${displayMode === 'grid' ? '' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1'}`}>
           <div className="flex items-center gap-1">
-            <span>{t.ui?.createdAt || '创建于'} {formatDate(task.created_at)}</span>
+            <span>{t.ui?.createdAt || 'Created at'} {formatDate(task.created_at)}</span>
           </div>
           <div className={`flex items-center gap-2 ${displayMode === 'grid' ? 'flex-wrap' : ''}`}>
             {categoryDisplay}
@@ -232,7 +232,7 @@ export default function TaskCard({
                 <Calendar className="w-3 h-3" />
                 <span>
                   {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
-                  {shouldShowOverdue(c.status, c.due_date) && ` • ${t.ui?.overdue || '逾期'}`}
+                  {shouldShowOverdue(c.status, c.due_date) && ` • ${t.ui?.overdue || 'Overdue'}`}
                 </span>
               </div>
             )}
@@ -245,7 +245,7 @@ export default function TaskCard({
       return (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{t.ui?.createdAt || '创建于'} {formatDate(task.created_at)}</span>
+            <span>{t.ui?.createdAt || 'Created at'} {formatDate(task.created_at)}</span>
             {categoryDisplay}
           </div>
           <div className={`${displayMode === 'grid' ? 'space-y-2' : 'flex flex-col sm:flex-row sm:items-center gap-2'}`}>
@@ -256,7 +256,7 @@ export default function TaskCard({
                 className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full"
                 onClick={(e) => e.stopPropagation()}
               >
-                <option value="">{t.ui?.noCategory || '无分类'}</option>
+                <option value="">{t.ui?.noCategory || 'No Category'}</option>
                 {categories.map((cat: any) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
@@ -270,7 +270,7 @@ export default function TaskCard({
                   onEditTask(task)
                 }}
                 className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                title={t.task?.editTask || '编辑任务'}
+                title={t.task?.editTask || 'Edit Task'}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -285,7 +285,7 @@ export default function TaskCard({
                   }}
                   className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors duration-200"
                 >
-                  {t.task?.activateTask || '激活任务'}
+                  {t.task?.activateTask || 'Activate'}
                 </button>
               )}
             </div>
@@ -299,7 +299,7 @@ export default function TaskCard({
         <div className={`text-xs text-gray-500 ${displayMode === 'grid' ? 'space-y-1' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
           <div className="flex items-center justify-between">
             <span>
-              {isCompleted ? (t.ui?.completedAt || '完成于') : (t.ui?.cancelledAt || '取消于')} {formatDate(isCompleted && c.completion_date ? c.completion_date : task.created_at)}
+              {isCompleted ? (t.ui?.completedAt || 'Completed at') : (t.ui?.cancelledAt || 'Cancelled at')} {formatDate(isCompleted && c.completion_date ? c.completion_date : task.created_at)}
             </span>
             {categoryDisplay}
           </div>
@@ -311,7 +311,7 @@ export default function TaskCard({
               }}
               className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
             >
-              {t.task?.reopenTask || '重新打开'}
+              {t.task?.reopenTask || 'Reopen'}
             </button>
           )}
         </div>

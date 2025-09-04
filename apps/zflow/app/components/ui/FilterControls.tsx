@@ -52,9 +52,9 @@ export default function FilterControls({
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Tag className="w-4 h-4" />
           <span>
-            {t.ui?.currentCategory || '当前分类'}: {
-              selectedCategory === 'all' ? (t.common?.all || '全部') : 
-              selectedCategory === 'uncategorized' ? (t.ui?.uncategorized || '未分类') : 
+            {t.ui?.currentCategory || 'Current category'}: {
+              selectedCategory === 'all' ? (t.common?.all || 'All') : 
+              selectedCategory === 'uncategorized' ? (t.ui?.uncategorized || 'Uncategorized') : 
               categories.find(c => c.id === selectedCategory)?.name || 'Unknown'
             }
           </span>
@@ -69,7 +69,7 @@ export default function FilterControls({
             <input 
               value={search} 
               onChange={(e) => onSearchChange(e.target.value)} 
-              placeholder={t.ui?.searchTasks || '搜索任务'} 
+              placeholder={t.ui?.searchTasks || 'Search tasks...'} 
               className="bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-500 w-full sm:w-48"
             />
           </div>
@@ -78,11 +78,11 @@ export default function FilterControls({
             onChange={(e) => onPriorityChange(e.target.value as any)} 
             className="glass rounded-full px-3 md:px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
           >
-            <option value="all">{t.ui?.allPriority || '所有优先级'}</option>
-            <option value="urgent">{t.task?.priorityUrgent || '紧急'}</option>
-            <option value="high">{t.task?.priorityHigh || '高'}</option>
-            <option value="medium">{t.task?.priorityMedium || '中'}</option>
-            <option value="low">{t.task?.priorityLow || '低'}</option>
+            <option value="all">{t.ui?.allPriority || 'All Priorities'}</option>
+            <option value="urgent">{t.task?.priorityUrgent || 'Urgent'}</option>
+            <option value="high">{t.task?.priorityHigh || 'High'}</option>
+            <option value="medium">{t.task?.priorityMedium || 'Medium'}</option>
+            <option value="low">{t.task?.priorityLow || 'Low'}</option>
           </select>
           
           {/* Sort Mode Selector */}
@@ -91,9 +91,9 @@ export default function FilterControls({
             onChange={(e) => onSortModeChange(e.target.value as any)} 
             className="glass rounded-full px-3 md:px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
           >
-            <option value="none">{t.ui?.noSort || '无排序'}</option>
-            <option value="priority">{t.ui?.sortByPriority || '按优先级排序'}</option>
-            <option value="due_date">{t.ui?.sortByDueDate || '按截止日期排序'}</option>
+            <option value="none">{t.ui?.noSort || 'No Sorting'}</option>
+            <option value="priority">{t.ui?.sortByPriority || 'By Priority'}</option>
+            <option value="due_date">{t.ui?.sortByDueDate || 'By Due Date'}</option>
           </select>
           
           {/* Mobile Category Selector Button */}
@@ -104,9 +104,9 @@ export default function FilterControls({
             <span className="flex items-center gap-2">
               <Tag className="w-4 h-4" />
               <span>
-                {selectedCategory === 'all' ? (t.ui?.allCategories || '所有分类') : 
-                 selectedCategory === 'uncategorized' ? (t.ui?.uncategorized || '未分类') : 
-                 categories.find(c => c.id === selectedCategory)?.name || (t.ui?.selectCategory || '选择分类')}
+                {selectedCategory === 'all' ? (t.ui?.allCategories || 'All Categories') : 
+                 selectedCategory === 'uncategorized' ? (t.ui?.uncategorized || 'Uncategorized') : 
+                 categories.find(c => c.id === selectedCategory)?.name || (t.ui?.selectCategory || 'Select Category')}
               </span>
             </span>
             <ChevronDown className="w-4 h-4" />
@@ -125,7 +125,7 @@ export default function FilterControls({
                   : 'text-gray-600 hover:bg-white/50'
               }`}
             >
-              {t.ui?.listView || '列表'}
+              {t.ui?.listView || 'List'}
             </button>
             <button
               onClick={() => onDisplayModeChange('grid')}
@@ -136,7 +136,7 @@ export default function FilterControls({
               }`}
             >
               <Grid className="w-3 h-3" />
-              {t.ui?.gridView || '网格'}
+              {t.ui?.gridView || 'Grid'}
             </button>
           </div>
 

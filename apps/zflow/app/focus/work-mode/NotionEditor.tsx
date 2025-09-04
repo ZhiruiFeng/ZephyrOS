@@ -47,7 +47,7 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
       CodeBlockLowlight.configure({ lowlight }),
       Underline,
       Link.configure({ openOnClick: true, autolink: true }),
-      Placeholder.configure({ placeholder: placeholder || '记录你的想法...' }),
+      Placeholder.configure({ placeholder: placeholder || 'Write your thoughts here...' }),
       Image,
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -115,5 +115,4 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
     </div>
   )
 }
-
 

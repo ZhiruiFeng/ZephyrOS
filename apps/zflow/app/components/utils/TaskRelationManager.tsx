@@ -22,10 +22,10 @@ interface TaskRelationManagerProps {
 }
 
 const relationTypeLabels: Record<TaskRelationType, string> = {
-  subtask: '子任务',
-  related: '相关任务',
-  dependency: '依赖任务',
-  blocked_by: '阻塞任务'
+  subtask: 'Subtask',
+  related: 'Related Task',
+  dependency: 'Depends On',
+  blocked_by: 'Blocked By'
 };
 
 const relationTypeColors: Record<TaskRelationType, string> = {
@@ -67,7 +67,7 @@ export default function TaskRelationManager({
       setSelectedRelationType('subtask');
       setIsAdding(false);
     } catch (error) {
-      console.error('添加任务关系失败:', error);
+      console.error('Failed to add task relation:', error);
     }
   };
 
@@ -75,7 +75,7 @@ export default function TaskRelationManager({
     try {
       await onRemoveRelation(relationId);
     } catch (error) {
-      console.error('删除任务关系失败:', error);
+      console.error('Failed to delete task relation:', error);
     }
   };
 
@@ -86,13 +86,13 @@ export default function TaskRelationManager({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">任务关系</h3>
+        <h3 className="text-lg font-medium text-gray-900">Task Relations</h3>
         {filteredTasks.length > 0 && (
           <button
             onClick={() => setIsAdding(!isAdding)}
             className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            {isAdding ? '取消' : '添加关系'}
+            {isAdding ? 'Cancel' : 'Add Relation'}
           </button>
         )}
       </div>
@@ -102,14 +102,14 @@ export default function TaskRelationManager({
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                选择任务
+                Select Task
               </label>
               <select
                 value={selectedTaskId}
                 onChange={(e) => setSelectedTaskId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">选择任务...</option>
+                <option value="">Select a task...</option>
                 {filteredTasks.map(task => (
                   <option key={task.id} value={task.id}>
                     {task.title}
@@ -120,7 +120,7 @@ export default function TaskRelationManager({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                关系类型
+                Relation Type
               </label>
               <select
                 value={selectedRelationType}
@@ -141,13 +141,13 @@ export default function TaskRelationManager({
                 disabled={!selectedTaskId}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                添加
+                Add
               </button>
               <button
                 onClick={() => setIsAdding(false)}
                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
               >
-                取消
+                Cancel
               </button>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function TaskRelationManager({
 
       {relations.length === 0 && !isAdding && (
         <div className="text-center py-8 text-gray-500">
-          暂无任务关系
+          No relations yet
         </div>
       )}
     </div>

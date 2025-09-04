@@ -40,7 +40,7 @@ export default function FutureView({
   if (tasks.length === 0) {
     return (
       <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-        {t.ui?.noBacklogItems || '暂无待办事项'}
+        {t.ui?.noBacklogItems || 'No backlog items'}
       </div>
     )
   }

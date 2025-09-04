@@ -40,7 +40,7 @@ export default function CurrentView({
   if (tasks.length === 0) {
     return (
       <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-        {t.ui?.noCurrentTasks || '暂无当前任务'}
+        {t.ui?.noCurrentTasks || 'No current tasks'}
       </div>
     )
   }

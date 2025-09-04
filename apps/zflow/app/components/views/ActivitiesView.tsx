@@ -35,7 +35,7 @@ export default function ActivitiesView({
   if (activitiesLoading) {
     return (
       <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-        {t.ui?.loading || '加载中...'}
+        {t.common?.loading || 'Loading...'}
       </div>
     )
   }
@@ -43,7 +43,7 @@ export default function ActivitiesView({
   if (!activities || activities.length === 0) {
     return (
       <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-        {t.activity?.noActivities || '暂无活动记录'}
+        {t.activity?.noActivities || 'No activities yet'}
       </div>
     )
   }

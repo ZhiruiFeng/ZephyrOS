@@ -39,7 +39,7 @@ export default function ArchiveView({
   if (groupedArchiveList.length === 0) {
     return (
       <div className="glass rounded-lg md:rounded-xl p-6 md:p-8 text-center text-gray-500">
-        {t.ui?.noArchivedTasks || '暂无归档任务'}
+        {t.ui?.noArchivedTasks || 'No archived tasks'}
       </div>
     )
   }

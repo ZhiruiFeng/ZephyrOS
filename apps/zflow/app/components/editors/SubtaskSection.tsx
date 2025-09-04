@@ -178,7 +178,7 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
               onToggleCollapse?.(subtask.id)
             }}
             className="text-gray-400 hover:text-gray-600"
-            title={isCollapsed ? '展开' : '收起'}
+            title={isCollapsed ? 'Expand' : 'Collapse'}
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -234,7 +234,7 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
                   setShowDescription(!showDescription)
                 }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="查看描述"
+                title="View description"
               >
                 <Info className="w-3 h-3" />
               </button>

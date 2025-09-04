@@ -109,7 +109,7 @@ export default function TimelinePage() {
           <>
             {/* Quick Stats */}
             <div className="mb-6">
-              <TimelineStats timelineData={timelineData} />
+              <TimelineStats timelineData={timelineData} t={t} />
             </div>
 
             {/* Content based on view mode */}
@@ -137,7 +137,7 @@ export default function TimelinePage() {
                     {t.common?.refresh ?? 'Refresh'}
                   </button>
                 </div>
-                <TimelineDetailedStats timelineData={timelineData} />
+                <TimelineDetailedStats timelineData={timelineData} t={t} />
               </div>
             )}
           </>
