@@ -30,11 +30,18 @@ const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
       displayType = item.metadata.timelineItemType
     }
 
+    // For memories: show as a point-in-time bookmark at captured_at
+    const isMemory = displayType === 'memory'
+    const capturedAt = isMemory ? (item.metadata?.capturedAt as string | undefined) : undefined
+    const memoryStart = isMemory ? (capturedAt || item.startTime) : undefined
+
     return {
       id: item.id,
       title: item.title,
-      start: item.startTime,
-      end: item.endTime || new Date(new Date(item.startTime).getTime() + (item.duration || 30) * 60000).toISOString(),
+      start: isMemory ? (memoryStart as string) : item.startTime,
+      end: isMemory 
+        ? (memoryStart as string)
+        : (item.endTime || new Date(new Date(item.startTime).getTime() + (item.duration || 30) * 60000).toISOString()),
       type: displayType as 'task' | 'activity' | 'memory',
       categoryId: item.category?.id,
       source: item.metadata?.source as string,
@@ -51,6 +58,7 @@ const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
         originalId: item.metadata?.originalId,
         originalStart: item.metadata?.originalStart,
         originalEnd: item.metadata?.originalEnd,
+        capturedAt: capturedAt,
         // Track original type information for time-entries
         originalType: item.type,
         relatedItemId: item.type === 'time_entry' ? item.metadata?.taskId : undefined,

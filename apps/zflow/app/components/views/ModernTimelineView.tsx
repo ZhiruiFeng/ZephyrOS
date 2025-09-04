@@ -53,6 +53,7 @@ export interface TimelineEvent {
     timelineItemType?: string;
     timelineItemTitle?: string;
     timelineItemId?: string;
+    capturedAt?: string;
   };
 }
 
@@ -129,7 +130,7 @@ function getTypeProperties(type: ItemType) {
         label: 'Memory',
         color: '#EC4899',
         bgColor: 'rgba(236, 72, 153, 0.1)',
-        icon: '💭'
+        icon: '🔖'
       };
     case 'time_entry':
       return {
@@ -451,7 +452,11 @@ function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry, t }: {
   return (
     <article
       className="group relative ml-2 sm:ml-12 mb-6 cursor-pointer"
-      aria-label={`${typeProps.label}: ${ev.title}, ${fmtHM(s)}–${fmtHM(e)}, ${mins} minutes, ${cat.name}`}
+      aria-label={
+        ev.type === 'memory'
+          ? `${typeProps.label}: ${ev.title}, at ${fmtHM(s)}, ${cat.name}`
+          : `${typeProps.label}: ${ev.title}, ${fmtHM(s)}–${fmtHM(e)}, ${mins} minutes, ${cat.name}`
+      }
       onClick={() => onEventClick?.(ev)}
     >
       {/* dot on the guide - shows category color with type-specific styling */}
@@ -512,7 +517,13 @@ function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry, t }: {
           
           {/* Time and duration */}
           <div className="flex items-center gap-2">
-            {isEditing ? (
+            {ev.type === 'memory' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium" style={{ color: TOKENS.color.text2 }}>
+                  {fmtHM(s)}
+                </span>
+              </div>
+            ) : isEditing ? (
               <div className="flex items-center gap-2">
                 <input
                   type="time"

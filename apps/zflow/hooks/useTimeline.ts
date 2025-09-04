@@ -158,7 +158,8 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
             salience: memory.salience_score,
             isCrossDaySegment: endTime && (startTime < dayStart || endTime > dayEnd),
             originalStart: memory.happened_range?.start || memory.captured_at,
-            originalEnd: memory.happened_range?.end
+            originalEnd: memory.happened_range?.end,
+            capturedAt: memory.captured_at
           }
         }
       })
@@ -365,7 +366,8 @@ async function fetchTimelineRangeData(startDate: Date, endDate: Date): Promise<T
             salience: memory.salience_score,
             isCrossDaySegment: endTime && (startTime < normalizedStartDate || endTime > normalizedEndDate),
             originalStart: memory.happened_range?.start || memory.captured_at,
-            originalEnd: memory.happened_range?.end
+            originalEnd: memory.happened_range?.end,
+            capturedAt: memory.captured_at
           }
         }
       })
