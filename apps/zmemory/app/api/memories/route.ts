@@ -409,11 +409,13 @@ export async function POST(request: NextRequest) {
 
     // If Supabase is not configured, return mock response
     if (!supabase) {
+      // Avoid duplicate 'title' key when spreading transformedData
+      const { title: _ignoredTitle, ...rest } = transformedData as any;
       const mockMemory = {
         id: Date.now().toString(),
-        title: (transformedData as any).title_override || transformedData.note.substring(0, 100),
-        description: transformedData.note,
-        ...transformedData,
+        title: (transformedData as any).title || (transformedData as any).title_override || transformedData.note?.substring(0, 100) || 'Untitled',
+        description: transformedData.note ?? '',
+        ...rest,
         captured_at: transformedData.captured_at || now,
         user_id: 'mock-user',
         created_at: now,
@@ -438,8 +440,8 @@ export async function POST(request: NextRequest) {
     // Create memory directly - trigger will sync to timeline_items
     // Note: Only include fields that exist in the memories table schema
     const memoryPayload = {
-      title: transformedData.title || transformedData.note.substring(0, 100),
-      description: transformedData.note,
+      title: transformedData.title || transformedData.note?.substring(0, 100) || 'Untitled',
+      description: transformedData.note ?? '',
       note: transformedData.note,
       title_override: transformedData.title, // Store title as title_override for DB schema
       memory_type: transformedData.memory_type || 'note',
