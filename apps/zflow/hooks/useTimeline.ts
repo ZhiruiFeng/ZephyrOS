@@ -92,10 +92,11 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
       startTime: entry.start_at,
       endTime: entry.end_at || undefined,
       duration: entry.duration_minutes || undefined,
-      category: entry.category_id ? {
-        id: entry.category_id,
-        name: entry.category_name || 'Unknown Category',
-        color: entry.category_color || '#C6D2DE'
+      category: entry.category ? {
+        id: entry.category.id,
+        name: entry.category.name || 'Unknown Category',
+        color: entry.category.color || '#C6D2DE',
+        icon: entry.category.icon
       } : undefined,
       tags: [],
       location: undefined,
@@ -301,10 +302,11 @@ async function fetchTimelineRangeData(startDate: Date, endDate: Date): Promise<T
         startTime: entry.start_at,
         endTime: entry.end_at || undefined,
         duration: entry.duration_minutes || undefined,
-        category: entry.category_id ? {
-          id: entry.category_id,
-          name: entry.category_name || 'Unknown Category',
-          color: entry.category_color || '#C6D2DE'
+        category: entry.category ? {
+          id: entry.category.id,
+          name: entry.category.name || 'Unknown Category',
+          color: entry.category.color || '#C6D2DE',
+          icon: entry.category.icon
         } : undefined,
         tags: [],
         location: undefined,

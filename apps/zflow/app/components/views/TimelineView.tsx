@@ -65,15 +65,15 @@ const transformCategories = (items: TimelineItem[]): Category[] => {
   const categoryMap = new Map<string, Category>()
   
   items.forEach(item => {
-      if (item.category && !categoryMap.has(item.category.id)) {
-        categoryMap.set(item.category.id, {
-          id: item.category.id,
-          name: item.category.name,
-          color: item.category.color,
-          icon: item.category.icon
-        })
-      }
-    })
+    if (item.category && !categoryMap.has(item.category.id)) {
+      categoryMap.set(item.category.id, {
+        id: item.category.id,
+        name: item.category.name,
+        color: item.category.color,
+        icon: item.category.icon
+      })
+    }
+  })
 
   // Add default categories if none exist
   if (categoryMap.size === 0) {
