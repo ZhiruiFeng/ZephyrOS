@@ -1,16 +1,15 @@
 'use client'
 
 import React from 'react'
-import { Clock, ListTodo, Archive, BarChart3 } from 'lucide-react'
+import { Clock, ListTodo, Archive } from 'lucide-react'
 
-export type ViewKey = 'current' | 'future' | 'archive' | 'activities'
+export type ViewKey = 'current' | 'future' | 'archive'
 
 interface StatisticsCardsProps {
   stats: {
     current: number
     future: number
     archive: number
-    activities: number
   }
   activeView: ViewKey
   onViewChange: (view: ViewKey) => void
@@ -18,7 +17,17 @@ interface StatisticsCardsProps {
 }
 
 export default function StatisticsCards({ stats, activeView, onViewChange, t }: StatisticsCardsProps) {
-  const cards = [
+  const cards: Array<{
+    key: ViewKey
+    icon: any
+    title: string
+    description: any
+    count: number
+    iconBgColor: string
+    iconColor: string
+    countColor: string
+    borderColor?: string
+  }> = [
     {
       key: 'current' as ViewKey,
       icon: Clock,
@@ -27,7 +36,8 @@ export default function StatisticsCards({ stats, activeView, onViewChange, t }: 
       count: stats.current,
       iconBgColor: 'bg-primary-100',
       iconColor: 'text-primary-600',
-      countColor: 'text-primary-600'
+      countColor: 'text-primary-600',
+      borderColor: 'border-primary-300'
     },
     {
       key: 'future' as ViewKey,
@@ -37,7 +47,8 @@ export default function StatisticsCards({ stats, activeView, onViewChange, t }: 
       count: stats.future,
       iconBgColor: 'bg-primary-200',
       iconColor: 'text-primary-700',
-      countColor: 'text-primary-700'
+      countColor: 'text-primary-700',
+      borderColor: 'border-primary-300'
     },
     {
       key: 'archive' as ViewKey,
@@ -47,23 +58,13 @@ export default function StatisticsCards({ stats, activeView, onViewChange, t }: 
       count: stats.archive,
       iconBgColor: 'bg-primary-300',
       iconColor: 'text-primary-800',
-      countColor: 'text-primary-800'
-    },
-    {
-      key: 'activities' as ViewKey,
-      icon: BarChart3,
-      title: 'Activities',
-      description: 'Life experiences',
-      count: stats.activities,
-      iconBgColor: 'bg-emerald-100',
-      iconColor: 'text-emerald-600',
-      countColor: 'text-emerald-600',
-      borderColor: 'border-emerald-300'
+      countColor: 'text-primary-800',
+      borderColor: 'border-primary-300'
     }
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6 md:mb-8">
+    <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8">
       {cards.map((card) => {
         const Icon = card.icon
         const isActive = activeView === card.key

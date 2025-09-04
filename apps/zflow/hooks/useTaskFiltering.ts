@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { TaskMemory, TaskContent } from '../lib/api'
 
-export type ViewKey = 'current' | 'future' | 'archive' | 'activities'
+export type ViewKey = 'current' | 'future' | 'archive'
 
 interface UseTaskFilteringProps {
   tasks: TaskMemory[]
@@ -22,7 +22,6 @@ interface UseTaskFilteringReturn {
     current: number
     future: number
     archive: number
-    activities: number
   }
 }
 
@@ -185,8 +184,7 @@ export function useTaskFiltering({
       return false
     }).length
 
-    // Activities count is handled separately
-    return { current, future, archive, activities: 0 }
+    return { current, future, archive }
   }, [tasks, now, windowMs])
 
   return {

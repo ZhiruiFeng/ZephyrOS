@@ -39,7 +39,6 @@ import {
   CurrentView,
   FutureView,
   ArchiveView,
-  ActivitiesView,
   TimelineView,
 } from './components/views'
 import { useTasks } from '../hooks/useMemories'
@@ -52,7 +51,7 @@ import { useActivityActions } from '../hooks/useActivityActions'
 import { useModalState } from '../hooks/useModalState'
 import { useTimeline, TimelineItem } from '../hooks/useTimeline'
 
-export type ViewKey = 'current' | 'future' | 'archive' | 'activities'
+export type ViewKey = 'current' | 'future' | 'archive'
 export type DisplayMode = 'list' | 'grid'
 export type MainViewMode = 'tasks' | 'timeline'
 
@@ -102,11 +101,12 @@ function ZFlowPageContent() {
     timerRunningTaskId: timer.runningTaskId
   })
 
-  // Statistics including activities count
+  // Statistics for three views only
   const stats = React.useMemo(() => ({
-    ...taskStats,
-    activities: activities?.filter(a => a.status === 'active' || a.status === 'completed').length || 0
-  }), [taskStats, activities])
+    current: taskStats.current,
+    future: taskStats.future,
+    archive: taskStats.archive
+  }), [taskStats])
 
   // Calculate category counts for sidebar
   const viewBasedCounts = React.useMemo(() => {
@@ -379,7 +379,7 @@ function ZFlowPageContent() {
               />
 
               {/* View content */}
-              <div className="space-y-3 md:space-y-4">
+              <div className="space-y-3 md:space-y-3">
                 {view === 'current' && (
                   <CurrentView
                     tasks={currentList}
@@ -433,21 +433,7 @@ function ZFlowPageContent() {
                   />
                 )}
 
-                {view === 'activities' && (
-                  <ActivitiesView
-                    activities={activities}
-                    activitiesLoading={activitiesLoading}
-                    categories={categories}
-                    timer={timer}
-                    displayMode={displayMode}
-                    t={t}
-                    onActivityClick={goToActivityFocus}
-                    onToggleActivityComplete={activityActions.toggleActivityComplete}
-                    onEditActivity={modalState.openActivityEditor}
-                    onDeleteActivity={activityActions.handleDeleteActivity}
-                    onShowActivityTime={modalState.setTimeModalActivity}
-                  />
-                )}
+                {/* activities view removed from selectors */}
               </div>
             </div>
           </div>

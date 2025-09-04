@@ -8,6 +8,13 @@ export type TimeEntryWithCrossDay = TimeEntry & {
   category_id?: string
   category_name?: string
   category_color?: string
+  // 可选：后端可能直接联表返回的类别对象
+  category?: {
+    id: string
+    name: string
+    color: string
+    icon?: string
+  } | null
 }
 
 // 格式化日期为YYYY-MM-DD字符串
