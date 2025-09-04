@@ -214,10 +214,7 @@ export async function PUT(
     const validationResult = MemoryUpdateSchema.safeParse(body);
     if (!validationResult.success) {
       console.error('UPDATE MEMORY Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid memory data', details: validationResult.error.errors },
-        { status: 400 }
-      );
+      return jsonWithCors(request, { error: 'Invalid memory data', details: validationResult.error.errors }, 400);
     }
     
     const memoryData = validationResult.data;

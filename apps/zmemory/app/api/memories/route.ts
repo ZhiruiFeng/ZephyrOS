@@ -152,10 +152,7 @@ export async function GET(request: NextRequest) {
     // Parse and validate query parameters
     const queryResult = MemoriesQuerySchema.safeParse(Object.fromEntries(searchParams));
     if (!queryResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryResult.error.errors },
-        { status: 400 }
-      );
+      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
     }
 
     const query = queryResult.data;
@@ -398,10 +395,7 @@ export async function POST(request: NextRequest) {
     const validationResult = MemoryCreateSchema.safeParse(body);
     if (!validationResult.success) {
       console.error('CREATE MEMORY Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid memory data', details: validationResult.error.errors },
-        { status: 400 }
-      );
+      return jsonWithCors(request, { error: 'Invalid memory data', details: validationResult.error.errors }, 400);
     }
 
     const memoryData = validationResult.data;

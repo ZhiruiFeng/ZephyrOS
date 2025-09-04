@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Search, Filter, Calendar, BookOpen, Star, Heart, TrendingUp, Loader2, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -12,6 +13,7 @@ import MemoryCard from '../components/memories/MemoryCard'
 export default function MemoriesPage() {
   const { user } = useAuth()
   const { t } = useTranslation()
+  const router = useRouter()
   const [selectedView, setSelectedView] = React.useState<'timeline' | 'search' | 'collections'>('timeline')
   const [isCaptureOpen, setIsCaptureOpen] = React.useState(false)
   const [editingMemory, setEditingMemory] = React.useState<Memory | undefined>()
@@ -130,8 +132,7 @@ export default function MemoriesPage() {
   }
 
   const handleMemoryClick = (memoryId: string) => {
-    // TODO: Implement memory detail view
-    console.log('Open memory:', memoryId)
+    router.push(`/focus/memory?memoryId=${encodeURIComponent(memoryId)}`)
   }
 
   const handleTagClick = (tag: string) => {

@@ -107,10 +107,7 @@ export async function POST(request: NextRequest) {
     const validationResult = MemoryAnalysisSchema.safeParse(body);
     if (!validationResult.success) {
       console.error('MEMORY ANALYSIS Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid analysis data', details: validationResult.error.errors },
-        { status: 400 }
-      );
+      return jsonWithCors(request, { error: 'Invalid analysis data', details: validationResult.error.errors }, 400);
     }
     
     const analysisData = validationResult.data;

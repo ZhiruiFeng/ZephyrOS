@@ -78,10 +78,7 @@ export async function GET(request: NextRequest) {
     // Parse and validate query parameters
     const queryResult = WeeklyReviewQuerySchema.safeParse(Object.fromEntries(searchParams));
     if (!queryResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryResult.error.errors },
-        { status: 400 }
-      );
+      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
     }
 
     const query = queryResult.data;

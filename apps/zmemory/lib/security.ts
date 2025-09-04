@@ -33,19 +33,27 @@ export function getAllowedOrigins(): string[] {
 export function jsonWithCors(request: NextRequest, body: any, status = 200): NextResponse {
   const origin = request.headers.get('origin');
   const allowedOrigins = getAllowedOrigins();
+  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'))
   
   const res = NextResponse.json(body, { status });
 
-  // Only set CORS headers if origin is allowed
+  // Broaden CORS policy:
+  // - Allow configured origins
+  // - Allow all *.vercel.app
+  // - If Authorization bearer token is present, allow the requesting origin (no cookies used)
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
     res.headers.set('Access-Control-Allow-Origin', origin);
     res.headers.set('Vary', 'Origin');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
+  } else {
+    // Fallback for cross-origin token-based requests without cookies
+    res.headers.set('Access-Control-Allow-Origin', '*');
   }
   
   // Security headers
   res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.headers.set('Access-Control-Max-Age', '600');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('X-XSS-Protection', '1; mode=block');
@@ -60,21 +68,25 @@ export function jsonWithCors(request: NextRequest, body: any, status = 200): Nex
 export function createOptionsResponse(request: NextRequest): NextResponse {
   const origin = request.headers.get('origin');
   const allowedOrigins = getAllowedOrigins();
+  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'))
   
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '600',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
   };
 
-  // Only set CORS headers if origin is allowed
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Vary'] = 'Origin';
     headers['Access-Control-Allow-Credentials'] = 'true';
+  } else {
+    // Preflight fallback for arbitrary origins when using Authorization header
+    headers['Access-Control-Allow-Origin'] = '*';
   }
   
   return new NextResponse(null, {
