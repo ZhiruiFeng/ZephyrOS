@@ -5,6 +5,7 @@ import { TimelineItem } from '@/hooks/useTimeline'
 import ModernTimelineView, { TimelineEvent, Category } from './ModernTimelineView'
 import { getCrossDayBorderClass } from '../../utils/crossDayUtils'
 import { timeTrackingApi } from '../../../lib/api'
+import CreateTimelineItemModal from '../modals/CreateTimelineItemModal'
 
 interface TimelineViewProps {
   selectedDate: Date
@@ -98,6 +99,7 @@ export default function TimelineView({
   refetchTimeline,
   t
 }: TimelineViewProps) {
+  const [createEventModalData, setCreateEventModalData] = React.useState<{ start: string; end: string } | null>(null)
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -121,8 +123,7 @@ export default function TimelineView({
   }
 
   const handleCreateEvent = (start: string, end: string) => {
-    // TODO: Implement event creation
-    console.log('Create event:', start, end)
+    setCreateEventModalData({ start, end })
   }
 
   const handleUpdateTimeEntry = async (timeEntryId: string, start: string, end: string) => {
@@ -153,13 +154,30 @@ export default function TimelineView({
   }
 
   return (
-    <ModernTimelineView
-      selectedDate={selectedDate}
-      events={events}
-      categories={categories}
-      onEventClick={handleEventClick}
-      onCreateEvent={handleCreateEvent}
-      onUpdateTimeEntry={handleUpdateTimeEntry}
-    />
+    <>
+      <ModernTimelineView
+        selectedDate={selectedDate}
+        events={events}
+        categories={categories}
+        onEventClick={handleEventClick}
+        onCreateEvent={handleCreateEvent}
+        onUpdateTimeEntry={handleUpdateTimeEntry}
+      />
+      
+      {createEventModalData && (
+        <CreateTimelineItemModal
+          isOpen={true}
+          onClose={() => setCreateEventModalData(null)}
+          initialStart={createEventModalData.start}
+          initialEnd={createEventModalData.end}
+          selectedDate={selectedDate}
+          onActivityCreated={() => {
+            if (refetchTimeline) refetchTimeline()
+            setCreateEventModalData(null)
+          }}
+          t={t}
+        />
+      )}
+    </>
   )
 }

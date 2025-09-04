@@ -229,7 +229,7 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 
   return (
     <div style={{ background: TOKENS.color.canvas, color: TOKENS.color.text }} className="min-h-screen">
-      <Header day={day} events={dayEvents} />
+      <Header day={day} events={dayEvents} onCreateEvent={onCreateEvent} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-32">
         {/* vertical guide */}
@@ -238,7 +238,7 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 
           <div className="space-y-2">
             {blocks.map((b, idx) => (
-              <BlockView key={idx} block={b} onEventClick={onEventClick} categories={categoriesProp} onUpdateTimeEntry={onUpdateTimeEntry} />
+              <BlockView key={idx} block={b} onEventClick={onEventClick} categories={categoriesProp} onUpdateTimeEntry={onUpdateTimeEntry} onCreateEvent={onCreateEvent} />
             ))}
           </div>
         </div>
@@ -249,18 +249,19 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 }
 
 // ===== Sub-Views =====
-function BlockView({ block, onEventClick, categories, onUpdateTimeEntry }: { 
+function BlockView({ block, onEventClick, categories, onUpdateTimeEntry, onCreateEvent }: { 
   block: any; 
   onEventClick?: (event: TimelineEvent) => void; 
   categories: Category[];
   onUpdateTimeEntry?: (timeEntryId: string, start: string, end: string) => Promise<void>;
+  onCreateEvent?: (start: string, end: string) => void;
 }) {
-  if (block.kind === 'gap') return <Gap from={block.from} to={block.to} />;
+  if (block.kind === 'gap') return <Gap from={block.from} to={block.to} onCreateEvent={onCreateEvent} />;
   if (block.kind === 'now') return <NowMarker />;
   return <EventCard ev={block.ev} onEventClick={onEventClick} categories={categories} onUpdateTimeEntry={onUpdateTimeEntry} />;
 }
 
-function Header({ day, events }: { day: Date; events: TimelineEvent[] }) {
+function Header({ day, events, onCreateEvent }: { day: Date; events: TimelineEvent[]; onCreateEvent?: (start: string, end: string) => void }) {
   const totalMin = events.reduce((acc, ev) => acc + spanMinutes(toDate(ev.start), toDate(ev.end)), 0);
 
   return (
@@ -274,14 +275,25 @@ function Header({ day, events }: { day: Date; events: TimelineEvent[] }) {
         <div className="flex items-center gap-3 text-sm" style={{ color: TOKENS.color.text2 }}>
           <div className="hidden sm:block">Recorded: <span style={{ color: TOKENS.color.text }} className="font-medium">{Math.round(totalMin/60*10)/10}h</span></div>
           <input placeholder="Search…" className="hidden sm:block px-3 py-2 rounded-xl outline-none" style={{ background: 'rgba(0,0,0,0.04)', border: `1px solid ${TOKENS.color.border}` }} />
-          <button className="px-3 py-2 rounded-xl text-sm font-medium" style={{ background: TOKENS.color.accent, color: 'white' }}>+ New</button>
+          <button 
+            onClick={() => {
+              const now = new Date();
+              const start = new Date(now);
+              const end = new Date(now.getTime() + 30 * 60000); // 30 minutes later
+              onCreateEvent?.(start.toISOString(), end.toISOString());
+            }}
+            className="px-3 py-2 rounded-xl text-sm font-medium" 
+            style={{ background: TOKENS.color.accent, color: 'white' }}
+          >
+            + New
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function Gap({ from, to }: { from: Date; to: Date }) {
+function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?: (start: string, end: string) => void }) {
   const mins = spanMinutes(from, to);
   const h = gapToSpace(mins);
   
@@ -312,6 +324,7 @@ function Gap({ from, to }: { from: Date; to: Date }) {
           <span className="opacity-80">{fmtHM(from)} – {fmtHM(to)}</span>
           <span className="opacity-60">No records · {mins}m</span>
           <button 
+            onClick={() => onCreateEvent?.(from.toISOString(), to.toISOString())}
             className="px-2 py-1 rounded-lg text-[11px] font-medium transition-all hover:scale-105" 
             style={{ 
               background: TOKENS.color.accentSubtle, 
