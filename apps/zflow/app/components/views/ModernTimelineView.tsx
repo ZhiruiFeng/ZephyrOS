@@ -233,8 +233,8 @@ const ModernTimelineView: React.FC<ModernTimelineViewProps> = ({
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 pb-32">
         {/* vertical guide */}
-        <div className="relative pl-16 sm:pl-0">
-          <div className="absolute left-[16px] sm:left-[22px] top-0 bottom-0 w-px" style={{ background: TOKENS.color.grid }} />
+        <div className="relative pl-12 sm:pl-0">
+          <div className="absolute left-[12px] sm:left-[22px] top-0 bottom-0 w-px" style={{ background: TOKENS.color.grid }} />
 
           <div className="space-y-2">
             {blocks.map((b, idx) => (
@@ -301,7 +301,7 @@ function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?
   if (mins < 15) {
     return <div style={{ height: h }} className="relative">
       {/* dotted hint on the guide line for small gaps */}
-      <div className="absolute left-[12px] sm:left-[18px] top-1 bottom-1 w-2">
+      <div className="absolute left-[1px] sm:left-[1px] top-1 bottom-1 w-2">
         <div className="w-px h-full border-l border-dashed opacity-30" style={{ borderColor: TOKENS.color.grid }} />
       </div>
     </div>;
@@ -310,11 +310,11 @@ function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?
   return (
     <div style={{ height: h }} className="relative flex items-center">
       {/* dotted hint on the guide line */}
-      <div className="absolute left-[12px] sm:left-[18px] top-2 bottom-2 w-2">
+      <div className="absolute left-[1px] sm:left-[1px] top-2 bottom-2 w-2">
         <div className="w-px h-full border-l border-dashed" style={{ borderColor: TOKENS.color.grid }} />
       </div>
       {/* gap card - centered vertically within the available space */}
-      <div className="ml-4 sm:ml-12 flex-1">
+      <div className="ml-2 sm:ml-12 flex-1">
         <div className="inline-flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] shadow-sm" 
              style={{ 
                background: 'rgba(0,0,0,0.02)', 
@@ -342,7 +342,7 @@ function Gap({ from, to, onCreateEvent }: { from: Date; to: Date; onCreateEvent?
 function NowMarker() {
   return (
     <div className="relative my-5">
-      <div className="absolute left-[16px] sm:left-[22px] right-0 top-1/2 -translate-y-1/2 h-px" style={{ background: `${TOKENS.color.now}99` }} />
+      <div className="absolute left-[12px] sm:left-[22px] right-0 top-1/2 -translate-y-1/2 h-px" style={{ background: `${TOKENS.color.now}99` }} />
       <div className="ml-4 sm:ml-12 inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-[12px]" style={{ background: 'rgba(43,212,189,0.12)', color: TOKENS.color.now, border: `1px solid ${TOKENS.color.now}66` }}>
         <div className="w-1.5 h-1.5 rounded-full" style={{ background: TOKENS.color.now }} />
         Now
@@ -443,13 +443,13 @@ function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry }: {
 
   return (
     <article
-      className="group relative ml-4 sm:ml-12 mb-6 cursor-pointer"
+      className="group relative ml-2 sm:ml-12 mb-6 cursor-pointer"
       aria-label={`${typeProps.label}: ${ev.title}, ${fmtHM(s)}–${fmtHM(e)}, ${mins} minutes, ${cat.name}`}
       onClick={() => onEventClick?.(ev)}
     >
       {/* dot on the guide - shows category color with type-specific styling */}
       <div 
-        className={`absolute left-[-18px] sm:left-[-2px] top-4 w-3 h-3 ${ev.type === 'memory' ? 'rounded-md' : ev.type === 'task' ? 'rounded-sm' : ev.type === 'time_entry' ? 'rounded-md border-2' : 'rounded-full'}`}
+        className={`absolute left-[-14px] sm:left-[-2px] top-4 w-3 h-3 ${ev.type === 'memory' ? 'rounded-md' : ev.type === 'task' ? 'rounded-sm' : ev.type === 'time_entry' ? 'rounded-md border-2' : 'rounded-full'}`}
         style={{ 
           background: cat.color, 
           boxShadow: `0 0 0 4px ${TOKENS.color.canvas}`,
@@ -458,7 +458,7 @@ function EventCard({ ev, onEventClick, categories, onUpdateTimeEntry }: {
       />
 
       {/* time label */}
-      <div className="absolute -left-12 sm:-left-20 top-3 text-[10px] sm:text-[12px] tabular-nums" style={{ color: TOKENS.color.text2 }}>
+      <div className="absolute -left-14 sm:-left-20 top-3 text-[10px] sm:text-[12px] tabular-nums" style={{ color: TOKENS.color.text2 }}>
         <div>{fmtHM(s)}</div>
         {mins > 15 && (
           <div className="opacity-60 mt-0.5">{fmtHM(e)}</div>
