@@ -40,9 +40,9 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
+    // Rate limiting (per-route key to avoid other endpoints consuming the same bucket)
+    const rlKey = `${getClientIP(request)}:GET:/api/memories/[id]`;
+    if (isRateLimited(rlKey, 15 * 60 * 1000, 300)) {
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
@@ -198,9 +198,9 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
+    // Rate limiting (per-route key)
+    const putKey = `${getClientIP(request)}:PUT:/api/memories/[id]`;
+    if (isRateLimited(putKey, 15 * 60 * 1000, 100)) {
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
@@ -369,9 +369,9 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) {
+    // Rate limiting (use user-scoped key when possible; separate bucket from GETs)
+    const prelimKey = `${getClientIP(request)}:DELETE:/api/memories/[id]`;
+    if (isRateLimited(prelimKey, 15 * 60 * 1000, 30)) {
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
@@ -381,6 +381,13 @@ export async function DELETE(
     }
 
     const userId = await getUserIdFromRequest(request);
+    // Re-evaluate rate limit with user-scoped key (more precise control for authenticated users)
+    if (userId) {
+      const userDeleteKey = `${userId}:DELETE:/api/memories/[id]`;
+      if (isRateLimited(userDeleteKey, 15 * 60 * 1000, 50)) {
+        return jsonWithCors(request, { error: 'Too many requests' }, 429);
+      }
+    }
     if (!userId) {
       if (process.env.NODE_ENV !== 'production') {
         // In development, allow unauthenticated requests and return mock response
@@ -393,11 +400,13 @@ export async function DELETE(
     // Use service role client to bypass RLS (consistent with other endpoints)  
     const client = supabase;
     
-    // Soft delete: set status to 'deleted' instead of hard delete
+    // Soft delete: set status to 'archived' instead of hard delete
+    // Rationale: timeline_items.status doesn't support 'deleted', and triggers
+    // mirror memory status onto timeline_items. Using 'archived' avoids constraint errors.
     const { data, error } = await client
       .from('memories')
       .update({ 
-        status: 'deleted',
+        status: 'archived',
         updated_at: nowUTC()
       })
       .eq('id', id)

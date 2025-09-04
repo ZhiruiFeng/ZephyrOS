@@ -141,9 +141,9 @@ const generateMockMemories = () => [
  */
 export async function GET(request: NextRequest) {
   try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
+    // Rate limiting (per-route key to avoid cross-endpoint contention)
+    const rlKey = `${getClientIP(request)}:GET:/api/memories`;
+    if (isRateLimited(rlKey, 15 * 60 * 1000, 300)) {
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
@@ -211,6 +211,9 @@ export async function GET(request: NextRequest) {
     }
     if (query.status) {
       dbQuery = dbQuery.eq('status', query.status);
+    } else {
+      // Default to active memories only so soft-deleted/archived don't show up
+      dbQuery = dbQuery.eq('status', 'active');
     }
 
     if (query.is_highlight !== undefined) {
@@ -380,9 +383,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
+    // Rate limiting (per-route key)
+    const postKey = `${getClientIP(request)}:POST:/api/memories`;
+    if (isRateLimited(postKey, 15 * 60 * 1000, 50)) {
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 

@@ -225,6 +225,9 @@ export async function GET(request: NextRequest) {
     }
     if (query.status) {
       dbQuery = dbQuery.eq('memories.status', query.status);
+    } else {
+      // Default to active memories so archived ones don't appear in timeline
+      dbQuery = dbQuery.eq('memories.status', 'active');
     }
     if (query.category_id) {
       dbQuery = dbQuery.eq('category_id', query.category_id);
