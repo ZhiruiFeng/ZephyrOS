@@ -1,0 +1,7 @@
+export { default as ProfileDashboard } from './ProfileDashboard'
+export { ModuleSelector } from './ModuleSelector'
+export { EnergySpectrumModule } from './modules/EnergySpectrumModule'
+export { StatsModule } from './modules/StatsModule'
+export { ActivitySummaryModule } from './modules/ActivitySummaryModule'
+export { useProfileModules } from './hooks/useProfileModules'
+export type * from './types'

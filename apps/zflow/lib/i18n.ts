@@ -365,6 +365,13 @@ export interface TranslationKeys {
     creating: string;
     noSubtasksYet: string;
     addSubtaskToGetStarted: string;
+    // Date and time
+    today: string;
+    yesterday: string;
+    thisWeek: string;
+    thisMonth: string;
+    defaultDate: string;
+    showTimezone: string;
   };
 
   // Messages and notifications
@@ -398,6 +405,29 @@ export interface TranslationKeys {
   profile: {
     yourProfile: string;
     personalProductivityInsights: string;
+    customizeModules: string;
+    addModules: string;
+    enabledModules: string;
+    availableModules: string;
+    noModulesEnabled: string;
+    addModulesToGetStarted: string;
+    noModulesAvailable: string;
+    productivityStats: string;
+    activitySummary: string;
+    timeRange: string;
+    showTrends: string;
+    tasksCompleted: string;
+    completionRate: string;
+    timeSpent: string;
+    productivityScore: string;
+    weeklyGoal: string;
+    weeklyProgress: string;
+    tasks: string;
+    showRecentTasks: string;
+    maxItems: string;
+    completed: string;
+    inProgress: string;
+    pending: string;
   };
 
   // Speech to text
@@ -668,6 +698,13 @@ const translations: Record<Language, TranslationKeys> = {
       creating: 'Creating...',
       noSubtasksYet: 'No subtasks yet',
       addSubtaskToGetStarted: 'Add a subtask to get started',
+      // Date and time
+      today: 'Today',
+      yesterday: 'Yesterday',
+      thisWeek: 'This Week',
+      thisMonth: 'This Month',
+      defaultDate: 'Default Date',
+      showTimezone: 'Show Timezone',
       // Time tracking
       focusTime: 'Focus Time',
       viewTimeSegmentsByDay: 'View task focus time segments by day',
@@ -788,6 +825,29 @@ const translations: Record<Language, TranslationKeys> = {
     profile: {
       yourProfile: 'Your Profile',
       personalProductivityInsights: 'Personal productivity insights and statistics',
+      customizeModules: 'Customize Modules',
+      addModules: 'Add Modules',
+      enabledModules: 'Enabled Modules',
+      availableModules: 'Available Modules',
+      noModulesEnabled: 'No modules enabled',
+      addModulesToGetStarted: 'Add modules to get started with your personalized dashboard',
+      noModulesAvailable: 'No modules available',
+      productivityStats: 'Productivity Stats',
+      activitySummary: 'Activity Summary',
+      timeRange: 'Time Range',
+      showTrends: 'Show Trends',
+      tasksCompleted: 'Tasks Completed',
+      completionRate: 'completion rate',
+      timeSpent: 'Time Spent',
+      productivityScore: 'Productivity Score',
+      weeklyGoal: 'Weekly Goal',
+      weeklyProgress: 'Weekly Progress',
+      tasks: 'tasks',
+      showRecentTasks: 'Show Recent Tasks',
+      maxItems: 'Max Items',
+      completed: 'Completed',
+      inProgress: 'In Progress',
+      pending: 'Pending',
     },
     speech: {
       title: 'Speech to Text (Batch Fallback Version)',
@@ -1147,6 +1207,13 @@ const translations: Record<Language, TranslationKeys> = {
       creating: '创建中...',
       noSubtasksYet: '暂无子任务',
       addSubtaskToGetStarted: '添加子任务开始分解工作',
+      // Date and time
+      today: '今天',
+      yesterday: '昨天',
+      thisWeek: '本周',
+      thisMonth: '本月',
+      defaultDate: '默认日期',
+      showTimezone: '显示时区',
     },
     messages: {
       taskCreated: '任务创建成功',
@@ -1173,6 +1240,29 @@ const translations: Record<Language, TranslationKeys> = {
     profile: {
       yourProfile: '个人档案',
       personalProductivityInsights: '个人生产力洞察和统计数据',
+      customizeModules: '自定义模块',
+      addModules: '添加模块',
+      enabledModules: '已启用模块',
+      availableModules: '可用模块',
+      noModulesEnabled: '未启用任何模块',
+      addModulesToGetStarted: '添加模块以开始使用您的个性化仪表板',
+      noModulesAvailable: '暂无可用模块',
+      productivityStats: '生产力统计',
+      activitySummary: '活动摘要',
+      timeRange: '时间范围',
+      showTrends: '显示趋势',
+      tasksCompleted: '已完成任务',
+      completionRate: '完成率',
+      timeSpent: '花费时间',
+      productivityScore: '生产力评分',
+      weeklyGoal: '周目标',
+      weeklyProgress: '周进度',
+      tasks: '任务',
+      showRecentTasks: '显示最近任务',
+      maxItems: '最大项目数',
+      completed: '已完成',
+      inProgress: '进行中',
+      pending: '待处理',
     },
     speech: {
       title: '语音转文字（批量回退版）',
