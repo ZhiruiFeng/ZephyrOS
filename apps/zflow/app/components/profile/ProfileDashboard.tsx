@@ -8,6 +8,7 @@ import { ModuleSelector } from './ModuleSelector'
 import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
 import { StatsModule } from './modules/StatsModule'
 import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
+import AgentDirectory from './modules/AgentDirectory'
 import { useProfileModules } from './hooks/useProfileModules'
 import type { ProfileModule, ProfileModuleConfig } from './types'
 
@@ -77,6 +78,12 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             onConfigChange={(newConfig) => {
               console.log('Activity summary config changed:', newConfig)
             }}
+          />
+        )
+      case 'agent-directory':
+        return (
+          <AgentDirectory 
+            key={moduleConfig.id}
           />
         )
       default:

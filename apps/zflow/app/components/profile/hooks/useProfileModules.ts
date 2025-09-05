@@ -41,6 +41,18 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       showRecentTasks: true,
       maxItems: 10
     }
+  },
+  {
+    id: 'agent-directory',
+    name: 'External AI Panel',
+    description: 'Catalog and manage your external AI agents',
+    icon: 'Bot',
+    category: 'tools',
+    defaultEnabled: false,
+    defaultConfig: {
+      showOrbitView: false,
+      defaultView: 'simple'
+    }
   }
 ]
 
