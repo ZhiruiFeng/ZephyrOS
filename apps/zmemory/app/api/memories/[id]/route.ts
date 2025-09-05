@@ -260,16 +260,11 @@ export async function PUT(
     const client = supabase;
     console.log('Using service role client for memory update');
 
-    // Prepare update payload - only include fields that exist in memories table schema
+    // Prepare update payload - include only explicitly provided fields
     const updatePayload = {
-      // Always include title (required field) - use provided title or derive from note
-      title: transformedData.title || transformedData.note?.substring(0, 100) || 'Memory',
-      // Always include description - use note content
-      description: transformedData.note,
-      
-      // Filter out fields that don't exist in the DB schema
+      ...(transformedData.title !== undefined && { title: transformedData.title }),
+      ...(transformedData.description !== undefined && { description: transformedData.description }),
       ...(transformedData.note !== undefined && { note: transformedData.note }),
-      ...(transformedData.title !== undefined && { title_override: transformedData.title }),
       ...(transformedData.memory_type !== undefined && { memory_type: transformedData.memory_type }),
       ...(transformedData.captured_at !== undefined && { captured_at: transformedData.captured_at }),
       ...(transformedData.happened_range !== undefined && { happened_range: transformedData.happened_range }),
@@ -284,10 +279,8 @@ export async function PUT(
       ...(transformedData.category_id !== undefined && { category_id: transformedData.category_id }),
       ...(transformedData.tags !== undefined && { tags: transformedData.tags }),
       ...(transformedData.status !== undefined && { status: transformedData.status }),
-      
       // Always update the timestamp
       updated_at: now
-      
       // Note: 'mood', 'source', 'context', 'importance_level', 'related_to' are excluded
       // as they don't exist in the memories table schema
     };

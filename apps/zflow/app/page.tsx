@@ -60,7 +60,11 @@ function ZFlowPageContent() {
   const { t, currentLang } = useTranslation()
   const router = useRouter()
   const params = useSearchParams()
-  const view = (params.get('view') as ViewKey) || 'current'
+  const viewParam = params.get('view') || 'current'
+  const isTimelineViewParam = viewParam === 'timeline'
+  const view: ViewKey = (['current','future','archive'] as const).includes(viewParam as any) 
+    ? (viewParam as ViewKey) 
+    : 'current'
   const setView = (v: ViewKey) => router.push(`/?view=${v}`)
   const [displayMode, setDisplayMode] = React.useState<DisplayMode>('list')
   const [mainViewMode, setMainViewMode] = React.useState<MainViewMode>('tasks')
@@ -68,7 +72,8 @@ function ZFlowPageContent() {
 
   // Data hooks
   const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
-  const { activities, isLoading: activitiesLoading } = useActivities(user ? undefined : undefined)
+  // Do not fetch activities list on home page unless needed
+  const { activities, isLoading: activitiesLoading } = useActivities(user ? undefined : undefined, { enabled: false })
   const { categories } = useCategories()
   const { createCategory } = useCreateCategory()
   const { updateCategory } = useUpdateCategory()
@@ -107,6 +112,24 @@ function ZFlowPageContent() {
     future: taskStats.future,
     archive: taskStats.archive
   }), [taskStats])
+
+  // If URL requests timeline view, switch the main view accordingly
+  React.useEffect(() => {
+    if (isTimelineViewParam) {
+      setMainViewMode('timeline')
+    }
+  }, [isTimelineViewParam])
+
+  // If URL contains a date param (YYYY-MM-DD), use it for timeline view state
+  React.useEffect(() => {
+    const dateParam = params.get('date')
+    if (dateParam) {
+      const d = new Date(`${dateParam}T00:00:00`)
+      if (!isNaN(d.getTime())) {
+        setSelectedDate(d)
+      }
+    }
+  }, [params])
 
   // Calculate category counts for sidebar
   const viewBasedCounts = React.useMemo(() => {
@@ -198,11 +221,27 @@ function ZFlowPageContent() {
 
   // Navigation functions
   const goToWork = (taskId: string) => {
-    router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}`)
+    if (mainViewMode === 'timeline') {
+      const dateKey = selectedDate.toISOString().slice(0,10)
+      const returnTo = encodeURIComponent(`/?view=timeline&date=${dateKey}`)
+      router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}&from=timeline&returnTo=${returnTo}`)
+    } else {
+      // Return to the current task list subview (current/future/archive)
+      const returnTo = encodeURIComponent(`/?view=${view}`)
+      router.push(`/focus?view=work&taskId=${encodeURIComponent(taskId)}&from=tasks&returnTo=${returnTo}`)
+    }
   }
 
   const goToActivityFocus = (activityId: string) => {
-    router.push(`/focus/activity?activityId=${encodeURIComponent(activityId)}`)
+    const dateKey = selectedDate.toISOString().slice(0,10)
+    const returnTo = encodeURIComponent(`/?view=timeline&date=${dateKey}`)
+    router.push(`/focus/activity?activityId=${encodeURIComponent(activityId)}&from=timeline&returnTo=${returnTo}`)
+  }
+
+  const goToMemoryFocus = (memoryId: string) => {
+    const dateKey = selectedDate.toISOString().slice(0,10)
+    const returnTo = encodeURIComponent(`/?view=timeline&date=${dateKey}`)
+    router.push(`/focus/memory?memoryId=${encodeURIComponent(memoryId)}&from=timeline&returnTo=${returnTo}`)
   }
 
   // Timeline item click -> navigate to corresponding focus page
@@ -215,6 +254,11 @@ function ZFlowPageContent() {
 
       if (item.type === 'activity') {
         goToActivityFocus(item.id)
+        return
+      }
+
+      if (item.type === 'memory') {
+        goToMemoryFocus(item.id)
         return
       }
 
@@ -235,7 +279,7 @@ function ZFlowPageContent() {
           return
         }
       }
-      // memory 或未匹配则暂不跳转
+      // 未匹配则不跳转
     } catch (e) {
       console.error('Failed to open editor from timeline item:', e)
     }

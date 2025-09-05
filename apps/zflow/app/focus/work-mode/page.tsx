@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../../hooks/useMemories'
 import { useAutoSave } from '../../../hooks/useAutoSave'
@@ -10,8 +10,8 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/auth/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
-import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle, ListTodo } from 'lucide-react'
-import MarkdownEditor from './NotionEditor'
+import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle, ListTodo, ArrowLeft } from 'lucide-react'
+import NotionEditor from '../../components/editors/NotionEditor'
 import { Category } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { useTimer } from '../../../hooks/useTimer'
@@ -25,6 +25,7 @@ interface TaskWithCategory extends TaskMemory {
 
 function WorkModeViewInner() {
   const { t } = useTranslation()
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { tasks, isLoading, error } = useTasks(user ? {
     // 提高上限，避免老任务被默认分页丢失
@@ -38,6 +39,8 @@ function WorkModeViewInner() {
   const { categories } = useCategories()
   const { updateTask, updateTaskSilent } = useUpdateTask()
   const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo')
+  const from = searchParams.get('from')
   const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
   const [selectedSubtask, setSelectedSubtask] = useState<TaskMemory | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -69,6 +72,18 @@ function WorkModeViewInner() {
   const timer = useTimer(5000)
   const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
+
+  // Context-aware back navigation
+  const handleBack = () => {
+    if (returnTo) {
+      router.push(returnTo)
+      return
+    }
+    if (from) {
+      try { router.back(); return } catch {}
+    }
+    router.push('/')
+  }
 
   // Auto-save functionality for notes
   const autoSaveNotes = useCallback(async () => {
@@ -629,6 +644,13 @@ function WorkModeViewInner() {
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
+              onClick={handleBack}
+              className="flex items-center gap-2 px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
+              title={t.common?.back || 'Back'}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setMobileSidebarOpen(true)}
               className="lg:hidden flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
             >
@@ -1085,7 +1107,7 @@ function WorkModeViewInner() {
                 </span>
                 <span className="ml-auto italic flex-shrink-0 hidden sm:inline">{t.common.edit}</span>
               </div>
-              <MarkdownEditor
+              <NotionEditor
                 value={notes}
                 onChange={setNotes}
                 placeholder={t.ui.writeNotesHere}

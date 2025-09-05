@@ -28,15 +28,29 @@ interface NotionEditorProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  // Controls emitted value format; default 'html'.
+  output?: 'html' | 'text'
 }
 
-export default function NotionEditor({ value, onChange, placeholder }: NotionEditorProps) {
+export default function NotionEditor({ value, onChange, placeholder, output = 'html' }: NotionEditorProps) {
   const lowlight = React.useMemo(() => createLowlight(common), [])
+  const escapeHtml = (str: string) =>
+    str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
   const initialHTML = React.useMemo(() => {
+    const v = value || ''
+    if (output === 'text') {
+      return v ? `<p>${escapeHtml(v).replace(/\n/g, '<br />')}</p>` : ''
+    }
     // 如果 value 看起来像 Markdown，就转为 HTML；简单启发式判断
-    const seemsMarkdown = /[#*_\-`\[\]]/.test(value || '') && !(value || '').trim().startsWith('<')
-    return seemsMarkdown ? marked.parse(value || '') as string : (value || '')
-  }, [value])
+    const seemsMarkdown = /[#*_\-`\[\]]/.test(v) && !v.trim().startsWith('<')
+    return seemsMarkdown ? (marked.parse(v) as string) : v
+  }, [value, output])
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -63,8 +77,8 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
     ],
     content: initialHTML,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML()
-      onChange(html)
+      const out = output === 'text' ? editor.getText() : editor.getHTML()
+      onChange(out)
     },
     editorProps: {
       attributes: {
@@ -75,18 +89,27 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
 
   React.useEffect(() => {
     if (!editor) return
-    const current = editor.getHTML()
-    if (value && value !== current) {
-      // 如果外部值改变（例如切换任务），同步到编辑器
-      // 判断 value 是 HTML 还是 Markdown
-      const seemsMarkdown = /[#*_\-`\[\]]/.test(value || '') && !(value || '').trim().startsWith('<')
-      const html = seemsMarkdown ? (marked.parse(value || '') as string) : (value || '')
-      editor.commands.setContent(html, { emitUpdate: false })
-    }
-    if (!value && current !== '<p></p>') {
+    const currentOut = output === 'text' ? editor.getText() : editor.getHTML()
+
+    // If external value matches current editor content (in the same representation), skip
+    if ((value || '') === (currentOut || '')) return
+
+    // When external value changes (e.g., switching item), set editor content without emitting update
+    let html = ''
+    const v = value || ''
+    if (!v) {
       editor.commands.setContent('', { emitUpdate: false })
+      return
     }
-  }, [value, editor])
+
+    if (output === 'text') {
+      html = `<p>${escapeHtml(v).replace(/\n/g, '<br />')}</p>`
+    } else {
+      const seemsMarkdown = /[#*_\-`\[\]]/.test(v) && !v.trim().startsWith('<')
+      html = seemsMarkdown ? (marked.parse(v) as string) : v
+    }
+    editor.commands.setContent(html, { emitUpdate: false })
+  }, [value, editor, output])
 
   return (
     <div className="flex flex-col min-h-full">
@@ -115,4 +138,3 @@ export default function NotionEditor({ value, onChange, placeholder }: NotionEdi
     </div>
   )
 }
-

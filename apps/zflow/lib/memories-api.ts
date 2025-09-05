@@ -205,12 +205,38 @@ export const memoriesApi = {
   },
 
   // Memory anchors
+  async getAnchors(memoryId: string, params?: {
+    relation_type?: 'context_of' | 'result_of' | 'insight_from' | 'about' | 'co_occurred' | 'triggered_by' | 'reflects_on'
+    anchor_item_type?: 'task' | 'activity' | 'routine' | 'habit' | 'memory'
+    min_weight?: number
+    limit?: number
+    offset?: number
+  }): Promise<Array<{
+    memory_id: string
+    anchor_item_id: string
+    relation_type: string
+    local_time_range?: { start: string; end?: string } | null
+    weight?: number
+    notes?: string
+    timeline_item?: { id: string; type: string; title: string; start_time?: string | null; end_time?: string | null }
+  }>> {
+    const search = new URLSearchParams()
+    if (params?.relation_type) search.set('relation_type', params.relation_type)
+    if (params?.anchor_item_type) search.set('anchor_item_type', params.anchor_item_type)
+    if (typeof params?.min_weight === 'number') search.set('min_weight', String(params.min_weight))
+    if (typeof params?.limit === 'number') search.set('limit', String(params.limit))
+    if (typeof params?.offset === 'number') search.set('offset', String(params.offset))
+    const qs = search.toString()
+    return memoryApiRequest(`/${memoryId}/anchors${qs ? `?${qs}` : ''}`)
+  },
+
   async addAnchor(memoryId: string, anchor: {
-    type: 'person' | 'place' | 'event' | 'concept'
-    name: string
-    description?: string
-    metadata?: Record<string, any>
-  }): Promise<{ id: string }> {
+    anchor_item_id: string
+    relation_type: 'context_of' | 'result_of' | 'insight_from' | 'about' | 'co_occurred' | 'triggered_by' | 'reflects_on'
+    local_time_range?: { start: string; end?: string }
+    weight?: number
+    notes?: string
+  }): Promise<{ memory_id: string; anchor_item_id: string; relation_type: string }> {
     return memoryApiRequest(`/${memoryId}/anchors`, {
       method: 'POST',
       body: JSON.stringify(anchor),

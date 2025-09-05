@@ -1,26 +1,70 @@
 'use client'
 
-import React from 'react'
+// Disable prerender/SSG for this page to avoid build-time errors
+export const dynamic = 'force-dynamic'
+
+import React, { Suspense } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import TimelineView from '../components/views/TimelineView'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { TimelineItem } from '@/hooks/useTimeline'
 import DateSelector from '../components/ui/DateSelector'
 import TimelineStats, { TimelineDetailedStats } from '../components/ui/TimelineStats'
 import { useTimeline } from '@/hooks/useTimeline'
 import { Clock, Calendar, BarChart3, Settings } from 'lucide-react'
 
-export default function TimelinePage() {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+function TimelineContent() {
   const { user } = useAuth()
   const { t, currentLang } = useTranslation()
+  const router = useRouter()
+  const params = useSearchParams()
   const [selectedDate, setSelectedDate] = React.useState(new Date())
   const [viewMode, setViewMode] = React.useState<'timeline' | 'stats'>('timeline')
   
   const { timelineData, isLoading, error, refetch } = useTimeline(selectedDate)
+  
+  // Read date from URL if provided (YYYY-MM-DD)
+  React.useEffect(() => {
+    const dateParam = params.get('date')
+    if (dateParam) {
+      const d = new Date(`${dateParam}T00:00:00`)
+      if (!isNaN(d.getTime())) setSelectedDate(d)
+    }
+  }, [params])
 
   const handleItemClick = (item: TimelineItem) => {
-    // TODO: Implement item detail view
-    console.log('Timeline item clicked:', item)
+    try {
+      const dateKey = selectedDate.toISOString().slice(0,10)
+      const returnTo = encodeURIComponent(`/timeline?date=${dateKey}`)
+      if (item.type === 'task') {
+        router.push(`/focus?view=work&taskId=${encodeURIComponent(item.id)}&from=timeline&returnTo=${returnTo}`)
+        return
+      }
+      if (item.type === 'activity') {
+        router.push(`/focus/activity?activityId=${encodeURIComponent(item.id)}&from=timeline&returnTo=${returnTo}`)
+        return
+      }
+      if (item.type === 'memory') {
+        router.push(`/focus/memory?memoryId=${encodeURIComponent(item.id)}&from=timeline&returnTo=${returnTo}`)
+        return
+      }
+      if (item.type === 'time_entry') {
+        const timelineItemType = item.metadata?.timelineItemType
+        const relatedId = (item.metadata as any)?.timelineItemId || (item.metadata as any)?.taskId
+        if (timelineItemType === 'task' && relatedId) {
+          router.push(`/focus?view=work&taskId=${encodeURIComponent(relatedId)}&from=timeline&returnTo=${returnTo}`)
+          return
+        }
+        if (timelineItemType === 'activity' && relatedId) {
+          router.push(`/focus/activity?activityId=${encodeURIComponent(relatedId)}&from=timeline&returnTo=${returnTo}`)
+          return
+        }
+      }
+    } catch (e) {
+      console.error('Failed to navigate from timeline item:', e)
+    }
   }
 
   const handleEditItem = (item: TimelineItem) => {
@@ -144,5 +188,38 @@ export default function TimelinePage() {
         )}
       </div>
     </div>
+  )
+}
+
+// Loading fallback component
+function TimelineLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="sticky top-14 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/60">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Clock className="w-6 h-6 text-primary-600" />
+            <h1 className="text-xl font-semibold text-gray-900">Timeline</h1>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-pulse" />
+            <p className="text-gray-600">Loading timeline...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Main page component with Suspense boundary
+export default function TimelinePage() {
+  return (
+    <Suspense fallback={<TimelineLoading />}>
+      <TimelineContent />
+    </Suspense>
   )
 }

@@ -132,7 +132,8 @@ export default function MemoriesPage() {
   }
 
   const handleMemoryClick = (memoryId: string) => {
-    router.push(`/focus/memory?memoryId=${encodeURIComponent(memoryId)}`)
+    const returnTo = encodeURIComponent('/memories')
+    router.push(`/focus/memory?memoryId=${encodeURIComponent(memoryId)}&from=memories&returnTo=${returnTo}`)
   }
 
   const handleTagClick = (tag: string) => {

@@ -417,7 +417,7 @@ export async function POST(request: NextRequest) {
       const mockMemory = {
         id: Date.now().toString(),
         title: (transformedData as any).title || (transformedData as any).title_override || transformedData.note?.substring(0, 100) || 'Untitled',
-        description: transformedData.note ?? '',
+        description: (transformedData as any).description ?? null,
         ...rest,
         captured_at: transformedData.captured_at || now,
         user_id: 'mock-user',
@@ -444,7 +444,7 @@ export async function POST(request: NextRequest) {
     // Note: Only include fields that exist in the memories table schema
     const memoryPayload = {
       title: transformedData.title || transformedData.note?.substring(0, 100) || 'Untitled',
-      description: transformedData.note ?? '',
+      description: (transformedData as any).description ?? null,
       note: transformedData.note,
       title_override: transformedData.title, // Store title as title_override for DB schema
       memory_type: transformedData.memory_type || 'note',

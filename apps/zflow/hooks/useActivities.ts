@@ -2,8 +2,12 @@ import useSWR, { mutate } from 'swr'
 import { apiClient } from '../lib/api'
 
 // Hook to fetch all activities
-export function useActivities(params?: Parameters<typeof apiClient.getActivities>[0]) {
-  const key = params ? `activities?${new URLSearchParams(params as any).toString()}` : 'activities'
+export function useActivities(
+  params?: Parameters<typeof apiClient.getActivities>[0],
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled !== false
+  const key = enabled ? (params ? `activities?${new URLSearchParams(params as any).toString()}` : 'activities') : null
   const { data, isLoading, error, mutate: refetch } = useSWR(
     key,
     () => apiClient.getActivities(params),
@@ -15,8 +19,8 @@ export function useActivities(params?: Parameters<typeof apiClient.getActivities
 
   return {
     activities: data || [],
-    isLoading,
-    error,
+    isLoading: enabled ? isLoading : false,
+    error: enabled ? error : undefined,
     refetch,
   }
 }
