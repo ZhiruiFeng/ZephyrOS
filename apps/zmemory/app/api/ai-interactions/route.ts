@@ -1,0 +1,247 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+
+// Create Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null
+
+// Validation schemas
+const CreateInteractionSchema = z.object({
+  agent_id: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().optional(),
+  interaction_type: z.enum(['conversation', 'brainstorming', 'coding', 'research', 'creative', 'analysis', 'other']).default('conversation'),
+  external_link: z.string().url().optional(),
+  external_id: z.string().optional(),
+  content_preview: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  satisfaction_rating: z.number().min(1).max(5).optional(),
+  usefulness_rating: z.number().min(1).max(5).optional(),
+  feedback_notes: z.string().optional(),
+  started_at: z.string().datetime().optional(),
+  ended_at: z.string().datetime().optional(),
+  duration_minutes: z.number().min(0).optional()
+})
+
+const UpdateInteractionSchema = CreateInteractionSchema.partial().omit({ agent_id: true })
+
+// GET /api/ai-interactions - Get AI interactions
+export async function GET(request: NextRequest) {
+  try {
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const agent_id = searchParams.get('agent_id')
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const offset = parseInt(searchParams.get('offset') || '0')
+    const interaction_type = searchParams.get('type')
+    const tag = searchParams.get('tag')
+
+    let query = supabase
+      .from('ai_interactions')
+      .select(`
+        *,
+        ai_agents!inner(
+          id,
+          name,
+          vendor,
+          features
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (agent_id) {
+      query = query.eq('agent_id', agent_id)
+    }
+
+    if (interaction_type) {
+      query = query.eq('interaction_type', interaction_type)
+    }
+
+    if (tag) {
+      query = query.contains('tags', [tag])
+    }
+
+    const { data: interactions, error } = await query
+
+    if (error) {
+      console.error('Error fetching AI interactions:', error)
+      return NextResponse.json({ error: 'Failed to fetch interactions' }, { status: 500 })
+    }
+
+    return NextResponse.json({ interactions })
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// POST /api/ai-interactions - Create a new AI interaction
+export async function POST(request: NextRequest) {
+  try {
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const validatedData = CreateInteractionSchema.parse(body)
+
+    // Verify the agent belongs to the user
+    const { data: agent, error: agentError } = await supabase
+      .from('ai_agents')
+      .select('id')
+      .eq('id', validatedData.agent_id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (agentError || !agent) {
+      return NextResponse.json({ error: 'Agent not found or access denied' }, { status: 404 })
+    }
+
+    const { data: interaction, error } = await supabase
+      .from('ai_interactions')
+      .insert({
+        ...validatedData,
+        user_id: user.id
+      })
+      .select(`
+        *,
+        ai_agents!inner(
+          id,
+          name,
+          vendor,
+          features
+        )
+      `)
+      .single()
+
+    if (error) {
+      console.error('Error creating AI interaction:', error)
+      return NextResponse.json({ error: 'Failed to create interaction' }, { status: 500 })
+    }
+
+    return NextResponse.json({ interaction }, { status: 201 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 })
+    }
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// PUT /api/ai-interactions - Update an AI interaction
+export async function PUT(request: NextRequest) {
+  try {
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { id, ...updateData } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'Interaction ID is required' }, { status: 400 })
+    }
+
+    const validatedData = UpdateInteractionSchema.parse(updateData)
+
+    const { data: interaction, error } = await supabase
+      .from('ai_interactions')
+      .update(validatedData)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select(`
+        *,
+        ai_agents!inner(
+          id,
+          name,
+          vendor,
+          features
+        )
+      `)
+      .single()
+
+    if (error) {
+      console.error('Error updating AI interaction:', error)
+      return NextResponse.json({ error: 'Failed to update interaction' }, { status: 500 })
+    }
+
+    if (!interaction) {
+      return NextResponse.json({ error: 'Interaction not found' }, { status: 404 })
+    }
+
+    return NextResponse.json({ interaction })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 })
+    }
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// DELETE /api/ai-interactions - Delete an AI interaction
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Interaction ID is required' }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from('ai_interactions')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('Error deleting AI interaction:', error)
+      return NextResponse.json({ error: 'Failed to delete interaction' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
