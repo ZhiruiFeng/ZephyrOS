@@ -69,7 +69,8 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch('/api/ai-agents', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-agents`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +98,8 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch('/api/ai-agents', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +131,8 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`/api/ai-agents/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-agents/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +164,8 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`/api/ai-agents/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-agents/${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
@@ -210,7 +214,8 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch('/api/ai-interactions', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-interactions`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -238,7 +243,8 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch('/api/ai-interactions', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-interactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -270,7 +276,8 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`/api/ai-interactions/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-interactions/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -301,7 +308,8 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`/api/ai-interactions/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-interactions/${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
@@ -350,7 +358,8 @@ export function useAIUsageStats() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch('/api/ai-usage-stats', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/ai-usage-stats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

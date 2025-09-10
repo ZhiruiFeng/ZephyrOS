@@ -3,6 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getUserIdFromRequest } from '../../../lib/auth'
 
+// Helper function to add CORS headers to responses
+function addCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  return response
+}
+
 // Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -47,12 +55,12 @@ const CreateInteractionSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { searchParams } = new URL(request.url)
@@ -91,13 +99,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching AI agents:', error)
-      return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 }))
     }
 
-    return NextResponse.json({ agents })
+    return addCorsHeaders(NextResponse.json({ agents }))
   } catch (error) {
     console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
 
@@ -105,12 +113,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const body = await request.json()
@@ -127,16 +135,16 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating AI agent:', error)
-      return NextResponse.json({ error: 'Failed to create agent' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to create agent' }, { status: 500 }))
     }
 
-    return NextResponse.json({ agent }, { status: 201 })
+    return addCorsHeaders(NextResponse.json({ agent }, { status: 201 }))
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 })
+      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
     }
     console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
 
@@ -144,19 +152,19 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const body = await request.json()
     const { id, ...updateData } = body
 
     if (!id) {
-      return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 })
+      return addCorsHeaders(NextResponse.json({ error: 'Agent ID is required' }, { status: 400 }))
     }
 
     const validatedData = UpdateAgentSchema.parse(updateData)
@@ -171,20 +179,20 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Error updating AI agent:', error)
-      return NextResponse.json({ error: 'Failed to update agent' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to update agent' }, { status: 500 }))
     }
 
     if (!agent) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+      return addCorsHeaders(NextResponse.json({ error: 'Agent not found' }, { status: 404 }))
     }
 
-    return NextResponse.json({ agent })
+    return addCorsHeaders(NextResponse.json({ agent }))
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 })
+      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
     }
     console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
 
@@ -192,19 +200,19 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 })
+      return addCorsHeaders(NextResponse.json({ error: 'Agent ID is required' }, { status: 400 }))
     }
 
     const { error } = await supabase
@@ -215,12 +223,24 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('Error deleting AI agent:', error)
-      return NextResponse.json({ error: 'Failed to delete agent' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to delete agent' }, { status: 500 }))
     }
 
-    return NextResponse.json({ success: true })
+    return addCorsHeaders(NextResponse.json({ success: true }))
   } catch (error) {
     console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
+}
+
+// OPTIONS - Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 }

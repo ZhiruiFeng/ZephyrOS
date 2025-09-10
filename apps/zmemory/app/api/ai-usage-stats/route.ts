@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getUserIdFromRequest } from '../../../lib/auth'
 
+// Helper function to add CORS headers to responses
+function addCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  return response
+}
+
 // Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -14,12 +22,12 @@ const supabase = supabaseUrl && supabaseKey
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { searchParams } = new URL(request.url)
@@ -44,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching usage stats:', error)
-      return NextResponse.json({ error: 'Failed to fetch usage statistics' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch usage statistics' }, { status: 500 }))
     }
 
     // Get agent summary statistics
@@ -56,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     if (agentError) {
       console.error('Error fetching agent stats:', agentError)
-      return NextResponse.json({ error: 'Failed to fetch agent statistics' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch agent statistics' }, { status: 500 }))
     }
 
     // Calculate summary metrics
@@ -90,7 +98,7 @@ export async function GET(request: NextRequest) {
       ? stats.reduce((sum, stat) => sum + (stat.avg_usefulness || 0), 0) / stats.length 
       : 0
 
-    return NextResponse.json({
+    return addCorsHeaders(NextResponse.json({
       summary: {
         total_interactions: totalInteractions,
         total_duration_minutes: totalDuration,
@@ -103,10 +111,10 @@ export async function GET(request: NextRequest) {
       agent_stats: agentStats,
       feature_usage: featureUsage,
       vendor_usage: vendorUsage
-    })
+    }))
   } catch (error) {
     console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
 
@@ -114,19 +122,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const body = await request.json()
     const { date } = body
 
     if (!date) {
-      return NextResponse.json({ error: 'Date is required' }, { status: 400 })
+      return addCorsHeaders(NextResponse.json({ error: 'Date is required' }, { status: 400 }))
     }
 
     // Call the database function to update usage stats
@@ -136,12 +144,24 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error updating usage stats:', error)
-      return NextResponse.json({ error: 'Failed to update usage statistics' }, { status: 500 })
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to update usage statistics' }, { status: 500 }))
     }
 
-    return NextResponse.json({ success: true, data })
+    return addCorsHeaders(NextResponse.json({ success: true, data }))
   } catch (error) {
     console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
+}
+
+// OPTIONS - Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 }
