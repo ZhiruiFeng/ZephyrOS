@@ -9,6 +9,7 @@ import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
 import { StatsModule } from './modules/StatsModule'
 import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
+import { MemoriesModule } from './modules/MemoriesModule'
 import { useProfileModules } from './hooks/useProfileModules'
 import type { ProfileModule, ProfileModuleConfig } from './types'
 
@@ -84,6 +85,16 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
         return (
           <AgentDirectory 
             key={moduleConfig.id}
+          />
+        )
+      case 'memories':
+        return (
+          <MemoriesModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Memories config changed:', newConfig)
+            }}
           />
         )
       default:

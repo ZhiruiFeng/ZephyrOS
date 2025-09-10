@@ -53,6 +53,20 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       showOrbitView: false,
       defaultView: 'simple'
     }
+  },
+  {
+    id: 'memories',
+    name: 'Memories',
+    description: 'Personal memory capture and timeline',
+    icon: 'BookOpen',
+    category: 'productivity',
+    defaultEnabled: true,
+    defaultConfig: {
+      defaultView: 'timeline',
+      maxDisplayItems: 5,
+      showQuickActions: true,
+      showCollectionsView: true
+    }
   }
 ]
 
@@ -65,6 +79,17 @@ const DEFAULT_ENABLED_MODULES: ProfileModuleConfig[] = [
     config: {
       showTimezone: true,
       defaultDate: 'today'
+    }
+  },
+  {
+    id: 'memories',
+    enabled: true,
+    order: 1,
+    config: {
+      defaultView: 'timeline',
+      maxDisplayItems: 5,
+      showQuickActions: true,
+      showCollectionsView: true
     }
   }
 ]
