@@ -1,14 +1,289 @@
 'use client'
 
-import React from 'react'
-import { Bot, Clock, Sparkles } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Bot, Plus, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/auth/LoginPage'
+import { AgentChatWindow, Message } from '../components/agents'
+import { Agent } from '../lib/agents/types'
 
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
+
+  // State management
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [selectedAgent, setSelectedAgent] = useState('gpt-4')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [availableAgents, setAvailableAgents] = useState<Agent[]>([])
+  const [eventSource, setEventSource] = useState<EventSource | null>(null)
+
+  // Load available agents
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const response = await fetch('/api/agents/registry?onlineOnly=true')
+        const data = await response.json()
+        if (data.agents) {
+          setAvailableAgents(data.agents)
+        }
+      } catch (error) {
+        console.error('Error loading agents:', error)
+      }
+    }
+
+    loadAgents()
+  }, [])
+
+  // Create new session when component mounts or agent changes
+  useEffect(() => {
+    const createSession = async () => {
+      if (!user) return
+
+      try {
+        const response = await fetch('/api/agents/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            agentId: selectedAgent
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setSessionId(data.sessionId)
+          setMessages([])
+        }
+      } catch (error) {
+        console.error('Error creating session:', error)
+      }
+    }
+
+    createSession()
+  }, [user, selectedAgent])
+
+  // Set up SSE connection when session is created
+  useEffect(() => {
+    if (!sessionId || !user) return
+
+    // Add a small delay to ensure session is fully created
+    const timer = setTimeout(() => {
+      const connectSSE = () => {
+        // Close existing connection
+        if (eventSource) {
+          eventSource.close()
+        }
+
+        try {
+          const newEventSource = new EventSource(`/api/agents/stream?sessionId=${sessionId}`)
+          
+          newEventSource.onopen = () => {
+            console.log('SSE connection opened for session:', sessionId)
+          }
+
+      newEventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          switch (data.type) {
+            case 'connected':
+              console.log('Connected to stream')
+              break
+              
+            case 'start':
+              setIsStreaming(true)
+              break
+              
+            case 'token':
+              setMessages(prev => {
+                const lastMessage = prev[prev.length - 1]
+                if (lastMessage && lastMessage.id === data.messageId && lastMessage.streaming) {
+                  // Update the streaming message
+                  return prev.map(msg => 
+                    msg.id === data.messageId 
+                      ? { ...msg, content: msg.content + data.content }
+                      : msg
+                  )
+                } else {
+                  // Create new streaming message
+                  return [...prev, {
+                    id: data.messageId,
+                    type: 'agent' as const,
+                    content: data.content || '',
+                    timestamp: new Date(),
+                    agent: selectedAgent,
+                    streaming: true
+                  }]
+                }
+              })
+              break
+              
+            case 'tool_call':
+              setMessages(prev => {
+                return prev.map(msg => {
+                  if (msg.id === data.messageId) {
+                    const toolCalls = msg.toolCalls || []
+                    return {
+                      ...msg,
+                      toolCalls: [...toolCalls, data.toolCall]
+                    }
+                  }
+                  return msg
+                })
+              })
+              break
+              
+            case 'tool_result':
+              setMessages(prev => {
+                return prev.map(msg => {
+                  if (msg.id === data.messageId && msg.toolCalls) {
+                    const updatedToolCalls = msg.toolCalls.map(tc => 
+                      tc.id === data.toolCall.id ? data.toolCall : tc
+                    )
+                    return { ...msg, toolCalls: updatedToolCalls }
+                  }
+                  return msg
+                })
+              })
+              break
+              
+            case 'end':
+              setIsStreaming(false)
+              setMessages(prev => 
+                prev.map(msg => 
+                  msg.id === data.messageId 
+                    ? { ...msg, streaming: false }
+                    : msg
+                )
+              )
+              break
+              
+            case 'error':
+              setIsStreaming(false)
+              console.error('Stream error:', data.error)
+              setMessages(prev => [
+                ...prev,
+                {
+                  id: Date.now().toString(),
+                  type: 'system' as const,
+                  content: `Error: ${data.error}`,
+                  timestamp: new Date()
+                }
+              ])
+              break
+              
+            case 'heartbeat':
+              // Keep connection alive
+              break
+              
+            default:
+              console.log('Unknown SSE event:', data)
+          }
+        } catch (error) {
+          console.error('Error parsing SSE data:', error)
+        }
+      }
+
+          newEventSource.onerror = (error) => {
+            console.error('SSE connection error for session:', sessionId, error)
+            setIsStreaming(false)
+            
+            // Check if session still exists before reconnecting
+            if (newEventSource.readyState === EventSource.CLOSED) {
+              console.log('SSE connection closed, attempting reconnect...')
+              setTimeout(() => {
+                if (sessionId && user) {
+                  connectSSE()
+                }
+              }, 3000)
+            }
+          }
+
+          setEventSource(newEventSource)
+        } catch (error) {
+          console.error('Failed to create EventSource:', error)
+          setIsStreaming(false)
+        }
+      }
+
+      connectSSE()
+    }, 500) // 500ms delay
+
+    // Cleanup on unmount or session change
+    return () => {
+      clearTimeout(timer)
+      if (eventSource) {
+        eventSource.close()
+      }
+    }
+  }, [sessionId, user])
+
+  // Send message handler
+  const handleSendMessage = async (message: string) => {
+    if (!sessionId || !user) return
+
+    // Add user message to UI immediately
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: message,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, userMessage])
+    setIsStreaming(true)
+
+    try {
+      const response = await fetch('/api/agents/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          message,
+          userId: user.id
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send message')
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      setIsStreaming(false)
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'system',
+          content: 'Failed to send message. Please try again.',
+          timestamp: new Date()
+        }
+      ])
+    }
+  }
+
+  // Cancel stream handler
+  const handleCancelStream = async () => {
+    if (!sessionId) return
+
+    try {
+      await fetch('/api/agents/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      })
+    } catch (error) {
+      console.error('Error cancelling stream:', error)
+    }
+  }
+
+  // Agent change handler
+  const handleAgentChange = (agentId: string) => {
+    setSelectedAgent(agentId)
+    // Session will be recreated by useEffect
+  }
 
   // Authentication/loading guards
   if (authLoading) {
@@ -26,57 +301,53 @@ export default function AgentsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          {/* Header */}
-          <div className="mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full mb-6">
-              <Bot className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              AI Agents
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Intelligent automation for your workflow management
-            </p>
-          </div>
-
-          {/* Coming Soon Card */}
-          <div className="max-w-md mx-auto">
-            <div className="glass rounded-2xl p-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full mb-6">
-                <Sparkles className="w-8 h-8 text-white" />
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full">
+                <Bot className="w-6 h-6 text-white" />
               </div>
-              
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                Coming Soon
-              </h2>
-              
-              <p className="text-gray-600 mb-6">
-                We’re building intelligent agents that will help you automate and optimize your task management workflow.
-              </p>
-              
-              <div className="space-y-3 text-sm text-gray-500">
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Smart task prioritization</span>
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Automated scheduling</span>
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Intelligent notifications</span>
-                </div>
-              </div>
-              
-              <div className="mt-8 pt-6 border-t border-gray-200">
-                <p className="text-xs text-gray-400">
-                  Stay tuned for updates
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  AI Agents
+                </h1>
+                <p className="text-gray-600">
+                  Chat with intelligent assistants to help manage your tasks and productivity
                 </p>
               </div>
             </div>
+            
+            <div className="hidden sm:flex space-x-3">
+              <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                History
+              </button>
+              <button className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-700">
+                <Plus className="w-4 h-4 mr-2" />
+                New Chat
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Chat Interface */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
+          <AgentChatWindow
+            sessionId={sessionId}
+            messages={messages}
+            selectedAgent={selectedAgent}
+            isStreaming={isStreaming}
+            availableAgents={availableAgents}
+            onSendMessage={handleSendMessage}
+            onCancelStream={handleCancelStream}
+            onAgentChange={handleAgentChange}
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="mt-4 text-center text-sm text-gray-500">
+          <p>AI responses are generated and may contain inaccuracies. Use with discretion.</p>
         </div>
       </div>
     </div>
