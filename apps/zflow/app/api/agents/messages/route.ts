@@ -5,6 +5,9 @@ import { StreamingService } from '../../../lib/agents/streaming'
 import { openAIProvider, anthropicProvider } from '../../../lib/agents/init'
 import { AgentMessage } from '../../../lib/agents/types'
 
+// 禁用静态生成，因为需要运行时环境变量
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, message, userId } = await request.json()

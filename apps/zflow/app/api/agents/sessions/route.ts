@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sessionManager } from '../../../lib/agents/session-manager'
 import { agentRegistry } from '../../../lib/agents/registry'
 
+// 禁用静态生成，因为需要运行时 Redis 连接
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { agentId, userId } = await request.json()

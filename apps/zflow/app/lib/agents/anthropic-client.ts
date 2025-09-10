@@ -5,12 +5,24 @@ export class AnthropicProvider implements AgentProvider {
   id = 'anthropic'
   name = 'Anthropic'
   
-  private client: Anthropic
+  private client: Anthropic | null = null
   private tools: ZFlowTool[] = []
 
   constructor() {
+    // 在构建时不创建 Anthropic 客户端
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === undefined) {
+      console.warn('Anthropic client not initialized during build time')
+      return
+    }
+    
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      console.warn('ANTHROPIC_API_KEY not found, Anthropic client will be unavailable')
+      return
+    }
+    
     this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey,
     })
   }
 
@@ -47,6 +59,18 @@ export class AnthropicProvider implements AgentProvider {
 
   async *sendMessage(message: string, context: ChatContext): AsyncGenerator<StreamingResponse> {
     const { sessionId, messages, agent } = context
+    const messageId = Math.random().toString(36).substring(2, 15)
+
+    // 检查客户端是否已初始化
+    if (!this.client) {
+      yield {
+        sessionId,
+        messageId,
+        type: 'error',
+        error: 'Anthropic client not initialized. Please check ANTHROPIC_API_KEY environment variable.'
+      }
+      return
+    }
     
     // Create system message for ZFlow context
     const systemMessage = `You are ${agent.name}, an AI assistant integrated into ZephyrOS, a productivity platform. 
@@ -60,7 +84,6 @@ You can help users with their tasks, memories, and projects. You have access to 
 Be helpful, concise, and proactive in using tools when appropriate. If users ask about their tasks or memories, use the available tools to provide accurate, up-to-date information.`
 
     const anthropicMessages = this.formatMessagesForAnthropic([...messages, { type: 'user', content: message }])
-    const messageId = Math.random().toString(36).substring(2, 15)
 
     try {
       yield {

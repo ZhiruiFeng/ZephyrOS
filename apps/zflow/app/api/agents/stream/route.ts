@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server'
 import { StreamingService } from '../../../lib/agents/streaming'
 import { sessionManager } from '../../../lib/agents/session-manager'
 
+// 禁用静态生成，因为需要运行时 Redis 连接
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const sessionId = searchParams.get('sessionId')

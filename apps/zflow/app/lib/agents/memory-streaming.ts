@@ -1,77 +1,30 @@
-import { getRedisClient } from '../redis'
 import { StreamingResponse } from './types'
-import { MemoryStreamingService } from './memory-streaming'
+import { EventEmitter } from 'events'
 
-export class StreamingService {
-  private redis: any = null
-  private memoryService = new MemoryStreamingService()
-  private useRedis = false
-
-  constructor() {
-    this.initializeRedis()
-  }
-
-  private async initializeRedis() {
-    try {
-      this.redis = getRedisClient()
-      // 测试连接
-      await this.redis.ping()
-      this.useRedis = true
-      console.log('StreamingService: Using Redis for streaming')
-    } catch (error) {
-      console.warn('StreamingService: Redis unavailable, falling back to memory streaming:', error)
-      this.useRedis = false
-    }
-  }
+/**
+ * 内存流式服务
+ * 当 Redis 不可用时作为后备方案
+ */
+export class MemoryStreamingService {
+  private eventEmitter = new EventEmitter()
 
   async publishStreamEvent(sessionId: string, event: StreamingResponse): Promise<void> {
-    if (!this.useRedis) {
-      return await this.memoryService.publishStreamEvent(sessionId, event)
-    }
-
     const channel = `agent_stream:${sessionId}`
-    await this.redis.publish(channel, JSON.stringify(event))
+    this.eventEmitter.emit(channel, event)
   }
 
   async subscribeToStream(sessionId: string, callback: (event: StreamingResponse) => void): Promise<() => void> {
-    if (!this.useRedis) {
-      return await this.memoryService.subscribeToStream(sessionId, callback)
-    }
-
-    const subscriber = getRedisClient()
     const channel = `agent_stream:${sessionId}`
 
-    subscriber.subscribe(channel, (err, count) => {
-      if (err) {
-        console.error('Failed to subscribe:', err)
-        return
-      }
-      console.log(`Subscribed to ${count} channels`)
-    })
-
-    subscriber.on('message', (receivedChannel, message) => {
-      if (receivedChannel === channel) {
-        try {
-          const event = JSON.parse(message) as StreamingResponse
-          callback(event)
-        } catch (error) {
-          console.error('Error parsing stream event:', error)
-        }
-      }
-    })
+    this.eventEmitter.on(channel, callback)
 
     // Return unsubscribe function
     return () => {
-      subscriber.unsubscribe(channel)
-      subscriber.disconnect()
+      this.eventEmitter.removeListener(channel, callback)
     }
   }
 
   createSSEStream(sessionId: string): ReadableStream<Uint8Array> {
-    if (!this.useRedis) {
-      return this.memoryService.createSSEStream(sessionId)
-    }
-
     const encoder = new TextEncoder()
     let unsubscribe: (() => void) | null = null
 
@@ -81,7 +34,7 @@ export class StreamingService {
         const data = `data: ${JSON.stringify({ type: 'connected', sessionId })}\n\n`
         controller.enqueue(encoder.encode(data))
 
-        // Subscribe to Redis stream
+        // Subscribe to memory stream
         unsubscribe = await this.subscribeToStream(sessionId, (event) => {
           try {
             const data = `data: ${JSON.stringify(event)}\n\n`
@@ -123,15 +76,34 @@ export class StreamingService {
   }
 
   async cancelStream(sessionId: string): Promise<void> {
-    if (!this.useRedis) {
-      return await this.memoryService.cancelStream(sessionId)
-    }
-
     await this.publishStreamEvent(sessionId, {
       sessionId,
       messageId: '',
       type: 'error',
       error: 'Stream cancelled by user'
     })
+  }
+
+  // 清理方法
+  removeAllListeners(sessionId?: string): void {
+    if (sessionId) {
+      const channel = `agent_stream:${sessionId}`
+      this.eventEmitter.removeAllListeners(channel)
+    } else {
+      this.eventEmitter.removeAllListeners()
+    }
+  }
+
+  // 获取统计信息
+  getStats(): { totalListeners: number; channels: string[] } {
+    const channels = this.eventEmitter.eventNames().map(name => String(name))
+    const totalListeners = channels.reduce((sum, channel) => {
+      return sum + this.eventEmitter.listenerCount(channel)
+    }, 0)
+
+    return {
+      totalListeners,
+      channels
+    }
   }
 }

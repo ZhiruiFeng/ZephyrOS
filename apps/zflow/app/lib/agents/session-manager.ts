@@ -1,20 +1,44 @@
 import { getRedisClient } from '../redis'
 import { ChatSession, AgentMessage } from './types'
+import { MemorySessionManager } from './memory-session-manager'
 import { randomBytes } from 'crypto'
 
 export class SessionManager {
-  private redis = getRedisClient()
+  private redis: any = null
+  private memoryManager = new MemorySessionManager()
   private readonly SESSION_TTL = 24 * 60 * 60 // 24 hours in seconds
+  private useRedis = false
+
+  constructor() {
+    this.initializeRedis()
+  }
+
+  private async initializeRedis() {
+    try {
+      this.redis = getRedisClient()
+      // 测试连接
+      await this.redis.ping()
+      this.useRedis = true
+      console.log('SessionManager: Using Redis for session storage')
+    } catch (error) {
+      console.warn('SessionManager: Redis unavailable, falling back to memory storage:', error)
+      this.useRedis = false
+    }
+  }
 
   generateSessionId(): string {
-    return randomBytes(16).toString('hex')
+    return this.useRedis ? randomBytes(16).toString('hex') : this.memoryManager.generateSessionId()
   }
 
   generateMessageId(): string {
-    return randomBytes(12).toString('hex')
+    return this.useRedis ? randomBytes(12).toString('hex') : this.memoryManager.generateMessageId()
   }
 
   async createSession(userId: string, agentId: string): Promise<ChatSession> {
+    if (!this.useRedis) {
+      return await this.memoryManager.createSession(userId, agentId)
+    }
+
     const sessionId = this.generateSessionId()
     const now = new Date()
     
@@ -32,6 +56,10 @@ export class SessionManager {
   }
 
   async getSession(sessionId: string): Promise<ChatSession | null> {
+    if (!this.useRedis) {
+      return await this.memoryManager.getSession(sessionId)
+    }
+
     try {
       const sessionData = await this.redis.get(`session:${sessionId}`)
       if (!sessionData) {
@@ -55,6 +83,10 @@ export class SessionManager {
   }
 
   async saveSession(session: ChatSession): Promise<void> {
+    if (!this.useRedis) {
+      return await this.memoryManager.saveSession(session)
+    }
+
     try {
       await this.redis.setex(
         `session:${session.id}`,
@@ -68,6 +100,10 @@ export class SessionManager {
   }
 
   async addMessage(sessionId: string, message: AgentMessage): Promise<void> {
+    if (!this.useRedis) {
+      return await this.memoryManager.addMessage(sessionId, message)
+    }
+
     const session = await this.getSession(sessionId)
     if (!session) {
       throw new Error(`Session ${sessionId} not found`)
@@ -79,6 +115,10 @@ export class SessionManager {
   }
 
   async updateMessage(sessionId: string, messageId: string, updates: Partial<AgentMessage>): Promise<void> {
+    if (!this.useRedis) {
+      return await this.memoryManager.updateMessage(sessionId, messageId, updates)
+    }
+
     const session = await this.getSession(sessionId)
     if (!session) {
       throw new Error(`Session ${sessionId} not found`)
@@ -99,6 +139,10 @@ export class SessionManager {
   }
 
   async getUserSessions(userId: string, limit = 50): Promise<ChatSession[]> {
+    if (!this.useRedis) {
+      return await this.memoryManager.getUserSessions(userId, limit)
+    }
+
     try {
       // Get all session keys for the user
       const keys = await this.redis.keys(`session:*`)
@@ -132,6 +176,10 @@ export class SessionManager {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
+    if (!this.useRedis) {
+      return await this.memoryManager.deleteSession(sessionId)
+    }
+
     try {
       await this.redis.del(`session:${sessionId}`)
     } catch (error) {
@@ -141,6 +189,10 @@ export class SessionManager {
   }
 
   async extendSessionTTL(sessionId: string): Promise<void> {
+    if (!this.useRedis) {
+      return await this.memoryManager.extendSessionTTL(sessionId)
+    }
+
     try {
       await this.redis.expire(`session:${sessionId}`, this.SESSION_TTL)
     } catch (error) {
