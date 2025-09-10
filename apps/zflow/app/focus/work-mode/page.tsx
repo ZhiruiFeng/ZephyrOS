@@ -17,6 +17,7 @@ import { useTranslation } from '../../../contexts/LanguageContext'
 import { useTimer } from '../../../hooks/useTimer'
 import SubtaskSection from '../../components/editors/SubtaskSection'
 import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
+import eventBus from '../../core/events/event-bus'
 
 interface TaskWithCategory extends TaskMemory {
   category?: Category
@@ -153,21 +154,14 @@ function WorkModeViewInner() {
 
   // Listen for timer stopped to open energy review modal
   useEffect(() => {
-    const handler = (e: any) => {
-      const entry = e?.detail?.entry
+    const off = eventBus.onTimerStopped((detail: any) => {
+      const entry = detail?.entry
       if (entry) {
         setEnergyReviewEntry(entry)
         setEnergyReviewOpen(true)
       }
-    }
-    if (typeof window !== 'undefined') {
-      window.addEventListener('zflow:timerStopped', handler)
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('zflow:timerStopped', handler)
-      }
-    }
+    })
+    return off
   }, [])
 
   // Filter tasks based on view mode

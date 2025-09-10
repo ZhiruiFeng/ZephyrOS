@@ -9,18 +9,8 @@ import {
   // Auth components
   LoginPage,
 } from './components/auth'
-import {
-  // Navigation components
-  CategorySidebar,
-  MobileCategorySheet,
-} from './components/navigation'
-import {
-  // UI components
-  FloatingAddButton,
-  StatisticsCards,
-  FilterControls,
-  DateSelector,
-} from './components/ui'
+import { MobileCategorySheet } from './components/navigation'
+import { FloatingAddButton } from './components/ui'
 import {
   // Modal components
   AddTaskModal,
@@ -34,13 +24,7 @@ import {
   TaskEditor,
   ActivityEditor,
 } from './components/editors'
-import {
-  // View components
-  CurrentView,
-  FutureView,
-  ArchiveView,
-  TimelineView,
-} from './components/views'
+// views rendered via containers
 import { useTasks } from '../hooks/useMemories'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
 import { useActivities } from '../hooks/useActivities'
@@ -50,6 +34,9 @@ import { useTaskActions } from '../hooks/useTaskActions'
 import { useActivityActions } from '../hooks/useActivityActions'
 import { useModalState } from '../hooks/useModalState'
 import { useTimeline, TimelineItem } from '../hooks/useTimeline'
+import eventBus from './core/events/event-bus'
+import TimelineHome from './modules/timeline/containers/TimelineHome'
+import TasksHome from './modules/tasks/containers/TasksHome'
 
 export type ViewKey = 'current' | 'future' | 'archive'
 export type DisplayMode = 'list' | 'grid'
@@ -187,36 +174,25 @@ function ZFlowPageContent() {
 
   // Event handlers
   React.useEffect(() => {
-    const handler = () => {
+    const off = eventBus.onAddTaskFromPage(() => {
       if (selectedCategory !== 'all' && selectedCategory !== 'uncategorized') {
-        window.dispatchEvent(new CustomEvent('zflow:addTask', {
-          detail: { categoryId: selectedCategory }
-        }))
+        eventBus.emitAddTask({ categoryId: selectedCategory })
       } else {
-        window.dispatchEvent(new CustomEvent('zflow:addTask'))
+        eventBus.emitAddTask(undefined)
       }
-    }
-    
-    window.addEventListener('zflow:addTaskFromPage', handler)
-    return () => window.removeEventListener('zflow:addTaskFromPage', handler)
+    })
+    return off
   }, [selectedCategory])
 
   React.useEffect(() => {
-    const handler = (e: any) => {
-      const entry = e?.detail?.entry
+    const off = eventBus.onTimerStopped((detail) => {
+      const entry = detail?.entry
       if (entry) {
         modalState.setEnergyReviewEntry(entry)
         modalState.setEnergyReviewOpen(true)
       }
-    }
-    if (typeof window !== 'undefined') {
-      window.addEventListener('zflow:timerStopped', handler)
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('zflow:timerStopped', handler)
-      }
-    }
+    })
+    return off
   }, [modalState])
 
   // Navigation functions
@@ -351,137 +327,56 @@ function ZFlowPageContent() {
 
         {/* Content based on view mode */}
         {mainViewMode === 'timeline' ? (
-          /* Timeline View - Just date selector and timeline */
-          <div className="space-y-6">
-            {/* Date Selector */}
-            <div className="flex items-center justify-center">
-              <DateSelector
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-              />
-            </div>
-            
-            {/* Timeline Content */}
-            <TimelineView
-              selectedDate={selectedDate}
-              timelineItems={timelineData.items}
-              loading={timelineLoading}
-              onItemClick={(item: TimelineItem) => handleTimelineItemClick(item)}
-              onEditItem={(item: TimelineItem) => {
-                // Handle timeline item edit
-                console.log('Edit timeline item:', item)
-              }}
-              onDeleteItem={(item: TimelineItem) => {
-                // Handle timeline item deletion
-                console.log('Delete timeline item:', item)
-              }}
-              refetchTimeline={refetchTimeline}
-              t={t}
-              lang={currentLang}
-            />
-          </div>
+          <TimelineHome
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            items={timelineData.items}
+            loading={timelineLoading}
+            refetch={refetchTimeline}
+            t={t}
+            lang={currentLang}
+            onItemClick={handleTimelineItemClick}
+          />
         ) : (
-          /* Task View - Categories sidebar + main content */
-          <div className="flex gap-4 md:gap-6">
-            {/* Left: Category sidebar */}
-            <CategorySidebar
-              categories={categories}
-              selected={selectedCategory}
-              counts={viewBasedCounts}
-              view={view}
-              onSelect={(key) => setSelectedCategory(key as any)}
-              onCreate={async (payload) => { await createCategory({ name: payload.name, color: payload.color }) }}
-              onUpdate={async (id, payload) => { await updateCategory(id, payload) }}
-              onDelete={async (id) => { await deleteCategory(id); if (selectedCategory === id) setSelectedCategory('all') }}
-              className="hidden md:block rounded-lg"
-            />
-
-            {/* Right: Main Content */}
-            <div className="flex-1">
-              {/* Statistics Cards */}
-              <StatisticsCards
-                stats={stats}
-                activeView={view}
-                onViewChange={setView}
-                t={t}
-              />
-
-              {/* Filter Controls */}
-              <FilterControls
-                search={search}
-                filterPriority={filterPriority}
-                selectedCategory={selectedCategory}
-                displayMode={displayMode}
-                sortMode={sortMode}
-                onSearchChange={setSearch}
-                onPriorityChange={setFilterPriority}
-                onDisplayModeChange={setDisplayMode}
-                onSortModeChange={setSortMode}
-                onOpenMobileCategorySelector={() => modalState.setShowMobileCategorySelector(true)}
-                onOpenDailyModal={() => modalState.setShowDailyModal(true)}
-                categories={categories}
-                t={t}
-              />
-
-              {/* View content */}
-              <div className="space-y-3 md:space-y-3">
-                {view === 'current' && (
-                  <CurrentView
-                    tasks={currentList}
-                    categories={categories}
-                    timer={timer}
-                    displayMode={displayMode}
-                    expandedDescriptions={modalState.expandedDescriptions}
-                    t={t}
-                    onTaskClick={goToWork}
-                    onToggleComplete={taskActions.toggleComplete}
-                    onHoldTask={taskActions.holdTask}
-                    onEditTask={handleTaskEdit}
-                    onDeleteTask={taskActions.handleDeleteTask}
-                    onShowTime={modalState.setTimeModalTask}
-                    onToggleDescription={modalState.toggleDescriptionExpansion}
-                  />
-                )}
-
-                {view === 'future' && (
-                  <FutureView
-                    tasks={futureList}
-                    categories={categories}
-                    timer={timer}
-                    displayMode={displayMode}
-                    expandedDescriptions={modalState.expandedDescriptions}
-                    t={t}
-                    onTaskClick={goToWork}
-                    onEditTask={handleTaskEdit}
-                    onDeleteTask={taskActions.handleDeleteTask}
-                    onShowTime={modalState.setTimeModalTask}
-                    onToggleDescription={modalState.toggleDescriptionExpansion}
-                    onActivateTask={taskActions.activate}
-                    onUpdateCategory={taskActions.handleUpdateCategory}
-                  />
-                )}
-
-                {view === 'archive' && (
-                  <ArchiveView
-                    groupedArchiveList={groupedArchiveList}
-                    categories={categories}
-                    timer={timer}
-                    displayMode={displayMode}
-                    expandedDescriptions={modalState.expandedDescriptions}
-                    t={t}
-                    onTaskClick={goToWork}
-                    onEditTask={handleTaskEdit}
-                    onDeleteTask={taskActions.handleDeleteTask}
-                    onShowTime={modalState.setTimeModalTask}
-                    onToggleDescription={modalState.toggleDescriptionExpansion}
-                    onReopenTask={taskActions.reopen}
-                  />
-                )}
-
-                {/* activities view removed from selectors */}
-              </div>
-            </div>
-          </div>
+          <TasksHome
+            view={view}
+            setView={setView}
+            displayMode={displayMode}
+            setDisplayMode={setDisplayMode}
+            categories={categories}
+            stats={stats}
+            currentList={currentList}
+            futureList={futureList}
+            archiveList={archiveList}
+            groupedArchiveList={groupedArchiveList}
+            timer={timer}
+            expandedDescriptions={modalState.expandedDescriptions}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            filterPriority={filterPriority}
+            setFilterPriority={setFilterPriority}
+            search={search}
+            setSearch={setSearch}
+            sortMode={sortMode}
+            setSortMode={setSortMode}
+            viewBasedCounts={viewBasedCounts}
+            t={t}
+            goToWork={goToWork}
+            onToggleComplete={taskActions.toggleComplete}
+            onHoldTask={taskActions.holdTask}
+            onEditTask={handleTaskEdit}
+            onDeleteTask={taskActions.handleDeleteTask}
+            onShowTime={modalState.setTimeModalTask}
+            onToggleDescription={modalState.toggleDescriptionExpansion}
+            onActivateTask={taskActions.activate}
+            onUpdateCategory={taskActions.handleUpdateCategory}
+            onReopenTask={taskActions.reopen}
+            createCategory={createCategory}
+            updateCategory={updateCategory}
+            deleteCategory={deleteCategory}
+            onOpenMobileCategorySelector={() => modalState.setShowMobileCategorySelector(true)}
+            onOpenDailyModal={() => modalState.setShowDailyModal(true)}
+          />
         )}
       </div>
 

@@ -45,8 +45,8 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
   }, [user, t.profile.yourProfile])
 
   const renderModule = (moduleConfig: ProfileModuleConfig) => {
-    const module = availableModules.find(m => m.id === moduleConfig.id)
-    if (!module) return null
+    const mod = availableModules.find(m => m.id === moduleConfig.id)
+    if (!mod) return null
 
     switch (moduleConfig.id) {
       case 'energy-spectrum':

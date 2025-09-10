@@ -52,7 +52,7 @@ export default function AgentsPage() {
               </h2>
               
               <p className="text-gray-600 mb-6">
-                We're building intelligent agents that will help you automate and optimize your task management workflow.
+                We’re building intelligent agents that will help you automate and optimize your task management workflow.
               </p>
               
               <div className="space-y-3 text-sm text-gray-500">

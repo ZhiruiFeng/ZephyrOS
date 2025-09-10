@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import useSWR from 'swr'
 import { timeTrackingApi, API_BASE } from '../lib/api'
+import eventBus from '../app/core/events/event-bus'
 import { authManager } from '../lib/auth-manager'
 
 export interface UseTimerState {
@@ -45,11 +46,8 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
   const stop = useCallback(async (taskId: string, opts?: { overrideEndAt?: string }) => {
     const result = await timeTrackingApi.stop(taskId, { overrideEndAt: opts?.overrideEndAt })
     try {
-      if (typeof window !== 'undefined') {
-        // 通知全局：计时已停止，携带本次 time entry 以便触发能量评估弹窗
-        const event = new CustomEvent('zflow:timerStopped', { detail: { entry: result?.entry || null } })
-        window.dispatchEvent(event)
-      }
+      // 通知全局：计时已停止，携带本次 time entry 以便触发能量评估弹窗
+      eventBus.emitTimerStopped({ entry: result?.entry || null })
     } catch {}
     await mutate()
     // 保持原签名不返回值，避免破坏现有调用点
@@ -128,5 +126,4 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
     refresh,
   }
 }
-
 

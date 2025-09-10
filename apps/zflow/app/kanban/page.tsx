@@ -263,21 +263,15 @@ export default function KanbanView() {
 
   // Listen for timer stopped to open energy review modal
   useEffect(() => {
-    const handler = (e: any) => {
-      const entry = e?.detail?.entry
+    const { default: eventBus } = require('../core/events/event-bus')
+    const off = eventBus.onTimerStopped((detail: any) => {
+      const entry = detail?.entry
       if (entry) {
         setEnergyReviewEntry(entry)
         setEnergyReviewOpen(true)
       }
-    }
-    if (typeof window !== 'undefined') {
-      window.addEventListener('zflow:timerStopped', handler)
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('zflow:timerStopped', handler)
-      }
-    }
+    })
+    return off
   }, [])
 
   const closeEditor = () => {

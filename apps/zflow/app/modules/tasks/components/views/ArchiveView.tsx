@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import { TaskMemory } from '../../../lib/api'
-import TaskCard from '../ui/TaskCard'
-import { formatDate } from '../../utils/taskUtils'
+import { TaskMemory } from '../../../../../lib/api'
+import TaskCard from '../../../../components/ui/TaskCard'
+import { formatDate } from '../../../../utils/taskUtils'
 
 interface ArchiveViewProps {
   groupedArchiveList: Array<{ date: string; tasks: TaskMemory[] }>

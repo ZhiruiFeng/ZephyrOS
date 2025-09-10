@@ -2,11 +2,11 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { useTasks, useUpdateTask } from '../../hooks/useMemories'
-import { useAuth } from '../../contexts/AuthContext'
-import LoginPage from '../components/auth/LoginPage'
-import { TaskContent } from '../../lib/api'
-import { useTranslation } from '../../contexts/LanguageContext'
+import { useTasks, useUpdateTask } from '../../../../hooks/useMemories'
+import { useAuth } from '../../../../contexts/AuthContext'
+import LoginPage from '../../../components/auth/LoginPage'
+import { TaskContent } from '../../../../lib/api'
+import { useTranslation } from '../../../../contexts/LanguageContext'
 
 export default function ArchivePage() {
   const { t } = useTranslation()
@@ -28,18 +28,16 @@ export default function ArchivePage() {
     return completedAt && now - completedAt > windowMs
   })
 
-  // group by month
   const byMonth: Record<string, typeof archived> = {}
   for (const t of archived) {
     const c = t.content as TaskContent
     const d = c.completion_date ? new Date(c.completion_date) : new Date()
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     if (!byMonth[key]) byMonth[key] = []
     byMonth[key].push(t)
   }
 
   const reopen = async (id: string) => {
-    // Backend will clear completion_date when status != completed
     await updateTask(id, { content: { status: 'pending', progress: 0 } })
   }
 
@@ -84,5 +82,4 @@ export default function ArchivePage() {
     </div>
   )
 }
-
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Target, ListTodo, Mic, Plus, Bot, BookOpen } from 'lucide-react'
 import { useTranslation } from '../../../contexts/LanguageContext'
+import eventBus from '../../core/events/event-bus'
 
 function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: any }) {
   const pathname = usePathname()
@@ -32,10 +33,10 @@ export default function MobileBottomNav() {
       
       if (isOnMainPage) {
         // 在主页时，触发带有分类信息的事件
-        window.dispatchEvent(new CustomEvent('zflow:addTaskFromPage'))
+        eventBus.emitAddTaskFromPage()
       } else {
         // 在其他页面时，触发普通事件
-        window.dispatchEvent(new CustomEvent('zflow:addTask'))
+        eventBus.emitAddTask()
       }
     } catch {}
   }
@@ -65,5 +66,3 @@ export default function MobileBottomNav() {
     </div>
   )
 }
-
-

@@ -1,10 +1,12 @@
 'use client'
 
 import React from 'react'
-import { ListTodo, Tag, Calendar, Pencil, Trash2, Timer, Info, ChevronDown, Hourglass, Archive, CheckCircle, Square, Play } from 'lucide-react'
+import { Info, ChevronDown } from 'lucide-react'
 import { TaskMemory, TaskContent } from '../../../lib/api'
 import { getPriorityIcon, getTimerIcon } from './TaskIcons'
-import { formatDate, getTaskDisplayDate, shouldShowOverdue } from '../../utils/taskUtils'
+import StatusIndicator from './task-card/StatusIndicator'
+import ActionButtons from './task-card/ActionButtons'
+import Footer from './task-card/Footer'
 
 export type TaskCardVariant = 'current' | 'future' | 'archive'
 
@@ -85,239 +87,7 @@ export default function TaskCard({
     return 'glass'
   }
 
-  // Get status indicator
-  const getStatusIndicator = () => {
-    if (variant === 'archive') {
-      return isCompleted ? (
-        <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
-      ) : (
-        <Archive className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
-      )
-    }
-
-    if (variant === 'future') {
-      return <ListTodo className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
-    }
-
-    // Current view
-    if (isCompleted) {
-      return (
-        <svg className="w-4 h-4 md:w-5 md:h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.5-1.5z"/>
-        </svg>
-      )
-    }
-    
-    if (isTiming) {
-      return (
-        <div className="relative">
-          <svg className="w-4 h-4 md:w-5 md:h-5 text-green-600" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="12" r="10"/>
-          </svg>
-          <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-green-600 rounded-full animate-ping"></div>
-          <div className="absolute inset-1 w-2 h-2 md:w-3 md:h-3 bg-green-600 rounded-full animate-pulse"></div>
-        </div>
-      )
-    }
-    
-    if (isInProgress) {
-      return (
-        <div className="relative">
-          <svg className="w-4 h-4 md:w-5 md:h-5 text-primary-600" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="12" r="10"/>
-          </svg>
-          <div className="absolute inset-0 w-4 h-4 md:w-5 md:h-5 border-2 border-primary-600 rounded-full animate-pulse"></div>
-        </div>
-      )
-    }
-    
-    return (
-      <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="12" cy="12" r="10"/>
-      </svg>
-    )
-  }
-
-  // Get action buttons based on variant
-  const getActionButtons = () => {
-    const commonButtons = (
-      <>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onEditTask(task)
-          }}
-          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-md"
-          title={t.task?.editTask || 'Edit Task'}
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onDeleteTask(task.id)
-          }}
-          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
-          title={t.task?.deleteTask || 'Delete Task'}
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onShowTime({ id: task.id, title: c.title })
-          }}
-          className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md"
-          title={t.task?.viewTime || 'View focus time'}
-        >
-          <Timer className="w-4 h-4" />
-        </button>
-      </>
-    )
-
-    if (variant === 'current') {
-      return (
-        <div className="flex items-center gap-1">
-          {c.status !== 'on_hold' && c.status !== 'completed' && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onHoldTask(task.id)
-              }}
-              className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-md"
-              title={t.task?.holdTask || 'Hold task'}
-            >
-              <Hourglass className="w-4 h-4" />
-            </button>
-          )}
-          {commonButtons}
-        </div>
-      )
-    }
-
-    return <div className="flex items-center gap-1">{commonButtons}</div>
-  }
-
-  // Get category display
-  const getCategoryDisplay = () => {
-    const categoryId = (task as any).category_id || c.category_id
-    const category = categoryId ? categories.find(cat => cat.id === categoryId) : null
-    
-    if (!category) return null
-    
-    return (
-      <div className="flex items-center gap-1">
-        <Tag className="w-3 h-3" />
-        <span style={{ color: category.color || '#6B7280' }}>
-          {category.name}
-        </span>
-      </div>
-    )
-  }
-
-  // Get footer content based on variant
-  const getFooterContent = () => {
-    const categoryDisplay = getCategoryDisplay()
-    
-    if (variant === 'current') {
-      return (
-        <div className={`text-xs text-gray-500 space-y-1 ${displayMode === 'grid' ? '' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1'}`}>
-          <div className="flex items-center gap-1">
-            <span>{t.ui?.createdAt || 'Created at'} {formatDate(task.created_at)}</span>
-          </div>
-          <div className={`flex items-center gap-2 ${displayMode === 'grid' ? 'flex-wrap' : ''}`}>
-            {categoryDisplay}
-            {getTaskDisplayDate(c.status, c.due_date, c.completion_date) && (
-              <div className={`flex items-center gap-1 ${shouldShowOverdue(c.status, c.due_date) ? 'text-red-600' : ''}`}>
-                <Calendar className="w-3 h-3" />
-                <span>
-                  {formatDate(getTaskDisplayDate(c.status, c.due_date, c.completion_date)!)}
-                  {shouldShowOverdue(c.status, c.due_date) && ` • ${t.ui?.overdue || 'Overdue'}`}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )
-    }
-
-    if (variant === 'future') {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{t.ui?.createdAt || 'Created at'} {formatDate(task.created_at)}</span>
-            {categoryDisplay}
-          </div>
-          <div className={`${displayMode === 'grid' ? 'space-y-2' : 'flex flex-col sm:flex-row sm:items-center gap-2'}`}>
-            {onUpdateCategory && (
-              <select
-                value={(task as any).category_id || (c as any).category_id || ''}
-                onChange={(e) => onUpdateCategory(task.id, e.target.value || undefined)}
-                className="px-2 py-1 text-xs border border-gray-300 rounded-lg bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <option value="">{t.ui?.noCategory || 'No Category'}</option>
-                {categories.map((cat: any) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-            )}
-            
-            <div className="flex items-center justify-between gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEditTask(task)
-                }}
-                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                title={t.task?.editTask || 'Edit Task'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-              
-              {onActivateTask && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onActivateTask(task.id)
-                  }}
-                  className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors duration-200"
-                >
-                  {t.task?.activateTask || 'Activate'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    if (variant === 'archive') {
-      return (
-        <div className={`text-xs text-gray-500 ${displayMode === 'grid' ? 'space-y-1' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}>
-          <div className="flex items-center justify-between">
-            <span>
-              {isCompleted ? (t.ui?.completedAt || 'Completed at') : (t.ui?.cancelledAt || 'Cancelled at')} {formatDate(isCompleted && c.completion_date ? c.completion_date : task.created_at)}
-            </span>
-            {categoryDisplay}
-          </div>
-          {isCompleted && onReopenTask && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation()
-                onReopenTask(task.id)
-              }}
-              className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg border border-gray-300 hover:bg-white/50 transition-colors duration-200"
-            >
-              {t.task?.reopenTask || 'Reopen'}
-            </button>
-          )}
-        </div>
-      )
-    }
-  }
+  
 
   return (
     <div 
@@ -344,12 +114,12 @@ export default function TaskCard({
               }}
               className="flex-shrink-0"
             >
-              {getStatusIndicator()}
+              <StatusIndicator variant={variant} isCompleted={isCompleted} isTiming={isTiming} isInProgress={isInProgress} />
             </button>
           )}
           {variant !== 'current' && (
             <div className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0">
-              {getStatusIndicator()}
+              <StatusIndicator variant={variant} isCompleted={isCompleted} isTiming={isTiming} isInProgress={isInProgress} />
             </div>
           )}
           {getPriorityIcon(c.priority)}
@@ -368,7 +138,15 @@ export default function TaskCard({
             { start: t.activity?.startTimer || 'Start Timer', stop: t.activity?.stopTimer || 'Stop Timer' }
           )}
         </div>
-        {getActionButtons()}
+        <ActionButtons 
+          variant={variant} 
+          t={t} 
+          task={task}
+          onEditTask={onEditTask}
+          onDeleteTask={onDeleteTask}
+          onShowTime={onShowTime}
+          onHoldTask={onHoldTask}
+        />
       </div>
 
       {/* Title and description */}
@@ -418,7 +196,15 @@ export default function TaskCard({
       </div>
 
       {/* Footer */}
-      {getFooterContent()}
+      <Footer 
+        variant={variant}
+        task={task}
+        categories={categories}
+        displayMode={displayMode}
+        t={t}
+        onReopenTask={onReopenTask}
+        onUpdateCategory={onUpdateCategory}
+      />
     </div>
   )
 }
