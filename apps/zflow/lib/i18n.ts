@@ -449,6 +449,77 @@ export interface TranslationKeys {
     auto: string;
     notSupported: string;
   };
+
+  // Agents directory
+  agents: {
+    // Header and summary
+    title: string;
+    subtitle: string;
+    summaryAgents: string;
+    summaryActive: string;
+    summaryInteractions: string;
+    // Loading and errors
+    loading: string;
+    failedToLoad: string;
+    retry: string;
+    // Search and view
+    searchPlaceholder: string;
+    viewSimple: string;
+    viewOrbit: string;
+    // Common field labels
+    name: string;
+    vendor: string;
+    features: string;
+    notes: string;
+    // Placeholders
+    agentNamePlaceholder: string;
+    featuresPlaceholder: string;
+    notesPlaceholder: string;
+    // Add buttons
+    add: string;
+    adding: string;
+    // Interaction history
+    interactionHistory: string;
+    quickAddAgentLabel: string;
+    quickAddSelectAgent: string;
+    quickAddTitleLabel: string;
+    quickAddTitlePlaceholder: string;
+    quickAddLinkLabel: string;
+    quickAddLinkPlaceholder: string;
+    // List actions
+    open: string;
+    openLink: string;
+    // ARIA labels
+    ariaEditAgent: string;
+    ariaDeleteAgent: string;
+    ariaEditInteraction: string;
+    ariaDeleteInteraction: string;
+    // Edit Agent Modal
+    modalEditAgentTitle: string;
+    modalClose: string;
+    modalNameLabel: string;
+    modalVendorLabel: string;
+    modalFeaturesLabel: string;
+    modalNotesLabel: string;
+    modalNamePlaceholder: string;
+    modalFeaturesPlaceholder: string;
+    modalNotesPlaceholder: string;
+    // Edit Interaction Modal
+    modalEditInteractionTitle: string;
+    modalAgentLabel: string;
+    modalSelectAgent: string;
+    modalTitleLabel: string;
+    modalTitlePlaceholder: string;
+    modalLinkLabel: string;
+    modalLinkPlaceholder: string;
+    modalTagsLabel: string;
+    modalTagsPlaceholder: string;
+    // Delete confirms
+    deleteAgentTitle: string;
+    deleteAgentDescription: string;
+    deleteInteractionTitle: string;
+    deleteInteractionDescription: string;
+  };
 }
 
 const translations: Record<Language, TranslationKeys> = {
@@ -867,6 +938,63 @@ const translations: Record<Language, TranslationKeys> = {
       auto: 'Auto',
       notSupported: 'Browser does not support MediaRecorder (recommended desktop Chrome/Edge).',
     },
+    agents: {
+      title: 'My Agents',
+      subtitle: 'Manage your AI agent ecosystem',
+      summaryAgents: 'Agents',
+      summaryActive: 'Active',
+      summaryInteractions: 'Interactions',
+      loading: 'Loading AI agents...',
+      failedToLoad: 'Failed to load data',
+      retry: 'Retry',
+      searchPlaceholder: 'Search agents, features, or interactions...',
+      viewSimple: 'Simple',
+      viewOrbit: 'Orbit',
+      name: 'Name',
+      vendor: 'Vendor',
+      features: 'Features',
+      notes: 'Notes',
+      agentNamePlaceholder: 'Agent name',
+      featuresPlaceholder: 'Coding, Brainstorming',
+      notesPlaceholder: 'Optional notes',
+      add: 'Add',
+      adding: 'Adding...',
+      interactionHistory: 'Interaction History',
+      quickAddAgentLabel: 'Agent',
+      quickAddSelectAgent: 'Select agent',
+      quickAddTitleLabel: 'Title',
+      quickAddTitlePlaceholder: 'What was this about?',
+      quickAddLinkLabel: 'Link (optional)',
+      quickAddLinkPlaceholder: 'Share/revisit URL',
+      open: 'Open',
+      openLink: 'Open link',
+      ariaEditAgent: 'Edit agent',
+      ariaDeleteAgent: 'Delete agent',
+      ariaEditInteraction: 'Edit interaction',
+      ariaDeleteInteraction: 'Delete interaction',
+      modalEditAgentTitle: 'Edit Agent',
+      modalClose: 'Close',
+      modalNameLabel: 'Name',
+      modalVendorLabel: 'Vendor',
+      modalFeaturesLabel: 'Features',
+      modalNotesLabel: 'Notes',
+      modalNamePlaceholder: 'Agent name',
+      modalFeaturesPlaceholder: 'Coding, Brainstorming',
+      modalNotesPlaceholder: 'Notes',
+      modalEditInteractionTitle: 'Edit Interaction',
+      modalAgentLabel: 'Agent',
+      modalSelectAgent: 'Select agent',
+      modalTitleLabel: 'Title',
+      modalTitlePlaceholder: 'Interaction title',
+      modalLinkLabel: 'Link (optional)',
+      modalLinkPlaceholder: 'https://...',
+      modalTagsLabel: 'Tags',
+      modalTagsPlaceholder: 'tag1, tag2, tag3',
+      deleteAgentTitle: 'Delete Agent',
+      deleteAgentDescription: 'Are you sure you want to delete this agent? This action cannot be undone.',
+      deleteInteractionTitle: 'Delete Interaction',
+      deleteInteractionDescription: 'Are you sure you want to delete this interaction? This action cannot be undone.',
+    },
   },
   zh: {
     common: {
@@ -1281,6 +1409,63 @@ const translations: Record<Language, TranslationKeys> = {
       english: 'English',
       auto: '自动',
       notSupported: '浏览器不支持 MediaRecorder（建议桌面 Chrome/Edge）。',
+    },
+    agents: {
+      title: '我的代理',
+      subtitle: '管理你的 AI 代理生态',
+      summaryAgents: '代理',
+      summaryActive: '活跃',
+      summaryInteractions: '交互',
+      loading: '正在加载 AI 代理...',
+      failedToLoad: '数据加载失败',
+      retry: '重试',
+      searchPlaceholder: '搜索代理、功能或交互记录...',
+      viewSimple: '列表',
+      viewOrbit: '轨道',
+      name: '名称',
+      vendor: '厂商',
+      features: '功能',
+      notes: '备注',
+      agentNamePlaceholder: '代理名称',
+      featuresPlaceholder: 'Coding, Brainstorming',
+      notesPlaceholder: '备注信息',
+      add: '添加',
+      adding: '正在添加...',
+      interactionHistory: '交互历史',
+      quickAddAgentLabel: '代理',
+      quickAddSelectAgent: '选择代理',
+      quickAddTitleLabel: '标题',
+      quickAddTitlePlaceholder: '这是关于什么的？',
+      quickAddLinkLabel: '链接（可选）',
+      quickAddLinkPlaceholder: '分享/回访链接',
+      open: '打开',
+      openLink: '打开链接',
+      ariaEditAgent: '编辑代理',
+      ariaDeleteAgent: '删除代理',
+      ariaEditInteraction: '编辑交互',
+      ariaDeleteInteraction: '删除交互',
+      modalEditAgentTitle: '编辑代理',
+      modalClose: '关闭',
+      modalNameLabel: '名称',
+      modalVendorLabel: '厂商',
+      modalFeaturesLabel: '功能',
+      modalNotesLabel: '备注',
+      modalNamePlaceholder: '代理名称',
+      modalFeaturesPlaceholder: 'Coding, Brainstorming',
+      modalNotesPlaceholder: '备注信息',
+      modalEditInteractionTitle: '编辑交互',
+      modalAgentLabel: '代理',
+      modalSelectAgent: '选择代理',
+      modalTitleLabel: '标题',
+      modalTitlePlaceholder: '交互标题',
+      modalLinkLabel: '链接（可选）',
+      modalLinkPlaceholder: 'https://...',
+      modalTagsLabel: '标签',
+      modalTagsPlaceholder: 'tag1, tag2, tag3',
+      deleteAgentTitle: '删除代理',
+      deleteAgentDescription: '确定要删除这个代理吗？这个操作无法撤销。',
+      deleteInteractionTitle: '删除交互',
+      deleteInteractionDescription: '确定要删除这个交互记录吗？这个操作无法撤销。',
     },
   },
 };

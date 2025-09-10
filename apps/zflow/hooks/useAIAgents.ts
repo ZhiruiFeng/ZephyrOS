@@ -134,13 +134,14 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-agents/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-agents`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
         },
-        body: JSON.stringify(agentData),
+        body: JSON.stringify({ id, ...agentData }),
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -166,7 +167,7 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-agents/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-agents?id=${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
@@ -277,13 +278,14 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-interactions/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-interactions`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
         },
-        body: JSON.stringify(interactionData),
+        body: JSON.stringify({ id, ...interactionData }),
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -308,7 +310,7 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-interactions/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-interactions?id=${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,

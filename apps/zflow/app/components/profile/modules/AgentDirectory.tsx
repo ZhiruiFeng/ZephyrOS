@@ -22,9 +22,13 @@ import {
   LayoutGrid,
   Orbit,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Edit,
+  Trash2,
+  X
 } from 'lucide-react'
 import { useAIAgents, useAIInteractions, type AIAgent, type AIInteraction } from '../../../../hooks/useAIAgents'
+import { useTranslation } from '../../../../contexts/LanguageContext'
 
 // Types
 export type AgentVendor = "ChatGPT" | "Claude" | "Perplexity" | "ElevenLabs" | "Toland" | "Other"
@@ -189,8 +193,359 @@ const formatDate = (dateISO: string) => {
   return new Date(dateISO).toLocaleString()
 }
 
+// Modal Components
+const EditAgentModal: React.FC<{
+  agent: SimpleAgent | null
+  isOpen: boolean
+  onClose: () => void
+  onSave: (agent: SimpleAgent) => Promise<void>
+  isSaving: boolean
+}> = ({ agent, isOpen, onClose, onSave, isSaving }) => {
+  const { t } = useTranslation()
+  const [formData, setFormData] = useState({
+    name: '',
+    vendor: 'ChatGPT' as AgentVendor,
+    features: '',
+    notes: ''
+  })
+
+  const vendors: AgentVendor[] = ['ChatGPT', 'Claude', 'Perplexity', 'ElevenLabs', 'Toland', 'Other']
+
+  // Reset form when agent changes
+  React.useEffect(() => {
+    if (agent) {
+      setFormData({
+        name: agent.name,
+        vendor: agent.vendor,
+        features: agent.features.join(', '),
+        notes: agent.notes || ''
+      })
+    }
+  }, [agent])
+
+  const handleSave = async () => {
+    if (!agent || !formData.name.trim() || isSaving) return
+
+    const features = formData.features
+      .split(',')
+      .map(f => f.trim())
+      .filter(f => f) as AgentFeature[]
+
+    const updatedAgent: SimpleAgent = {
+      ...agent,
+      name: formData.name.trim(),
+      vendor: formData.vendor,
+      features,
+      notes: formData.notes.trim() || undefined
+    }
+
+    await onSave(updatedAgent)
+    onClose()
+  }
+
+  if (!isOpen || !agent) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-md w-full m-4"
+      >
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">{t.agents.modalEditAgentTitle}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label={t.agents.modalClose}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalNameLabel}</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t.agents.modalNamePlaceholder}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalVendorLabel}</label>
+            <select
+              value={formData.vendor}
+              onChange={(e) => setFormData(prev => ({ ...prev, vendor: e.target.value as AgentVendor }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {vendors.map(vendor => (
+                <option key={vendor} value={vendor}>{vendor}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalFeaturesLabel}</label>
+            <input
+              type="text"
+              value={formData.features}
+              onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t.agents.modalFeaturesPlaceholder}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalNotesLabel}</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t.agents.modalNotesPlaceholder}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 p-6 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            disabled={isSaving}
+          >
+            {t.common.cancel}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!formData.name.trim() || isSaving}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {t.common.save}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+const EditInteractionModal: React.FC<{
+  interaction: InteractionItem | null
+  agents: SimpleAgent[]
+  isOpen: boolean
+  onClose: () => void
+  onSave: (interaction: InteractionItem) => Promise<void>
+  isSaving: boolean
+}> = ({ interaction, agents, isOpen, onClose, onSave, isSaving }) => {
+  const { t } = useTranslation()
+  const [formData, setFormData] = useState({
+    agentId: '',
+    title: '',
+    link: '',
+    tags: ''
+  })
+
+  // Reset form when interaction changes
+  React.useEffect(() => {
+    if (interaction) {
+      setFormData({
+        agentId: interaction.agentId,
+        title: interaction.title,
+        link: interaction.link || '',
+        tags: interaction.tags?.join(', ') || ''
+      })
+    }
+  }, [interaction])
+
+  const handleSave = async () => {
+    if (!interaction || !formData.agentId || !formData.title.trim() || isSaving) return
+
+    const tags = formData.tags
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t)
+
+    // Validate URL if provided
+    let validLink = undefined
+    if (formData.link.trim()) {
+      try {
+        new URL(formData.link.trim())
+        validLink = formData.link.trim()
+      } catch {
+        // Invalid URL, ignore it
+      }
+    }
+
+    const updatedInteraction: InteractionItem = {
+      ...interaction,
+      agentId: formData.agentId,
+      title: formData.title.trim(),
+      link: validLink,
+      tags: tags.length > 0 ? tags : undefined
+    }
+
+    await onSave(updatedInteraction)
+    onClose()
+  }
+
+  if (!isOpen || !interaction) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-md w-full m-4"
+      >
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">{t.agents.modalEditInteractionTitle}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label={t.agents.modalClose}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalAgentLabel}</label>
+            <select
+              value={formData.agentId}
+              onChange={(e) => setFormData(prev => ({ ...prev, agentId: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">{t.agents.modalSelectAgent}</option>
+              {agents.map(agent => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.vendor} - {agent.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalTitleLabel}</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t.agents.modalTitlePlaceholder}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalLinkLabel}</label>
+            <input
+              type="url"
+              value={formData.link}
+              onChange={(e) => setFormData(prev => ({ ...prev, link: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t.agents.modalLinkPlaceholder}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalTagsLabel}</label>
+            <input
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t.agents.modalTagsPlaceholder}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 p-6 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            disabled={isSaving}
+          >
+            {t.common.cancel}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!formData.agentId || !formData.title.trim() || isSaving}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {t.common.save}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+const ConfirmDeleteModal: React.FC<{
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+  description: string
+  isDeleting: boolean
+}> = ({ isOpen, onClose, onConfirm, title, description, isDeleting }) => {
+  const { t } = useTranslation()
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-md w-full m-4"
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-red-100 rounded-full">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          </div>
+          
+          <p className="text-gray-600 mb-6">{description}</p>
+          
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              disabled={isDeleting}
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {t.common.delete}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 // Components
-const AgentTile: React.FC<{ agent: SimpleAgent }> = ({ agent }) => {
+const AgentTile: React.FC<{ 
+  agent: SimpleAgent
+  onEdit?: (agent: SimpleAgent) => void
+  onDelete?: (agentId: string) => void
+}> = ({ agent, onEdit, onDelete }) => {
+  const { t } = useTranslation()
   const VendorIcon = VENDOR_ICONS[agent.vendor]
   const colorClass = VENDOR_COLORS[agent.vendor]
   
@@ -198,8 +553,30 @@ const AgentTile: React.FC<{ agent: SimpleAgent }> = ({ agent }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-4 rounded-2xl border-2 ${colorClass} transition-all hover:shadow-md`}
+      className={`p-4 rounded-2xl border-2 ${colorClass} transition-all hover:shadow-md relative group`}
     >
+      {/* Action buttons */}
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        {onEdit && (
+          <button
+            onClick={() => onEdit(agent)}
+            className="p-1 bg-white/80 hover:bg-white rounded-full shadow-sm transition-colors"
+            aria-label={t.agents.ariaEditAgent}
+          >
+            <Edit className="w-3 h-3 text-gray-600" />
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={() => onDelete(agent.id)}
+            className="p-1 bg-white/80 hover:bg-white rounded-full shadow-sm transition-colors"
+            aria-label={t.agents.ariaDeleteAgent}
+          >
+            <Trash2 className="w-3 h-3 text-red-600" />
+          </button>
+        )}
+      </div>
+
       <div className="flex items-center gap-2 mb-2">
         <VendorIcon className="w-5 h-5" />
         <h3 className="font-bold text-sm">{agent.name}</h3>
@@ -228,8 +605,11 @@ const AgentTile: React.FC<{ agent: SimpleAgent }> = ({ agent }) => {
 const ColumnsView: React.FC<{
   agents: SimpleAgent[]
   onAddAgent: (agentData: Omit<SimpleAgent, 'id'>) => Promise<void>
+  onEditAgent?: (agent: SimpleAgent) => void
+  onDeleteAgent?: (agentId: string) => void
   isCreating: boolean
-}> = ({ agents, onAddAgent, isCreating }) => {
+}> = ({ agents, onAddAgent, onEditAgent, onDeleteAgent, isCreating }) => {
+  const { t } = useTranslation()
   const [newAgent, setNewAgent] = useState({
     name: '',
     vendor: 'ChatGPT' as AgentVendor,
@@ -280,17 +660,17 @@ const ColumnsView: React.FC<{
         <div className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1">{t.agents.name}</label>
               <input
                 type="text"
                 value={newAgent.name}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAgent(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Agent name"
+                placeholder={t.agents.agentNamePlaceholder}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Vendor</label>
+              <label className="block text-sm font-medium mb-1">{t.agents.vendor}</label>
               <select
                 value={newAgent.vendor}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewAgent(prev => ({ ...prev, vendor: e.target.value as AgentVendor }))}
@@ -302,22 +682,22 @@ const ColumnsView: React.FC<{
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Features</label>
+              <label className="block text-sm font-medium mb-1">{t.agents.features}</label>
               <input
                 type="text"
                 value={newAgent.features}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAgent(prev => ({ ...prev, features: e.target.value }))}
-                placeholder="Coding, Brainstorming"
+                placeholder={t.agents.featuresPlaceholder}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Notes</label>
+              <label className="block text-sm font-medium mb-1">{t.agents.notes}</label>
               <input
                 type="text"
                 value={newAgent.notes}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAgent(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Optional notes"
+                placeholder={t.agents.notesPlaceholder}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -331,7 +711,7 @@ const ColumnsView: React.FC<{
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              {isCreating ? 'Adding...' : 'Add'}
+              {isCreating ? t.agents.adding : t.agents.add}
             </button>
           </div>
         </div>
@@ -354,7 +734,12 @@ const ColumnsView: React.FC<{
               </div>
               <div className="space-y-2">
                 {vendorAgents.map(agent => (
-                  <AgentTile key={agent.id} agent={agent} />
+                  <AgentTile 
+                    key={agent.id} 
+                    agent={agent} 
+                    onEdit={onEditAgent}
+                    onDelete={onDeleteAgent}
+                  />
                 ))}
               </div>
             </div>
@@ -447,8 +832,11 @@ const HistoryList: React.FC<{
   history: InteractionItem[]
   agents: SimpleAgent[]
   onAddInteraction: (interactionData: Omit<InteractionItem, 'id'>) => Promise<void>
+  onEditInteraction?: (interaction: InteractionItem) => void
+  onDeleteInteraction?: (interactionId: string) => void
   isCreating: boolean
-}> = ({ history, agents, onAddInteraction, isCreating }) => {
+}> = ({ history, agents, onAddInteraction, onEditInteraction, onDeleteInteraction, isCreating }) => {
+  const { t } = useTranslation()
   const [newInteraction, setNewInteraction] = useState({
     agentId: '',
     title: '',
@@ -494,42 +882,42 @@ const HistoryList: React.FC<{
       <div className="p-6 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
-          Interaction History
+          {t.agents.interactionHistory}
         </h3>
       </div>
       <div className="p-6 space-y-4">
         {/* Quick Add */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
           <div>
-            <label className="block text-sm font-medium mb-1">Agent</label>
+            <label className="block text-sm font-medium mb-1">{t.agents.quickAddAgentLabel}</label>
             <select
               value={newInteraction.agentId}
               onChange={(e) => setNewInteraction(prev => ({ ...prev, agentId: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Select agent</option>
+              <option value="">{t.agents.quickAddSelectAgent}</option>
               {agents.map(agent => (
                 <option key={agent.id} value={agent.id}>{agent.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-medium mb-1">{t.agents.quickAddTitleLabel}</label>
             <input
               type="text"
               value={newInteraction.title}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewInteraction(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="What was this about?"
+              placeholder={t.agents.quickAddTitlePlaceholder}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Link (optional)</label>
+            <label className="block text-sm font-medium mb-1">{t.agents.quickAddLinkLabel}</label>
             <input
               type="text"
               value={newInteraction.link}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewInteraction(prev => ({ ...prev, link: e.target.value }))}
-              placeholder="Share/revisit URL"
+              placeholder={t.agents.quickAddLinkPlaceholder}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -544,7 +932,7 @@ const HistoryList: React.FC<{
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              {isCreating ? 'Adding...' : 'Add'}
+              {isCreating ? t.agents.adding : t.agents.add}
             </button>
           </div>
         </div>
@@ -562,7 +950,7 @@ const HistoryList: React.FC<{
                 key={interaction.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+                className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow group"
               >
                 <div className="p-2 bg-gray-100 rounded-full">
                   <VendorIcon className="w-4 h-4 text-gray-600" />
@@ -585,18 +973,43 @@ const HistoryList: React.FC<{
                     </div>
                   )}
                 </div>
-                {interaction.link && (
-                  <a
-                    href={interaction.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="Open link"
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    Open
-                  </a>
-                )}
+                {/* Action buttons */}
+                <div className="flex items-center gap-2">
+                  {interaction.link && (
+                    <a
+                      href={interaction.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={t.agents.openLink}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {t.agents.open}
+                    </a>
+                  )}
+                  
+                  {/* Edit and Delete buttons */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    {onEditInteraction && (
+                      <button
+                        onClick={() => onEditInteraction(interaction)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        aria-label={t.agents.ariaEditInteraction}
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onDeleteInteraction && (
+                      <button
+                        onClick={() => onDeleteInteraction(interaction.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        aria-label={t.agents.ariaDeleteInteraction}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </motion.div>
             )
           })}
@@ -613,6 +1026,7 @@ export default function AgentDirectory({
   onAddAgent,
   onAddInteraction
 }: AgentDirectoryProps) {
+  const { t } = useTranslation()
   // API hooks
   const { 
     agents: apiAgents, 
@@ -652,6 +1066,14 @@ export default function AgentDirectory({
   const [viewMode, setViewMode] = useState<'simple' | 'orbit'>('simple')
   const [isCreatingAgent, setIsCreatingAgent] = useState(false)
   const [isCreatingInteraction, setIsCreatingInteraction] = useState(false)
+  
+  // Modal states
+  const [editingAgent, setEditingAgent] = useState<SimpleAgent | null>(null)
+  const [editingInteraction, setEditingInteraction] = useState<InteractionItem | null>(null)
+  const [deletingAgent, setDeletingAgent] = useState<string | null>(null)
+  const [deletingInteraction, setDeletingInteraction] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Filter agents and history based on search
   const filteredData = useMemo(() => {
@@ -726,6 +1148,78 @@ export default function AgentDirectory({
     }
   }
 
+  // Edit and Delete handlers
+  const handleEditAgent = async (updatedAgent: SimpleAgent) => {
+    setIsUpdating(true)
+    try {
+      const result = await updateAIAgent(updatedAgent.id, {
+        vendor: updatedAgent.vendor,
+        name: updatedAgent.name,
+        features: updatedAgent.features,
+        notes: updatedAgent.notes,
+        activity_score: updatedAgent.activityScore
+      })
+      
+      if (result) {
+        console.log('Agent updated successfully')
+      }
+    } catch (error) {
+      console.error('Failed to update agent:', error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteAgent = async () => {
+    if (!deletingAgent || isDeleting) return
+    
+    setIsDeleting(true)
+    try {
+      await deleteAIAgent(deletingAgent)
+      setDeletingAgent(null)
+    } catch (error) {
+      console.error('Failed to delete agent:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleEditInteraction = async (updatedInteraction: InteractionItem) => {
+    setIsUpdating(true)
+    try {
+      const result = await updateAIIInteraction(updatedInteraction.id, {
+        agent_id: updatedInteraction.agentId,
+        title: updatedInteraction.title,
+        started_at: updatedInteraction.dateISO,
+        external_link: updatedInteraction.link || undefined,
+        tags: updatedInteraction.tags || [],
+        interaction_type: 'conversation'
+      })
+      
+      if (result) {
+        console.log('Interaction updated successfully')
+      }
+    } catch (error) {
+      console.error('Failed to update interaction:', error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteInteraction = async () => {
+    if (!deletingInteraction || isDeleting) return
+    
+    setIsDeleting(true)
+    try {
+      await deleteAIIInteraction(deletingInteraction)
+      setDeletingInteraction(null)
+    } catch (error) {
+      console.error('Failed to delete interaction:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const activeAgents = agents.filter(a => a.activityScore > 0.6).length
   const isLoading = agentsLoading || interactionsLoading
   const hasError = agentsError || interactionsError
@@ -736,7 +1230,7 @@ export default function AgentDirectory({
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading AI agents...</span>
+          <span className="text-gray-600">{t.agents.loading}</span>
         </div>
       </div>
     )
@@ -748,7 +1242,7 @@ export default function AgentDirectory({
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load data</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t.agents.failedToLoad}</h3>
           <p className="text-gray-600 mb-4">
             {agentsError || interactionsError}
           </p>
@@ -758,7 +1252,7 @@ export default function AgentDirectory({
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            Retry
+            {t.agents.retry}
           </button>
         </div>
       </div>
@@ -770,20 +1264,20 @@ export default function AgentDirectory({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">My Agents</h2>
-          <p className="text-gray-600">Manage your AI agent ecosystem</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t.agents.title}</h2>
+          <p className="text-gray-600">{t.agents.subtitle}</p>
         </div>
         
         {/* Summary Pills */}
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
-            {filteredData.agents.length} Agents
+            {filteredData.agents.length} {t.agents.summaryAgents}
           </span>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
-            {activeAgents} Active
+            {activeAgents} {t.agents.summaryActive}
           </span>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
-            {filteredData.history.length} Interactions
+            {filteredData.history.length} {t.agents.summaryInteractions}
           </span>
         </div>
       </div>
@@ -797,7 +1291,7 @@ export default function AgentDirectory({
               type="text"
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              placeholder="Search agents, features, or interactions..."
+              placeholder={t.agents.searchPlaceholder}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -813,7 +1307,7 @@ export default function AgentDirectory({
             }`}
           >
             <LayoutGrid className="w-4 h-4" />
-            Simple
+            {t.agents.viewSimple}
           </button>
           <button
             onClick={() => setViewMode('orbit')}
@@ -824,7 +1318,7 @@ export default function AgentDirectory({
             }`}
           >
             <Orbit className="w-4 h-4" />
-            Orbit
+            {t.agents.viewOrbit}
           </button>
         </div>
       </div>
@@ -842,6 +1336,8 @@ export default function AgentDirectory({
             <ColumnsView
               agents={filteredData.agents}
               onAddAgent={handleAddAgent}
+              onEditAgent={setEditingAgent}
+              onDeleteAgent={setDeletingAgent}
               isCreating={isCreatingAgent}
             />
           </motion.div>
@@ -863,8 +1359,60 @@ export default function AgentDirectory({
         history={filteredData.history}
         agents={agents}
         onAddInteraction={handleAddInteraction}
+        onEditInteraction={setEditingInteraction}
+        onDeleteInteraction={setDeletingInteraction}
         isCreating={isCreatingInteraction}
       />
+
+      {/* Modals */}
+      <AnimatePresence>
+        {editingAgent && (
+          <EditAgentModal
+            key="edit-agent-modal"
+            agent={editingAgent}
+            isOpen={!!editingAgent}
+            onClose={() => setEditingAgent(null)}
+            onSave={handleEditAgent}
+            isSaving={isUpdating}
+          />
+        )}
+
+        {editingInteraction && (
+          <EditInteractionModal
+            key="edit-interaction-modal"
+            interaction={editingInteraction}
+            agents={agents}
+            isOpen={!!editingInteraction}
+            onClose={() => setEditingInteraction(null)}
+            onSave={handleEditInteraction}
+            isSaving={isUpdating}
+          />
+        )}
+
+        {deletingAgent && (
+          <ConfirmDeleteModal
+            key="delete-agent-modal"
+            isOpen={!!deletingAgent}
+            onClose={() => setDeletingAgent(null)}
+            onConfirm={handleDeleteAgent}
+            title={t.agents.deleteAgentTitle}
+            description={t.agents.deleteAgentDescription}
+            isDeleting={isDeleting}
+          />
+        )}
+
+        {deletingInteraction && (
+          <ConfirmDeleteModal
+            key="delete-interaction-modal"
+            isOpen={!!deletingInteraction}
+            onClose={() => setDeletingInteraction(null)}
+            onConfirm={handleDeleteInteraction}
+            title={t.agents.deleteInteractionTitle}
+            description={t.agents.deleteInteractionDescription}
+            isDeleting={isDeleting}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
