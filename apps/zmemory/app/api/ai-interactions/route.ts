@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { getUserIdFromRequest } from '../../../lib/auth'
 
-// Create Supabase client
+// Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -16,7 +17,9 @@ const CreateInteractionSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().optional(),
   interaction_type: z.enum(['conversation', 'brainstorming', 'coding', 'research', 'creative', 'analysis', 'other']).default('conversation'),
-  external_link: z.string().url().optional(),
+  external_link: z.string().optional().refine((val) => !val || z.string().url().safeParse(val).success, {
+    message: "Must be a valid URL or empty"
+  }),
   external_id: z.string().optional(),
   content_preview: z.string().optional(),
   tags: z.array(z.string()).default([]),
@@ -37,9 +40,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
           features
         )
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -98,21 +100,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    const validatedData = CreateInteractionSchema.parse(body)
+    
+    let validatedData
+    try {
+      validatedData = CreateInteractionSchema.parse(body)
+    } catch (validationError) {
+      if (validationError instanceof z.ZodError) {
+        return NextResponse.json({ 
+          error: 'Invalid input data', 
+          details: validationError.errors
+        }, { status: 400 })
+      }
+      throw validationError
+    }
 
     // Verify the agent belongs to the user
     const { data: agent, error: agentError } = await supabase
       .from('ai_agents')
       .select('id')
       .eq('id', validatedData.agent_id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (agentError || !agent) {
@@ -123,22 +136,38 @@ export async function POST(request: NextRequest) {
       .from('ai_interactions')
       .insert({
         ...validatedData,
-        user_id: user.id
+        user_id: userId
       })
-      .select(`
-        *,
-        ai_agents!inner(
-          id,
-          name,
-          vendor,
-          features
-        )
-      `)
+      .select()
       .single()
 
     if (error) {
       console.error('Error creating AI interaction:', error)
       return NextResponse.json({ error: 'Failed to create interaction' }, { status: 500 })
+    }
+
+    // 手动更新代理信息（替代触发器）
+    try {
+      // 先获取当前的使用计数
+      const { data: currentAgent } = await supabase
+        .from('ai_agents')
+        .select('usage_count')
+        .eq('id', validatedData.agent_id)
+        .eq('user_id', userId)
+        .single()
+      
+      if (currentAgent) {
+        await supabase
+          .from('ai_agents')
+          .update({
+            last_used_at: interaction.created_at,
+            usage_count: (currentAgent.usage_count || 0) + 1
+          })
+          .eq('id', validatedData.agent_id)
+          .eq('user_id', userId)
+      }
+    } catch (updateError) {
+      // 不阻止交互创建，静默处理代理统计更新失败
     }
 
     return NextResponse.json({ interaction }, { status: 201 })
@@ -158,9 +187,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -177,7 +205,7 @@ export async function PUT(request: NextRequest) {
       .from('ai_interactions')
       .update(validatedData)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .select(`
         *,
         ai_agents!inner(
@@ -215,9 +243,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -232,7 +259,7 @@ export async function DELETE(request: NextRequest) {
       .from('ai_interactions')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (error) {
       console.error('Error deleting AI interaction:', error)

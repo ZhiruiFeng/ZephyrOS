@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getUserIdFromRequest } from '../../../lib/auth'
 
-// Create Supabase client
+// Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -16,9 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const { data: stats, error } = await supabase
       .from('ai_usage_stats')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .gte('date', start_date || new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
       .lte('date', end_date || new Date().toISOString().split('T')[0])
       .order('date', { ascending: true })
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const { data: agentStats, error: agentError } = await supabase
       .from('agent_summary')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('activity_score', { ascending: false })
 
     if (agentError) {
@@ -117,9 +117,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { getUserIdFromRequest } from '../../../lib/auth'
 
-// Create Supabase client
+// Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -49,9 +50,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       .from('ai_agents')
       .select(`
         *,
-        ai_interactions!inner(
+        ai_interactions(
           id,
           title,
           created_at,
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           usefulness_rating
         )
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('activity_score', { ascending: false })
 
     if (vendor) {
@@ -108,9 +108,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -121,7 +120,7 @@ export async function POST(request: NextRequest) {
       .from('ai_agents')
       .insert({
         ...validatedData,
-        user_id: user.id
+        user_id: userId
       })
       .select()
       .single()
@@ -148,9 +147,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -167,7 +165,7 @@ export async function PUT(request: NextRequest) {
       .from('ai_agents')
       .update(validatedData)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .select()
       .single()
 
@@ -197,9 +195,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const userId = await getUserIdFromRequest(request)
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -214,7 +211,7 @@ export async function DELETE(request: NextRequest) {
       .from('ai_agents')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (error) {
       console.error('Error deleting AI agent:', error)
