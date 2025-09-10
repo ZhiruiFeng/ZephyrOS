@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { AgentVendor, AgentFeature } from '../app/components/profile/modules/AgentDirectory'
 import { getAuthHeader } from '../lib/supabase'
 
+// If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
+const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
+const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
+
 // API Response Types
 export interface AIAgent {
   id: string
@@ -69,13 +73,13 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-agents`, {
+      const response = await fetch(`${API_BASE}/api/ai-agents`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
         },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -98,8 +102,7 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-agents`, {
+      const response = await fetch(`${API_BASE}/api/ai-agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,8 +134,7 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-agents/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-agents/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -164,12 +166,12 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-agents/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-agents/${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
         },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -214,13 +216,13 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-interactions`, {
+      const response = await fetch(`${API_BASE}/api/ai-interactions`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
         },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -243,8 +245,7 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-interactions`, {
+      const response = await fetch(`${API_BASE}/api/ai-interactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -276,8 +277,7 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-interactions/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-interactions/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -308,12 +308,12 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-interactions/${id}`, {
+      const response = await fetch(`${API_BASE}/api/ai-interactions/${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
         },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -358,13 +358,13 @@ export function useAIUsageStats() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/ai-usage-stats`, {
+      const response = await fetch(`${API_BASE}/api/ai-usage-stats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
         },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
