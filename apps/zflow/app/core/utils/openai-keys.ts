@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 
 export function getZmemoryBase(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const raw = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
   const trimmed = raw.replace(/\/+$/, '')
   return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed
 }

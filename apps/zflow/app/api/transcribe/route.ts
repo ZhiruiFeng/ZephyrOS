@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { transcribeAudio } from '../../core/services/transcribe'
-import { resolveUserOpenAIKey } from '../../core/utils/openai-keys'
+import { resolveUserOpenAIKey, getZmemoryBase } from '../../core/utils/openai-keys'
 
 export const runtime = 'nodejs'
 
@@ -15,9 +15,16 @@ export async function POST(req: NextRequest) {
     console.log('[transcribe] Resolved OpenAI API key:', { source, preview })
   }
   if (!apiKey) {
+    const hasAuth = !!(req.headers.get('authorization') || req.headers.get('Authorization'))
+    const headers = new Headers({ 'content-type': 'application/json' })
+    headers.set('x-openai-key-source', 'none')
+    headers.set('x-openai-key-preview', 'n/a')
+    headers.set('x-openai-debug-has-auth', String(hasAuth))
+    headers.set('x-openai-debug-zmemory-base', getZmemoryBase())
+    headers.set('x-openai-debug-has-env', String(!!process.env.OPENAI_API_KEY))
     return new Response(JSON.stringify({ error: 'No OpenAI API key available (user or environment)' }), {
       status: 500,
-      headers: { 'content-type': 'application/json' },
+      headers,
     })
   }
 

@@ -59,7 +59,7 @@ class ApiKeyClient {
 
   constructor() {
     // Use zmemory API URL
-    const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    const raw = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
     // Normalize: remove trailing slashes and a trailing "/api" if present
     const trimmed = raw.replace(/\/+$/, '')
     this.baseUrl = trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed
