@@ -28,6 +28,14 @@ export default function BatchTranscriber() {
       const { getAuthHeader } = await import('../../../lib/supabase')
       const authHeaders = await getAuthHeader()
       const res = await fetch("/api/transcribe", { method: "POST", headers: authHeaders, body: fd });
+      // Frontend debug: log key source + masked preview from response headers
+      try {
+        const source = res.headers.get('x-openai-key-source')
+        const preview = res.headers.get('x-openai-key-preview')
+        if (source || preview) {
+          console.info('[transcribe] key resolved', { source, preview })
+        }
+      } catch {}
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`${data?.error || "transcribe_failed"}${data?.detail ? `: ${data.detail}` : ""}`);
       setTranscript(data.text || "");
@@ -135,4 +143,3 @@ export default function BatchTranscriber() {
     </div>
   );
 }
-
