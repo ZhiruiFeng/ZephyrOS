@@ -38,4 +38,13 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
   }
 }
 
+/**
+ * Get user object from request
+ */
+export async function getUser(request: NextRequest): Promise<{ id: string } | null> {
+  const userId = await getUserIdFromRequest(request)
+  if (!userId) return null
+  return { id: userId }
+}
+
 

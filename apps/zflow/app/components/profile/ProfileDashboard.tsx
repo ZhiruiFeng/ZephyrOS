@@ -10,6 +10,7 @@ import { StatsModule } from './modules/StatsModule'
 import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
+import { ApiKeysModule } from './modules/ApiKeysModule'
 import { useProfileModules } from './hooks/useProfileModules'
 import type { ProfileModule, ProfileModuleConfig } from './types'
 
@@ -94,6 +95,16 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             config={moduleConfig}
             onConfigChange={(newConfig) => {
               console.log('Memories config changed:', newConfig)
+            }}
+          />
+        )
+      case 'api-keys':
+        return (
+          <ApiKeysModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('API keys config changed:', newConfig)
             }}
           />
         )

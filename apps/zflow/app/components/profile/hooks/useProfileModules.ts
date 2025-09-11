@@ -67,6 +67,18 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       showQuickActions: true,
       showCollectionsView: true
     }
+  },
+  {
+    id: 'api-keys',
+    name: 'API Keys',
+    description: 'Manage your AI service API keys',
+    icon: 'Key',
+    category: 'tools',
+    defaultEnabled: false,
+    defaultConfig: {
+      showInactiveKeys: false,
+      groupByVendor: true
+    }
   }
 ]
 
