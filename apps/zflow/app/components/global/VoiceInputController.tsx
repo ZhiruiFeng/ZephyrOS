@@ -78,14 +78,6 @@ const realTranscribe = async (audioBlob: Blob): Promise<string> => {
       body: formData,
     })
     
-    // Read safe debug headers and emit to browser for test pages
-    try {
-      const source = response.headers.get('x-openai-key-source')
-      const preview = response.headers.get('x-openai-key-preview')
-      const detail = { source, preview, status: response.status, ok: response.ok, path: '/api/transcribe', at: Date.now() }
-      window.dispatchEvent(new CustomEvent('zflow-transcribe-log', { detail }))
-    } catch {}
-
     if (!response.ok) {
       const errText = await response.text().catch(() => '')
       throw new Error(`Transcription failed: ${response.status} ${response.statusText} ${errText}`)
@@ -94,10 +86,6 @@ const realTranscribe = async (audioBlob: Blob): Promise<string> => {
     const result = await response.json()
     return result.text || ''
   } catch (error) {
-    // Emit failure to browser as well
-    try {
-      window.dispatchEvent(new CustomEvent('zflow-transcribe-log', { detail: { ok: false, error: String((error as any)?.message || error), at: Date.now() } }))
-    } catch {}
     console.error('Transcription error:', error)
     throw new Error('Failed to transcribe audio. Please try again.')
   }
