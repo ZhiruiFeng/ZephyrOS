@@ -11,6 +11,7 @@ import NavBar from './components/navigation/NavBar'
 import MobileBottomNav from './components/navigation/MobileBottomNav'
 import DynamicHead from './components/utils/DynamicHead'
 import AddTaskPortal from './components/global/AddTaskPortal'
+import VoiceInputController from './components/global/VoiceInputController'
 import { authManager } from '../lib/auth-manager'
 import { globalSWRConfig } from '../lib/swr-config'
 import { authJsonFetcher } from './core/config/swr'
@@ -33,6 +34,7 @@ export default function RootLayout({
               <DynamicHead />
               <NavBar />
               <AddTaskPortal />
+              <VoiceInputController />
             <SWRConfig value={{ ...globalSWRConfig, fetcher: authJsonFetcher }}>
               {children}
               <MobileBottomNav />
