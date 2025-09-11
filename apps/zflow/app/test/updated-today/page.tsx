@@ -112,7 +112,7 @@ export default function UpdatedTodayPage() {
   };
 
   // 获取任务数据
-  const fetchTasks = async () => {
+  const fetchTasks = React.useCallback(async () => {
     if (!user) return;
     
     setLoading(true);
@@ -138,11 +138,11 @@ export default function UpdatedTodayPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, filters, dateTimeFilter]);
 
   useEffect(() => {
     fetchTasks();
-  }, [filters, dateTimeFilter, user]);
+  }, [fetchTasks]);
 
   // 重置过滤器
   const resetFilters = () => {

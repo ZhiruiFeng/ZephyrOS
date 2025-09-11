@@ -1,6 +1,28 @@
 import OpenAI from 'openai'
 import { AgentProvider, ChatContext, StreamingResponse, ZFlowTool } from './types'
 
+function getZmemoryBase(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const trimmed = raw.replace(/\/+$/, '')
+  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed
+}
+
+async function resolveUserOpenAIKey(authToken?: string, service: string = 'openai_gpt4'): Promise<string | null> {
+  if (!authToken) return null
+  try {
+    const base = getZmemoryBase()
+    const res = await fetch(`${base}/api/internal/resolve-openai-key?service=${encodeURIComponent(service)}`, {
+      headers: { Authorization: authToken },
+      method: 'GET'
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    return data?.key || null
+  } catch {
+    return null
+  }
+}
+
 export class OpenAIProvider implements AgentProvider {
   id = 'openai'
   name = 'OpenAI'
@@ -9,21 +31,16 @@ export class OpenAIProvider implements AgentProvider {
   private tools: ZFlowTool[] = []
 
   constructor() {
-    // 在构建时不创建 OpenAI 客户端
+    // Defer client creation until we have a per-request key
     if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === undefined) {
-      console.warn('OpenAI client not initialized during build time')
+      // ok to be empty here; will initialize in sendMessage
       return
     }
-    
+    // In dev, initialize with env key if present for convenience
     const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      console.warn('OPENAI_API_KEY not found, OpenAI client will be unavailable')
-      return
+    if (apiKey) {
+      this.client = new OpenAI({ apiKey })
     }
-    
-    this.client = new OpenAI({
-      apiKey,
-    })
   }
 
   registerTool(tool: ZFlowTool): void {
@@ -61,15 +78,26 @@ export class OpenAIProvider implements AgentProvider {
     const { sessionId, messages, agent } = context
     const messageId = Math.random().toString(36).substring(2, 15)
 
-    // 检查客户端是否已初始化
-    if (!this.client) {
-      yield {
-        sessionId,
-        messageId,
-        type: 'error',
-        error: 'OpenAI client not initialized. Please check OPENAI_API_KEY environment variable.'
+    // Resolve per-user API key first
+    const authToken = (context.metadata && (context.metadata as any).authToken) as string | undefined
+    const userKey = await resolveUserOpenAIKey(authToken, 'openai_gpt4')
+
+    let client = this.client
+    if (userKey) {
+      client = new OpenAI({ apiKey: userKey })
+    }
+    if (!client) {
+      // Fallback to env-initialized client
+      if (!this.client) {
+        yield {
+          sessionId,
+          messageId,
+          type: 'error',
+          error: 'OpenAI client not initialized. Please configure a user API key or set OPENAI_API_KEY.'
+        }
+        return
       }
-      return
+      client = this.client
     }
     
     // Create system message for ZFlow context
@@ -113,7 +141,7 @@ Be helpful, concise, and proactive in using tools when appropriate. If users ask
         params.tool_choice = 'auto'
       }
 
-      const stream = await this.client.chat.completions.create(params)
+      const stream = await client.chat.completions.create(params)
 
       let fullContent = ''
       let toolCalls: any[] = []

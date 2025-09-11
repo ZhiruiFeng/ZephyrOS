@@ -170,7 +170,7 @@ function ZFlowPageContent() {
     }
 
     return counts
-  }, [tasks, view, currentList, futureList, archiveList])
+  }, [view, currentList, futureList, archiveList])
 
   // Event handlers
   React.useEffect(() => {

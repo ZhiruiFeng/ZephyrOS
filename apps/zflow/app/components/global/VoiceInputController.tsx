@@ -69,8 +69,12 @@ const realTranscribe = async (audioBlob: Blob): Promise<string> => {
   formData.append('file', audioBlob, 'recording.wav')
   
   try {
+    // Include auth header so the server can resolve user API key
+    const { getAuthHeader } = await import('../../../lib/supabase')
+    const authHeaders = await getAuthHeader()
     const response = await fetch('/api/transcribe', {
       method: 'POST',
+      headers: authHeaders,
       body: formData,
     })
     

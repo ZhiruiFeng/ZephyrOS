@@ -25,7 +25,9 @@ export default function BatchTranscriber() {
       fd.append("language", language);
       fd.append("model", model);
 
-      const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+      const { getAuthHeader } = await import('../../../lib/supabase')
+      const authHeaders = await getAuthHeader()
+      const res = await fetch("/api/transcribe", { method: "POST", headers: authHeaders, body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`${data?.error || "transcribe_failed"}${data?.detail ? `: ${data.detail}` : ""}`);
       setTranscript(data.text || "");
@@ -133,5 +135,4 @@ export default function BatchTranscriber() {
     </div>
   );
 }
-
 

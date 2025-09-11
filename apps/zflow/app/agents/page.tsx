@@ -236,9 +236,11 @@ export default function AgentsPage() {
     setIsStreaming(true)
 
     try {
+      const { getAuthHeader } = await import('../../lib/supabase')
+      const authHeaders = await getAuthHeader()
       const response = await fetch('/api/agents/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           sessionId,
           message,

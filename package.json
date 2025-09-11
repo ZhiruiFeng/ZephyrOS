@@ -27,4 +27,8 @@
     "react-dom": "^18.2.0",
     "swagger-jsdoc": "^6.2.8"
   }
+  ,
+  "engines": {
+    "node": "20.x"
+  }
 }

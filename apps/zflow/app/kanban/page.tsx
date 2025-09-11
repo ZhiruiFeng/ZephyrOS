@@ -133,7 +133,7 @@ export default function KanbanView() {
     const sorter = sorters[sortMode]
     ;(Object.keys(map) as StatusKey[]).forEach((k) => map[k].sort(sorter))
     return map
-  }, [filtered, sortMode, hideCompleted])
+  }, [filtered, sortMode])
 
   const onDragStart = (taskId: string, e: React.DragEvent) => {
     setDraggingId(taskId)

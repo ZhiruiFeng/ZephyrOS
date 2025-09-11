@@ -74,12 +74,13 @@ export async function POST(request: NextRequest) {
     const streamingService = new StreamingService()
 
     // Start streaming response (async)
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || undefined
     const chatContext = {
       sessionId,
       userId,
       messages: session.messages,
       agent,
-      metadata: session.metadata || {}
+      metadata: { ...(session.metadata || {}), authToken: authHeader }
     }
 
     // Process the message and stream response in background
