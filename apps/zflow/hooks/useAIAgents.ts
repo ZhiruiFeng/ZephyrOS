@@ -228,6 +228,12 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
+      
+      // Check if user is authenticated
+      if (!authHeaders.Authorization) {
+        throw new Error('User not authenticated. Please sign in to create agents.')
+      }
+      
       const response = await fetch(`${API_BASE}/api/ai-agents`, {
         method: 'POST',
         headers: {
@@ -235,10 +241,12 @@ export function useAIAgents() {
           ...authHeaders,
         },
         body: JSON.stringify(agentData),
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to create agent: ${response.statusText}`)
+        const errorData = await response.json().catch(() => ({ error: response.statusText }))
+        throw new Error(errorData.error || `Failed to create agent: ${response.statusText}`)
       }
 
       const responseData = await response.json()
@@ -249,7 +257,8 @@ export function useAIAgents() {
       })
       return newAgent
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create agent')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create agent'
+      setError(errorMessage)
       console.error('Error creating agent:', err)
       return null
     }
@@ -372,6 +381,12 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
+      
+      // Check if user is authenticated
+      if (!authHeaders.Authorization) {
+        throw new Error('User not authenticated. Please sign in to create interactions.')
+      }
+      
       const response = await fetch(`${API_BASE}/api/ai-interactions`, {
         method: 'POST',
         headers: {
@@ -379,10 +394,12 @@ export function useAIInteractions() {
           ...authHeaders,
         },
         body: JSON.stringify(interactionData),
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to create interaction: ${response.statusText}`)
+        const errorData = await response.json().catch(() => ({ error: response.statusText }))
+        throw new Error(errorData.error || `Failed to create interaction: ${response.statusText}`)
       }
 
       const responseData = await response.json()
@@ -393,7 +410,8 @@ export function useAIInteractions() {
       })
       return newInteraction
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create interaction')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create interaction'
+      setError(errorMessage)
       console.error('Error creating interaction:', err)
       return null
     }

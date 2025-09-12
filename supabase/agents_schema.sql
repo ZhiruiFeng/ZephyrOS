@@ -511,8 +511,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Update agent activity score based on recent usage
-CREATE OR REPLACE FUNCTION update_agent_activity_score(agent_uuid UUID)
+-- Calculate agent activity score based on recent usage (without updating)
+CREATE OR REPLACE FUNCTION calculate_agent_activity_score(agent_uuid UUID)
 RETURNS REAL AS $$
 DECLARE
   recent_interactions INTEGER;
@@ -541,10 +541,22 @@ BEGIN
           ELSE 0.1 END)
   ));
   
+  RETURN calculated_score;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Update agent activity score based on recent usage
+CREATE OR REPLACE FUNCTION update_agent_activity_score(agent_uuid UUID)
+RETURNS REAL AS $$
+DECLARE
+  calculated_score REAL;
+BEGIN
+  -- Use the new calculation function
+  calculated_score := calculate_agent_activity_score(agent_uuid);
+  
   -- Update the agent
   UPDATE ai_agents 
   SET activity_score = calculated_score,
-      usage_count = usage_count + recent_interactions,
       updated_at = NOW()
   WHERE id = agent_uuid;
   
@@ -799,16 +811,23 @@ CREATE TRIGGER update_ai_agent_configs_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Updated trigger for agent interaction updates
+-- Updated trigger for agent interaction updates (fixed to avoid trigger conflicts)
 CREATE OR REPLACE FUNCTION update_agent_on_interaction()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_activity_score REAL;
 BEGIN
+  -- Calculate the new activity score
+  new_activity_score := calculate_agent_activity_score(NEW.agent_id);
+  
+  -- Update the agent with all necessary fields in a single operation
   UPDATE ai_agents 
   SET 
     last_used_at = NEW.created_at,
     usage_count = usage_count + 1,
-    activity_score = update_agent_activity_score(NEW.agent_id),
-    updated_at = NOW()
+    activity_score = new_activity_score
+    -- Note: We don't manually set updated_at here to avoid trigger conflicts
+    -- The BEFORE UPDATE trigger will handle updated_at automatically
   WHERE id = NEW.agent_id;
   
   RETURN NEW;
