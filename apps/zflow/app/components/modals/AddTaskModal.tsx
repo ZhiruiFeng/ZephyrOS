@@ -11,7 +11,7 @@ import ActivityForm from '../../modules/activities/forms/ActivityForm'
 interface AddTaskModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (taskData: any) => Promise<void>
+  onSubmit: (taskData: any) => Promise<any>
   categories: any[]
   defaultCategoryId?: string
   onSubmitAndStart?: (taskData: any) => Promise<void>

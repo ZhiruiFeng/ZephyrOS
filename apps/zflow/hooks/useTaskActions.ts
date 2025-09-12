@@ -14,7 +14,8 @@ export function useTaskActions({ t }: UseTaskActionsProps) {
   // Add new task
   const handleAddTask = useCallback(async (taskData: any) => {
     try {
-      await createTask(taskData)
+      const newTask = await createTask(taskData)
+      return newTask
     } catch (error) {
       console.error('Failed to create task:', error)
       throw error

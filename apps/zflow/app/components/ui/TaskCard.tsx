@@ -203,6 +203,7 @@ export default function TaskCard({
         displayMode={displayMode}
         t={t}
         onReopenTask={onReopenTask}
+        onActivateTask={onActivateTask}
         onUpdateCategory={onUpdateCategory}
       />
     </div>

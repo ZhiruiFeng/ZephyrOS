@@ -12,10 +12,11 @@ interface Props {
   displayMode: 'list' | 'grid'
   t: any
   onReopenTask?: (taskId: string) => void
+  onActivateTask?: (taskId: string) => void
   onUpdateCategory?: (taskId: string, categoryId: string | undefined) => void
 }
 
-export default function Footer({ variant, task, categories, displayMode, t, onReopenTask, onUpdateCategory }: Props) {
+export default function Footer({ variant, task, categories, displayMode, t, onReopenTask, onActivateTask, onUpdateCategory }: Props) {
   const c = task.content || {}
   const isCompleted = c.status === 'completed'
 
@@ -71,6 +72,14 @@ export default function Footer({ variant, task, categories, displayMode, t, onRe
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
+          )}
+          {onActivateTask && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onActivateTask(task.id) }}
+              className="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors duration-200"
+            >
+              {t.task?.activateTask || 'Activate'}
+            </button>
           )}
         </div>
       </div>
