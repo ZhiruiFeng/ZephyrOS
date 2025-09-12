@@ -2,9 +2,17 @@ import { getRedisClient } from '../redis'
 import { StreamingResponse } from './types'
 import { MemoryStreamingService } from './memory-streaming'
 
+function getSharedMemoryStreamingService(): MemoryStreamingService {
+  const g = globalThis as unknown as { __zflowMemoryStreamingService?: MemoryStreamingService }
+  if (!g.__zflowMemoryStreamingService) {
+    g.__zflowMemoryStreamingService = new MemoryStreamingService()
+  }
+  return g.__zflowMemoryStreamingService
+}
+
 export class StreamingService {
   private redis: any = null
-  private memoryService = new MemoryStreamingService()
+  private memoryService = getSharedMemoryStreamingService()
   private useRedis = false
   private initPromise: Promise<void> | null = null
 
@@ -148,5 +156,10 @@ export class StreamingService {
       type: 'error',
       error: 'Stream cancelled by user'
     })
+  }
+
+  async getMode(): Promise<'redis' | 'memory'> {
+    await this.ensureReady()
+    return this.useRedis ? 'redis' : 'memory'
   }
 }

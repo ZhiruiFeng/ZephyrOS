@@ -4,6 +4,7 @@ import { sessionManager } from '../../../lib/agents/session-manager'
 
 // 禁用静态生成，因为需要运行时 Redis 连接
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -13,8 +14,15 @@ export async function GET(request: NextRequest) {
     return new Response('sessionId is required', { status: 400 })
   }
 
-  // Verify session exists
-  const session = await sessionManager.getSession(sessionId)
+  // Verify session exists with brief retry for eventual consistency
+  let session = await sessionManager.getSession(sessionId)
+  if (!session) {
+    for (let i = 0; i < 10; i++) { // up to ~1s total
+      await new Promise(r => setTimeout(r, 100))
+      session = await sessionManager.getSession(sessionId)
+      if (session) break
+    }
+  }
   if (!session) {
     return new Response('Session not found', { status: 404 })
   }
@@ -31,6 +39,8 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'Cache-Tag': `agents-stream-${sessionId}`,
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET',
       'Access-Control-Allow-Headers': 'Cache-Control',

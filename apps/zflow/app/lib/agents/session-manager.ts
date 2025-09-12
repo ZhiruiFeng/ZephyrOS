@@ -221,7 +221,13 @@ export class SessionManager {
       console.error('Error extending session TTL:', error)
     }
   }
+
+  async getMode(): Promise<'redis' | 'memory'> {
+    await this.ensureReady()
+    return this.useRedis ? 'redis' : 'memory'
+  }
 }
 
 // Singleton instance
-export const sessionManager = new SessionManager()
+const g = globalThis as unknown as { __zflowSessionManager?: SessionManager }
+export const sessionManager: SessionManager = g.__zflowSessionManager || (g.__zflowSessionManager = new SessionManager())

@@ -55,19 +55,26 @@ export async function POST(request: NextRequest) {
     await sessionManager.addMessage(sessionId, userMessage)
 
     // Get appropriate provider
-    let provider
+    let provider: any
     switch (agent.provider) {
       case 'openai':
-        provider = openAIProvider
+        provider = openAIProvider()
         break
       case 'anthropic':
-        provider = anthropicProvider
+        provider = anthropicProvider()
         break
       default:
         return NextResponse.json(
           { error: `Provider ${agent.provider} not supported` },
           { status: 400 }
         )
+    }
+
+    if (!provider || typeof provider.sendMessage !== 'function') {
+      return NextResponse.json(
+        { error: 'Agent provider is unavailable or misconfigured' },
+        { status: 500 }
+      )
     }
 
     // Create streaming service
