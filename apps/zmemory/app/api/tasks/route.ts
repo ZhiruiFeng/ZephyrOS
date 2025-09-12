@@ -524,8 +524,6 @@ export async function POST(request: NextRequest) {
       insertPayload.completion_date = now;
     }
 
-    console.log('Creating task with payload:', JSON.stringify(insertPayload, null, 2));
-
     const { data, error } = await client
       .from('tasks')
       .insert(insertPayload)

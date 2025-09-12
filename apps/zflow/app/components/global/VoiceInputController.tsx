@@ -400,7 +400,7 @@ const RecordingPanel: React.FC<{
       role="dialog"
       aria-modal="true"
       aria-label="Voice recording panel"
-      className="bg-white border border-gray-200 p-6 z-[60]"
+      className="bg-white border border-gray-200 p-6 z-[70]"
       style={panelStyle}
     >
       {recorderState.error && (
@@ -763,7 +763,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
       <button
         data-mic-button
         onClick={handleMicClick}
-        className="fixed z-[60] w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+        className="fixed z-[70] w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
         style={{
           top: micPosition.top + micPosition.height / 2 - 16,
           left: micPosition.left,
