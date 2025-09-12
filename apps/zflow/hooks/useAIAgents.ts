@@ -1,64 +1,190 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AgentVendor, AgentFeature } from '../app/components/profile/modules/AgentDirectory'
 import { getAuthHeader } from '../lib/supabase'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
 const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
 const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
 
-// API Response Types
-export interface AIAgent {
+// Updated API Response Types for new schema
+export interface Vendor {
   id: string
-  user_id: string
-  vendor: AgentVendor
   name: string
-  features: AgentFeature[]
-  notes?: string
-  activity_score: number
+  description?: string
+  auth_type: 'api_key' | 'oauth' | 'bearer_token'
+  base_url?: string
+  is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface VendorService {
+  id: string
+  vendor_id: string
+  service_name: string
+  display_name: string
+  description?: string
+  is_active: boolean
+}
+
+export interface AgentFeature {
+  id: string
+  name: string
+  description?: string
+  category?: string
+  icon?: string
+  is_active: boolean
+  sort_order: number
+}
+
+export interface InteractionType {
+  id: string
+  name: string
+  description?: string
+  category?: string
+  icon?: string
+  color?: string
+  is_active: boolean
+  sort_order: number
+}
+
+export interface AIAgent {
+  id: string
+  name: string
+  description?: string
+  vendor_id: string
+  service_id?: string
+  model_name?: string
+  system_prompt?: string
+  configuration: Record<string, any>
+  capabilities: Record<string, any>
+  notes?: string
+  tags: string[]
+  activity_score: number
+  last_used_at?: string
+  usage_count: number
+  is_active: boolean
+  is_favorite: boolean
+  is_public: boolean
+  user_id: string
+  created_at: string
+  updated_at: string
+  // Populated relationships from view
+  vendor?: Vendor
+  service?: VendorService
+  vendor_name?: string
+  service_name?: string
+  features?: AgentFeature[]
+  recent_interactions?: number
+  monthly_interactions?: number
+  avg_satisfaction?: number
+  avg_usefulness?: number
+  monthly_cost?: number
 }
 
 export interface AIInteraction {
   id: string
-  user_id: string
   agent_id: string
   title: string
-  started_at: string
+  description?: string
+  interaction_type_id: string
   external_link?: string
+  external_id?: string
+  external_metadata: Record<string, any>
+  content_preview?: string
+  full_content?: string
+  input_tokens?: number
+  output_tokens?: number
+  total_cost?: number
   tags: string[]
+  keywords: string[]
+  satisfaction_rating?: number
+  usefulness_rating?: number
+  feedback_notes?: string
+  started_at?: string
+  ended_at?: string
+  duration_minutes?: number
+  status: 'active' | 'completed' | 'archived' | 'deleted'
+  user_id: string
   created_at: string
   updated_at: string
+  // Populated relationships from view
+  agent?: AIAgent
+  interaction_type?: InteractionType
+  interaction_type_name?: string
+  agent_name?: string
+  agent_vendor_name?: string
 }
 
 export interface AIUsageStats {
-  id: string
-  user_id: string
-  agent_id: string
-  stat_date: string
-  interaction_count: number
-  total_duration_minutes: number
-  last_interaction_at?: string
-  created_at: string
-  updated_at: string
+  summary: {
+    total_interactions: number
+    total_duration_minutes: number
+    total_cost: number
+    total_input_tokens: number
+    total_output_tokens: number
+    unique_agents: number
+    active_agents: number
+    avg_satisfaction: number
+    avg_usefulness: number
+  }
+  daily_stats: Array<{
+    date: string
+    total_interactions: number
+    total_duration_minutes: number
+    total_cost: number
+    total_input_tokens: number
+    total_output_tokens: number
+    unique_agents_used: number
+    feature_usage: Record<string, number>
+    vendor_usage: Record<string, number>
+    avg_satisfaction?: number
+    avg_usefulness?: number
+  }>
+  agent_stats: AIAgent[]
+  feature_usage: Record<string, number>
+  vendor_usage: Record<string, number>
 }
 
-// API Request Types
+// Updated API Request Types
 export interface CreateAgentRequest {
-  vendor: AgentVendor
   name: string
-  features?: AgentFeature[]
+  description?: string
+  vendor_id: string
+  service_id?: string
+  model_name?: string
+  system_prompt?: string
+  configuration?: Record<string, any>
+  capabilities?: Record<string, any>
   notes?: string
+  tags?: string[]
   activity_score?: number
+  is_active?: boolean
+  is_favorite?: boolean
+  feature_ids?: string[]
 }
 
 export interface CreateInteractionRequest {
   agent_id: string
   title: string
-  started_at?: string
+  description?: string
+  interaction_type_id?: string
   external_link?: string
+  external_id?: string
+  external_metadata?: Record<string, any>
+  content_preview?: string
+  full_content?: string
+  input_tokens?: number
+  output_tokens?: number
+  total_cost?: number
   tags?: string[]
-  interaction_type?: 'conversation' | 'brainstorming' | 'coding' | 'research' | 'creative' | 'analysis' | 'other'
+  keywords?: string[]
+  satisfaction_rating?: number
+  usefulness_rating?: number
+  feedback_notes?: string
+  started_at?: string
+  ended_at?: string
+  duration_minutes?: number
+  status?: 'active' | 'completed' | 'archived' | 'deleted'
 }
 
 // Custom Hooks
@@ -292,7 +418,8 @@ export function useAIInteractions() {
         throw new Error(`Failed to update interaction: ${response.statusText}`)
       }
 
-      const updatedInteraction = await response.json()
+      const responseData = await response.json()
+      const updatedInteraction = responseData.interaction || responseData
       setInteractions(prev => {
         const currentInteractions = Array.isArray(prev) ? prev : []
         return currentInteractions.map(interaction => interaction.id === id ? updatedInteraction : interaction)
@@ -350,17 +477,18 @@ export function useAIInteractions() {
 }
 
 export function useAIUsageStats() {
-  const [stats, setStats] = useState<AIUsageStats[]>([])
+  const [stats, setStats] = useState<AIUsageStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (days?: number) => {
     try {
       setLoading(true)
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-usage-stats`, {
+      const queryParams = days ? `?days=${days}` : ''
+      const response = await fetch(`${API_BASE}/api/ai-usage-stats${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -392,5 +520,149 @@ export function useAIUsageStats() {
     loading,
     error,
     fetchStats,
+  }
+}
+
+// Hook for vendors
+export function useVendors() {
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchVendors = useCallback(async (includeServices = true) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const authHeaders = await getAuthHeader()
+      const response = await fetch(`${API_BASE}/api/vendors?include_services=${includeServices}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch vendors: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const vendorsData = data.vendors || data
+      setVendors(Array.isArray(vendorsData) ? vendorsData : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch vendors')
+      console.error('Error fetching vendors:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchVendors()
+  }, [fetchVendors])
+
+  return {
+    vendors,
+    loading,
+    error,
+    fetchVendors,
+  }
+}
+
+// Hook for agent features
+export function useAgentFeatures() {
+  const [features, setFeatures] = useState<AgentFeature[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchFeatures = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const authHeaders = await getAuthHeader()
+      const response = await fetch(`${API_BASE}/api/agent-features`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch agent features: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const featuresData = data.features || data
+      setFeatures(Array.isArray(featuresData) ? featuresData : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch agent features')
+      console.error('Error fetching agent features:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchFeatures()
+  }, [fetchFeatures])
+
+  return {
+    features,
+    loading,
+    error,
+    fetchFeatures,
+  }
+}
+
+// Hook for interaction types
+export function useInteractionTypes() {
+  const [types, setTypes] = useState<InteractionType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchTypes = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const authHeaders = await getAuthHeader()
+      const response = await fetch(`${API_BASE}/api/interaction-types`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch interaction types: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const typesData = data.types || data
+      setTypes(Array.isArray(typesData) ? typesData : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch interaction types')
+      console.error('Error fetching interaction types:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchTypes()
+  }, [fetchTypes])
+
+  return {
+    types,
+    loading,
+    error,
+    fetchTypes,
   }
 }

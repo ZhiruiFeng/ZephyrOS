@@ -18,7 +18,7 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null
 
-// GET /api/vendors - Get all available vendors and services
+// GET /api/interaction-types - Get all available interaction types
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
@@ -31,44 +31,49 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const include_services = searchParams.get('include_services') === 'true'
-    const vendor_id = searchParams.get('vendor_id')
+    const category = searchParams.get('category')
+    const is_active = searchParams.get('is_active')
 
-    if (vendor_id) {
-      // Get specific vendor with services
-      const { data: vendor, error: vendorError } = await supabase
-        .from('vendors')
-        .select(`
-          *,
-          vendor_services(*)
-        `)
-        .eq('id', vendor_id)
-        .eq('is_active', true)
-        .single()
+    let query = supabase
+      .from('interaction_types')
+      .select('*')
+      .order('sort_order')
+      .order('name')
 
-      if (vendorError) {
-        console.error('Error fetching vendor:', vendorError)
-        return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch vendor' }, { status: 500 }))
-      }
-
-      return addCorsHeaders(NextResponse.json({ vendor }))
-    } else {
-      // Get all vendors
-      let query = supabase
-        .from('vendors')
-        .select(include_services ? `*, vendor_services(*)` : '*')
-        .eq('is_active', true)
-        .order('name')
-
-      const { data: vendors, error } = await query
-
-      if (error) {
-        console.error('Error fetching vendors:', error)
-        return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch vendors' }, { status: 500 }))
-      }
-
-      return addCorsHeaders(NextResponse.json({ vendors }))
+    // Apply filters
+    if (category) {
+      query = query.eq('category', category)
     }
+
+    if (is_active !== null) {
+      query = query.eq('is_active', is_active === 'true')
+    } else {
+      // Default to active types only
+      query = query.eq('is_active', true)
+    }
+
+    const { data: types, error } = await query
+
+    if (error) {
+      console.error('Error fetching interaction types:', error)
+      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch interaction types' }, { status: 500 }))
+    }
+
+    // Group by category for easier UI consumption
+    const group_by_category = searchParams.get('group_by_category') === 'true'
+
+    if (group_by_category && types) {
+      const grouped = types.reduce((acc: Record<string, any[]>, type) => {
+        const cat = type.category || 'other'
+        if (!acc[cat]) acc[cat] = []
+        acc[cat].push(type)
+        return acc
+      }, {})
+      
+      return addCorsHeaders(NextResponse.json({ types: grouped, categories: Object.keys(grouped) }))
+    }
+
+    return addCorsHeaders(NextResponse.json({ types }))
   } catch (error) {
     console.error('Unexpected error:', error)
     return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))

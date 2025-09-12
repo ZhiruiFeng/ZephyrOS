@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getUserIdFromRequest } from '../../../lib/auth'
+import { AIAgent, CreateAIAgentRequest, UpdateAIAgentRequest } from '../../../types'
 
 // Helper function to add CORS headers to responses
 function addCorsHeaders(response: NextResponse) {
@@ -19,36 +20,30 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null
 
-// Validation schemas
-const AgentVendorSchema = z.enum(['ChatGPT', 'Claude', 'Perplexity', 'ElevenLabs', 'Toland', 'Other'])
-const AgentFeatureSchema = z.enum(['Brainstorming', 'Daily Q&A', 'Coding', 'MCP', 'News Search', 'Comet', 'TTS', 'STT', 'Companion', 'Speech'])
-
+// Validation schemas for new extensible schema
 const CreateAgentSchema = z.object({
   name: z.string().min(1).max(100),
-  vendor: AgentVendorSchema,
-  features: z.array(AgentFeatureSchema).default([]),
+  description: z.string().optional(),
+  vendor_id: z.string().min(1), // References vendors table
+  service_id: z.string().optional(), // References vendor_services table
+  model_name: z.string().optional(),
+  system_prompt: z.string().optional(),
+  configuration: z.record(z.any()).default({}),
+  capabilities: z.record(z.any()).default({}),
   notes: z.string().optional(),
+  tags: z.array(z.string()).default([]),
   activity_score: z.number().min(0).max(1).default(0.2),
-  configuration: z.record(z.any()).default({})
+  is_active: z.boolean().default(true),
+  is_favorite: z.boolean().default(false),
+  feature_ids: z.array(z.string()).optional() // For creating feature mappings
 })
 
 const UpdateAgentSchema = CreateAgentSchema.partial()
 
-const CreateInteractionSchema = z.object({
-  agent_id: z.string().uuid(),
-  title: z.string().min(1).max(200),
-  description: z.string().optional(),
-  interaction_type: z.enum(['conversation', 'brainstorming', 'coding', 'research', 'creative', 'analysis', 'other']).default('conversation'),
-  external_link: z.string().url().optional(),
-  external_id: z.string().optional(),
-  content_preview: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-  satisfaction_rating: z.number().min(1).max(5).optional(),
-  usefulness_rating: z.number().min(1).max(5).optional(),
-  feedback_notes: z.string().optional(),
-  started_at: z.string().datetime().optional(),
-  ended_at: z.string().datetime().optional(),
-  duration_minutes: z.number().min(0).optional()
+// Agent feature mapping schema
+const CreateFeatureMappingSchema = z.object({
+  feature_id: z.string().min(1),
+  is_primary: z.boolean().default(false)
 })
 
 // GET /api/ai-agents - Get all AI agents for the user
@@ -64,36 +59,60 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const vendor = searchParams.get('vendor')
-    const feature = searchParams.get('feature')
-    const active_only = searchParams.get('active_only') === 'true'
+    const vendor_id = searchParams.get('vendor_id')
+    const service_id = searchParams.get('service_id')
+    const feature_id = searchParams.get('feature_id')
+    const is_active = searchParams.get('is_active')
+    const is_favorite = searchParams.get('is_favorite')
+    const tags = searchParams.get('tags')
+    const search = searchParams.get('search')
+    const sort_by = searchParams.get('sort_by') || 'activity_score'
+    const sort_order = searchParams.get('sort_order') || 'desc'
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const offset = parseInt(searchParams.get('offset') || '0')
 
+    // Use the agent_summary view for enriched data
     let query = supabase
-      .from('ai_agents')
-      .select(`
-        *,
-        ai_interactions(
-          id,
-          title,
-          created_at,
-          satisfaction_rating,
-          usefulness_rating
-        )
-      `)
+      .from('agent_summary')
+      .select('*')
       .eq('user_id', userId)
-      .order('activity_score', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-    if (vendor) {
-      query = query.eq('vendor', vendor)
+    // Apply filters
+    if (vendor_id) {
+      query = query.eq('vendor_id', vendor_id)
     }
 
-    if (feature) {
-      query = query.contains('features', [feature])
+    if (service_id) {
+      query = query.eq('service_id', service_id)
     }
 
-    if (active_only) {
-      query = query.eq('is_active', true)
+    if (is_active !== null) {
+      query = query.eq('is_active', is_active === 'true')
     }
+
+    if (is_favorite !== null) {
+      query = query.eq('is_favorite', is_favorite === 'true')
+    }
+
+    if (tags) {
+      // Search for any of the comma-separated tags
+      const tagList = tags.split(',').map(t => t.trim())
+      query = query.overlaps('tags', tagList)
+    }
+
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,notes.ilike.%${search}%`)
+    }
+
+    // Handle feature filtering (requires join with agent_feature_mappings)
+    if (feature_id) {
+      // We'll need to filter this after the query since we're using the view
+    }
+
+    // Apply sorting
+    const ascending = sort_order === 'asc'
+    query = query.order(sort_by as any, { ascending })
 
     const { data: agents, error } = await query
 
@@ -102,7 +121,16 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 }))
     }
 
-    return addCorsHeaders(NextResponse.json({ agents }))
+    // Filter by feature if specified (post-query filtering)
+    let filteredAgents = agents || []
+    if (feature_id && filteredAgents.length > 0) {
+      filteredAgents = filteredAgents.filter((agent: any) => {
+        const features = agent.features || []
+        return features.some((f: any) => f.id === feature_id)
+      })
+    }
+
+    return addCorsHeaders(NextResponse.json({ agents: filteredAgents }))
   } catch (error) {
     console.error('Unexpected error:', error)
     return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
@@ -122,23 +150,53 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const validatedData = CreateAgentSchema.parse(body)
+    const { feature_ids, ...agentData } = CreateAgentSchema.parse(body)
 
-    const { data: agent, error } = await supabase
+    // Start a transaction-like process
+    const { data: agent, error: agentError } = await supabase
       .from('ai_agents')
       .insert({
-        ...validatedData,
+        ...agentData,
         user_id: userId
       })
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating AI agent:', error)
+    if (agentError) {
+      console.error('Error creating AI agent:', agentError)
       return addCorsHeaders(NextResponse.json({ error: 'Failed to create agent' }, { status: 500 }))
     }
 
-    return addCorsHeaders(NextResponse.json({ agent }, { status: 201 }))
+    // Create feature mappings if provided
+    if (feature_ids && feature_ids.length > 0 && agent) {
+      const featureMappings = feature_ids.map((featureId, index) => ({
+        agent_id: agent.id,
+        feature_id: featureId,
+        is_primary: index === 0, // First feature is primary
+        user_id: userId
+      }))
+
+      const { error: mappingError } = await supabase
+        .from('agent_feature_mappings')
+        .insert(featureMappings)
+
+      if (mappingError) {
+        console.error('Error creating feature mappings:', mappingError)
+        // Continue anyway, don't fail the agent creation
+      }
+    }
+
+    // Return the created agent with features
+    const { data: enrichedAgent, error: enrichError } = await supabase
+      .from('agent_summary')
+      .select('*')
+      .eq('id', agent.id)
+      .eq('user_id', userId)
+      .single()
+
+    const finalAgent = enrichedAgent || agent
+
+    return addCorsHeaders(NextResponse.json({ agent: finalAgent }, { status: 201 }))
   } catch (error) {
     if (error instanceof z.ZodError) {
       return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
@@ -161,7 +219,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, ...updateData } = body
+    const { id, feature_ids, ...updateData } = body
 
     if (!id) {
       return addCorsHeaders(NextResponse.json({ error: 'Agent ID is required' }, { status: 400 }))
@@ -169,7 +227,8 @@ export async function PUT(request: NextRequest) {
 
     const validatedData = UpdateAgentSchema.parse(updateData)
 
-    const { data: agent, error } = await supabase
+    // Update the agent
+    const { data: agent, error: updateError } = await supabase
       .from('ai_agents')
       .update(validatedData)
       .eq('id', id)
@@ -177,8 +236,8 @@ export async function PUT(request: NextRequest) {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error updating AI agent:', error)
+    if (updateError) {
+      console.error('Error updating AI agent:', updateError)
       return addCorsHeaders(NextResponse.json({ error: 'Failed to update agent' }, { status: 500 }))
     }
 
@@ -186,7 +245,46 @@ export async function PUT(request: NextRequest) {
       return addCorsHeaders(NextResponse.json({ error: 'Agent not found' }, { status: 404 }))
     }
 
-    return addCorsHeaders(NextResponse.json({ agent }))
+    // Update feature mappings if provided
+    if (feature_ids !== undefined) {
+      // Remove existing mappings
+      await supabase
+        .from('agent_feature_mappings')
+        .delete()
+        .eq('agent_id', id)
+        .eq('user_id', userId)
+
+      // Add new mappings if any
+      if (feature_ids.length > 0) {
+        const featureMappings = feature_ids.map((featureId: string, index: number) => ({
+          agent_id: id,
+          feature_id: featureId,
+          is_primary: index === 0,
+          user_id: userId
+        }))
+
+        const { error: mappingError } = await supabase
+          .from('agent_feature_mappings')
+          .insert(featureMappings)
+
+        if (mappingError) {
+          console.error('Error updating feature mappings:', mappingError)
+          // Continue anyway
+        }
+      }
+    }
+
+    // Return enriched agent data
+    const { data: enrichedAgent, error: enrichError } = await supabase
+      .from('agent_summary')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single()
+
+    const finalAgent = enrichedAgent || agent
+
+    return addCorsHeaders(NextResponse.json({ agent: finalAgent }))
   } catch (error) {
     if (error instanceof z.ZodError) {
       return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
@@ -215,6 +313,14 @@ export async function DELETE(request: NextRequest) {
       return addCorsHeaders(NextResponse.json({ error: 'Agent ID is required' }, { status: 400 }))
     }
 
+    // Delete feature mappings first (cascade should handle this, but let's be explicit)
+    await supabase
+      .from('agent_feature_mappings')
+      .delete()
+      .eq('agent_id', id)
+      .eq('user_id', userId)
+
+    // Delete the agent (interactions will be cascade deleted)
     const { error } = await supabase
       .from('ai_agents')
       .delete()

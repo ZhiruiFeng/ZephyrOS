@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getUserIdFromRequest } from '../../../lib/auth'
+import { AIInteraction, CreateAIInteractionRequest, UpdateAIInteractionRequest } from '../../../types'
 
 // Helper function to add CORS headers to responses
 function addCorsHeaders(response: NextResponse) {
@@ -19,24 +20,31 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null
 
-// Validation schemas
+// Validation schemas for new extensible schema
 const CreateInteractionSchema = z.object({
   agent_id: z.string().uuid(),
   title: z.string().min(1).max(200),
   description: z.string().optional(),
-  interaction_type: z.enum(['conversation', 'brainstorming', 'coding', 'research', 'creative', 'analysis', 'other']).default('conversation'),
+  interaction_type_id: z.string().default('conversation'), // References interaction_types table
   external_link: z.string().optional().refine((val) => !val || z.string().url().safeParse(val).success, {
     message: "Must be a valid URL or empty"
   }),
   external_id: z.string().optional(),
+  external_metadata: z.record(z.any()).default({}),
   content_preview: z.string().optional(),
+  full_content: z.string().optional(),
+  input_tokens: z.number().min(0).optional(),
+  output_tokens: z.number().min(0).optional(),
+  total_cost: z.number().min(0).optional(),
   tags: z.array(z.string()).default([]),
+  keywords: z.array(z.string()).default([]),
   satisfaction_rating: z.number().min(1).max(5).optional(),
   usefulness_rating: z.number().min(1).max(5).optional(),
   feedback_notes: z.string().optional(),
   started_at: z.string().datetime().optional(),
   ended_at: z.string().datetime().optional(),
-  duration_minutes: z.number().min(0).optional()
+  duration_minutes: z.number().min(0).optional(),
+  status: z.enum(['active', 'completed', 'archived', 'deleted']).default('completed')
 })
 
 const UpdateInteractionSchema = CreateInteractionSchema.partial().omit({ agent_id: true })
@@ -55,37 +63,83 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const agent_id = searchParams.get('agent_id')
+    const interaction_type_id = searchParams.get('interaction_type_id') || searchParams.get('type') // Support both
+    const status = searchParams.get('status')
+    const tags = searchParams.get('tags')
+    const keywords = searchParams.get('keywords')
+    const min_satisfaction = searchParams.get('min_satisfaction')
+    const min_usefulness = searchParams.get('min_usefulness')
+    const min_cost = searchParams.get('min_cost')
+    const max_cost = searchParams.get('max_cost')
+    const date_from = searchParams.get('date_from')
+    const date_to = searchParams.get('date_to')
+    const search = searchParams.get('search')
+    const sort_by = searchParams.get('sort_by') || 'created_at'
+    const sort_order = searchParams.get('sort_order') || 'desc'
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
-    const interaction_type = searchParams.get('type')
-    const tag = searchParams.get('tag')
 
+    // Use the recent_interactions view for enriched data
     let query = supabase
-      .from('ai_interactions')
-      .select(`
-        *,
-        ai_agents!inner(
-          id,
-          name,
-          vendor,
-          features
-        )
-      `)
+      .from('recent_interactions')
+      .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
+    // Apply filters
     if (agent_id) {
       query = query.eq('agent_id', agent_id)
     }
 
-    if (interaction_type) {
-      query = query.eq('interaction_type', interaction_type)
+    if (interaction_type_id) {
+      query = query.eq('interaction_type_id', interaction_type_id)
     }
 
-    if (tag) {
-      query = query.contains('tags', [tag])
+    if (status) {
+      query = query.eq('status', status)
     }
+
+    if (tags) {
+      const tagList = tags.split(',').map(t => t.trim())
+      query = query.overlaps('tags', tagList)
+    }
+
+    if (keywords) {
+      const keywordList = keywords.split(',').map(k => k.trim())
+      query = query.overlaps('keywords', keywordList)
+    }
+
+    if (min_satisfaction) {
+      query = query.gte('satisfaction_rating', parseInt(min_satisfaction))
+    }
+
+    if (min_usefulness) {
+      query = query.gte('usefulness_rating', parseInt(min_usefulness))
+    }
+
+    if (min_cost) {
+      query = query.gte('total_cost', parseFloat(min_cost))
+    }
+
+    if (max_cost) {
+      query = query.lte('total_cost', parseFloat(max_cost))
+    }
+
+    if (date_from) {
+      query = query.gte('created_at', date_from)
+    }
+
+    if (date_to) {
+      query = query.lte('created_at', date_to)
+    }
+
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,content_preview.ilike.%${search}%`)
+    }
+
+    // Apply sorting
+    const ascending = sort_order === 'asc'
+    query = query.order(sort_by as any, { ascending })
 
     const { data: interactions, error } = await query
 
@@ -154,29 +208,8 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(NextResponse.json({ error: 'Failed to create interaction' }, { status: 500 }))
     }
 
-    // 手动更新代理信息（替代触发器）
-    try {
-      // 先获取当前的使用计数
-      const { data: currentAgent } = await supabase
-        .from('ai_agents')
-        .select('usage_count')
-        .eq('id', validatedData.agent_id)
-        .eq('user_id', userId)
-        .single()
-      
-      if (currentAgent) {
-        await supabase
-          .from('ai_agents')
-          .update({
-            last_used_at: interaction.created_at,
-            usage_count: (currentAgent.usage_count || 0) + 1
-          })
-          .eq('id', validatedData.agent_id)
-          .eq('user_id', userId)
-      }
-    } catch (updateError) {
-      // 不阻止交互创建，静默处理代理统计更新失败
-    }
+    // The trigger will automatically update agent stats and activity score
+    // No manual update needed with the new schema
 
     return addCorsHeaders(NextResponse.json({ interaction }, { status: 201 }))
   } catch (error) {
@@ -214,15 +247,7 @@ export async function PUT(request: NextRequest) {
       .update(validatedData)
       .eq('id', id)
       .eq('user_id', userId)
-      .select(`
-        *,
-        ai_agents!inner(
-          id,
-          name,
-          vendor,
-          features
-        )
-      `)
+      .select('*')
       .single()
 
     if (error) {
@@ -234,7 +259,17 @@ export async function PUT(request: NextRequest) {
       return addCorsHeaders(NextResponse.json({ error: 'Interaction not found' }, { status: 404 }))
     }
 
-    return addCorsHeaders(NextResponse.json({ interaction }))
+    // Get enriched interaction data from view
+    const { data: enrichedInteraction, error: enrichError } = await supabase
+      .from('recent_interactions')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single()
+
+    const finalInteraction = enrichedInteraction || interaction
+
+    return addCorsHeaders(NextResponse.json({ interaction: finalInteraction }))
   } catch (error) {
     if (error instanceof z.ZodError) {
       return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))

@@ -3,7 +3,7 @@
 
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Search, 
@@ -25,172 +25,766 @@ import {
   AlertCircle,
   Edit,
   Trash2,
-  X
+  X,
+  ChevronDown,
+  Star,
+  DollarSign,
+  Activity,
+  Clock,
+  TrendingUp
 } from 'lucide-react'
-import { useAIAgents, useAIInteractions, type AIAgent, type AIInteraction } from '../../../../hooks/useAIAgents'
+import { 
+  useAIAgents, 
+  useAIInteractions, 
+  useVendors, 
+  useAgentFeatures, 
+  useInteractionTypes,
+  type AIAgent, 
+  type AIInteraction, 
+  type Vendor, 
+  type AgentFeature as NewAgentFeature,
+  type InteractionType
+} from '../../../../hooks/useAIAgents'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 
-// Types
+// Legacy types for backward compatibility (deprecated)
 export type AgentVendor = "ChatGPT" | "Claude" | "Perplexity" | "ElevenLabs" | "Toland" | "Other"
 export type AgentFeature = "Brainstorming" | "Daily Q&A" | "Coding" | "MCP" | "News Search" | "Comet" | "TTS" | "STT" | "Companion" | "Speech"
 
-// Legacy types for backward compatibility
+// Updated types for new schema
 export interface SimpleAgent {
   id: string
-  vendor: AgentVendor
   name: string
-  features: AgentFeature[]
+  description?: string
+  vendor_id: string
+  vendor_name?: string
+  service_id?: string
+  service_name?: string
+  model_name?: string
   notes?: string
-  activityScore: number
+  tags: string[]
+  features: NewAgentFeature[]
+  activity_score: number
+  usage_count: number
+  is_favorite: boolean
+  last_used_at?: string
+  monthly_cost?: number
+  recent_interactions?: number
+  avg_satisfaction?: number
 }
 
 export interface InteractionItem {
   id: string
-  agentId: string
+  agent_id: string
   title: string
-  dateISO: string
+  description?: string
+  interaction_type_id: string
+  interaction_type_name?: string
+  date_iso: string
   link?: string
-  tags?: string[]
+  tags: string[]
+  total_cost?: number
+  satisfaction_rating?: number
+  duration_minutes?: number
 }
 
 // Convert API types to component types
 const convertAIAgentToSimpleAgent = (agent: AIAgent): SimpleAgent => ({
   id: agent.id,
-  vendor: agent.vendor,
   name: agent.name,
-  features: agent.features,
+  description: agent.description,
+  vendor_id: agent.vendor_id,
+  vendor_name: agent.vendor_name,
+  service_id: agent.service_id,
+  service_name: agent.service_name,
+  model_name: agent.model_name,
   notes: agent.notes,
-  activityScore: agent.activity_score
+  tags: agent.tags || [],
+  features: agent.features || [],
+  activity_score: agent.activity_score,
+  usage_count: agent.usage_count,
+  is_favorite: agent.is_favorite,
+  last_used_at: agent.last_used_at,
+  monthly_cost: agent.monthly_cost,
+  recent_interactions: agent.recent_interactions,
+  avg_satisfaction: agent.avg_satisfaction
 })
 
 const convertAIInteractionToInteractionItem = (interaction: AIInteraction): InteractionItem => ({
   id: interaction.id,
-  agentId: interaction.agent_id,
+  agent_id: interaction.agent_id,
   title: interaction.title,
-  dateISO: interaction.started_at,
+  description: interaction.description,
+  interaction_type_id: interaction.interaction_type_id,
+  interaction_type_name: interaction.interaction_type_name,
+  date_iso: interaction.started_at || interaction.created_at,
   link: interaction.external_link,
-  tags: interaction.tags
+  tags: interaction.tags || [],
+  total_cost: interaction.total_cost,
+  satisfaction_rating: interaction.satisfaction_rating,
+  duration_minutes: interaction.duration_minutes
 })
 
 interface AgentDirectoryProps {
-  // Legacy props for backward compatibility
+  // Updated props for new schema
   initialAgents?: SimpleAgent[]
   initialHistory?: InteractionItem[]
   onAddAgent?: (agent: SimpleAgent) => void
   onAddInteraction?: (interaction: InteractionItem) => void
+  showAnalytics?: boolean // Show cost and analytics
+  enableAdvancedFeatures?: boolean // Enable advanced vendor/service selection
 }
 
-// Helper maps
-const VENDOR_ICONS: Record<AgentVendor, React.ComponentType<{ className?: string }>> = {
-  ChatGPT: Bot,
-  Claude: MessageSquare,
-  Perplexity: SearchIcon,
-  ElevenLabs: Volume2,
-  Toland: Users,
-  Other: Bot
-}
-
-const VENDOR_COLORS: Record<AgentVendor, string> = {
-  ChatGPT: 'bg-indigo-50 border-indigo-200 text-indigo-800',
-  Claude: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-  Perplexity: 'bg-amber-50 border-amber-200 text-amber-800',
-  ElevenLabs: 'bg-sky-50 border-sky-200 text-sky-800',
-  Toland: 'bg-rose-50 border-rose-200 text-rose-800',
-  Other: 'bg-slate-50 border-slate-200 text-slate-800'
-}
-
-const FEATURE_ICONS: Record<AgentFeature, React.ComponentType<{ className?: string }>> = {
-  "Brainstorming": Zap,
-  "Daily Q&A": MessageCircle,
-  "Coding": Code,
-  "MCP": Bot,
-  "News Search": Newspaper,
-  "Comet": Zap,
-  "TTS": Volume2,
-  "STT": Mic,
-  "Companion": Users,
-  "Speech": MessageCircle
-}
-
-// Demo data
-const DEMO_AGENTS: SimpleAgent[] = [
-  {
-    id: '550e8400-e29b-41d4-a716-446655440001',
-    vendor: 'ChatGPT',
-    name: 'GPT-4',
-    features: ['Brainstorming', 'Daily Q&A', 'Coding'],
-    notes: 'Main brainstorming partner',
-    activityScore: 0.9
-  },
-  {
-    id: '550e8400-e29b-41d4-a716-446655440002',
-    vendor: 'Claude',
-    name: 'Claude Sonnet',
-    features: ['Coding', 'MCP'],
-    notes: 'Code review and MCP integration',
-    activityScore: 0.8
-  },
-  {
-    id: '550e8400-e29b-41d4-a716-446655440003',
-    vendor: 'Perplexity',
-    name: 'Pro Search',
-    features: ['News Search'],
-    notes: 'Real-time information',
-    activityScore: 0.6
-  },
-  {
-    id: '550e8400-e29b-41d4-a716-446655440004',
-    vendor: 'ElevenLabs',
-    name: 'Voice Clone',
-    features: ['TTS', 'STT'],
-    notes: 'Voice synthesis',
-    activityScore: 0.4
-  },
-  {
-    id: '550e8400-e29b-41d4-a716-446655440005',
-    vendor: 'Toland',
-    name: 'AI Companion',
-    features: ['Companion', 'Speech'],
-    notes: 'Daily companion',
-    activityScore: 0.7
+// Helper functions for dynamic icons and colors
+const getVendorIcon = (vendorId: string): React.ComponentType<{ className?: string }> => {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    'openai': Bot,
+    'anthropic': MessageSquare,
+    'google': SearchIcon,
+    'perplexity': SearchIcon,
+    'elevenlabs': Volume2,
+    'toland': Users
   }
-]
+  return iconMap[vendorId] || Bot
+}
 
-const DEMO_HISTORY: InteractionItem[] = [
-  {
-    id: '650e8400-e29b-41d4-a716-446655440001',
-    agentId: '550e8400-e29b-41d4-a716-446655440001',
-    title: 'Product strategy brainstorming',
-    dateISO: '2024-01-15T10:30:00Z',
-    link: 'https://chat.openai.com/share/abc123',
-    tags: ['strategy', 'product']
-  },
-  {
-    id: '650e8400-e29b-41d4-a716-446655440002',
-    agentId: '550e8400-e29b-41d4-a716-446655440002',
-    title: 'Code review for React components',
-    dateISO: '2024-01-14T15:45:00Z',
-    tags: ['code', 'react']
-  },
-  {
-    id: '650e8400-e29b-41d4-a716-446655440003',
-    agentId: '550e8400-e29b-41d4-a716-446655440003',
-    title: 'Latest AI news research',
-    dateISO: '2024-01-14T09:20:00Z',
-    link: 'https://perplexity.ai/search/xyz789'
-  },
-  {
-    id: '650e8400-e29b-41d4-a716-446655440004',
-    agentId: '550e8400-e29b-41d4-a716-446655440005',
-    title: 'Daily check-in conversation',
-    dateISO: '2024-01-13T18:00:00Z',
-    tags: ['daily', 'companion']
+const getVendorColor = (vendorId: string): string => {
+  const colorMap: Record<string, string> = {
+    'openai': 'bg-indigo-50 border-indigo-200 text-indigo-800',
+    'anthropic': 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    'google': 'bg-red-50 border-red-200 text-red-800',
+    'perplexity': 'bg-amber-50 border-amber-200 text-amber-800',
+    'elevenlabs': 'bg-sky-50 border-sky-200 text-sky-800',
+    'toland': 'bg-rose-50 border-rose-200 text-rose-800'
   }
-]
+  return colorMap[vendorId] || 'bg-slate-50 border-slate-200 text-slate-800'
+}
+
+const getFeatureIcon = (featureId: string): React.ComponentType<{ className?: string }> => {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    'brainstorming': Zap,
+    'daily_qa': MessageCircle,
+    'coding': Code,
+    'mcp': Bot,
+    'news_search': Newspaper,
+    'analysis': TrendingUp,
+    'tts': Volume2,
+    'stt': Mic,
+    'companion': Users,
+    'speech': MessageCircle,
+    'research': SearchIcon,
+    'writing': Edit
+  }
+  return iconMap[featureId] || Zap
+}
+
+// No demo data - component will fetch real data from API
+
+// Modern Service Selector Component
+const ModernServiceSelector: React.FC<{
+  selectedServiceId: string
+  availableServices: any[]
+  onServiceChange: (serviceId: string) => void
+}> = ({ selectedServiceId, availableServices, onServiceChange }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedService = availableServices.find(s => s.id === selectedServiceId)
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+      
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-pointer transition-all duration-200 ${
+          isOpen ? 'border-blue-500 ring-2 ring-blue-200' : 'hover:border-gray-400'
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          {selectedService ? (
+            <div className="flex-1 min-w-0">
+              <span className="text-gray-900 font-medium truncate">{selectedService.display_name}</span>
+              {selectedService.description && (
+                <div className="text-xs text-gray-500 truncate">{selectedService.description}</div>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-500 truncate">Choose a service (optional)</span>
+          )}
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ml-2 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto sm:max-h-48 max-h-64">
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={() => {
+                onServiceChange('')
+                setIsOpen(false)
+              }}
+              className={`w-full px-3 py-2 sm:py-2 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors ${
+                !selectedServiceId ? 'bg-blue-50 text-blue-800' : 'text-gray-700'
+              }`}
+            >
+              <div className="font-medium">No service selected</div>
+              <div className="text-xs text-gray-500">Use default service</div>
+            </button>
+            {availableServices.map(service => (
+              <button
+                key={service.id}
+                type="button"
+                onClick={() => {
+                  onServiceChange(service.id)
+                  setIsOpen(false)
+                }}
+                className={`w-full px-3 py-2 sm:py-2 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors ${
+                  selectedServiceId === service.id ? 'bg-blue-50 text-blue-800' : 'text-gray-700'
+                }`}
+              >
+                <div className={`font-medium truncate ${selectedServiceId === service.id ? 'text-blue-800' : 'text-gray-900'}`}>
+                  {service.display_name}
+                </div>
+                {service.description && (
+                  <div className="text-xs text-gray-500 truncate">{service.description}</div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Modern Agent Selector Component
+const ModernAgentSelector: React.FC<{
+  selectedAgentId: string
+  availableAgents: SimpleAgent[]
+  onAgentChange: (agentId: string) => void
+  placeholder?: string
+  label?: string
+}> = ({ selectedAgentId, availableAgents, onAgentChange, placeholder = "Select agent...", label = "Agent" }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedAgent = availableAgents.find(a => a.id === selectedAgentId)
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-pointer transition-all duration-200 ${
+          isOpen ? 'border-blue-500 ring-2 ring-blue-200' : 'hover:border-gray-400'
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          {selectedAgent ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${getVendorColor(selectedAgent.vendor_id).split(' ')[0]}`}></div>
+              <div className="flex-1 min-w-0">
+                <span className="text-gray-900 font-medium truncate">{selectedAgent.name}</span>
+                <span className="text-xs text-gray-500 ml-1 truncate">• {selectedAgent.vendor_name}</span>
+              </div>
+            </div>
+          ) : (
+            <span className="text-gray-500 truncate">{placeholder}</span>
+          )}
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ml-2 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 sm:max-h-48 max-h-64 overflow-y-auto">
+          <div className="py-1">
+            {availableAgents.length > 0 ? (
+              availableAgents.map(agent => {
+                const VendorIcon = getVendorIcon(agent.vendor_id)
+                const isSelected = selectedAgentId === agent.id
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() => {
+                      onAgentChange(agent.id)
+                      setIsOpen(false)
+                    }}
+                    className={`w-full px-3 py-2 sm:py-2 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3 transition-colors ${
+                      isSelected ? 'bg-blue-50 text-blue-800' : 'text-gray-700'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full flex-shrink-0 ${getVendorColor(agent.vendor_id).split(' ')[0]} flex items-center justify-center`}>
+                      <VendorIcon className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium truncate ${isSelected ? 'text-blue-800' : 'text-gray-900'}`}>
+                        {agent.name}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {agent.vendor_name}
+                        {agent.features.length > 0 && ` • ${agent.features.length} features`}
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })
+            ) : (
+              <div className="p-3 text-sm text-gray-500">No agents available</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Modern Interaction Type Selector Component
+const ModernInteractionTypeSelector: React.FC<{
+  selectedTypeId: string
+  availableTypes: InteractionType[]
+  onTypeChange: (typeId: string) => void
+  loading?: boolean
+  placeholder?: string
+  label?: string
+}> = ({ selectedTypeId, availableTypes, onTypeChange, loading, placeholder = "Select type...", label = "Type" }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedType = availableTypes.find(t => t.id === selectedTypeId)
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      
+      <div
+        onClick={() => !loading && setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-pointer transition-all duration-200 ${
+          isOpen ? 'border-blue-500 ring-2 ring-blue-200' : 'hover:border-gray-400'
+        } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+      >
+        <div className="flex items-center justify-between">
+          {selectedType ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div 
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: selectedType.color || '#3B82F6' }}
+              ></div>
+              <div className="flex-1 min-w-0">
+                <span className="text-gray-900 font-medium truncate">{selectedType.name}</span>
+                {selectedType.description && (
+                  <div className="text-xs text-gray-500 truncate">{selectedType.description}</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <span className="text-gray-500 truncate">{loading ? 'Loading types...' : placeholder}</span>
+          )}
+          <div className="flex items-center gap-2 ml-2">
+            {loading && <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>}
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+          </div>
+        </div>
+      </div>
+
+      {isOpen && !loading && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 sm:max-h-48 max-h-64 overflow-y-auto">
+          <div className="py-1">
+            {availableTypes.length > 0 ? (
+              availableTypes.map(type => {
+                const isSelected = selectedTypeId === type.id
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => {
+                      onTypeChange(type.id)
+                      setIsOpen(false)
+                    }}
+                    className={`w-full px-3 py-2 sm:py-2 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3 transition-colors ${
+                      isSelected ? 'bg-blue-50 text-blue-800' : 'text-gray-700'
+                    }`}
+                  >
+                    <div 
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: type.color || '#3B82F6' }}
+                    ></div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium truncate ${isSelected ? 'text-blue-800' : 'text-gray-900'}`}>
+                        {type.name}
+                      </div>
+                      {type.description && (
+                        <div className="text-xs text-gray-500 truncate">{type.description}</div>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })
+            ) : (
+              <div className="p-3 text-sm text-gray-500">No interaction types available</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Modern Vendor Selector Component
+const VendorSelector: React.FC<{
+  selectedVendorId: string
+  selectedServiceId?: string
+  availableVendors: Vendor[]
+  onVendorChange: (vendorId: string) => void
+  onServiceChange: (serviceId: string) => void
+  loading?: boolean
+  placeholder?: string
+}> = ({ 
+  selectedVendorId, 
+  selectedServiceId = '',
+  availableVendors, 
+  onVendorChange, 
+  onServiceChange,
+  loading, 
+  placeholder = "Select vendor..." 
+}) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedVendor = availableVendors.find(v => v.id === selectedVendorId)
+  // Services are fetched separately; vendors currently have no embedded services
+  const availableServices: any[] = []
+  const selectedService = availableServices.find(s => s.id === selectedServiceId)
+
+  const handleVendorSelect = (vendorId: string) => {
+    onVendorChange(vendorId)
+    onServiceChange('') // Reset service when vendor changes
+    setIsOpen(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Vendor Selector */}
+      <div className="relative" ref={dropdownRef}>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
+        
+        {/* Vendor Dropdown Trigger */}
+        <div
+          onClick={() => !loading && setIsOpen(!isOpen)}
+          className={`w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-pointer transition-all duration-200 ${
+            isOpen ? 'border-blue-500 ring-2 ring-blue-200' : 'hover:border-gray-400'
+          } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+        >
+          <div className="flex items-center justify-between">
+            {selectedVendor ? (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${getVendorColor(selectedVendor.id).split(' ')[0]}`}></div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-gray-900 font-medium truncate">{selectedVendor.name}</span>
+                  {selectedVendor.description && (
+                    <div className="text-xs text-gray-500 truncate">{selectedVendor.description}</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <span className="text-gray-500 truncate">{loading ? 'Loading vendors...' : placeholder}</span>
+            )}
+            <div className="flex items-center gap-2 ml-2">
+              {loading && <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>}
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+        </div>
+
+        {/* Vendor Dropdown Options */}
+        {isOpen && !loading && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 sm:max-h-48 max-h-64 overflow-y-auto">
+            {availableVendors.length > 0 ? (
+              <div className="py-1">
+                {availableVendors.map(vendor => {
+                  const VendorIcon = getVendorIcon(vendor.id)
+                  const isSelected = selectedVendorId === vendor.id
+                  return (
+                    <button
+                      key={vendor.id}
+                      type="button"
+                      onClick={() => handleVendorSelect(vendor.id)}
+                      className={`w-full px-3 py-2 sm:py-2.5 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3 transition-colors ${
+                        isSelected ? 'bg-blue-50 text-blue-800' : 'text-gray-700'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full flex-shrink-0 ${getVendorColor(vendor.id).split(' ')[0]} flex items-center justify-center`}>
+                        <VendorIcon className="w-3 h-3 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-medium truncate ${isSelected ? 'text-blue-800' : 'text-gray-900'}`}>
+                          {vendor.name}
+                        </div>
+                        {vendor.description && (
+                          <div className="text-xs text-gray-500 truncate">
+                            {vendor.description}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="p-3 text-sm text-gray-500">No vendors available</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Service Selector (if vendor has services) */}
+      {availableServices.length > 0 && (
+        <ModernServiceSelector
+          selectedServiceId={selectedServiceId}
+          availableServices={availableServices}
+          onServiceChange={onServiceChange}
+        />
+      )}
+    </div>
+  )
+}
 
 // Utility functions
 const formatDate = (dateISO: string) => {
   return new Date(dateISO).toLocaleString()
+}
+
+// Multi-Select Features Dropdown Component
+const FeaturesMultiSelect: React.FC<{
+  selectedFeatures: string[]
+  availableFeatures: NewAgentFeature[]
+  onChange: (featureIds: string[]) => void
+  loading?: boolean
+  placeholder?: string
+  maxHeight?: string
+}> = ({ selectedFeatures, availableFeatures, onChange, loading, placeholder = "Select features...", maxHeight = "max-h-48" }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const toggleFeature = (featureId: string) => {
+    const newSelection = selectedFeatures.includes(featureId)
+      ? selectedFeatures.filter(id => id !== featureId)
+      : [...selectedFeatures, featureId]
+    onChange(newSelection)
+  }
+
+  const selectedFeaturesData = selectedFeatures.map(id => 
+    availableFeatures.find(f => f.id === id)
+  ).filter(Boolean) as NewAgentFeature[]
+
+  // Group features by category
+  const groupedFeatures = availableFeatures.reduce((acc, feature) => {
+    const category = feature.category || 'other'
+    if (!acc[category]) acc[category] = []
+    acc[category].push(feature)
+    return acc
+  }, {} as Record<string, NewAgentFeature[]>)
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {/* Multi-Select Input */}
+      <div
+        onClick={() => !loading && setIsOpen(!isOpen)}
+        className={`w-full min-h-[40px] px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-pointer transition-all duration-200 ${
+          isOpen ? 'border-blue-500 ring-2 ring-blue-200' : 'hover:border-gray-400'
+        } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+      >
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Selected Feature Tags */}
+          {selectedFeaturesData.map(feature => {
+            const FeatureIcon = getFeatureIcon(feature.id)
+            return (
+              <span
+                key={feature.id}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium"
+              >
+                <FeatureIcon className="w-3 h-3" />
+                {feature.name}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleFeature(feature.id)
+                  }}
+                  className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </span>
+            )
+          })}
+          
+          {/* Placeholder or loading */}
+          {selectedFeatures.length === 0 && !loading && (
+            <span className="text-gray-500 text-sm">{placeholder}</span>
+          )}
+          
+          {loading && (
+            <span className="text-gray-500 text-sm flex items-center gap-2">
+              <div className="w-3 h-3 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              Loading...
+            </span>
+          )}
+          
+          {/* Spacer and arrow */}
+          <div className="flex-1"></div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {/* Dropdown Options */}
+      {isOpen && !loading && (
+        <div className={`absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden`}>
+          {Object.keys(groupedFeatures).length > 0 ? (
+            <div className={`${maxHeight} sm:${maxHeight} max-h-64 overflow-y-auto`}>
+              {/* Header with select controls */}
+              <div className="px-3 py-2 border-b bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+                <span className="text-xs font-medium text-gray-600 truncate">
+                  {selectedFeatures.length} of {availableFeatures.length} selected
+                </span>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange([])
+                    }}
+                    className="text-xs text-gray-600 hover:text-gray-800 active:text-gray-900 transition-colors disabled:opacity-50 px-1 py-0.5 rounded"
+                    disabled={selectedFeatures.length === 0}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange(availableFeatures.map(f => f.id))
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 active:text-blue-900 transition-colors disabled:opacity-50 px-1 py-0.5 rounded"
+                    disabled={selectedFeatures.length === availableFeatures.length}
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
+              
+              {/* Feature Options by Category */}
+              <div className="pb-1">
+                {Object.entries(groupedFeatures).map(([category, features]) => (
+                  <div key={category}>
+                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wide bg-gray-50/80 sticky top-8 z-10">
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </div>
+                    {features.map(feature => {
+                      const isSelected = selectedFeatures.includes(feature.id)
+                      const FeatureIcon = getFeatureIcon(feature.id)
+                      return (
+                        <label
+                          key={feature.id}
+                          className={`flex items-center gap-3 px-3 py-2 sm:py-2.5 py-3 cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100 ${
+                            isSelected ? 'bg-blue-50/50' : ''
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleFeature(feature.id)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+                          />
+                          <FeatureIcon className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                          <span className={`text-sm flex-1 truncate ${isSelected ? 'text-blue-800 font-medium' : 'text-gray-700'}`}>
+                            {feature.name}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 text-sm text-gray-500">No features available</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // Modal Components
@@ -202,46 +796,52 @@ const EditAgentModal: React.FC<{
   isSaving: boolean
 }> = ({ agent, isOpen, onClose, onSave, isSaving }) => {
   const { t } = useTranslation()
+  const { vendors, loading: vendorsLoading } = useVendors()
+  const { features: agentFeatures, loading: featuresLoading } = useAgentFeatures()
+  
   const [formData, setFormData] = useState({
     name: '',
-    vendor: 'ChatGPT' as AgentVendor,
-    features: '',
+    vendor_id: '',
+    service_id: '',
+    model_name: '',
+    feature_ids: [] as string[],
     notes: ''
   })
-
-  const vendors: AgentVendor[] = ['ChatGPT', 'Claude', 'Perplexity', 'ElevenLabs', 'Toland', 'Other']
 
   // Reset form when agent changes
   React.useEffect(() => {
     if (agent) {
       setFormData({
         name: agent.name,
-        vendor: agent.vendor,
-        features: agent.features.join(', '),
+        vendor_id: agent.vendor_id,
+        service_id: agent.service_id || '',
+        model_name: agent.model_name || '',
+        feature_ids: agent.features.map(f => f.id) || [],
         notes: agent.notes || ''
       })
     }
   }, [agent])
 
   const handleSave = async () => {
-    if (!agent || !formData.name.trim() || isSaving) return
-
-    const features = formData.features
-      .split(',')
-      .map(f => f.trim())
-      .filter(f => f) as AgentFeature[]
+    if (!agent || !formData.name.trim() || !formData.vendor_id || isSaving) return
 
     const updatedAgent: SimpleAgent = {
       ...agent,
       name: formData.name.trim(),
-      vendor: formData.vendor,
-      features,
+      vendor_id: formData.vendor_id,
+      service_id: formData.service_id || undefined,
+      model_name: formData.model_name || undefined,
+      features: formData.feature_ids.map(id => agentFeatures?.find(f => f.id === id)).filter(Boolean) as NewAgentFeature[],
       notes: formData.notes.trim() || undefined
     }
 
     await onSave(updatedAgent)
     onClose()
   }
+
+  const selectedVendor = vendors?.find(v => v.id === formData.vendor_id)
+  // Services are fetched separately; vendors currently have no embedded services
+  const availableServices: any[] = []
 
   if (!isOpen || !agent) return null
 
@@ -276,27 +876,35 @@ const EditAgentModal: React.FC<{
             />
           </div>
 
+          <VendorSelector
+            selectedVendorId={formData.vendor_id}
+            selectedServiceId={formData.service_id}
+            availableVendors={vendors || []}
+            onVendorChange={(vendorId) => setFormData(prev => ({ ...prev, vendor_id: vendorId, service_id: '' }))}
+            onServiceChange={(serviceId) => setFormData(prev => ({ ...prev, service_id: serviceId }))}
+            loading={vendorsLoading}
+            placeholder="Select vendor for this agent..."
+          />
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalVendorLabel}</label>
-            <select
-              value={formData.vendor}
-              onChange={(e) => setFormData(prev => ({ ...prev, vendor: e.target.value as AgentVendor }))}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Model Name</label>
+            <input
+              type="text"
+              value={formData.model_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, model_name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {vendors.map(vendor => (
-                <option key={vendor} value={vendor}>{vendor}</option>
-              ))}
-            </select>
+              placeholder="e.g., gpt-4-turbo, claude-3-sonnet"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalFeaturesLabel}</label>
-            <input
-              type="text"
-              value={formData.features}
-              onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={t.agents.modalFeaturesPlaceholder}
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t.agents.modalFeaturesLabel}</label>
+            <FeaturesMultiSelect
+              selectedFeatures={formData.feature_ids}
+              availableFeatures={agentFeatures || []}
+              onChange={(featureIds) => setFormData(prev => ({ ...prev, feature_ids: featureIds }))}
+              loading={featuresLoading}
+              placeholder="Select features for this agent..."
             />
           </div>
 
@@ -322,7 +930,7 @@ const EditAgentModal: React.FC<{
           </button>
           <button
             onClick={handleSave}
-            disabled={!formData.name.trim() || isSaving}
+            disabled={!formData.name.trim() || !formData.vendor_id || isSaving}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -343,27 +951,37 @@ const EditInteractionModal: React.FC<{
   isSaving: boolean
 }> = ({ interaction, agents, isOpen, onClose, onSave, isSaving }) => {
   const { t } = useTranslation()
+  const { types: interactionTypes, loading: interactionTypesLoading } = useInteractionTypes()
+  
   const [formData, setFormData] = useState({
-    agentId: '',
+    agent_id: '',
     title: '',
+    interaction_type_id: '',
     link: '',
-    tags: ''
+    tags: '',
+    total_cost: '',
+    satisfaction_rating: '',
+    duration_minutes: ''
   })
 
   // Reset form when interaction changes
   React.useEffect(() => {
     if (interaction) {
       setFormData({
-        agentId: interaction.agentId,
+        agent_id: interaction.agent_id,
         title: interaction.title,
+        interaction_type_id: interaction.interaction_type_id,
         link: interaction.link || '',
-        tags: interaction.tags?.join(', ') || ''
+        tags: interaction.tags?.join(', ') || '',
+        total_cost: interaction.total_cost?.toString() || '',
+        satisfaction_rating: interaction.satisfaction_rating?.toString() || '',
+        duration_minutes: interaction.duration_minutes?.toString() || ''
       })
     }
   }, [interaction])
 
   const handleSave = async () => {
-    if (!interaction || !formData.agentId || !formData.title.trim() || isSaving) return
+    if (!interaction || !formData.agent_id || !formData.title.trim() || isSaving) return
 
     const tags = formData.tags
       .split(',')
@@ -383,10 +1001,14 @@ const EditInteractionModal: React.FC<{
 
     const updatedInteraction: InteractionItem = {
       ...interaction,
-      agentId: formData.agentId,
+      agent_id: formData.agent_id,
       title: formData.title.trim(),
+      interaction_type_id: formData.interaction_type_id || interaction.interaction_type_id,
       link: validLink,
-      tags: tags.length > 0 ? tags : undefined
+      tags: tags.length > 0 ? tags : [],
+      total_cost: formData.total_cost ? parseFloat(formData.total_cost) : undefined,
+      satisfaction_rating: formData.satisfaction_rating ? parseInt(formData.satisfaction_rating) : undefined,
+      duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : undefined
     }
 
     await onSave(updatedInteraction)
@@ -415,21 +1037,22 @@ const EditInteractionModal: React.FC<{
         </div>
 
         <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalAgentLabel}</label>
-            <select
-              value={formData.agentId}
-              onChange={(e) => setFormData(prev => ({ ...prev, agentId: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t.agents.modalSelectAgent}</option>
-              {agents.map(agent => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.vendor} - {agent.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ModernAgentSelector
+            selectedAgentId={formData.agent_id}
+            availableAgents={agents}
+            onAgentChange={(agentId) => setFormData(prev => ({ ...prev, agent_id: agentId }))}
+            placeholder={t.agents.modalSelectAgent}
+            label={t.agents.modalAgentLabel}
+          />
+
+          <ModernInteractionTypeSelector
+            selectedTypeId={formData.interaction_type_id}
+            availableTypes={interactionTypes || []}
+            onTypeChange={(typeId) => setFormData(prev => ({ ...prev, interaction_type_id: typeId }))}
+            loading={interactionTypesLoading}
+            placeholder="Select interaction type..."
+            label="Interaction Type"
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t.agents.modalTitleLabel}</label>
@@ -463,6 +1086,42 @@ const EditInteractionModal: React.FC<{
               placeholder={t.agents.modalTagsPlaceholder}
             />
           </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cost ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.total_cost}
+                onChange={(e) => setFormData(prev => ({ ...prev, total_cost: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={formData.satisfaction_rating}
+                onChange={(e) => setFormData(prev => ({ ...prev, satisfaction_rating: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="5"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
+              <input
+                type="number"
+                value={formData.duration_minutes}
+                onChange={(e) => setFormData(prev => ({ ...prev, duration_minutes: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="15"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 p-6 border-t">
@@ -475,7 +1134,7 @@ const EditInteractionModal: React.FC<{
           </button>
           <button
             onClick={handleSave}
-            disabled={!formData.agentId || !formData.title.trim() || isSaving}
+            disabled={!formData.agent_id || !formData.title.trim() || isSaving}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -546,8 +1205,8 @@ const AgentTile: React.FC<{
   onDelete?: (agentId: string) => void
 }> = ({ agent, onEdit, onDelete }) => {
   const { t } = useTranslation()
-  const VendorIcon = VENDOR_ICONS[agent.vendor]
-  const colorClass = VENDOR_COLORS[agent.vendor]
+  const VendorIcon = getVendorIcon(agent.vendor_id)
+  const colorClass = getVendorColor(agent.vendor_id)
   
   return (
     <motion.div
@@ -580,23 +1239,60 @@ const AgentTile: React.FC<{
       <div className="flex items-center gap-2 mb-2">
         <VendorIcon className="w-5 h-5" />
         <h3 className="font-bold text-sm">{agent.name}</h3>
+        {agent.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
       </div>
-      <div className="flex flex-wrap gap-1">
+      
+      {agent.vendor_name && (
+        <p className="text-xs text-gray-600 mb-2">{agent.vendor_name}</p>
+      )}
+      
+      <div className="flex flex-wrap gap-1 mb-2">
         {agent.features.map((feature) => {
-          const FeatureIcon = FEATURE_ICONS[feature]
+          const FeatureIcon = getFeatureIcon(feature.id)
           return (
             <span
-              key={feature}
+              key={feature.id}
               className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-white/50 rounded-full"
             >
               <FeatureIcon className="w-3 h-3" />
-              {feature}
+              {feature.name}
             </span>
           )
         })}
       </div>
+      
+      {/* Analytics section */}
+      {(agent.monthly_cost || agent.recent_interactions || agent.avg_satisfaction) && (
+        <div className="flex flex-wrap gap-2 text-xs text-gray-600 mb-2">
+          {agent.monthly_cost && (
+            <span className="inline-flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              ${agent.monthly_cost.toFixed(2)}
+            </span>
+          )}
+          {agent.recent_interactions && (
+            <span className="inline-flex items-center gap-1">
+              <Activity className="w-3 h-3" />
+              {agent.recent_interactions}
+            </span>
+          )}
+          {agent.avg_satisfaction && (
+            <span className="inline-flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" />
+              {agent.avg_satisfaction.toFixed(1)}
+            </span>
+          )}
+        </div>
+      )}
       {agent.notes && (
-        <p className="text-xs mt-2 opacity-75">{agent.notes}</p>
+        <p className="text-xs opacity-75">{agent.notes}</p>
+      )}
+      
+      {agent.last_used_at && (
+        <p className="text-xs text-gray-500 mt-1">
+          <Clock className="w-3 h-3 inline mr-1" />
+          {formatDate(agent.last_used_at)}
+        </p>
       )}
     </motion.div>
   )
@@ -610,56 +1306,70 @@ const ColumnsView: React.FC<{
   isCreating: boolean
 }> = ({ agents, onAddAgent, onEditAgent, onDeleteAgent, isCreating }) => {
   const { t } = useTranslation()
+  const { vendors, loading: vendorsLoading } = useVendors()
+  const { features: agentFeatures, loading: featuresLoading } = useAgentFeatures()
+  
   const [newAgent, setNewAgent] = useState({
     name: '',
-    vendor: 'ChatGPT' as AgentVendor,
-    features: '',
+    vendor_id: '',
+    service_id: '',
+    model_name: '',
+    feature_ids: [] as string[],
     notes: ''
   })
 
   const handleAddAgent = async () => {
-    if (!newAgent.name.trim() || isCreating) return
+    if (!newAgent.name.trim() || !newAgent.vendor_id || isCreating) return
 
-    const features = newAgent.features
-      .split(',')
-      .map(f => f.trim())
-      .filter(f => f) as AgentFeature[]
+    const selectedFeatures = newAgent.feature_ids.map(id => agentFeatures?.find(f => f.id === id)).filter(Boolean) as NewAgentFeature[]
 
     const agentData = {
-      vendor: newAgent.vendor,
+      vendor_id: newAgent.vendor_id,
+      service_id: newAgent.service_id || undefined,
+      model_name: newAgent.model_name || undefined,
       name: newAgent.name.trim(),
-      features,
+      features: selectedFeatures,
       notes: newAgent.notes.trim() || undefined,
-      activityScore: 0.2
+      activity_score: 0.2,
+      usage_count: 0,
+      is_favorite: false,
+      tags: []
     }
 
     await onAddAgent(agentData)
-    setNewAgent({ name: '', vendor: 'ChatGPT', features: '', notes: '' })
+    setNewAgent({ name: '', vendor_id: '', service_id: '', model_name: '', feature_ids: [], notes: '' })
   }
 
-  const vendors: AgentVendor[] = ['ChatGPT', 'Claude', 'Perplexity', 'ElevenLabs', 'Toland', 'Other']
+  const selectedVendor = vendors?.find(v => v.id === newAgent.vendor_id)
+  // Services are fetched separately; vendors currently have no embedded services
+  const availableServices: any[] = []
+
   const agentsByVendor = useMemo(() => {
-    const grouped: Record<AgentVendor, SimpleAgent[]> = {
-      ChatGPT: [],
-      Claude: [],
-      Perplexity: [],
-      ElevenLabs: [],
-      Toland: [],
-      Other: []
-    }
+    const grouped: Record<string, { vendor: Vendor, agents: SimpleAgent[] }> = {}
+    
     agents.forEach(agent => {
-      grouped[agent.vendor].push(agent)
+      const vendorId = agent.vendor_id
+      if (!grouped[vendorId]) {
+        const vendor = vendors?.find(v => v.id === vendorId)
+        if (vendor) {
+          grouped[vendorId] = { vendor, agents: [] }
+        }
+      }
+      if (grouped[vendorId]) {
+        grouped[vendorId].agents.push(agent)
+      }
     })
+    
     return grouped
-  }, [agents])
+  }, [agents, vendors])
 
   return (
     <div className="space-y-6">
       {/* Add Agent Row */}
       <div className="border-2 border-dashed border-gray-300 rounded-lg">
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+            <div className="sm:col-span-1 lg:col-span-1">
               <label className="block text-sm font-medium mb-1">{t.agents.name}</label>
               <input
                 type="text"
@@ -669,29 +1379,30 @@ const ColumnsView: React.FC<{
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">{t.agents.vendor}</label>
-              <select
-                value={newAgent.vendor}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewAgent(prev => ({ ...prev, vendor: e.target.value as AgentVendor }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {vendors.map(vendor => (
-                  <option key={vendor} value={vendor}>{vendor}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">{t.agents.features}</label>
-              <input
-                type="text"
-                value={newAgent.features}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAgent(prev => ({ ...prev, features: e.target.value }))}
-                placeholder={t.agents.featuresPlaceholder}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+              <VendorSelector
+                selectedVendorId={newAgent.vendor_id}
+                selectedServiceId={newAgent.service_id}
+                availableVendors={vendors || []}
+                onVendorChange={(vendorId) => setNewAgent(prev => ({ ...prev, vendor_id: vendorId, service_id: '' }))}
+                onServiceChange={(serviceId) => setNewAgent(prev => ({ ...prev, service_id: serviceId }))}
+                loading={vendorsLoading}
+                placeholder="Select vendor..."
               />
             </div>
-            <div>
+            
+            <div className="sm:col-span-1 lg:col-span-1">
+              <label className="block text-sm font-medium mb-1">Features</label>
+              <FeaturesMultiSelect
+                selectedFeatures={newAgent.feature_ids}
+                availableFeatures={agentFeatures || []}
+                onChange={(featureIds) => setNewAgent(prev => ({ ...prev, feature_ids: featureIds }))}
+                loading={featuresLoading}
+                placeholder="Select features..."
+                maxHeight="max-h-32 sm:max-h-32 max-h-48"
+              />
+            </div>
+            <div className="sm:col-span-1 lg:col-span-1">
               <label className="block text-sm font-medium mb-1">{t.agents.notes}</label>
               <input
                 type="text"
@@ -701,33 +1412,35 @@ const ColumnsView: React.FC<{
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button 
-              onClick={handleAddAgent}
-              disabled={isCreating}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCreating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {isCreating ? t.agents.adding : t.agents.add}
-            </button>
+            <div className="sm:col-span-1 lg:col-span-1 xl:col-span-1 flex items-end">
+              <button 
+                onClick={handleAddAgent}
+                disabled={isCreating || !newAgent.vendor_id || !newAgent.name.trim()}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isCreating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{isCreating ? t.agents.adding : t.agents.add}</span>
+                <span className="sm:hidden">{isCreating ? t.agents.adding : t.agents.add}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Vendor Columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {vendors.map(vendor => {
-          const vendorAgents = agentsByVendor[vendor]
-          const VendorIcon = VENDOR_ICONS[vendor]
+        {Object.entries(agentsByVendor).map(([vendorId, { vendor, agents: vendorAgents }]) => {
+          const VendorIcon = getVendorIcon(vendorId)
           
           return (
-            <div key={vendor} className="space-y-3">
+            <div key={vendorId} className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <VendorIcon className="w-4 h-4" />
-                {vendor}
+                {vendor.name}
                 <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
                   {vendorAgents.length}
                 </span>
@@ -792,7 +1505,10 @@ const OrbitView: React.FC<{ agents: SimpleAgent[] }> = ({ agents }) => {
             const angle = (index * 2 * Math.PI) / agents.length
             const x = centerX + radius * Math.cos(angle)
             const y = centerY + radius * Math.sin(angle)
-            const nodeSize = 8 + agent.activityScore * 12
+            const nodeSize = 8 + agent.activity_score * 12
+            const nodeColor = getVendorColor(agent.vendor_id).includes('indigo') ? '#6366f1' :
+                            getVendorColor(agent.vendor_id).includes('emerald') ? '#10b981' :
+                            getVendorColor(agent.vendor_id).includes('amber') ? '#f59e0b' : '#6366f1'
             
             return (
               <g key={agent.id}>
@@ -800,9 +1516,18 @@ const OrbitView: React.FC<{ agents: SimpleAgent[] }> = ({ agents }) => {
                   cx={x}
                   cy={y}
                   r={nodeSize}
-                  fill="#6366f1"
+                  fill={nodeColor}
                   className="drop-shadow-sm"
                 />
+                {agent.is_favorite && (
+                  <circle
+                    cx={x + nodeSize - 2}
+                    cy={y - nodeSize + 2}
+                    r="3"
+                    fill="#fbbf24"
+                    className="drop-shadow-sm"
+                  />
+                )}
                 <text
                   x={x}
                   y={y + radius + 20}
@@ -817,7 +1542,7 @@ const OrbitView: React.FC<{ agents: SimpleAgent[] }> = ({ agents }) => {
                   textAnchor="middle"
                   className="text-xs fill-gray-400"
                 >
-                  {agent.vendor}
+                  {agent.vendor_name || agent.vendor_id}
                 </text>
               </g>
             )
@@ -837,15 +1562,18 @@ const HistoryList: React.FC<{
   isCreating: boolean
 }> = ({ history, agents, onAddInteraction, onEditInteraction, onDeleteInteraction, isCreating }) => {
   const { t } = useTranslation()
+  const { types: interactionTypes } = useInteractionTypes()
+  
   const [newInteraction, setNewInteraction] = useState({
-    agentId: '',
+    agent_id: '',
     title: '',
+    interaction_type_id: '',
     link: '',
     tags: ''
   })
 
   const handleAddInteraction = async () => {
-    if (!newInteraction.agentId || !newInteraction.title.trim() || isCreating) return
+    if (!newInteraction.agent_id || !newInteraction.title.trim() || isCreating) return
 
     const tags = newInteraction.tags
       .split(',')
@@ -864,15 +1592,16 @@ const HistoryList: React.FC<{
     }
 
     const interactionData = {
-      agentId: newInteraction.agentId,
+      agent_id: newInteraction.agent_id,
       title: newInteraction.title.trim(),
-      dateISO: new Date().toISOString(),
+      interaction_type_id: newInteraction.interaction_type_id || 'conversation',
+      date_iso: new Date().toISOString(),
       link: validLink,
-      tags: tags.length > 0 ? tags : undefined
+      tags: tags.length > 0 ? tags : []
     }
 
     await onAddInteraction(interactionData)
-    setNewInteraction({ agentId: '', title: '', link: '', tags: '' })
+    setNewInteraction({ agent_id: '', title: '', interaction_type_id: '', link: '', tags: '' })
   }
 
   const getAgent = (agentId: string) => agents.find(a => a.id === agentId)
@@ -887,19 +1616,17 @@ const HistoryList: React.FC<{
       </div>
       <div className="p-6 space-y-4">
         {/* Quick Add */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+          {/* First Row: Agent and Title */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">{t.agents.quickAddAgentLabel}</label>
-            <select
-              value={newInteraction.agentId}
-              onChange={(e) => setNewInteraction(prev => ({ ...prev, agentId: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t.agents.quickAddSelectAgent}</option>
-              {agents.map(agent => (
-                <option key={agent.id} value={agent.id}>{agent.name}</option>
-              ))}
-            </select>
+            <ModernAgentSelector
+              selectedAgentId={newInteraction.agent_id}
+              availableAgents={agents}
+              onAgentChange={(agentId) => setNewInteraction(prev => ({ ...prev, agent_id: agentId }))}
+              placeholder={t.agents.quickAddSelectAgent}
+              label={t.agents.quickAddAgentLabel}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">{t.agents.quickAddTitleLabel}</label>
@@ -912,6 +1639,17 @@ const HistoryList: React.FC<{
             />
           </div>
           <div>
+            <ModernInteractionTypeSelector
+              selectedTypeId={newInteraction.interaction_type_id}
+              availableTypes={interactionTypes || []}
+              onTypeChange={(typeId) => setNewInteraction(prev => ({ ...prev, interaction_type_id: typeId }))}
+              loading={false}
+              placeholder="Select type..."
+              label="Type"
+            />
+          </div>
+          
+          <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-sm font-medium mb-1">{t.agents.quickAddLinkLabel}</label>
             <input
               type="text"
@@ -921,29 +1659,33 @@ const HistoryList: React.FC<{
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex items-end">
+          <div className="sm:col-span-1 lg:col-span-2 flex items-end">
             <button 
               onClick={handleAddInteraction}
               disabled={isCreating}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isCreating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              {isCreating ? t.agents.adding : t.agents.add}
+              <span className="hidden sm:inline">{isCreating ? t.agents.adding : t.agents.add}</span>
+              <span className="sm:hidden">{isCreating ? t.agents.adding : t.agents.add}</span>
             </button>
           </div>
+        </div>
+
+        {/* Close grid container */}
         </div>
 
         {/* History List */}
         <div className="space-y-3">
           {history.map(interaction => {
-            const agent = getAgent(interaction.agentId)
+            const agent = getAgent(interaction.agent_id)
             if (!agent) return null
 
-            const VendorIcon = VENDOR_ICONS[agent.vendor]
+            const VendorIcon = getVendorIcon(agent.vendor_id)
             
             return (
               <motion.div
@@ -958,8 +1700,15 @@ const HistoryList: React.FC<{
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-gray-900 truncate">{interaction.title}</h4>
                   <p className="text-sm text-gray-500">
-                    {agent.name} • {formatDate(interaction.dateISO)}
+                    {agent.name} • {formatDate(interaction.date_iso)}
                   </p>
+                  {interaction.total_cost && (
+                    <p className="text-xs text-green-600">
+                      <DollarSign className="w-3 h-3 inline mr-1" />
+                      ${interaction.total_cost.toFixed(3)}
+                      {interaction.duration_minutes && ` • ${interaction.duration_minutes}m`}
+                    </p>
+                  )}
                   {interaction.tags && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {interaction.tags.map(tag => (
@@ -1021,8 +1770,8 @@ const HistoryList: React.FC<{
 
 // Main Component
 export default function AgentDirectory({
-  initialAgents = DEMO_AGENTS,
-  initialHistory = DEMO_HISTORY,
+  initialAgents = [],
+  initialHistory = [],
   onAddAgent,
   onAddInteraction
 }: AgentDirectoryProps) {
@@ -1085,17 +1834,20 @@ export default function AgentDirectory({
     
     const filteredAgents = agents.filter(agent =>
       agent.name.toLowerCase().includes(query) ||
-      agent.vendor.toLowerCase().includes(query) ||
-      agent.features.some(f => f.toLowerCase().includes(query)) ||
-      agent.notes?.toLowerCase().includes(query)
+      agent.vendor_name?.toLowerCase().includes(query) ||
+      agent.vendor_id.toLowerCase().includes(query) ||
+      agent.features.some(f => f.name.toLowerCase().includes(query) || f.category?.toLowerCase().includes(query)) ||
+      agent.notes?.toLowerCase().includes(query) ||
+      agent.tags.some(tag => tag.toLowerCase().includes(query))
     )
 
     const filteredHistory = history.filter(interaction => {
-      const agent = agents.find(a => a.id === interaction.agentId)
+      const agent = agents.find(a => a.id === interaction.agent_id)
       return (
         interaction.title.toLowerCase().includes(query) ||
         agent?.name.toLowerCase().includes(query) ||
-        agent?.vendor.toLowerCase().includes(query) ||
+        agent?.vendor_name?.toLowerCase().includes(query) ||
+        agent?.vendor_id.toLowerCase().includes(query) ||
         interaction.tags?.some(tag => tag.toLowerCase().includes(query))
       )
     })
@@ -1107,11 +1859,14 @@ export default function AgentDirectory({
     setIsCreatingAgent(true)
     try {
       const newAgent = await createAIAgent({
-        vendor: agentData.vendor,
+        vendor_id: agentData.vendor_id,
+        service_id: agentData.service_id,
+        model_name: agentData.model_name,
         name: agentData.name,
-        features: agentData.features,
+        feature_ids: agentData.features.map(f => f.id),
         notes: agentData.notes,
-        activity_score: agentData.activityScore
+        tags: agentData.tags,
+        is_favorite: agentData.is_favorite
       })
       
       if (newAgent) {
@@ -1129,12 +1884,15 @@ export default function AgentDirectory({
     setIsCreatingInteraction(true)
     try {
       const newInteraction = await createAIIInteraction({
-        agent_id: interactionData.agentId,
+        agent_id: interactionData.agent_id,
         title: interactionData.title,
-        started_at: interactionData.dateISO,
+        interaction_type_id: interactionData.interaction_type_id || 'conversation',
+        started_at: interactionData.date_iso,
         external_link: interactionData.link || undefined,
         tags: interactionData.tags || [],
-        interaction_type: 'conversation'
+        total_cost: interactionData.total_cost,
+        satisfaction_rating: interactionData.satisfaction_rating,
+        duration_minutes: interactionData.duration_minutes
       })
       
       if (newInteraction) {
@@ -1153,11 +1911,14 @@ export default function AgentDirectory({
     setIsUpdating(true)
     try {
       const result = await updateAIAgent(updatedAgent.id, {
-        vendor: updatedAgent.vendor,
+        vendor_id: updatedAgent.vendor_id,
+        service_id: updatedAgent.service_id,
+        model_name: updatedAgent.model_name,
         name: updatedAgent.name,
-        features: updatedAgent.features,
+        feature_ids: updatedAgent.features.map(f => f.id),
         notes: updatedAgent.notes,
-        activity_score: updatedAgent.activityScore
+        tags: updatedAgent.tags,
+        is_favorite: updatedAgent.is_favorite
       })
       
       if (result) {
@@ -1188,12 +1949,15 @@ export default function AgentDirectory({
     setIsUpdating(true)
     try {
       const result = await updateAIIInteraction(updatedInteraction.id, {
-        agent_id: updatedInteraction.agentId,
+        agent_id: updatedInteraction.agent_id,
         title: updatedInteraction.title,
-        started_at: updatedInteraction.dateISO,
+        interaction_type_id: updatedInteraction.interaction_type_id,
+        started_at: updatedInteraction.date_iso,
         external_link: updatedInteraction.link || undefined,
         tags: updatedInteraction.tags || [],
-        interaction_type: 'conversation'
+        total_cost: updatedInteraction.total_cost,
+        satisfaction_rating: updatedInteraction.satisfaction_rating,
+        duration_minutes: updatedInteraction.duration_minutes
       })
       
       if (result) {
@@ -1220,7 +1984,7 @@ export default function AgentDirectory({
     }
   }
 
-  const activeAgents = agents.filter(a => a.activityScore > 0.6).length
+  const activeAgents = agents.filter(a => a.activity_score > 0.6).length
   const isLoading = agentsLoading || interactionsLoading
   const hasError = agentsError || interactionsError
 
@@ -1260,9 +2024,10 @@ export default function AgentDirectory({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">{t.agents.title}</h2>
           <p className="text-gray-600">{t.agents.subtitle}</p>
@@ -1413,6 +2178,7 @@ export default function AgentDirectory({
           />
         )}
       </AnimatePresence>
+      </div>
     </div>
   )
 }

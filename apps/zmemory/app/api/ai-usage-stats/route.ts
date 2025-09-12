@@ -67,9 +67,12 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch agent statistics' }, { status: 500 }))
     }
 
-    // Calculate summary metrics
+    // Calculate summary metrics (including cost tracking)
     const totalInteractions = stats?.reduce((sum, stat) => sum + stat.total_interactions, 0) || 0
     const totalDuration = stats?.reduce((sum, stat) => sum + stat.total_duration_minutes, 0) || 0
+    const totalCost = stats?.reduce((sum, stat) => sum + (stat.total_cost || 0), 0) || 0
+    const totalInputTokens = stats?.reduce((sum, stat) => sum + (stat.total_input_tokens || 0), 0) || 0
+    const totalOutputTokens = stats?.reduce((sum, stat) => sum + (stat.total_output_tokens || 0), 0) || 0
     const uniqueAgents = agentStats?.length || 0
     const activeAgents = agentStats?.filter(agent => agent.is_active).length || 0
 
@@ -102,6 +105,9 @@ export async function GET(request: NextRequest) {
       summary: {
         total_interactions: totalInteractions,
         total_duration_minutes: totalDuration,
+        total_cost: Math.round(totalCost * 10000) / 10000, // Round to 4 decimal places
+        total_input_tokens: totalInputTokens,
+        total_output_tokens: totalOutputTokens,
         unique_agents: uniqueAgents,
         active_agents: activeAgents,
         avg_satisfaction: Math.round(avgSatisfaction * 100) / 100,
@@ -133,13 +139,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { date } = body
 
-    if (!date) {
-      return addCorsHeaders(NextResponse.json({ error: 'Date is required' }, { status: 400 }))
-    }
+    // Default to today if no date provided
+    const targetDate = date || new Date().toISOString().split('T')[0]
 
     // Call the database function to update usage stats
     const { data, error } = await supabase.rpc('update_daily_usage_stats', {
-      target_date: date
+      target_date: targetDate
     })
 
     if (error) {
