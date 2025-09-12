@@ -178,9 +178,9 @@ export function validateApiKeyFormat(apiKey: string, vendorId: string): { isVali
       break;
       
     case 'elevenlabs':
-      // ElevenLabs keys are typically 32-character hex strings
-      if (!/^[a-fA-F0-9]{32}$/.test(apiKey)) {
-        return { isValid: false, error: 'Invalid ElevenLabs API key format' };
+      // ElevenLabs keys can vary in format - be more flexible
+      if (!/^[A-Za-z0-9_-]{16,64}$/.test(apiKey)) {
+        return { isValid: false, error: 'ElevenLabs API key must be 16-64 characters containing only letters, numbers, underscores, or hyphens' };
       }
       break;
       

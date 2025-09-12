@@ -81,7 +81,7 @@ class ApiKeyClient {
     })
     if (!response.ok) throw new Error('Failed to fetch vendors')
     const data = await response.json()
-    return data.data
+    return data.vendors
   }
 
   async getVendorServices(vendorId: string, session: any): Promise<VendorService[]> {
@@ -191,14 +191,16 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
         apiClient.getApiKeys(session)
       ])
       
-      setVendors(vendorsData)
-      setApiKeys(apiKeysData)
+      setVendors(Array.isArray(vendorsData) ? vendorsData : [])
+      setApiKeys(Array.isArray(apiKeysData) ? apiKeysData : [])
       
       // Load services for each vendor
       const servicesData: Record<string, VendorService[]> = {}
-      for (const vendor of vendorsData) {
+      const validVendors = Array.isArray(vendorsData) ? vendorsData : []
+      for (const vendor of validVendors) {
         try {
-          servicesData[vendor.id] = await apiClient.getVendorServices(vendor.id, session)
+          const services = await apiClient.getVendorServices(vendor.id, session)
+          servicesData[vendor.id] = Array.isArray(services) ? services : []
         } catch (err) {
           console.error(`Failed to load services for ${vendor.id}:`, err)
           servicesData[vendor.id] = []
@@ -206,7 +208,8 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
       }
       setServices(servicesData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data')
+      console.error('Error loading API keys data:', err)
+      setError('Unable to load API keys. Please try refreshing the page.')
     } finally {
       setLoading(false)
     }
@@ -244,7 +247,8 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
       setEditingKey(null)
       await loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save API key')
+      console.error('Error saving API key:', err)
+      setError('Failed to save API key. Please check your input and try again.')
     }
   }
 
@@ -255,7 +259,8 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
       await apiClient.deleteApiKey(id, session)
       await loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete API key')
+      console.error('Error deleting API key:', err)
+      setError('Failed to delete API key. Please try again.')
     }
   }
 
@@ -373,7 +378,7 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
                   required
                 >
                   <option value="">Select vendor...</option>
-                  {vendors.map(vendor => (
+                  {(vendors || []).map(vendor => (
                     <option key={vendor.id} value={vendor.id}>
                       {vendor.name}
                     </option>
@@ -392,7 +397,7 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">All services</option>
-                    {services[formData.vendor_id]?.map(service => (
+                    {(services[formData.vendor_id] || []).map(service => (
                       <option key={service.id} value={service.id}>
                         {service.display_name}
                       </option>
@@ -470,7 +475,7 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {apiKeys.map(apiKey => (
+            {(apiKeys || []).map(apiKey => (
               <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
