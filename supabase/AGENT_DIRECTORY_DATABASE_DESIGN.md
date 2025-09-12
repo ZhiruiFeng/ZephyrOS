@@ -1,239 +1,311 @@
-# External AI Panel Database Design
+# AI Agents System Database Design
 
-## 概述
+## Overview
 
-本文档描述了支持 External AI Panel 模块的数据库设计。该设计提供了完整的 AI Agent 管理、交互记录、使用统计和配置管理功能。
+This document describes the comprehensive database design for the AI Agents System, which provides extensible AI agent management, vendor integration, interaction tracking, cost analytics, and API key management. The system is designed to be highly scalable and easily extensible without requiring schema changes.
 
-## 数据库架构
+## Database Architecture
 
-### 1. 核心表格
+### 1. Core System Tables
 
-#### `ai_agents` - AI 代理表
-存储用户管理的 AI 代理信息。
+#### `vendors` - AI Vendor Registry
+Central registry of supported AI vendors and services.
 
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `id` | UUID | 主键 |
-| `name` | TEXT | 代理显示名称 |
-| `vendor` | agent_vendor | 供应商 (ChatGPT, Claude, Perplexity, ElevenLabs, Toland, Other) |
-| `features` | agent_feature[] | 功能列表 (Brainstorming, Daily Q&A, Coding, MCP, News Search, Comet, TTS, STT, Companion, Speech) |
-| `notes` | TEXT | 备注信息 |
-| `activity_score` | REAL | 活动评分 (0.0-1.0) |
-| `last_used_at` | TIMESTAMPTZ | 最后使用时间 |
-| `usage_count` | INTEGER | 使用次数 |
-| `configuration` | JSONB | 配置信息 |
-| `is_active` | BOOLEAN | 是否激活 |
-| `user_id` | UUID | 用户ID |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | TEXT | Primary key (e.g., 'openai', 'anthropic') |
+| `name` | TEXT | Display name (e.g., 'OpenAI', 'Anthropic') |
+| `description` | TEXT | Vendor description |
+| `auth_type` | TEXT | Authentication method (api_key, oauth, bearer_token) |
+| `base_url` | TEXT | API base URL |
+| `is_active` | BOOLEAN | Whether vendor is available |
 
-#### `ai_interactions` - AI 交互记录表
-记录与 AI 代理的交互历史。
+#### `vendor_services` - Specific Services
+Individual services within each vendor (e.g., GPT-4, Claude-3-Sonnet).
 
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `id` | UUID | 主键 |
-| `agent_id` | UUID | 关联的 AI 代理ID |
-| `title` | TEXT | 交互标题 |
-| `description` | TEXT | 交互描述 |
-| `interaction_type` | TEXT | 交互类型 (conversation, brainstorming, coding, research, creative, analysis, other) |
-| `external_link` | TEXT | 外部链接 |
-| `external_id` | TEXT | 外部服务ID |
-| `content_preview` | TEXT | 内容预览 |
-| `tags` | TEXT[] | 标签列表 |
-| `satisfaction_rating` | INTEGER | 满意度评分 (1-5) |
-| `usefulness_rating` | INTEGER | 有用性评分 (1-5) |
-| `feedback_notes` | TEXT | 反馈备注 |
-| `started_at` | TIMESTAMPTZ | 开始时间 |
-| `ended_at` | TIMESTAMPTZ | 结束时间 |
-| `duration_minutes` | INTEGER | 持续时间（分钟） |
-| `user_id` | UUID | 用户ID |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | TEXT | Primary key (e.g., 'openai_gpt4') |
+| `vendor_id` | TEXT | References vendors(id) |
+| `service_name` | TEXT | Service identifier (e.g., 'gpt-4') |
+| `display_name` | TEXT | UI display name (e.g., 'GPT-4') |
+| `description` | TEXT | Service description |
+| `is_active` | BOOLEAN | Whether service is available |
 
-#### `ai_usage_stats` - 使用统计表
-按日期聚合的使用统计数据。
+#### `user_api_keys` - Encrypted API Key Storage
+Secure storage of user's third-party API keys.
 
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `id` | UUID | 主键 |
-| `user_id` | UUID | 用户ID |
-| `date` | DATE | 统计日期 |
-| `total_interactions` | INTEGER | 总交互次数 |
-| `unique_agents_used` | INTEGER | 使用的唯一代理数 |
-| `total_duration_minutes` | INTEGER | 总使用时长（分钟） |
-| `feature_usage` | JSONB | 功能使用统计 |
-| `vendor_usage` | JSONB | 供应商使用统计 |
-| `avg_satisfaction` | REAL | 平均满意度 |
-| `avg_usefulness` | REAL | 平均有用性 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | References auth.users(id) |
+| `vendor_id` | TEXT | References vendors(id) |
+| `service_id` | TEXT | Optional specific service |
+| `encrypted_key` | TEXT | AES-256 encrypted API key |
+| `key_preview` | TEXT | Last 4 characters for UI |
+| `display_name` | TEXT | User-friendly name |
+| `is_active` | BOOLEAN | Whether key is active |
+| `last_used_at` | TIMESTAMPTZ | Last usage timestamp |
 
-#### `ai_agent_configs` - 代理配置表
-存储代理特定的配置和偏好设置。
+### 2. Extensible Configuration Tables
 
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `id` | UUID | 主键 |
-| `agent_id` | UUID | 关联的 AI 代理ID |
-| `config_key` | TEXT | 配置键 |
-| `config_value` | JSONB | 配置值 |
-| `config_type` | TEXT | 配置类型 (user_preference, system_setting, integration_config, custom_prompt) |
-| `description` | TEXT | 配置描述 |
-| `is_encrypted` | BOOLEAN | 是否加密 |
-| `user_id` | UUID | 用户ID |
+#### `agent_features` - Dynamic Feature Registry
+Extensible feature definitions replacing hardcoded enums.
 
-### 2. 枚举类型
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | TEXT | Primary key (e.g., 'brainstorming', 'coding') |
+| `name` | TEXT | Display name |
+| `description` | TEXT | Feature description |
+| `category` | TEXT | Feature category (creative, technical, etc.) |
+| `icon` | TEXT | UI icon identifier |
+| `is_active` | BOOLEAN | Whether feature is available |
+| `sort_order` | INTEGER | Display order |
 
-#### `agent_vendor`
-- ChatGPT
-- Claude
-- Perplexity
-- ElevenLabs
-- Toland
-- Other
+#### `interaction_types` - Dynamic Interaction Types
+Extensible interaction type definitions.
 
-#### `agent_feature`
-- Brainstorming
-- Daily Q&A
-- Coding
-- MCP
-- News Search
-- Comet
-- TTS
-- STT
-- Companion
-- Speech
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | TEXT | Primary key (e.g., 'conversation', 'coding') |
+| `name` | TEXT | Display name |
+| `description` | TEXT | Type description |
+| `category` | TEXT | Type category |
+| `icon` | TEXT | UI icon identifier |
+| `color` | TEXT | UI color code |
+| `is_active` | BOOLEAN | Whether type is available |
+| `sort_order` | INTEGER | Display order |
 
-### 3. 索引设计
+### 3. AI Agents Core Tables
 
-#### 性能优化索引
-- `idx_ai_agents_user_id` - 按用户查询代理
-- `idx_ai_agents_activity_score` - 按活动评分排序
-- `idx_ai_agents_features` - GIN 索引支持功能搜索
-- `idx_ai_interactions_created_at` - 按时间查询交互
-- `idx_ai_interactions_tags` - GIN 索引支持标签搜索
-- `idx_ai_usage_stats_user_date` - 按用户和日期查询统计
+#### `ai_agents` - AI Agent Registry
+Main table for AI agent management with vendor integration.
 
-### 4. 数据库函数
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `name` | TEXT | Agent display name |
+| `description` | TEXT | Agent description |
+| `vendor_id` | TEXT | References vendors(id) |
+| `service_id` | TEXT | Optional specific service |
+| `model_name` | TEXT | Specific model (e.g., 'gpt-4-turbo') |
+| `system_prompt` | TEXT | Agent system prompt |
+| `configuration` | JSONB | Flexible configuration data |
+| `capabilities` | JSONB | Structured capabilities |
+| `notes` | TEXT | User notes |
+| `tags` | TEXT[] | Searchable tags |
+| `activity_score` | REAL | Activity score (0.0-1.0) |
+| `last_used_at` | TIMESTAMPTZ | Last usage time |
+| `usage_count` | INTEGER | Total usage count |
+| `is_active` | BOOLEAN | Whether agent is active |
+| `is_favorite` | BOOLEAN | User favorite flag |
+| `is_public` | BOOLEAN | Public sharing flag |
+| `user_id` | UUID | Owner user ID |
 
-#### `update_agent_activity_score(agent_uuid UUID)`
-根据最近使用情况更新代理的活动评分。
+#### `agent_feature_mappings` - Agent Feature Relationships
+Many-to-many relationship between agents and features.
 
-#### `update_daily_usage_stats(target_date DATE)`
-更新指定日期的使用统计数据。
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `agent_id` | UUID | References ai_agents(id) |
+| `feature_id` | TEXT | References agent_features(id) |
+| `is_primary` | BOOLEAN | Whether this is a primary feature |
+| `user_id` | UUID | User ID for RLS |
 
-#### `get_agent_usage_summary(agent_uuid UUID, days_back INTEGER)`
-获取代理的使用摘要统计。
+#### `ai_interactions` - Interaction History
+Comprehensive interaction tracking with cost analysis.
 
-### 5. 触发器
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `agent_id` | UUID | References ai_agents(id) |
+| `title` | TEXT | Interaction title |
+| `description` | TEXT | Interaction description |
+| `interaction_type_id` | TEXT | References interaction_types(id) |
+| `external_link` | TEXT | Link to external service |
+| `external_id` | TEXT | External service ID |
+| `external_metadata` | JSONB | External service metadata |
+| `content_preview` | TEXT | Content preview |
+| `full_content` | TEXT | Complete interaction content |
+| `input_tokens` | INTEGER | Input token count |
+| `output_tokens` | INTEGER | Output token count |
+| `total_cost` | DECIMAL(10,4) | Calculated cost |
+| `tags` | TEXT[] | Searchable tags |
+| `keywords` | TEXT[] | Extracted keywords |
+| `satisfaction_rating` | INTEGER | User satisfaction (1-5) |
+| `usefulness_rating` | INTEGER | Usefulness rating (1-5) |
+| `feedback_notes` | TEXT | User feedback |
+| `started_at` | TIMESTAMPTZ | Start time |
+| `ended_at` | TIMESTAMPTZ | End time |
+| `duration_minutes` | INTEGER | Duration |
+| `status` | TEXT | Status (active, completed, archived, deleted) |
+| `user_id` | UUID | User ID |
 
-#### 自动更新触发器
-- `update_ai_agents_updated_at` - 自动更新修改时间
-- `update_ai_interactions_updated_at` - 自动更新修改时间
-- `trg_update_agent_on_interaction` - 创建交互时自动更新代理统计
+### 4. Analytics Tables
 
-### 6. 视图
+#### `ai_usage_stats` - Daily Usage Analytics
+Aggregated daily usage statistics with cost tracking.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | User ID |
+| `date` | DATE | Statistics date |
+| `total_interactions` | INTEGER | Total interactions |
+| `unique_agents_used` | INTEGER | Number of unique agents |
+| `total_duration_minutes` | INTEGER | Total duration |
+| `feature_usage` | JSONB | Feature usage breakdown |
+| `vendor_usage` | JSONB | Vendor usage breakdown |
+| `total_cost` | DECIMAL(10,4) | Daily total cost |
+| `total_input_tokens` | INTEGER | Total input tokens |
+| `total_output_tokens` | INTEGER | Total output tokens |
+| `avg_satisfaction` | REAL | Average satisfaction |
+| `avg_usefulness` | REAL | Average usefulness |
+
+#### `ai_agent_configs` - Agent Configuration Storage
+Flexible agent-specific configuration storage.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `agent_id` | UUID | References ai_agents(id) |
+| `config_key` | TEXT | Configuration key |
+| `config_value` | JSONB | Configuration value |
+| `config_type` | TEXT | Configuration type |
+| `description` | TEXT | Configuration description |
+| `is_encrypted` | BOOLEAN | Encryption flag |
+| `user_id` | UUID | User ID |
+
+### 5. Supported Vendors and Services
+
+#### Pre-seeded Vendors
+- OpenAI (GPT models, DALL-E, Whisper)
+- Anthropic (Claude models)
+- Google AI (Gemini models)
+- Azure OpenAI
+- Replicate (Open source models)
+- Together AI (Open source LLMs)
+- ElevenLabs (Voice synthesis)
+- Stability AI (Image generation)
+- Cohere (Command models)
+- Hugging Face (Model hub)
+- Perplexity (Search-powered AI)
+
+#### Pre-seeded Features
+- Brainstorming (Creative ideation)
+- Daily Q&A (General assistance)
+- Coding (Programming assistance)
+- MCP (Model Context Protocol)
+- News Search (Current events)
+- TTS/STT (Voice processing)
+- Image Generation (Visual content)
+- Analysis (Data insights)
+- Writing (Content creation)
+- Research (Information gathering)
+- Translation (Language services)
+
+### 6. Performance Optimization
+
+#### Key Indexes
+- **User-based queries**: `idx_ai_agents_user_id`, `idx_ai_interactions_user_id`
+- **Activity sorting**: `idx_ai_agents_activity_score`, `idx_ai_agents_last_used`
+- **Feature search**: GIN indexes on `features`, `tags`, `keywords` arrays
+- **Time-based queries**: `idx_ai_interactions_created_at`, `idx_ai_usage_stats_user_date`
+- **Cost analysis**: `idx_ai_interactions_cost`
+- **Vendor lookups**: `idx_ai_agents_vendor`, `idx_user_api_keys_vendor`
+
+#### JSONB Optimization
+- GIN indexes on JSONB columns for fast JSON queries
+- Structured data in `configuration`, `capabilities`, `external_metadata`
+- Usage statistics stored as JSON for flexible analytics
+
+### 7. Key Functions
+
+#### Agent Management
+- `get_agent_with_features(UUID)` - Get agent with associated features
+- `update_agent_activity_score(UUID)` - Calculate and update activity scores
+
+#### API Key Management  
+- `get_user_api_key(UUID, TEXT, TEXT)` - Retrieve user's API key for service
+- `update_api_key_last_used(UUID, TEXT, TEXT)` - Update key usage timestamp
+- `add_vendor(TEXT, TEXT, ...)` - Add new vendor (admin function)
+- `add_vendor_service(TEXT, TEXT, ...)` - Add service to vendor
+
+#### Analytics
+- `update_daily_usage_stats(DATE)` - Calculate daily usage statistics
+- `get_agent_usage_summary(UUID, INTEGER)` - Get agent usage summary
+
+### 8. Security Features
+
+#### Row Level Security (RLS)
+All user data tables have RLS enabled with policies ensuring users can only access their own data:
+
+- **ai_agents**: Users can view/modify only their own agents (+ public agents)
+- **ai_interactions**: Users can only access interactions for their own agents
+- **user_api_keys**: Complete isolation - users see only their own keys
+- **ai_usage_stats**: Personal usage statistics only
+- **ai_agent_configs**: Agent configurations scoped to user
+
+#### Public Metadata
+- `vendors` and `vendor_services`: Public read-only for all users
+- `agent_features` and `interaction_types`: Public metadata for UI
+- API keys always encrypted at rest
+
+### 9. Extensibility Features
+
+#### No Schema Changes Required
+- **New Vendors**: Simple INSERT into `vendors` table
+- **New Services**: INSERT into `vendor_services` table  
+- **New Features**: INSERT into `agent_features` table
+- **New Interaction Types**: INSERT into `interaction_types` table
+
+#### Flexible Configuration
+- JSONB fields for arbitrary configuration data
+- Tag-based organization and search
+- Extensible metadata storage
+
+#### Future-Ready Architecture
+- Public agent sharing support (`is_public` flag)
+- Integration hooks via `external_metadata`
+- Cost tracking for usage analytics
+- Token usage monitoring
+
+### 10. Views for Common Queries
 
 #### `agent_summary`
-包含使用统计的代理摘要视图。
+Comprehensive agent view with usage statistics, features, and cost data.
 
 #### `recent_interactions`
-最近交互记录视图，包含代理信息。
+Recent interactions with agent and vendor information, optimized for dashboard display.
 
-### 7. 行级安全 (RLS)
+## Usage Examples
 
-所有表格都启用了行级安全，确保用户只能访问自己的数据：
-
-- 用户只能查看、创建、更新、删除自己的 AI 代理
-- 用户只能访问自己代理的交互记录
-- 用户只能查看自己的使用统计
-- 用户只能管理自己的代理配置
-
-## API 接口
-
-### AI Agents API (`/api/ai-agents`)
-
-#### GET - 获取代理列表
-```
-GET /api/ai-agents?vendor=ChatGPT&feature=Coding&active_only=true
-```
-
-#### POST - 创建新代理
-```json
-{
-  "name": "GPT-4",
-  "vendor": "ChatGPT",
-  "features": ["Brainstorming", "Coding"],
-  "notes": "Main coding assistant",
-  "activity_score": 0.8
-}
-```
-
-#### PUT - 更新代理
-```json
-{
-  "id": "uuid",
-  "name": "Updated Name",
-  "activity_score": 0.9
-}
-```
-
-#### DELETE - 删除代理
-```
-DELETE /api/ai-agents?id=uuid
-```
-
-### AI Interactions API (`/api/ai-interactions`)
-
-#### GET - 获取交互记录
-```
-GET /api/ai-interactions?agent_id=uuid&limit=50&offset=0&type=conversation
-```
-
-#### POST - 创建交互记录
-```json
-{
-  "agent_id": "uuid",
-  "title": "Code Review Session",
-  "interaction_type": "coding",
-  "external_link": "https://chat.openai.com/share/abc123",
-  "tags": ["code", "review"],
-  "satisfaction_rating": 5,
-  "usefulness_rating": 4
-}
-```
-
-### Usage Stats API (`/api/ai-usage-stats`)
-
-#### GET - 获取使用统计
-```
-GET /api/ai-usage-stats?days=30&start_date=2025-01-01&end_date=2025-01-31
-```
-
-## 使用示例
-
-### 1. 创建 AI 代理
+### 1. Create AI Agent with Features
 ```sql
-INSERT INTO ai_agents (name, vendor, features, notes, user_id) 
-VALUES (
-  'Claude Sonnet', 
-  'Claude', 
-  ARRAY['Coding', 'MCP'], 
-  'Code review and MCP integration',
-  auth.uid()
-);
+-- Create agent
+INSERT INTO ai_agents (name, vendor_id, service_id, model_name, user_id) 
+VALUES ('Claude Sonnet', 'anthropic', 'anthropic_claude3_sonnet', 'claude-3-sonnet', auth.uid());
+
+-- Add features
+INSERT INTO agent_feature_mappings (agent_id, feature_id, is_primary, user_id)
+VALUES 
+  (agent_id, 'coding', true, auth.uid()),
+  (agent_id, 'analysis', false, auth.uid());
 ```
 
-### 2. 记录交互
+### 2. Record Interaction with Cost Tracking
 ```sql
 INSERT INTO ai_interactions (
-  agent_id, title, interaction_type, external_link, tags, user_id
+  agent_id, title, interaction_type_id, input_tokens, output_tokens, 
+  total_cost, external_link, user_id
 ) VALUES (
-  'agent-uuid',
-  'Product strategy brainstorming',
-  'brainstorming',
-  'https://claude.ai/chat/xyz789',
-  ARRAY['strategy', 'product'],
-  auth.uid()
+  'agent-uuid', 'Code Review Session', 'coding', 1500, 800,
+  0.0425, 'https://claude.ai/chat/xyz', auth.uid()
 );
 ```
 
-### 3. 查询活跃代理
+### 3. Query Agent Summary
 ```sql
 SELECT * FROM agent_summary 
 WHERE user_id = auth.uid() 
@@ -241,46 +313,64 @@ WHERE user_id = auth.uid()
 ORDER BY activity_score DESC;
 ```
 
-### 4. 获取使用统计
+### 4. Get Usage Analytics
 ```sql
-SELECT * FROM ai_usage_stats 
+SELECT 
+  date,
+  total_interactions,
+  total_cost,
+  vendor_usage,
+  feature_usage
+FROM ai_usage_stats 
 WHERE user_id = auth.uid() 
   AND date >= CURRENT_DATE - INTERVAL '30 days'
 ORDER BY date DESC;
 ```
 
-## 数据迁移
+## Migration Path
 
-运行迁移脚本以创建所有必要的表格、索引、函数和触发器：
+### From Legacy Schema
+The new consolidated schema includes automatic data migration from the old enum-based system:
 
+1. **Vendor Mapping**: Old `agent_vendor` enum values mapped to new `vendors` table
+2. **Feature Migration**: Array-based features converted to `agent_feature_mappings`
+3. **Interaction Types**: Hardcoded values migrated to `interaction_types` table
+4. **Data Preservation**: All existing agents, interactions, and configurations preserved
+
+### Running the Migration
 ```bash
-psql -d your_database -f supabase/migrations/20250115_add_ai_agents_tables.sql
+psql -d your_database -f supabase/agents_schema.sql
 ```
 
-## 性能考虑
+## Performance Considerations
 
-1. **索引优化**: 为常用查询模式创建了适当的索引
-2. **JSONB 使用**: 使用 JSONB 存储灵活的配置和统计数据
-3. **GIN 索引**: 为数组字段和 JSONB 字段创建了 GIN 索引
-4. **视图缓存**: 使用视图简化复杂查询
-5. **触发器优化**: 自动维护统计数据，减少手动更新需求
+1. **Index Strategy**: Comprehensive indexing for all query patterns
+2. **JSONB Usage**: Efficient storage and querying of flexible data
+3. **GIN Indexes**: Fast array and JSON searches
+4. **Partitioning Ready**: Usage stats table ready for date partitioning
+5. **Connection Pooling**: Optimized for connection pooling strategies
 
-## 扩展性
+## Security Considerations
 
-该设计支持以下扩展：
+1. **Data Isolation**: Complete user data separation via RLS
+2. **API Key Security**: Encryption at rest, preview-only display
+3. **Input Validation**: Database constraints and application-level validation
+4. **Audit Trail**: Complete interaction history and usage tracking
+5. **Access Control**: Granular permissions with Supabase Auth integration
 
-1. **新供应商**: 在 `agent_vendor` 枚举中添加新值
-2. **新功能**: 在 `agent_feature` 枚举中添加新值
-3. **自定义配置**: 通过 `ai_agent_configs` 表存储任意配置
-4. **分析功能**: 通过 `ai_usage_stats` 表支持详细的使用分析
-5. **集成扩展**: 通过 `external_id` 和 `external_metadata` 字段支持外部服务集成
+## Monitoring and Maintenance
 
-## 安全考虑
+### Key Metrics to Monitor
+- Daily active agents per user
+- Token usage and cost trends
+- Feature adoption rates
+- Vendor utilization patterns
+- User satisfaction ratings
 
-1. **行级安全**: 所有表格都启用了 RLS
-2. **用户隔离**: 用户只能访问自己的数据
-3. **输入验证**: API 层使用 Zod 进行输入验证
-4. **权限控制**: 基于 Supabase Auth 的权限控制
-5. **数据加密**: 支持敏感配置的加密存储
+### Maintenance Tasks
+- Run `update_daily_usage_stats()` daily via cron
+- Monitor and optimize slow queries
+- Archive old interaction data as needed
+- Update vendor/service catalogs as new providers emerge
 
-这个数据库设计为 External AI Panel 模块提供了完整的数据支持，包括代理管理、交互记录、使用统计和配置管理等功能。
+This comprehensive database design provides a solid foundation for AI agent management that can scale and evolve with changing requirements while maintaining performance and security.
