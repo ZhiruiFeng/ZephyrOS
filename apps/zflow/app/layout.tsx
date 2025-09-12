@@ -7,6 +7,7 @@ import React from 'react'
 import { AuthProvider } from '../contexts/AuthContext'
 import { PrefsProvider } from '../contexts/PrefsContext'
 import { LanguageProvider } from '../contexts/LanguageContext'
+import { STTConfigProvider } from '../contexts/STTConfigContext'
 import NavBar from './components/navigation/NavBar'
 import MobileBottomNav from './components/navigation/MobileBottomNav'
 import DynamicHead from './components/utils/DynamicHead'
@@ -31,14 +32,16 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             <PrefsProvider>
-              <DynamicHead />
-              <NavBar />
-              <AddTaskPortal />
-              <VoiceInputController />
-            <SWRConfig value={{ ...globalSWRConfig, fetcher: authJsonFetcher }}>
-              {children}
-              <MobileBottomNav />
-            </SWRConfig>
+              <STTConfigProvider>
+                <DynamicHead />
+                <NavBar />
+                <AddTaskPortal />
+                <VoiceInputController />
+                <SWRConfig value={{ ...globalSWRConfig, fetcher: authJsonFetcher }}>
+                  {children}
+                  <MobileBottomNav />
+                </SWRConfig>
+              </STTConfigProvider>
             </PrefsProvider>
           </LanguageProvider>
         </AuthProvider>

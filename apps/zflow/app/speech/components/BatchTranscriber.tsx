@@ -4,8 +4,10 @@ import React from "react";
 import { Mic, Square, RotateCcw, Upload } from "lucide-react";
 import { useAudioRecorder } from "../../../hooks/useAudioRecorder";
 import { useTranslation } from "../../../contexts/LanguageContext";
+import { useSTTConfig } from "../../../contexts/STTConfigContext";
 
 export default function BatchTranscriber() {
+  const { config: sttConfig } = useSTTConfig();
   const { isSupported, isRecording, error, start, stop, mimeType, reset } = useAudioRecorder();
   const { t } = useTranslation();
   const [transcript, setTranscript] = React.useState<string>("");
@@ -22,12 +24,22 @@ export default function BatchTranscriber() {
       const fd = new FormData();
       const file = new File([blob], `recording.${mimeType?.includes("mp4") ? "mp4" : mimeType?.includes("wav") ? "wav" : "webm"}`, { type: blob.type || mimeType || "application/octet-stream" });
       fd.append("file", file);
-      fd.append("language", language);
-      fd.append("model", model);
+      
+      // Add language and model for OpenAI, or model_id for ElevenLabs
+      if (sttConfig.provider === 'elevenlabs') {
+        fd.append("model_id", "scribe_v1");
+        if (language) fd.append("language_code", language);
+      } else {
+        fd.append("language", language);
+        fd.append("model", model);
+      }
 
       const { getAuthHeader } = await import('../../../lib/supabase')
       const authHeaders = await getAuthHeader()
-      const res = await fetch("/api/transcribe", { method: "POST", headers: authHeaders, body: fd });
+      
+      // Use the appropriate API endpoint based on STT configuration
+      const apiEndpoint = sttConfig.provider === 'elevenlabs' ? "/api/elevenlabs-transcribe" : "/api/transcribe";
+      const res = await fetch(apiEndpoint, { method: "POST", headers: authHeaders, body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`${data?.error || "transcribe_failed"}${data?.detail ? `: ${data.detail}` : ""}`);
       setTranscript(data.text || "");
@@ -92,17 +104,28 @@ export default function BatchTranscriber() {
             </select>
           </div>
           
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">{t.speech.model}</label>
-            <select 
-              value={model} 
-              onChange={(e) => setModel(e.target.value)} 
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="whisper-1">whisper-1</option>
-              <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</option>
-            </select>
-          </div>
+          {sttConfig.provider === 'openai' && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">{t.speech.model}</label>
+              <select 
+                value={model} 
+                onChange={(e) => setModel(e.target.value)} 
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="whisper-1">whisper-1</option>
+                <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</option>
+              </select>
+            </div>
+          )}
+          
+          {sttConfig.showProviderInUI && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">STT Provider:</span>
+              <span className="text-sm text-gray-600 bg-white px-2 py-1 rounded border">
+                {sttConfig.provider === 'elevenlabs' ? 'ElevenLabs Scribe' : 'OpenAI Whisper'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

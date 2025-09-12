@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useSTTConfig } from '../../../contexts/STTConfigContext'
 
 // Types
 interface RecorderState {
@@ -88,8 +89,8 @@ const mockTranscribe = async (audioBlob: Blob): Promise<string> => {
   return phrases[Math.floor(Math.random() * phrases.length)]
 }
 
-// Real transcription service using ZFlow's existing API
-const realTranscribe = async (audioBlob: Blob): Promise<string> => {
+// OpenAI transcription service
+const openaiTranscribe = async (audioBlob: Blob): Promise<string> => {
   const formData = new FormData()
   formData.append('file', audioBlob, 'recording.wav')
   
@@ -105,14 +106,42 @@ const realTranscribe = async (audioBlob: Blob): Promise<string> => {
     
     if (!response.ok) {
       const errText = await response.text().catch(() => '')
-      throw new Error(`Transcription failed: ${response.status} ${response.statusText} ${errText}`)
+      throw new Error(`OpenAI transcription failed: ${response.status} ${response.statusText} ${errText}`)
     }
 
     const result = await response.json()
     return result.text || ''
   } catch (error) {
-    console.error('Transcription error:', error)
-    throw new Error('Failed to transcribe audio. Please try again.')
+    console.error('OpenAI transcription error:', error)
+    throw new Error('Failed to transcribe audio with OpenAI. Please try again.')
+  }
+}
+
+// ElevenLabs transcription service
+const elevenLabsTranscribe = async (audioBlob: Blob): Promise<string> => {
+  const formData = new FormData()
+  formData.append('file', audioBlob, 'recording.wav')
+  
+  try {
+    // Include auth header so the server can resolve user API key
+    const { getAuthHeader } = await import('../../../lib/supabase')
+    const authHeaders = await getAuthHeader()
+    const response = await fetch('/api/elevenlabs-transcribe', {
+      method: 'POST',
+      headers: authHeaders,
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '')
+      throw new Error(`ElevenLabs transcription failed: ${response.status} ${response.statusText} ${errText}`)
+    }
+
+    const result = await response.json()
+    return result.text || ''
+  } catch (error) {
+    console.error('ElevenLabs transcription error:', error)
+    throw new Error('Failed to transcribe audio with ElevenLabs. Please try again.')
   }
 }
 
@@ -328,7 +357,8 @@ const RecordingPanel: React.FC<{
   onComplete: () => void
   onCancel: () => void
   onClose: () => void
-}> = ({ isOpen, isMobile, position, recorderState, onStart, onPause, onResume, onComplete, onCancel, onClose }) => {
+  sttProvider?: string
+}> = ({ isOpen, isMobile, position, recorderState, onStart, onPause, onResume, onComplete, onCancel, onClose, sttProvider }) => {
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -391,6 +421,11 @@ const RecordingPanel: React.FC<{
             : 'Ready to record'
           }
         </div>
+        {sttProvider && (
+          <div className="mt-1 text-xs text-gray-500">
+            Using {sttProvider === 'elevenlabs' ? 'ElevenLabs Scribe' : 'OpenAI Whisper'}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center space-x-3">
@@ -459,6 +494,7 @@ const RecordingPanel: React.FC<{
 
 // Main floating mic controller component
 const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ useRealTranscription = true }) => {
+  const { config: sttConfig } = useSTTConfig()
   const [focusedElement, setFocusedElement] = useState<HTMLElement | null>(null)
   const [micPosition, setMicPosition] = useState<MicButtonPosition | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -677,8 +713,33 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
         throw new Error('No audio recording available')
       }
       
-      const transcribeFunction = useRealTranscription ? realTranscribe : mockTranscribe
-      const text = await transcribeFunction(audioBlob)
+      let text = ''
+      
+      if (!useRealTranscription) {
+        text = await mockTranscribe(audioBlob)
+      } else {
+        // Use STT configuration to determine which service to use
+        try {
+          if (sttConfig.provider === 'elevenlabs') {
+            text = await elevenLabsTranscribe(audioBlob)
+          } else {
+            text = await openaiTranscribe(audioBlob)
+          }
+        } catch (error) {
+          console.error('Primary transcription failed, trying fallback:', error)
+          // Fallback to the other service
+          try {
+            if (sttConfig.provider === 'elevenlabs') {
+              text = await openaiTranscribe(audioBlob)
+            } else {
+              text = await elevenLabsTranscribe(audioBlob)
+            }
+          } catch (fallbackError) {
+            console.error('Fallback transcription also failed:', fallbackError)
+            throw new Error('Both transcription services failed. Please try again.')
+          }
+        }
+      }
       
       insertTextAtCursor(focusedElement, text)
     } catch (error) {
@@ -724,6 +785,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
           onComplete={handleComplete}
           onCancel={handleCancel}
           onClose={handlePanelClose}
+          sttProvider={sttConfig.showProviderInUI ? sttConfig.provider : undefined}
         />
       </div>
 

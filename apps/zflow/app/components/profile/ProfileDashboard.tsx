@@ -11,6 +11,7 @@ import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
+import { STTConfigModule } from './modules/STTConfigModule'
 import { useProfileModules } from './hooks/useProfileModules'
 import type { ProfileModule, ProfileModuleConfig } from './types'
 
@@ -105,6 +106,16 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             config={moduleConfig}
             onConfigChange={(newConfig) => {
               console.log('API keys config changed:', newConfig)
+            }}
+          />
+        )
+      case 'stt-config':
+        return (
+          <STTConfigModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('STT config changed:', newConfig)
             }}
           />
         )

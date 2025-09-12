@@ -79,6 +79,19 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       showInactiveKeys: false,
       groupByVendor: true
     }
+  },
+  {
+    id: 'stt-config',
+    name: 'Voice Input Settings',
+    description: 'Configure speech-to-text preferences',
+    icon: 'Mic',
+    category: 'tools',
+    defaultEnabled: true,
+    defaultConfig: {
+      provider: 'elevenlabs',
+      autoSave: true,
+      showProviderInUI: false
+    }
   }
 ]
 
@@ -102,6 +115,16 @@ const DEFAULT_ENABLED_MODULES: ProfileModuleConfig[] = [
       maxDisplayItems: 5,
       showQuickActions: true,
       showCollectionsView: true
+    }
+  },
+  {
+    id: 'stt-config',
+    enabled: true,
+    order: 2,
+    config: {
+      provider: 'elevenlabs',
+      autoSave: true,
+      showProviderInUI: false
     }
   }
 ]

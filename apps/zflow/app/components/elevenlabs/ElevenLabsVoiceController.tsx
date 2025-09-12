@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useSTTConfig } from '../../../contexts/STTConfigContext'
 
 // Types
 interface RecorderState {
@@ -344,7 +345,8 @@ const RecordingPanel: React.FC<{
   onComplete: () => void
   onCancel: () => void
   onClose: () => void
-}> = ({ isOpen, isMobile, position, recorderState, onStart, onPause, onResume, onComplete, onCancel, onClose }) => {
+  sttProvider?: string
+}> = ({ isOpen, isMobile, position, recorderState, onStart, onPause, onResume, onComplete, onCancel, onClose, sttProvider }) => {
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -403,10 +405,15 @@ const RecordingPanel: React.FC<{
         
         <div className="mt-2 text-sm text-gray-600">
           {recorderState.isRecording 
-            ? (recorderState.isPaused ? 'Recording paused' : 'Recording with ElevenLabs...') 
-            : 'Ready to record with ElevenLabs'
+            ? (recorderState.isPaused ? 'Recording paused' : 'Recording...') 
+            : 'Ready to record'
           }
         </div>
+        {sttProvider && (
+          <div className="mt-1 text-xs text-gray-500">
+            Using {sttProvider === 'elevenlabs' ? 'ElevenLabs Scribe' : 'OpenAI Whisper'}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center space-x-3">
@@ -475,6 +482,7 @@ const RecordingPanel: React.FC<{
 
 // Main ElevenLabs voice controller component
 const ElevenLabsVoiceController: React.FC<{ fallbackToOpenAI?: boolean }> = ({ fallbackToOpenAI = true }) => {
+  const { config: sttConfig } = useSTTConfig()
   const [focusedElement, setFocusedElement] = useState<HTMLElement | null>(null)
   const [micPosition, setMicPosition] = useState<MicButtonPosition | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -622,17 +630,26 @@ const ElevenLabsVoiceController: React.FC<{ fallbackToOpenAI?: boolean }> = ({ f
       
       let text = ''
       
+      // Use STT configuration to determine which service to use
       try {
-        // Try ElevenLabs first
-        text = await elevenLabsTranscribe(audioBlob)
-      } catch (error) {
-        console.error('ElevenLabs transcription failed:', error)
-        
-        if (fallbackToOpenAI) {
-          console.log('Falling back to OpenAI transcription...')
-          text = await openaiTranscribe(audioBlob)
+        if (sttConfig.provider === 'elevenlabs') {
+          text = await elevenLabsTranscribe(audioBlob)
         } else {
-          throw error
+          text = await openaiTranscribe(audioBlob)
+        }
+      } catch (error) {
+        console.error('Primary transcription failed, trying fallback:', error)
+        
+        // Fallback to the other service
+        try {
+          if (sttConfig.provider === 'elevenlabs') {
+            text = await openaiTranscribe(audioBlob)
+          } else {
+            text = await elevenLabsTranscribe(audioBlob)
+          }
+        } catch (fallbackError) {
+          console.error('Fallback transcription also failed:', fallbackError)
+          throw new Error('Both transcription services failed. Please try again.')
         }
       }
       
@@ -681,6 +698,7 @@ const ElevenLabsVoiceController: React.FC<{ fallbackToOpenAI?: boolean }> = ({ f
           onComplete={handleComplete}
           onCancel={handleCancel}
           onClose={handlePanelClose}
+          sttProvider={sttConfig.showProviderInUI ? sttConfig.provider : undefined}
         />
       </div>
 
@@ -689,7 +707,7 @@ const ElevenLabsVoiceController: React.FC<{ fallbackToOpenAI?: boolean }> = ({ f
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
-              <span>Transcribing with ElevenLabs...</span>
+              <span>Transcribing audio...</span>
             </div>
           </div>
         </div>

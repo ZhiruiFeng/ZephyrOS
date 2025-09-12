@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { Memory, MemoryCreateInput } from '../../types/memory'
 import { memoriesApi, useMemoryOperations } from '../../../lib/memories-api'
+import { useSTTConfig } from '../../../contexts/STTConfigContext'
 
 interface MemoryCaptureProps {
   isOpen: boolean
@@ -40,6 +41,7 @@ export default function MemoryCapture({
   initialContent = '',
   editingMemory
 }: MemoryCaptureProps) {
+  const { config: sttConfig } = useSTTConfig()
   const [content, setContent] = React.useState('')
   const [title, setTitle] = React.useState('')
   const [memoryType, setMemoryType] = React.useState<'note' | 'link' | 'file' | 'thought' | 'quote' | 'insight'>('note')
@@ -53,8 +55,13 @@ export default function MemoryCapture({
   const [isRecording, setIsRecording] = React.useState(false)
   const [isAnalyzing, setIsAnalyzing] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isTranscribing, setIsTranscribing] = React.useState(false)
   
   const { createMemory } = useMemoryOperations()
+  
+  // Audio recording state
+  const [mediaRecorder, setMediaRecorder] = React.useState<MediaRecorder | null>(null)
+  const [audioChunks, setAudioChunks] = React.useState<Blob[]>([])
 
   // Initialize form when editing
   React.useEffect(() => {
@@ -185,9 +192,89 @@ export default function MemoryCapture({
     }
   }
 
-  const handleVoiceRecord = () => {
-    // TODO: Implement voice recording
-    setIsRecording(!isRecording)
+  const handleVoiceRecord = async () => {
+    if (isRecording) {
+      // Stop recording
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop()
+      }
+      setIsRecording(false)
+      return
+    }
+
+    try {
+      // Start recording
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      const chunks: Blob[] = []
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data)
+        }
+      }
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' })
+        setAudioChunks(chunks)
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
+        
+        // Transcribe audio
+        await transcribeAudio(audioBlob)
+      }
+
+      recorder.start()
+      setMediaRecorder(recorder)
+      setIsRecording(true)
+    } catch (error) {
+      console.error('Failed to start recording:', error)
+      alert('Failed to access microphone. Please check permissions.')
+    }
+  }
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', audioBlob, 'recording.wav')
+      
+      // Add language and model for OpenAI, or model_id for ElevenLabs
+      if (sttConfig.provider === 'elevenlabs') {
+        formData.append("model_id", "scribe_v1");
+      } else {
+        formData.append("language", "auto");
+        formData.append("model", "whisper-1");
+      }
+
+      const { getAuthHeader } = await import('../../../lib/supabase')
+      const authHeaders = await getAuthHeader()
+      
+      // Use the appropriate API endpoint based on STT configuration
+      const apiEndpoint = sttConfig.provider === 'elevenlabs' ? "/api/elevenlabs-transcribe" : "/api/transcribe";
+      const response = await fetch(apiEndpoint, { 
+        method: "POST", 
+        headers: authHeaders, 
+        body: formData 
+      });
+      
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(`${data?.error || "transcribe_failed"}${data?.detail ? `: ${data.detail}` : ""}`);
+      }
+      
+      // Append transcribed text to content
+      const transcribedText = data.text || '';
+      if (transcribedText) {
+        setContent(prev => prev + (prev ? ' ' : '') + transcribedText)
+      }
+    } catch (error) {
+      console.error('Transcription failed:', error)
+      alert(`Failed to transcribe audio: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsTranscribing(false)
+    }
   }
 
   if (!isOpen) return null
@@ -275,17 +362,42 @@ export default function MemoryCapture({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 rows={4}
               />
-              <div className="absolute bottom-2 right-2 flex gap-1">
+              <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+                {isTranscribing && (
+                  <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                    Transcribing...
+                  </div>
+                )}
+                {sttConfig.showProviderInUI && (isRecording || isTranscribing) && (
+                  <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
+                    {sttConfig.provider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'}
+                  </div>
+                )}
                 <button
                   onClick={handleVoiceRecord}
+                  disabled={isTranscribing}
                   className={`p-2 rounded-lg transition-colors ${
                     isRecording
                       ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                      : isTranscribing
+                      ? 'bg-blue-100 text-blue-600 cursor-not-allowed'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
-                  title={isRecording ? 'Stop recording' : 'Voice input'}
+                  title={
+                    isTranscribing 
+                      ? 'Transcribing...' 
+                      : isRecording 
+                        ? 'Stop recording' 
+                        : 'Voice input'
+                  }
                 >
-                  {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  {isTranscribing ? (
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
