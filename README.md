@@ -180,6 +180,13 @@ npm run dev -w @zephyros/zmemory-mcp     # MCP server (stdio)
 - **ZFlow (Frontend)**: http://localhost:3000
 - **ZMemory API (Backend)**: http://localhost:3001
 
+### Agents SSE (Chat) Requirements
+
+The Agents chat uses Server-Sent Events with pub/sub. In production (Vercel/serverless), Redis is required so sessions and streams are shared across invocations.
+
+- Set `REDIS_URL` in your environment (e.g., Upstash, ElastiCache, etc.).
+- Without Redis, local dev falls back to in-memory streaming (works in a single process), but production will fail with 404 on `/api/agents/stream` because the session is not found across lambdas.
+
 ## API Documentation
 
 ### Health Check

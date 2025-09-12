@@ -37,16 +37,16 @@ export default function CreateTimelineItemModal({
 
   React.useEffect(() => {
     if (!isOpen) return
-    
-    // Reset form
-    setTitle('')
-    setDescription('')
-    setCategoryId('')
-    
-    // Initialize time inputs from props
+
+    // Only reset text fields if user has not typed yet (avoid overwriting voice-inserted text)
+    setTitle(prev => prev === '' ? '' : prev)
+    setDescription(prev => prev === '' ? '' : prev)
+    setCategoryId(prev => prev)
+
+    // Initialize time inputs from props (always safe to sync time)
     setStartTime(formatDateTimeLocal(initialStart))
     setEndTime(formatDateTimeLocal(initialEnd))
-    
+
     // Load categories
     loadCategories()
   }, [isOpen, initialStart, initialEnd])

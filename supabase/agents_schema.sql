@@ -282,7 +282,8 @@ INSERT INTO vendors (id, name, description, auth_type, base_url) VALUES
   ('stability', 'Stability AI', 'Stable Diffusion models', 'api_key', 'https://api.stability.ai'),
   ('cohere', 'Cohere', 'Command models', 'api_key', 'https://api.cohere.ai'),
   ('huggingface', 'Hugging Face', 'Open source models hub', 'api_key', 'https://api-inference.huggingface.co'),
-  ('perplexity', 'Perplexity', 'Search-powered AI models', 'api_key', 'https://api.perplexity.ai')
+  ('perplexity', 'Perplexity', 'Search-powered AI models', 'api_key', 'https://api.perplexity.ai'),
+  ('cursor', 'Cursor', 'AI-powered code editor with model integration', 'api_key', 'https://api.cursor.sh')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert initial services

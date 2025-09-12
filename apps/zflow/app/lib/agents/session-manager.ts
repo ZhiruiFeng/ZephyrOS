@@ -8,9 +8,10 @@ export class SessionManager {
   private memoryManager = new MemorySessionManager()
   private readonly SESSION_TTL = 24 * 60 * 60 // 24 hours in seconds
   private useRedis = false
+  private initPromise: Promise<void> | null = null
 
   constructor() {
-    this.initializeRedis()
+    this.initPromise = this.initializeRedis()
   }
 
   private async initializeRedis() {
@@ -23,6 +24,19 @@ export class SessionManager {
     } catch (error) {
       console.warn('SessionManager: Redis unavailable, falling back to memory storage:', error)
       this.useRedis = false
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('SessionManager: In production without Redis; sessions will not be shared across serverless invocations. Set REDIS_URL.')
+      }
+    }
+  }
+
+  private async ensureReady() {
+    if (this.initPromise) {
+      try {
+        await this.initPromise
+      } catch {
+        // ignore, fallback already set
+      }
     }
   }
 
@@ -35,6 +49,7 @@ export class SessionManager {
   }
 
   async createSession(userId: string, agentId: string): Promise<ChatSession> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.createSession(userId, agentId)
     }
@@ -56,6 +71,7 @@ export class SessionManager {
   }
 
   async getSession(sessionId: string): Promise<ChatSession | null> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.getSession(sessionId)
     }
@@ -83,6 +99,7 @@ export class SessionManager {
   }
 
   async saveSession(session: ChatSession): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.saveSession(session)
     }
@@ -100,6 +117,7 @@ export class SessionManager {
   }
 
   async addMessage(sessionId: string, message: AgentMessage): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.addMessage(sessionId, message)
     }
@@ -115,6 +133,7 @@ export class SessionManager {
   }
 
   async updateMessage(sessionId: string, messageId: string, updates: Partial<AgentMessage>): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.updateMessage(sessionId, messageId, updates)
     }
@@ -139,6 +158,7 @@ export class SessionManager {
   }
 
   async getUserSessions(userId: string, limit = 50): Promise<ChatSession[]> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.getUserSessions(userId, limit)
     }
@@ -176,6 +196,7 @@ export class SessionManager {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.deleteSession(sessionId)
     }
@@ -189,6 +210,7 @@ export class SessionManager {
   }
 
   async extendSessionTTL(sessionId: string): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryManager.extendSessionTTL(sessionId)
     }

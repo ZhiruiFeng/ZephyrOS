@@ -6,9 +6,10 @@ export class StreamingService {
   private redis: any = null
   private memoryService = new MemoryStreamingService()
   private useRedis = false
+  private initPromise: Promise<void> | null = null
 
   constructor() {
-    this.initializeRedis()
+    this.initPromise = this.initializeRedis()
   }
 
   private async initializeRedis() {
@@ -21,10 +22,24 @@ export class StreamingService {
     } catch (error) {
       console.warn('StreamingService: Redis unavailable, falling back to memory streaming:', error)
       this.useRedis = false
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('StreamingService: In production without Redis; SSE in serverless will not function across requests. Set REDIS_URL.')
+      }
+    }
+  }
+
+  private async ensureReady() {
+    if (this.initPromise) {
+      try {
+        await this.initPromise
+      } catch {
+        // ignore, fallback already set
+      }
     }
   }
 
   async publishStreamEvent(sessionId: string, event: StreamingResponse): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryService.publishStreamEvent(sessionId, event)
     }
@@ -34,6 +49,7 @@ export class StreamingService {
   }
 
   async subscribeToStream(sessionId: string, callback: (event: StreamingResponse) => void): Promise<() => void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryService.subscribeToStream(sessionId, callback)
     }
@@ -68,20 +84,18 @@ export class StreamingService {
   }
 
   createSSEStream(sessionId: string): ReadableStream<Uint8Array> {
-    if (!this.useRedis) {
-      return this.memoryService.createSSEStream(sessionId)
-    }
-
     const encoder = new TextEncoder()
     let unsubscribe: (() => void) | null = null
 
     return new ReadableStream({
       start: async (controller) => {
-        // Send initial connection event
-        const data = `data: ${JSON.stringify({ type: 'connected', sessionId })}\n\n`
-        controller.enqueue(encoder.encode(data))
+        await this.ensureReady()
 
-        // Subscribe to Redis stream
+        // Send initial connection event
+        const greeting = `data: ${JSON.stringify({ type: 'connected', sessionId })}\n\n`
+        controller.enqueue(encoder.encode(greeting))
+
+        // Subscribe to appropriate stream (Redis or memory)
         unsubscribe = await this.subscribeToStream(sessionId, (event) => {
           try {
             const data = `data: ${JSON.stringify(event)}\n\n`
@@ -105,7 +119,7 @@ export class StreamingService {
           } catch (error) {
             clearInterval(heartbeat)
           }
-        }, 30000) // 30 seconds
+        }, 30000)
 
         // Clean up heartbeat when stream closes
         const originalClose = controller.close.bind(controller)
@@ -123,6 +137,7 @@ export class StreamingService {
   }
 
   async cancelStream(sessionId: string): Promise<void> {
+    await this.ensureReady()
     if (!this.useRedis) {
       return await this.memoryService.cancelStream(sessionId)
     }

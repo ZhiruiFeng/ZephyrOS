@@ -24,9 +24,26 @@ const insertTextAtCursor = (element: HTMLInputElement | HTMLTextAreaElement | HT
     const start = element.selectionStart || 0
     const end = element.selectionEnd || 0
     const value = element.value
-    element.value = value.slice(0, start) + text + value.slice(end)
+    const nextValue = value.slice(0, start) + text + value.slice(end)
+
+    // Use native setter to ensure React value tracker updates
+    const proto = element instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype
+    const valueSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
+    if (valueSetter) {
+      valueSetter.call(element, nextValue)
+    } else {
+      element.value = nextValue
+    }
     element.selectionStart = element.selectionEnd = start + text.length
     element.focus()
+    // Ensure React controlled inputs receive change
+    try {
+      const inputEvent = new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText', composed: true })
+      element.dispatchEvent(inputEvent)
+    } catch {
+      const fallbackEvent = new Event('input', { bubbles: true })
+      element.dispatchEvent(fallbackEvent)
+    }
   } else if (element.isContentEditable) {
     const selection = window.getSelection()
     if (selection && selection.rangeCount > 0) {
@@ -40,6 +57,14 @@ const insertTextAtCursor = (element: HTMLInputElement | HTMLTextAreaElement | HT
       element.textContent = (element.textContent || '') + text
     }
     element.focus()
+    // Dispatch input for contentEditable to notify React listeners
+    try {
+      const inputEvent = new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText', composed: true })
+      element.dispatchEvent(inputEvent)
+    } catch {
+      const fallbackEvent = new Event('input', { bubbles: true })
+      element.dispatchEvent(fallbackEvent)
+    }
   }
 }
 
