@@ -466,6 +466,7 @@ export interface TranslationKeys {
     searchPlaceholder: string;
     viewSimple: string;
     viewOrbit: string;
+    noInteractions: string;
     // Common field labels
     name: string;
     vendor: string;
@@ -950,6 +951,7 @@ const translations: Record<Language, TranslationKeys> = {
       searchPlaceholder: 'Search agents, features, or interactions...',
       viewSimple: 'Simple',
       viewOrbit: 'Orbit',
+      noInteractions: 'No interactions yet',
       name: 'Name',
       vendor: 'Vendor',
       features: 'Features',
@@ -1422,6 +1424,7 @@ const translations: Record<Language, TranslationKeys> = {
       searchPlaceholder: '搜索代理、功能或交互记录...',
       viewSimple: '列表',
       viewOrbit: '轨道',
+      noInteractions: '暂无交互记录',
       name: '名称',
       vendor: '厂商',
       features: '功能',

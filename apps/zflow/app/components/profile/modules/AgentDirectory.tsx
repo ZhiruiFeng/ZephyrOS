@@ -80,6 +80,8 @@ export interface InteractionItem {
   description?: string
   interaction_type_id: string
   interaction_type_name?: string
+  agent_name?: string
+  agent_vendor_name?: string
   date_iso: string
   link?: string
   tags: string[]
@@ -117,6 +119,8 @@ const convertAIInteractionToInteractionItem = (interaction: AIInteraction): Inte
   description: interaction.description,
   interaction_type_id: interaction.interaction_type_id,
   interaction_type_name: interaction.interaction_type_name,
+  agent_name: (interaction as any).agent_name,
+  agent_vendor_name: (interaction as any).agent_vendor_name,
   date_iso: interaction.started_at || interaction.created_at,
   link: interaction.external_link,
   tags: interaction.tags || [],
@@ -1681,11 +1685,14 @@ const HistoryList: React.FC<{
 
         {/* History List */}
         <div className="space-y-3">
+          {history.length === 0 && (
+            <div className="p-4 text-sm text-gray-600 bg-white border border-dashed border-gray-300 rounded-lg">
+              {t.agents.noInteractions}
+            </div>
+          )}
           {history.map(interaction => {
             const agent = getAgent(interaction.agent_id)
-            if (!agent) return null
-
-            const VendorIcon = getVendorIcon(agent.vendor_id)
+            const VendorIcon = getVendorIcon(agent?.vendor_id || '')
             
             return (
               <motion.div
@@ -1700,7 +1707,7 @@ const HistoryList: React.FC<{
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-gray-900 truncate">{interaction.title}</h4>
                   <p className="text-sm text-gray-500">
-                    {agent.name} • {formatDate(interaction.date_iso)}
+                    {(agent?.name || interaction.agent_name || 'Unknown Agent')} • {formatDate(interaction.date_iso)}
                   </p>
                   {interaction.total_cost && (
                     <p className="text-xs text-green-600">
