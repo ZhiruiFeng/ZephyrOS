@@ -37,9 +37,13 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
+      'X-Accel-Buffering': 'no', // Nginx: disable buffering
+      'X-Buffering': 'no', // Generic: disable buffering
+      'Transfer-Encoding': 'chunked', // Enable chunked encoding
+      'Pragma': 'no-cache', // HTTP/1.0 compatibility
+      'Expires': '0', // Prevent caching
       'Cache-Tag': `agents-stream-${sessionId}`,
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET',

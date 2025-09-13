@@ -1,4 +1,4 @@
-import { getRedisClient } from '../redis'
+import { getRedisClient, getRedisSubscriber } from '../redis'
 import { StreamingResponse } from './types'
 import { MemoryStreamingService } from './memory-streaming'
 
@@ -62,7 +62,8 @@ export class StreamingService {
       return await this.memoryService.subscribeToStream(sessionId, callback)
     }
 
-    const subscriber = getRedisClient()
+    // Use a separate subscriber client to avoid "subscriber mode" conflicts
+    const subscriber = getRedisSubscriber()
     const channel = `agent_stream:${sessionId}`
 
     subscriber.subscribe(channel, (err, count) => {
@@ -94,49 +95,119 @@ export class StreamingService {
   createSSEStream(sessionId: string): ReadableStream<Uint8Array> {
     const encoder = new TextEncoder()
     let unsubscribe: (() => void) | null = null
+    let heartbeatActive = true
+    let heartbeat: NodeJS.Timeout | null = null
+    let controllerClosed = false
+
+    console.log(`Creating SSE stream for session: ${sessionId}`)
 
     return new ReadableStream({
       start: async (controller) => {
-        await this.ensureReady()
+        try {
+          await this.ensureReady()
+          console.log(`SSE stream ready for session: ${sessionId}, mode: ${this.useRedis ? 'redis' : 'memory'}`)
 
-        // Send initial connection event
-        const greeting = `data: ${JSON.stringify({ type: 'connected', sessionId })}\n\n`
-        controller.enqueue(encoder.encode(greeting))
-
+          // Send initial connection event
+          const greeting = `data: ${JSON.stringify({ type: 'connected', sessionId })}\n\n`
+          controller.enqueue(encoder.encode(greeting))
+        
         // Subscribe to appropriate stream (Redis or memory)
         unsubscribe = await this.subscribeToStream(sessionId, (event) => {
+          // Early return if controller is already marked as closed
+          if (controllerClosed) {
+            console.log(`SSE controller marked closed, skipping event: ${event.type}`)
+            return
+          }
+          
           try {
+            // Double-check controller state before writing
+            if (controller.desiredSize === null) {
+              console.log(`SSE controller closed, skipping event: ${event.type}`)
+              controllerClosed = true
+              return
+            }
+
             const data = `data: ${JSON.stringify(event)}\n\n`
             controller.enqueue(encoder.encode(data))
 
-            // Close stream on end or error
+            // Close stream on end or error with slight delay to ensure data is sent
             if (event.type === 'end' || event.type === 'error') {
-              controller.close()
+              console.log(`SSE stream ending for session: ${sessionId}, type: ${event.type}`)
+              setTimeout(() => {
+                try {
+                  if (!controllerClosed && controller.desiredSize !== null) {
+                    controllerClosed = true
+                    controller.close()
+                  }
+                } catch (closeError) {
+                  console.warn('Error closing SSE controller:', closeError)
+                  controllerClosed = true
+                }
+              }, 100) // Small delay to ensure data is flushed
             }
           } catch (error) {
             console.error('Error sending SSE event:', error)
-            controller.error(error)
+            controllerClosed = true
+            try {
+              if (controller.desiredSize !== null && !controllerClosed) {
+                controller.error(error)
+              }
+            } catch (errorError) {
+              console.warn('Error reporting SSE error:', errorError)
+            }
           }
         })
 
         // Keep connection alive with heartbeat
-        const heartbeat = setInterval(() => {
+        heartbeat = setInterval(() => {
+          if (!heartbeatActive || controllerClosed) {
+            if (heartbeat) clearInterval(heartbeat)
+            return
+          }
+          
           try {
-            const data = `data: ${JSON.stringify({ type: 'heartbeat' })}\n\n`
-            controller.enqueue(encoder.encode(data))
+            // Double-check controller state
+            if (controller.desiredSize !== null && !controllerClosed) {
+              const data = `data: ${JSON.stringify({ type: 'heartbeat' })}\n\n`
+              controller.enqueue(encoder.encode(data))
+            } else {
+              heartbeatActive = false
+              controllerClosed = true
+              if (heartbeat) clearInterval(heartbeat)
+            }
           } catch (error) {
-            clearInterval(heartbeat)
+            console.warn('Heartbeat failed, clearing interval:', error)
+            heartbeatActive = false
+            controllerClosed = true
+            if (heartbeat) clearInterval(heartbeat)
           }
         }, 30000)
 
         // Clean up heartbeat when stream closes
         const originalClose = controller.close.bind(controller)
         controller.close = () => {
-          clearInterval(heartbeat)
+          heartbeatActive = false
+          controllerClosed = true
+          if (heartbeat) clearInterval(heartbeat)
           originalClose()
+        }
+        
+        } catch (initError) {
+          console.error(`Failed to initialize SSE stream for session: ${sessionId}`, initError)
+          heartbeatActive = false
+          controllerClosed = true
+          if (heartbeat) clearInterval(heartbeat)
+          try {
+            controller.error(initError)
+          } catch (errorError) {
+            console.warn('Error reporting SSE init error:', errorError)
+          }
         }
       },
       cancel: () => {
+        heartbeatActive = false
+        controllerClosed = true
+        if (heartbeat) clearInterval(heartbeat)
         if (unsubscribe) {
           unsubscribe()
         }

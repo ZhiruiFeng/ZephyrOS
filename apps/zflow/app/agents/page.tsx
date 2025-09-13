@@ -19,6 +19,8 @@ export default function AgentsPage() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [availableAgents, setAvailableAgents] = useState<Agent[]>([])
   const [eventSource, setEventSource] = useState<EventSource | null>(null)
+  const [streamEndedNormally, setStreamEndedNormally] = useState(false)
+  const [lastUserId, setLastUserId] = useState<string | null>(null)
 
   // Load available agents
   useEffect(() => {
@@ -37,12 +39,22 @@ export default function AgentsPage() {
     loadAgents()
   }, [])
 
-  // Create new session when component mounts or agent changes
+  // Create new session when component mounts or agent changes  
   useEffect(() => {
     const createSession = async () => {
-      if (!user) return
+      if (!user) {
+        setLastUserId(null)
+        return
+      }
+
+      // Only create new session if user actually changed, not just auth state refresh
+      if (lastUserId === user.id && sessionId) {
+        console.log('User ID unchanged, keeping existing session:', sessionId)
+        return
+      }
 
       try {
+        console.log('Creating new session for user:', user.id, 'agent:', selectedAgent)
         const response = await fetch('/api/agents/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -54,8 +66,11 @@ export default function AgentsPage() {
 
         if (response.ok) {
           const data = await response.json()
+          console.log('New session created:', data.sessionId)
           setSessionId(data.sessionId)
           setMessages([])
+          setStreamEndedNormally(false) // Reset for new session
+          setLastUserId(user.id)
         }
       } catch (error) {
         console.error('Error creating session:', error)
@@ -63,7 +78,7 @@ export default function AgentsPage() {
     }
 
     createSession()
-  }, [user, selectedAgent])
+  }, [user, selectedAgent, lastUserId, sessionId])
 
   // Set up SSE connection when session is created
   useEffect(() => {
@@ -71,10 +86,25 @@ export default function AgentsPage() {
 
     // Add a small delay to ensure session is fully created
     const timer = setTimeout(() => {
-      const connectSSE = () => {
+      const connectSSE = async () => {
         // Close existing connection
         if (eventSource) {
           eventSource.close()
+        }
+
+        // Reset stream end flag for new connection
+        setStreamEndedNormally(false)
+
+        // Verify session exists before attempting SSE connection
+        try {
+          const sessionResponse = await fetch(`/api/agents/sessions?sessionId=${sessionId}`)
+          if (!sessionResponse.ok) {
+            console.error('Session not found, cannot establish SSE connection')
+            return
+          }
+        } catch (error) {
+          console.error('Failed to verify session existence:', error)
+          return
         }
 
         try {
@@ -82,6 +112,7 @@ export default function AgentsPage() {
           
           newEventSource.onopen = () => {
             console.log('SSE connection opened for session:', sessionId)
+            connectionSucceeded = true
           }
 
       newEventSource.onmessage = (event) => {
@@ -152,6 +183,7 @@ export default function AgentsPage() {
               
             case 'end':
               setIsStreaming(false)
+              setStreamEndedNormally(true)
               setMessages(prev => 
                 prev.map(msg => 
                   msg.id === data.messageId 
@@ -187,18 +219,47 @@ export default function AgentsPage() {
         }
       }
 
-          newEventSource.onerror = (error) => {
-            console.error('SSE connection error for session:', sessionId, error)
+          // Track connection attempts to avoid excessive error logging
+          let connectionAttempted = false
+          let connectionSucceeded = false
+          
+          newEventSource.onerror = () => {
             setIsStreaming(false)
             
-            // Check if session still exists before reconnecting
-            if (newEventSource.readyState === EventSource.CLOSED) {
-              console.log('SSE connection closed, attempting reconnect...')
-              setTimeout(() => {
-                if (sessionId && user) {
-                  connectSSE()
-                }
-              }, 3000)
+            const readyState = newEventSource.readyState
+            const readyStateText = readyState === 0 ? 'CONNECTING' : readyState === 1 ? 'OPEN' : 'CLOSED'
+            
+            // Only treat as error if stream didn't end normally
+            if (!streamEndedNormally) {
+              // If connection succeeded before, this might be a normal closure
+              if (connectionSucceeded && readyState === EventSource.CLOSED) {
+                console.log('SSE connection closed after successful operation')
+                return
+              }
+              
+              // Log establishment errors only once to avoid spam
+              if (readyState === EventSource.CONNECTING && !connectionAttempted) {
+                console.warn(`SSE connection error during establishment for session: ${sessionId}`, {
+                  readyState: readyStateText,
+                  timestamp: new Date().toISOString()
+                })
+                connectionAttempted = true
+                // Don't treat establishment errors as fatal - connection might still succeed
+                return
+              } else if (readyState === EventSource.CLOSED && connectionSucceeded) {
+                console.log('SSE connection closed unexpectedly, attempting reconnect...')
+                setTimeout(async () => {
+                  if (sessionId && user && !streamEndedNormally) {
+                    await connectSSE()
+                  }
+                }, 3000)
+              }
+            } else {
+              // Stream ended normally, just close the connection
+              console.log('SSE connection closed after stream ended normally')
+              if (readyState !== EventSource.CLOSED) {
+                newEventSource.close()
+              }
             }
           }
 
@@ -209,7 +270,9 @@ export default function AgentsPage() {
         }
       }
 
-      connectSSE()
+      connectSSE().catch(error => {
+        console.error('Failed to establish initial SSE connection:', error)
+      })
     }, 500) // 500ms delay
 
     // Cleanup on unmount or session change
@@ -224,6 +287,9 @@ export default function AgentsPage() {
   // Send message handler
   const handleSendMessage = async (message: string) => {
     if (!sessionId || !user) return
+
+    // Reset stream end flag for new message
+    setStreamEndedNormally(false)
 
     // Add user message to UI immediately
     const userMessage: Message = {

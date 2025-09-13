@@ -67,6 +67,15 @@ export class SessionManager {
     }
 
     await this.saveSession(session)
+    
+    // Add session to user's session set for efficient retrieval
+    try {
+      await this.redis.zadd(`user_sessions:${userId}`, now.getTime(), sessionId)
+      await this.redis.expire(`user_sessions:${userId}`, this.SESSION_TTL)
+    } catch (error) {
+      console.warn('Failed to add session to user set:', error)
+    }
+    
     return session
   }
 
@@ -110,6 +119,10 @@ export class SessionManager {
         this.SESSION_TTL,
         JSON.stringify(session)
       )
+      
+      // Update session score in user's session set (for sorting by updatedAt)
+      await this.redis.zadd(`user_sessions:${session.userId}`, session.updatedAt.getTime(), session.id)
+      await this.redis.expire(`user_sessions:${session.userId}`, this.SESSION_TTL)
     } catch (error) {
       console.error('Error saving session:', error)
       throw error
@@ -164,31 +177,50 @@ export class SessionManager {
     }
 
     try {
-      // Get all session keys for the user
-      const keys = await this.redis.keys(`session:*`)
+      // Get session IDs from user's sorted set (ordered by updatedAt desc)
+      const sessionIds = await this.redis.zrevrange(`user_sessions:${userId}`, 0, limit - 1)
+      
+      if (sessionIds.length === 0) {
+        return []
+      }
+
+      // Get all sessions in a single pipeline operation
+      const pipeline = this.redis.pipeline()
+      sessionIds.forEach((sessionId: string) => {
+        pipeline.get(`session:${sessionId}`)
+      })
+      
+      const results = await pipeline.exec()
       const sessions: ChatSession[] = []
 
-      for (const key of keys) {
-        const sessionData = await this.redis.get(key)
-        if (sessionData) {
-          try {
-            const session = JSON.parse(sessionData) as ChatSession
-            if (session.userId === userId) {
+      if (results) {
+        for (let i = 0; i < results.length; i++) {
+          const [error, sessionData] = results[i]
+          if (!error && sessionData) {
+            try {
+              const session = JSON.parse(sessionData as string) as ChatSession
               // Convert date strings back to Date objects
               session.createdAt = new Date(session.createdAt)
               session.updatedAt = new Date(session.updatedAt)
+              session.messages = session.messages.map(msg => ({
+                ...msg,
+                timestamp: new Date(msg.timestamp)
+              }))
               sessions.push(session)
+            } catch (parseError) {
+              console.warn(`Failed to parse session data for session ${sessionIds[i]}:`, parseError)
+              // Remove invalid session from user set
+              await this.redis.zrem(`user_sessions:${userId}`, sessionIds[i])
             }
-          } catch (parseError) {
-            console.warn(`Failed to parse session data for key ${key}`)
+          } else if (error) {
+            console.warn(`Failed to get session ${sessionIds[i]}:`, error)
+            // Remove missing session from user set
+            await this.redis.zrem(`user_sessions:${userId}`, sessionIds[i])
           }
         }
       }
 
-      // Sort by updatedAt descending and limit
       return sessions
-        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-        .slice(0, limit)
     } catch (error) {
       console.error('Error getting user sessions:', error)
       return []
@@ -202,7 +234,16 @@ export class SessionManager {
     }
 
     try {
+      // Get session to find userId before deleting
+      const session = await this.getSession(sessionId)
+      
+      // Delete the session
       await this.redis.del(`session:${sessionId}`)
+      
+      // Remove from user's session set if we found the session
+      if (session) {
+        await this.redis.zrem(`user_sessions:${session.userId}`, sessionId)
+      }
     } catch (error) {
       console.error('Error deleting session:', error)
       throw error
