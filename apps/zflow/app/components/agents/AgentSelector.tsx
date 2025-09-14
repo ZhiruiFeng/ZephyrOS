@@ -76,7 +76,7 @@ export function AgentSelector({
       <button
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl hover:bg-white hover:shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 ${
+        className={`flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl hover:bg-white hover:shadow-md focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 transition-all duration-200 ${
           disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
@@ -108,7 +108,7 @@ export function AgentSelector({
                   <div className="flex items-center space-x-2">
                     <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(agent.status)}`} />
                     {selectedAgent === agent.id && (
-                      <Check size={14} className="text-blue-500" />
+                      <Check size={14} className="text-primary-600" />
                     )}
                   </div>
                 </div>

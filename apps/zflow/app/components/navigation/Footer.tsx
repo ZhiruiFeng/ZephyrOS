@@ -10,13 +10,24 @@ export default function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-white/90 backdrop-blur-sm border-t border-gray-200 mt-auto mb-14 sm:mb-0">
+    <footer className="relative overflow-hidden bg-gradient-to-t from-primary-50/60 to-white/90 dark:from-primary-900/15 dark:to-black/40 backdrop-blur-sm border-t border-primary-100 dark:border-primary-800 mt-auto mb-14 sm:mb-0">
+      {/* Subtle top glow for cohesion with themed UI */}
+      <div aria-hidden className="pointer-events-none absolute -inset-x-24 -top-24 h-56 blur-3xl opacity-30 dark:opacity-25">
+        <div
+          className="h-full w-full"
+          style={{
+            background:
+              'radial-gradient(500px circle at 15% 0%, rgba(56,189,248,0.55) 0%, transparent 60%),\n' +
+              'radial-gradient(600px circle at 85% -10%, rgba(2,132,199,0.45) 0%, transparent 65%)'
+          }}
+        />
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Mobile Layout - Simplified */}
         <div className="block sm:hidden">
           <div className="text-center space-y-4">
             <Link href="/zephyros" className="inline-flex items-center gap-2">
-              <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-sm">
                 <Zap className="w-3 h-3 text-white" />
               </div>
               <span className="text-sm font-semibold text-gray-900">ZephyrOS</span>
@@ -39,7 +50,7 @@ export default function Footer() {
             {/* ZephyrOS Brand Section */}
             <div className="md:col-span-2">
               <Link href="/zephyros" className="inline-flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-sm">
                   <Zap className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-lg font-semibold text-gray-900">ZephyrOS</span>
@@ -49,7 +60,7 @@ export default function Footer() {
               </p>
               <Link 
                 href="/zephyros"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all text-sm font-medium shadow-sm"
               >
                 <Zap className="w-4 h-4" />
                 {t.footer?.learnMore || '了解我们的理念'}
@@ -75,11 +86,6 @@ export default function Footer() {
                 <li>
                   <Link href="/timeline" className="text-gray-600 hover:text-primary-600 transition-colors text-sm">
                     {t.ui?.timelineView || '时间线'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/speech" className="text-gray-600 hover:text-primary-600 transition-colors text-sm">
-                    {t.nav?.speech || '语音输入'}
                   </Link>
                 </li>
               </ul>
@@ -111,7 +117,7 @@ export default function Footer() {
           </div>
 
           {/* Bottom Section - Desktop Only */}
-          <div className="mt-8 pt-8 border-t border-gray-200">
+          <div className="mt-8 pt-8 border-t border-primary-100 dark:border-primary-800">
             <div className="flex flex-col sm:flex-row justify-between items-center">
               <div className="flex items-center gap-2 text-gray-600 text-sm mb-4 sm:mb-0">
                 <span>© {currentYear} ZephyrOS.</span>
@@ -124,14 +130,14 @@ export default function Footer() {
               <div className="flex items-center gap-4">
                 <a 
                   href="#" 
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-primary-600 transition-colors"
                   aria-label="GitHub"
                 >
                   <Github className="w-5 h-5" />
                 </a>
                 <a 
                   href="#" 
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-primary-600 transition-colors"
                   aria-label="Twitter"
                 >
                   <Twitter className="w-5 h-5" />

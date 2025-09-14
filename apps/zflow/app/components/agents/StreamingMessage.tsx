@@ -72,7 +72,7 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
       <div className={`max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`}>
         <div className={`rounded-2xl px-5 py-4 shadow-sm ${
           isUser 
-            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+            ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white' 
             : 'bg-white border border-gray-200/50 text-gray-900 shadow-md'
         }`}>
           {/* Agent header */}
@@ -84,9 +84,9 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
               </div>
               {isStreaming && (
                 <div className="flex items-center space-x-1">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               )}
             </div>
@@ -96,7 +96,7 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
           <div className="whitespace-pre-wrap break-words leading-relaxed">
             {displayedContent}
             {isStreaming && isAgent && currentIndex < message.content.length && (
-              <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
+              <span className="inline-block w-2 h-5 bg-primary-500 ml-1 animate-pulse"></span>
             )}
           </div>
 

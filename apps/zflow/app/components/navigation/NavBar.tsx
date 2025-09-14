@@ -51,11 +51,7 @@ export default function NavBar() {
                   <Bot className="w-4 h-4" /> Agents
                 </span>
               </NavLink>
-              <NavLink href="/speech">
-                <span className="inline-flex items-center gap-1">
-                  <Mic className="w-4 h-4" /> {t.nav.speech}
-                </span>
-              </NavLink>
+              {/* Speech nav removed per request */}
             </div>
           </div>
 
@@ -71,5 +67,4 @@ export default function NavBar() {
     </nav>
   )
 }
-
 

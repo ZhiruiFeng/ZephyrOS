@@ -76,6 +76,7 @@ module.exports = {
         'season-fade': 'fadeIn 0.5s ease-in-out',
         'episode-slide': 'slideUp 0.3s ease-out',
         'mood-bounce': 'bounce 0.3s ease-in-out',
+        'glow-drift': 'glowDrift 16s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -85,6 +86,11 @@ module.exports = {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        glowDrift: {
+          '0%': { transform: 'translate3d(0, 0, 0) scale(1)' },
+          '50%': { transform: 'translate3d(10px, -8px, 0) scale(1.02)' },
+          '100%': { transform: 'translate3d(0, 0, 0) scale(1)' },
         },
       },
       backgroundImage: {

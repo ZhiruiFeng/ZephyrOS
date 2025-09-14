@@ -179,11 +179,11 @@ export default function AgentChatWindow({
         </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gradient-to-b from-gray-50 to-white">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gradient-to-b from-white to-primary-50/60">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="relative mb-6 sm:mb-8">
-              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
                 <div className="text-2xl sm:text-4xl">🤖</div>
               </div>
               <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-4 h-4 sm:w-6 sm:h-6 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
@@ -191,10 +191,10 @@ export default function AgentChatWindow({
             <h3 className="text-lg sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">{t.agents.startConversation}</h3>
             <p className="text-gray-600 mb-4 sm:mb-6 max-w-md text-sm sm:text-base">{t.agents.askAnything}</p>
             <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
-              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm">{t.agents.taskManagement}</span>
-              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm">{t.agents.projectPlanning}</span>
-              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-green-100 text-green-700 rounded-full text-xs sm:text-sm">{t.agents.memorySearch}</span>
-              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-orange-100 text-orange-700 rounded-full text-xs sm:text-sm">{t.agents.creativeIdeas}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-primary-100 text-primary-700 rounded-full text-xs sm:text-sm">{t.agents.taskManagement}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-100 text-slate-700 rounded-full text-xs sm:text-sm">{t.agents.projectPlanning}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-100 text-emerald-700 rounded-full text-xs sm:text-sm">{t.agents.memorySearch}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-amber-100 text-amber-700 rounded-full text-xs sm:text-sm">{t.agents.creativeIdeas}</span>
             </div>
           </div>
         ) : (
@@ -206,20 +206,20 @@ export default function AgentChatWindow({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 sm:p-6 border-t border-gray-200/50 bg-white/80 backdrop-blur-sm rounded-b-lg">
+      <div className="p-4 sm:p-6 border-t border-primary-100/60 bg-white/80 backdrop-blur-sm rounded-b-lg">
         {isStreaming && (
-          <div className="flex items-center justify-between mb-3 sm:mb-4 p-2 sm:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl border border-blue-200/50 shadow-sm">
-            <div className="flex items-center space-x-2 sm:space-x-3 text-blue-700 min-w-0 flex-1">
+          <div className="flex items-center justify-between mb-3 sm:mb-4 p-2 sm:p-3 bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg sm:rounded-xl border border-primary-200/60 shadow-sm">
+            <div className="flex items-center space-x-2 sm:space-x-3 text-primary-700 min-w-0 flex-1">
               <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary-500 rounded-full animate-bounce"></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
               <span className="text-xs sm:text-sm font-medium truncate">{currentAgent?.name || 'Agent'} {t.agents.thinking}</span>
             </div>
             <button
               onClick={onCancelStream}
-              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-blue-700 hover:text-blue-800 hover:bg-blue-100/50 rounded-md sm:rounded-lg transition-colors flex-shrink-0"
+              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-primary-700 hover:text-primary-800 hover:bg-primary-100/50 rounded-md sm:rounded-lg transition-colors flex-shrink-0"
             >
               <StopCircle size={14} />
               <span className="hidden sm:inline">{t.agents.cancel}</span>
@@ -236,7 +236,7 @@ export default function AgentChatWindow({
               onKeyDown={handleKeyDown}
               placeholder={t.agents.askAnythingSimple}
               disabled={isStreaming}
-              className="w-full resize-none rounded-xl sm:rounded-2xl border border-gray-200 px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-16 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[52px] max-h-32 overflow-y-auto shadow-sm transition-all duration-200 text-sm sm:text-base"
+              className="w-full resize-none rounded-xl sm:rounded-2xl border border-gray-200 px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-16 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 disabled:bg-gray-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[52px] max-h-32 overflow-y-auto shadow-sm transition-all duration-200 text-sm sm:text-base"
               rows={1}
             />
             <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 flex space-x-1 sm:space-x-2">
@@ -258,7 +258,7 @@ export default function AgentChatWindow({
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || isStreaming}
-            className="p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl sm:rounded-2xl hover:from-blue-600 hover:to-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none flex-shrink-0"
+            className="p-3 sm:p-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl sm:rounded-2xl hover:from-primary-700 hover:to-primary-800 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none flex-shrink-0"
           >
             <Send size={18} />
           </button>

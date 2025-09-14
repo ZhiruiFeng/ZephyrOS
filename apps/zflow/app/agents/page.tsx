@@ -553,20 +553,31 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      {/* Subtle top glow for cohesive theming */}
+      <div aria-hidden className="pointer-events-none absolute -inset-x-24 -top-24 h-56 blur-3xl opacity-25 dark:opacity-20 animate-glow-drift">
+        <div
+          className="h-full w-full"
+          style={{
+            background:
+              'radial-gradient(520px circle at 15% 0%, rgba(56,189,248,0.55) 0%, transparent 60%),\n' +
+              'radial-gradient(640px circle at 85% -10%, rgba(2,132,199,0.40) 0%, transparent 65%)'
+          }}
+        />
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 sm:space-x-4">
               <div className="relative">
-                <div className="inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-xl sm:rounded-2xl shadow-lg">
+                <div className="inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl sm:rounded-2xl shadow-lg">
                   <Bot className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent truncate">
+                <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-300 dark:to-primary-400 bg-clip-text text-transparent truncate">
                   {t.agents.chatTitle}
                 </h1>
                 <p className="text-gray-600 mt-1 text-sm sm:text-base hidden sm:block">
@@ -577,12 +588,12 @@ export default function AgentsPage() {
             
             <div className="flex space-x-2 sm:space-x-3">
               {/* Interface Mode Toggle */}
-              <div className="inline-flex items-center bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg sm:rounded-xl p-1">
+              <div className="inline-flex items-center bg-white/80 backdrop-blur-sm border border-primary-100 rounded-lg sm:rounded-xl p-1">
                 <button
                   onClick={() => setInterfaceMode('text')}
                   className={`inline-flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
                     interfaceMode === 'text'
-                      ? 'bg-blue-600 text-white shadow-md'
+                      ? 'bg-primary-600 text-white shadow-md'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
@@ -593,7 +604,7 @@ export default function AgentsPage() {
                   onClick={() => setInterfaceMode('voice')}
                   className={`inline-flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
                     interfaceMode === 'voice'
-                      ? 'bg-blue-600 text-white shadow-md'
+                      ? 'bg-primary-600 text-white shadow-md'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
