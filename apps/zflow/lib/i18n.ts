@@ -533,6 +533,37 @@ export interface TranslationKeys {
     deleteAgentDescription: string;
     deleteInteractionTitle: string;
     deleteInteractionDescription: string;
+    // Chat interface
+    chatTitle: string;
+    chatSubtitle: string;
+    history: string;
+    newChat: string;
+    startConversation: string;
+    askAnything: string;
+    askAnythingSimple: string;
+    taskManagement: string;
+    projectPlanning: string;
+    memorySearch: string;
+    creativeIdeas: string;
+    thinking: string;
+    cancel: string;
+    sendMessage: string;
+    pressEnterToSend: string;
+    shiftEnterForNewLine: string;
+    session: string;
+    aiDisclaimer: string;
+    conversationHistory: string;
+    recent: string;
+    archived: string;
+    searchConversations: string;
+    newConversation: string;
+    noConversationsYet: string;
+    startNewConversation: string;
+    today: string;
+    yesterday: string;
+    thisWeek: string;
+    thisMonth: string;
+    older: string;
   };
 }
 
@@ -1009,6 +1040,37 @@ const translations: Record<Language, TranslationKeys> = {
       deleteAgentDescription: 'Are you sure you want to delete this agent? This action cannot be undone.',
       deleteInteractionTitle: 'Delete Interaction',
       deleteInteractionDescription: 'Are you sure you want to delete this interaction? This action cannot be undone.',
+      // Chat interface
+      chatTitle: 'AI Agents',
+      chatSubtitle: 'Chat with intelligent assistants to help manage your tasks and productivity',
+      history: 'History',
+      newChat: 'New Chat',
+      startConversation: 'Start a conversation',
+      askAnything: 'Ask me about your tasks, projects, or anything else!',
+      askAnythingSimple: 'Ask me anything!',
+      taskManagement: 'Task Management',
+      projectPlanning: 'Project Planning',
+      memorySearch: 'Memory Search',
+      creativeIdeas: 'Creative Ideas',
+      thinking: 'is thinking...',
+      cancel: 'Cancel',
+      sendMessage: 'Send',
+      pressEnterToSend: 'Press Enter to send',
+      shiftEnterForNewLine: 'Shift+Enter for new line',
+      session: 'Session',
+      aiDisclaimer: 'AI responses are generated and may contain inaccuracies. Use with discretion.',
+      conversationHistory: 'Conversations',
+      recent: 'Recent',
+      archived: 'Archived',
+      searchConversations: 'Search conversations...',
+      newConversation: 'New Conversation',
+      noConversationsYet: 'No conversations yet',
+      startNewConversation: 'Start a new conversation to see it here',
+      today: 'Today',
+      yesterday: 'Yesterday',
+      thisWeek: 'This Week',
+      thisMonth: 'This Month',
+      older: 'Older',
     },
     footer: {
       zephyrDescription: 'A modern, intelligent operating system designed for the future of personal computing.',
@@ -1493,6 +1555,37 @@ const translations: Record<Language, TranslationKeys> = {
       deleteAgentDescription: '确定要删除这个代理吗？这个操作无法撤销。',
       deleteInteractionTitle: '删除交互',
       deleteInteractionDescription: '确定要删除这个交互记录吗？这个操作无法撤销。',
+      // Chat interface
+      chatTitle: 'AI 智能助手',
+      chatSubtitle: '与智能助手对话，帮助您管理任务和提高生产力',
+      history: '历史记录',
+      newChat: '新建对话',
+      startConversation: '开始对话',
+      askAnything: '询问我关于您的任务、项目或任何其他问题！',
+      askAnythingSimple: '问我任何问题！',
+      taskManagement: '任务管理',
+      projectPlanning: '项目规划',
+      memorySearch: '记忆搜索',
+      creativeIdeas: '创意想法',
+      thinking: '正在思考...',
+      cancel: '取消',
+      sendMessage: '发送',
+      pressEnterToSend: '按 Enter 发送',
+      shiftEnterForNewLine: 'Shift+Enter 换行',
+      session: '会话',
+      aiDisclaimer: 'AI 回复由人工智能生成，可能包含不准确信息，请谨慎使用',
+      conversationHistory: '对话历史',
+      recent: '最近',
+      archived: '已归档',
+      searchConversations: '搜索对话...',
+      newConversation: '新建对话',
+      noConversationsYet: '暂无对话',
+      startNewConversation: '开始新对话以在此处查看',
+      today: '今天',
+      yesterday: '昨天',
+      thisWeek: '本周',
+      thisMonth: '本月',
+      older: '更早',
     },
     footer: {
       zephyrDescription: '面向未来的现代智能操作系统，让您的个人计算体验更加高效。',

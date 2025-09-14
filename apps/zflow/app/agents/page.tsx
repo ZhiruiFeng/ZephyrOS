@@ -551,46 +551,49 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full">
-                <Bot className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="relative">
+                <div className="inline-flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-xl sm:rounded-2xl shadow-lg">
+                  <Bot className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  AI Agents
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent truncate">
+                  {t.agents.chatTitle}
                 </h1>
-                <p className="text-gray-600">
-                  Chat with intelligent assistants to help manage your tasks and productivity
+                <p className="text-gray-600 mt-1 text-sm sm:text-base hidden sm:block">
+                  {t.agents.chatSubtitle}
                 </p>
               </div>
             </div>
             
-            <div className="hidden sm:flex space-x-3">
+            <div className="flex space-x-2 sm:space-x-3">
               <button 
                 onClick={() => setSidebarOpen(true)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-3 py-2 sm:px-5 sm:py-2.5 border border-gray-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-gray-700 bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-md transition-all duration-200"
               >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                History
+                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t.agents.history}</span>
               </button>
               <button 
                 onClick={() => sessionManager.createNewSession()}
-                className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-700"
+                className="inline-flex items-center px-3 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 border border-transparent rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-white hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                New Chat
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t.agents.newChat}</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Chat Interface */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
           <AgentChatWindow
             sessionId={sessionManager.currentSessionId}
             messages={sessionManager.currentMessages}
@@ -614,8 +617,10 @@ export default function AgentsPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-4 text-center text-sm text-gray-500">
-          <p>AI responses are generated and may contain inaccuracies. Use with discretion.</p>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-500 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-2 inline-block">
+            {t.agents.aiDisclaimer}
+          </p>
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
   if (message.type === 'system') {
     return (
       <div className="flex justify-center">
-        <div className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">
+        <div className="px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 text-sm rounded-xl shadow-sm">
           {message.content}
         </div>
       </div>
@@ -68,35 +68,41 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
   const isAgent = message.type === 'agent'
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`max-w-[80%] ${isUser ? 'order-2' : 'order-1'}`}>
-        <div className={`rounded-lg px-4 py-3 ${
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
+      <div className={`max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`}>
+        <div className={`rounded-2xl px-5 py-4 shadow-sm ${
           isUser 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-white border border-gray-200 text-gray-900'
+            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+            : 'bg-white border border-gray-200/50 text-gray-900 shadow-md'
         }`}>
           {/* Agent header */}
           {isAgent && (
-            <div className="flex items-center space-x-2 mb-2 text-sm text-gray-600">
-              <span className="text-base">{getAgentIcon(message.agent)}</span>
-              <span className="font-medium capitalize">{message.agent || 'Agent'}</span>
+            <div className="flex items-center space-x-3 mb-3 text-sm">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">{getAgentIcon(message.agent)}</span>
+                <span className="font-semibold text-gray-700 capitalize">{message.agent || 'Agent'}</span>
+              </div>
               {isStreaming && (
-                <Loader size={14} className="animate-spin text-blue-500" />
+                <div className="flex items-center space-x-1">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
               )}
             </div>
           )}
 
           {/* Message content */}
-          <div className="whitespace-pre-wrap break-words">
+          <div className="whitespace-pre-wrap break-words leading-relaxed">
             {displayedContent}
             {isStreaming && isAgent && currentIndex < message.content.length && (
-              <span className="animate-pulse">▋</span>
+              <span className="inline-block w-2 h-5 bg-blue-500 ml-1 animate-pulse"></span>
             )}
           </div>
 
           {/* Tool calls */}
           {message.toolCalls && message.toolCalls.length > 0 && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-4 space-y-3">
               {message.toolCalls.map((toolCall) => (
                 <ToolCallDisplay key={toolCall.id} toolCall={toolCall} />
               ))}
@@ -105,10 +111,10 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
         </div>
 
         {/* Timestamp */}
-        <div className={`text-xs text-gray-500 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
+        <div className={`text-xs text-gray-500 mt-2 ${isUser ? 'text-right' : 'text-left'}`}>
           {formatTimestamp(message.timestamp)}
           {isAgent && message.agent && (
-            <span className="ml-2">via {message.agent}</span>
+            <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded-md">via {message.agent}</span>
           )}
         </div>
       </div>

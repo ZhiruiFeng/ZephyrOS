@@ -7,6 +7,7 @@ import { AgentSelector } from './AgentSelector'
 import { ConversationHistory } from './ConversationHistory'
 import { ConversationHistorySidebar } from './ConversationHistorySidebar'
 import { ConversationSummary } from '../../lib/conversation-history/types'
+import { useTranslation } from '../../../contexts/LanguageContext'
 
 export interface Message {
   id: string
@@ -64,6 +65,7 @@ export default function AgentChatWindow({
   onSidebarToggle,
   refreshHistoryRef,
 }: AgentChatWindowProps) {
+  const { t } = useTranslation()
   const [inputMessage, setInputMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [internalSidebarOpen, setInternalSidebarOpen] = useState(false)
@@ -133,49 +135,63 @@ export default function AgentChatWindow({
       />
 
       {/* Main Chat Area */}
-      <div className={`flex flex-col h-full max-h-[calc(100vh-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-300 ${
-        sidebarOpen ? 'ml-80' : 'ml-0'
+      <div className={`flex flex-col h-full bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-300 ${
+        sidebarOpen ? 'ml-72 sm:ml-80' : 'ml-0'
       } flex-1`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50 rounded-t-lg">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
             {/* History Toggle Button */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-2 sm:p-2.5 text-gray-600 hover:text-gray-800 rounded-lg sm:rounded-xl hover:bg-white/80 transition-all duration-200 shadow-sm hover:shadow-md flex-shrink-0"
               title="Toggle conversation history"
             >
-              {sidebarOpen ? <Menu size={20} /> : <History size={20} />}
+              {sidebarOpen ? <Menu size={18} /> : <History size={18} />}
             </button>
             
-            <AgentSelector
-              selectedAgent={selectedAgent}
-              availableAgents={availableAgents}
-              onAgentChange={onAgentChange}
-              disabled={isStreaming}
-            />
+            <div className="min-w-0 flex-1">
+              <AgentSelector
+                selectedAgent={selectedAgent}
+                availableAgents={availableAgents}
+                onAgentChange={onAgentChange}
+                disabled={isStreaming}
+              />
+            </div>
+            
             {currentAgent && (
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  currentAgent.status === 'online' ? 'bg-green-500' :
-                  currentAgent.status === 'busy' ? 'bg-yellow-500' : 'bg-gray-400'
+              <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-white/60 rounded-lg border border-gray-200/50 flex-shrink-0">
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  currentAgent.status === 'online' ? 'bg-emerald-500' :
+                  currentAgent.status === 'busy' ? 'bg-amber-500' : 'bg-gray-400'
                 }`} />
-                <span className="text-sm text-gray-600">{currentAgent.description}</span>
+                <span className="text-sm text-gray-700 font-medium truncate max-w-32">{currentAgent.description}</span>
               </div>
             )}
           </div>
-          <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
-            <Settings size={20} />
+          <button className="p-2 sm:p-2.5 text-gray-600 hover:text-gray-800 rounded-lg sm:rounded-xl hover:bg-white/80 transition-all duration-200 shadow-sm hover:shadow-md flex-shrink-0">
+            <Settings size={18} />
           </button>
         </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gradient-to-b from-gray-50 to-white">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-            <div className="text-6xl mb-4">🤖</div>
-            <h3 className="text-lg font-medium mb-2">Start a conversation</h3>
-            <p className="text-sm">Ask me about your tasks, projects, or anything else!</p>
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="relative mb-6 sm:mb-8">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                <div className="text-2xl sm:text-4xl">🤖</div>
+              </div>
+              <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-4 h-4 sm:w-6 sm:h-6 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
+            </div>
+            <h3 className="text-lg sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">{t.agents.startConversation}</h3>
+            <p className="text-gray-600 mb-4 sm:mb-6 max-w-md text-sm sm:text-base">{t.agents.askAnything}</p>
+            <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm">{t.agents.taskManagement}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm">{t.agents.projectPlanning}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-green-100 text-green-700 rounded-full text-xs sm:text-sm">{t.agents.memorySearch}</span>
+              <span className="px-3 py-1.5 sm:px-4 sm:py-2 bg-orange-100 text-orange-700 rounded-full text-xs sm:text-sm">{t.agents.creativeIdeas}</span>
+            </div>
           </div>
         ) : (
           <>
@@ -186,41 +202,45 @@ export default function AgentChatWindow({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
+      <div className="p-4 sm:p-6 border-t border-gray-200/50 bg-white/80 backdrop-blur-sm rounded-b-lg">
         {isStreaming && (
-          <div className="flex items-center justify-between mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-2 text-blue-700">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">{currentAgent?.name || 'Agent'} is thinking...</span>
+          <div className="flex items-center justify-between mb-3 sm:mb-4 p-2 sm:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl border border-blue-200/50 shadow-sm">
+            <div className="flex items-center space-x-2 sm:space-x-3 text-blue-700 min-w-0 flex-1">
+              <div className="flex space-x-1">
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+              <span className="text-xs sm:text-sm font-medium truncate">{currentAgent?.name || 'Agent'} {t.agents.thinking}</span>
             </div>
             <button
               onClick={onCancelStream}
-              className="flex items-center space-x-1 px-3 py-1 text-sm text-blue-700 hover:text-blue-800 hover:bg-blue-100 rounded-lg"
+              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-blue-700 hover:text-blue-800 hover:bg-blue-100/50 rounded-md sm:rounded-lg transition-colors flex-shrink-0"
             >
-              <StopCircle size={16} />
-              <span>Cancel</span>
+              <StopCircle size={14} />
+              <span className="hidden sm:inline">{t.agents.cancel}</span>
             </button>
           </div>
         )}
 
-        <div className="flex items-end space-x-3">
+        <div className="flex items-end space-x-2 sm:space-x-4">
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your tasks, projects, or memories..."
+              placeholder={t.agents.askAnythingSimple}
               disabled={isStreaming}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-3 pr-12 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed min-h-[44px] max-h-32 overflow-y-auto"
+              className="w-full resize-none rounded-xl sm:rounded-2xl border border-gray-200 px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-16 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[52px] max-h-32 overflow-y-auto shadow-sm transition-all duration-200 text-sm sm:text-base"
               rows={1}
             />
-            <div className="absolute bottom-2 right-2 flex space-x-1">
-              <button className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+            <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 flex space-x-1 sm:space-x-2">
+              <button className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-100 transition-colors">
                 <Paperclip size={16} />
               </button>
               <button 
-                className={`p-1.5 rounded-lg ${
+                className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors ${
                   isRecording 
                     ? 'text-red-500 bg-red-50 hover:bg-red-100' 
                     : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
@@ -234,16 +254,17 @@ export default function AgentChatWindow({
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || isStreaming}
-            className="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl sm:rounded-2xl hover:from-blue-600 hover:to-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none flex-shrink-0"
           >
-            <Send size={20} />
+            <Send size={18} />
           </button>
         </div>
         
-        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-          <span>Press Enter to send, Shift+Enter for new line</span>
+        <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs text-gray-500">
+          <span className="hidden sm:inline">{t.agents.pressEnterToSend}，{t.agents.shiftEnterForNewLine}</span>
+          <span className="sm:hidden">Enter to send</span>
           {sessionId && (
-            <span>Session: {sessionId.slice(-8)}</span>
+            <span className="px-2 py-1 bg-gray-100 rounded-md text-xs">{t.agents.session}: {sessionId.slice(-8)}</span>
           )}
         </div>
       </div>

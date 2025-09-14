@@ -6,6 +6,7 @@ import { useConversationHistory, useConversationSearch } from '../../lib/convers
 import { ConversationSummary } from '../../lib/conversation-history/types'
 import { ConversationListItem } from './ConversationListItem'
 import { ConversationSearch } from './ConversationSearch'
+import { useTranslation } from '../../../contexts/LanguageContext'
 
 interface ConversationHistorySidebarProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ export function ConversationHistorySidebar({
   onHistoryUpdate,
   className = ''
 }: ConversationHistorySidebarProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'recent' | 'archived'>('recent')
   const [searchMode, setSearchMode] = useState(false)
   
@@ -72,7 +74,7 @@ export function ConversationHistorySidebar({
   }, [] as ConversationSummary[])
 
   // Group conversations by time
-  const groupedConversations = groupConversationsByTime(uniqueConversations)
+  const groupedConversations = groupConversationsByTime(uniqueConversations, t)
 
   const handleSearchSubmit = async (query: string) => {
     if (query.trim()) {
@@ -100,67 +102,69 @@ export function ConversationHistorySidebar({
   if (!isOpen) return null
 
   return (
-    <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out ${className}`}>
+    <div className={`absolute inset-y-0 left-0 z-50 w-72 sm:w-80 bg-white/95 backdrop-blur-sm border-r border-gray-200/50 shadow-xl transform transition-transform duration-300 ease-in-out ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center space-x-2">
-          <MessageSquare className="w-5 h-5 text-gray-600" />
-          <h2 className="font-semibold text-gray-800">Conversations</h2>
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200/50 bg-gradient-to-r from-gray-50 to-white">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+          <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+          </div>
+          <h2 className="font-semibold text-gray-800 text-sm sm:text-base truncate">{t.agents.conversationHistory}</h2>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
           <button
             onClick={onCreateNewConversation}
-            className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
-            title="New Conversation"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-colors"
+            title={t.agents.newConversation}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
           </button>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3 h-3 sm:w-4 sm:h-4" />
           </button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="p-3 border-b border-gray-100">
+      <div className="p-3 sm:p-4 border-b border-gray-100/50">
         <ConversationSearch
           onSearch={handleSearchSubmit}
           onClear={handleSearchClear}
           loading={searchLoading}
-          placeholder="Search conversations..."
+          placeholder={t.agents.searchConversations}
         />
       </div>
 
       {/* Tabs */}
       {!searchMode && (
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-gray-100/50 bg-gray-50/50">
           <button
             onClick={() => setActiveTab('recent')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeTab === 'recent'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                ? 'text-blue-600 border-b-2 border-blue-500 bg-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
             }`}
           >
-            <div className="flex items-center justify-center space-x-1">
-              <Clock className="w-4 h-4" />
-              <span>Recent</span>
+            <div className="flex items-center justify-center space-x-1 sm:space-x-2">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>{t.agents.recent}</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab('archived')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeTab === 'archived'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                ? 'text-blue-600 border-b-2 border-blue-500 bg-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
             }`}
           >
-            <div className="flex items-center justify-center space-x-1">
-              <Archive className="w-4 h-4" />
-              <span>Archived</span>
+            <div className="flex items-center justify-center space-x-1 sm:space-x-2">
+              <Archive className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>{t.agents.archived}</span>
             </div>
           </button>
         </div>
@@ -301,14 +305,15 @@ function ConversationGroups({
   currentSessionId: string | null
   onRefresh: () => void
 }) {
-  const groupOrder = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+  const { t } = useTranslation()
+  const groupOrder = [t.agents.today, t.agents.yesterday, t.agents.thisWeek, t.agents.thisMonth, t.agents.older]
   
   if (Object.keys(groups).length === 0) {
     return (
       <div className="p-8 text-center text-gray-500">
         <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p className="text-sm mb-2">No conversations yet</p>
-        <p className="text-xs text-gray-400">Start a new conversation to see it here</p>
+        <p className="text-sm mb-2">{t.agents.noConversationsYet}</p>
+        <p className="text-xs text-gray-400">{t.agents.startNewConversation}</p>
       </div>
     )
   }
@@ -343,7 +348,7 @@ function ConversationGroups({
 }
 
 // Helper functions
-function groupConversationsByTime(conversations: ConversationSummary[]) {
+function groupConversationsByTime(conversations: ConversationSummary[], t: any) {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today)
@@ -354,26 +359,26 @@ function groupConversationsByTime(conversations: ConversationSummary[]) {
   monthAgo.setMonth(monthAgo.getMonth() - 1)
 
   const groups: { [key: string]: ConversationSummary[] } = {
-    'Today': [],
-    'Yesterday': [],
-    'This Week': [],
-    'This Month': [],
-    'Older': []
+    [t.agents.today]: [],
+    [t.agents.yesterday]: [],
+    [t.agents.thisWeek]: [],
+    [t.agents.thisMonth]: [],
+    [t.agents.older]: []
   }
 
   conversations.forEach(conv => {
     const convDate = conv.updatedAt
     
     if (convDate >= today) {
-      groups['Today'].push(conv)
+      groups[t.agents.today].push(conv)
     } else if (convDate >= yesterday) {
-      groups['Yesterday'].push(conv)
+      groups[t.agents.yesterday].push(conv)
     } else if (convDate >= weekAgo) {
-      groups['This Week'].push(conv)
+      groups[t.agents.thisWeek].push(conv)
     } else if (convDate >= monthAgo) {
-      groups['This Month'].push(conv)
+      groups[t.agents.thisMonth].push(conv)
     } else {
-      groups['Older'].push(conv)
+      groups[t.agents.older].push(conv)
     }
   })
 
