@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, StopCircle, Settings, Paperclip, Mic, History, Menu } from 'lucide-react'
+import { Send, StopCircle, Plus, Paperclip, Mic, History, Menu } from 'lucide-react'
 import { StreamingMessage } from './StreamingMessage'
 import { AgentSelector } from './AgentSelector'
 import { ConversationHistory } from './ConversationHistory'
@@ -169,8 +169,12 @@ export default function AgentChatWindow({
               </div>
             )}
           </div>
-          <button className="p-2 sm:p-2.5 text-gray-600 hover:text-gray-800 rounded-lg sm:rounded-xl hover:bg-white/80 transition-all duration-200 shadow-sm hover:shadow-md flex-shrink-0">
-            <Settings size={18} />
+          <button
+            onClick={onCreateNewConversation}
+            className="p-2 sm:p-2.5 text-gray-600 hover:text-gray-800 rounded-lg sm:rounded-xl hover:bg-white/80 transition-all duration-200 shadow-sm hover:shadow-md flex-shrink-0"
+            title="New Chat"
+          >
+            <Plus size={18} />
           </button>
         </div>
 

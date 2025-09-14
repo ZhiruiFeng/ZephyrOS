@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Bot, Plus, MessageSquare } from 'lucide-react'
+import { Bot, Plus, MessageSquare, MessageCircle, Mic } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/auth/LoginPage'
@@ -9,6 +9,7 @@ import { AgentChatWindow, Message } from '../components/agents'
 import { Agent } from '../lib/agents/types'
 import { ConversationSummary } from '../lib/conversation-history/types'
 import { useSessionManager } from '../lib/conversation-history/session-manager'
+import BatchTranscriber from '../speech/components/BatchTranscriber'
 
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -23,6 +24,7 @@ export default function AgentsPage() {
   const [lastUserId, setLastUserId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sseReady, setSseReady] = useState(false)
+  const [interfaceMode, setInterfaceMode] = useState<'text' | 'voice'>('text')
   const sseReadyRef = useRef(false)
   // Keep a live map of current messages to avoid stale-closure lookups in SSE callbacks
   const messagesMapRef = useRef<Map<string, Message>>(new Map())
@@ -574,46 +576,69 @@ export default function AgentsPage() {
             </div>
             
             <div className="flex space-x-2 sm:space-x-3">
-              <button 
-                onClick={() => setSidebarOpen(true)}
-                className="inline-flex items-center px-3 py-2 sm:px-5 sm:py-2.5 border border-gray-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-gray-700 bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-md transition-all duration-200"
-              >
-                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t.agents.history}</span>
-              </button>
-              <button 
-                onClick={() => sessionManager.createNewSession()}
-                className="inline-flex items-center px-3 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 border border-transparent rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-white hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                <Plus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t.agents.newChat}</span>
-              </button>
+              {/* Interface Mode Toggle */}
+              <div className="inline-flex items-center bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg sm:rounded-xl p-1">
+                <button
+                  onClick={() => setInterfaceMode('text')}
+                  className={`inline-flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                    interfaceMode === 'text'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Text</span>
+                </button>
+                <button
+                  onClick={() => setInterfaceMode('voice')}
+                  className={`inline-flex items-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
+                    interfaceMode === 'voice'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Mic className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Voice</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Chat Interface */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
-          <AgentChatWindow
-            sessionId={sessionManager.currentSessionId}
-            messages={sessionManager.currentMessages}
-            selectedAgent={selectedAgent}
-            isStreaming={isStreaming}
-            userId={user?.id}
-            availableAgents={availableAgents}
-            onSendMessage={handleSendMessage}
-            onCancelStream={handleCancelStream}
-            onAgentChange={handleAgentChange}
-            sidebarOpen={sidebarOpen}
-            onSidebarToggle={setSidebarOpen}
-            onSelectConversation={(conversation) => {
-              sessionManager.switchToConversation(conversation)
-            }}
-            onCreateNewConversation={() => {
-              sessionManager.createNewSession()
-            }}
-            refreshHistoryRef={refreshHistoryRef}
-          />
+          {interfaceMode === 'text' ? (
+            <AgentChatWindow
+              sessionId={sessionManager.currentSessionId}
+              messages={sessionManager.currentMessages}
+              selectedAgent={selectedAgent}
+              isStreaming={isStreaming}
+              userId={user?.id}
+              availableAgents={availableAgents}
+              onSendMessage={handleSendMessage}
+              onCancelStream={handleCancelStream}
+              onAgentChange={handleAgentChange}
+              sidebarOpen={sidebarOpen}
+              onSidebarToggle={setSidebarOpen}
+              onSelectConversation={(conversation) => {
+                sessionManager.switchToConversation(conversation)
+              }}
+              onCreateNewConversation={() => {
+                sessionManager.createNewSession()
+              }}
+              refreshHistoryRef={refreshHistoryRef}
+            />
+          ) : (
+            <div className="p-6 h-full flex flex-col">
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Voice Interface</h2>
+                <p className="text-gray-600">Record your voice and get transcriptions. Use the text interface to chat with agents.</p>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <BatchTranscriber />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

@@ -14,7 +14,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link
       href={href}
-      className={`px-3 py-2 text-sm rounded-md transition-colors ${
+      className={`px-3 py-2 text-base rounded-md transition-colors ${
         isActive ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'
       }`}
     >
@@ -31,7 +31,7 @@ export default function NavBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2 text-gray-900 font-semibold">
+            <Link href="/" className="inline-flex items-center gap-2 text-gray-900 font-semibold text-lg">
               <LayoutDashboard className="w-5 h-5 text-primary-600" />
               ZFlow
             </Link>
