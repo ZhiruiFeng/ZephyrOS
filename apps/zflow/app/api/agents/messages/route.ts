@@ -144,8 +144,8 @@ async function processMessageStream(
         fullContent += chunk.content
       }
 
-      // Create agent message on first token
-      if (chunk.type === 'start' || (chunk.type === 'token' && !agentMessage)) {
+      // Create agent message only once when stream starts
+      if (chunk.type === 'start' && !agentMessage) {
         agentMessage = {
           id: chunk.messageId,
           type: 'agent',
@@ -155,6 +155,20 @@ async function processMessageStream(
           streaming: true,
           toolCalls: []
         }
+        console.log('Creating new agent message in backend:', chunk.messageId)
+        await sessionManager.addMessage(context.sessionId, agentMessage)
+      } else if (chunk.type === 'token' && !agentMessage) {
+        // Fallback: create message on first token if no start event was received
+        agentMessage = {
+          id: chunk.messageId,
+          type: 'agent',
+          content: '',
+          timestamp: new Date(),
+          agent: context.agent.id,
+          streaming: true,
+          toolCalls: []
+        }
+        console.log('Creating fallback agent message in backend:', chunk.messageId)
         await sessionManager.addMessage(context.sessionId, agentMessage)
       }
 

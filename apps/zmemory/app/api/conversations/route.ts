@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseSessionManager } from '../../../lib/supabase-session-manager'
+import { jsonWithCors, createOptionsResponse } from '../../../lib/security'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * OPTIONS - Handle CORS preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request)
+}
 
 /**
  * GET /api/conversations - Get user's conversation history
@@ -18,15 +26,15 @@ export async function GET(request: NextRequest) {
     const includeArchived = searchParams.get('includeArchived') === 'true'
 
     if (!userId) {
-      return NextResponse.json(
+      return jsonWithCors(request, 
         { error: 'userId is required' },
-        { status: 400 }
+        400
       )
     }
 
     const sessions = await supabaseSessionManager.getUserSessions(userId, limit, includeArchived)
     
-    return NextResponse.json({
+    return jsonWithCors(request, {
       success: true,
       conversations: sessions,
       count: sessions.length
@@ -34,9 +42,9 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching conversations:', error)
-    return NextResponse.json(
+    return jsonWithCors(request,
       { error: 'Failed to fetch conversations' },
-      { status: 500 }
+      500
     )
   }
 }
@@ -50,24 +58,24 @@ export async function POST(request: NextRequest) {
     const { userId, agentId, title } = await request.json()
 
     if (!userId || !agentId) {
-      return NextResponse.json(
+      return jsonWithCors(request,
         { error: 'userId and agentId are required' },
-        { status: 400 }
+        400
       )
     }
 
     const session = await supabaseSessionManager.createSession(userId, agentId, title)
 
-    return NextResponse.json({
+    return jsonWithCors(request, {
       success: true,
       conversation: session
     })
 
   } catch (error) {
     console.error('Error creating conversation:', error)
-    return NextResponse.json(
+    return jsonWithCors(request,
       { error: 'Failed to create conversation' },
-      { status: 500 }
+      500
     )
   }
 }
@@ -81,9 +89,9 @@ export async function DELETE(request: NextRequest) {
     const { sessionId, userId } = await request.json()
 
     if (!sessionId) {
-      return NextResponse.json(
+      return jsonWithCors(request,
         { error: 'sessionId is required' },
-        { status: 400 }
+        400
       )
     }
 
@@ -91,25 +99,25 @@ export async function DELETE(request: NextRequest) {
     if (userId) {
       const session = await supabaseSessionManager.getSession(sessionId, userId)
       if (!session) {
-        return NextResponse.json(
+        return jsonWithCors(request,
           { error: 'Conversation not found or access denied' },
-          { status: 404 }
+          404
         )
       }
     }
 
     await supabaseSessionManager.deleteSession(sessionId)
 
-    return NextResponse.json({
+    return jsonWithCors(request, {
       success: true,
       message: 'Conversation deleted successfully'
     })
 
   } catch (error) {
     console.error('Error deleting conversation:', error)
-    return NextResponse.json(
+    return jsonWithCors(request,
       { error: 'Failed to delete conversation' },
-      { status: 500 }
+      500
     )
   }
 }

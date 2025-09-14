@@ -1,26 +1,46 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Bot, Plus, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/auth/LoginPage'
 import { AgentChatWindow, Message } from '../components/agents'
 import { Agent } from '../lib/agents/types'
+import { ConversationSummary } from '../lib/conversation-history/types'
+import { useSessionManager } from '../lib/conversation-history/session-manager'
 
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
 
   // State management
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
   const [selectedAgent, setSelectedAgent] = useState('gpt-4')
   const [isStreaming, setIsStreaming] = useState(false)
   const [availableAgents, setAvailableAgents] = useState<Agent[]>([])
   const [eventSource, setEventSource] = useState<EventSource | null>(null)
   const [streamEndedNormally, setStreamEndedNormally] = useState(false)
   const [lastUserId, setLastUserId] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sseReady, setSseReady] = useState(false)
+  const sseReadyRef = useRef(false)
+  // Keep a live map of current messages to avoid stale-closure lookups in SSE callbacks
+  const messagesMapRef = useRef<Map<string, Message>>(new Map())
+  
+  // Track messages being processed to prevent race conditions
+  const processingMessagesRef = useRef<Set<string>>(new Set())
+
+  // Session management with conversation history
+  const sessionManager = useSessionManager(user?.id || null, selectedAgent)
+
+  // Sync messages into a ref map for up-to-date lookups inside event handlers
+  useEffect(() => {
+    const map = new Map<string, Message>()
+    for (const m of sessionManager.currentMessages) {
+      map.set(m.id, m)
+    }
+    messagesMapRef.current = map
+  }, [sessionManager.currentMessages])
 
   // Load available agents
   useEffect(() => {
@@ -48,13 +68,12 @@ export default function AgentsPage() {
       }
 
       // Only create new session if user actually changed, not just auth state refresh
-      if (lastUserId === user.id && sessionId) {
-        console.log('User ID unchanged, keeping existing session:', sessionId)
+      if (lastUserId === user.id && sessionManager.currentSessionId) {
         return
       }
 
       try {
-        console.log('Creating new session for user:', user.id, 'agent:', selectedAgent)
+        
         const response = await fetch('/api/agents/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -66,9 +85,7 @@ export default function AgentsPage() {
 
         if (response.ok) {
           const data = await response.json()
-          console.log('New session created:', data.sessionId)
-          setSessionId(data.sessionId)
-          setMessages([])
+          sessionManager.setCurrentSessionId(data.sessionId)
           setStreamEndedNormally(false) // Reset for new session
           setLastUserId(user.id)
         }
@@ -78,11 +95,11 @@ export default function AgentsPage() {
     }
 
     createSession()
-  }, [user, selectedAgent, lastUserId, sessionId])
+  }, [user, selectedAgent, lastUserId, sessionManager])
 
   // Set up SSE connection when session is created
   useEffect(() => {
-    if (!sessionId || !user) return
+    if (!sessionManager.currentSessionId || !user || !sessionManager.isActive) return
 
     // Add a small delay to ensure session is fully created
     const timer = setTimeout(() => {
@@ -94,10 +111,13 @@ export default function AgentsPage() {
 
         // Reset stream end flag for new connection
         setStreamEndedNormally(false)
+        
+        // Clear processing messages for new session
+        processingMessagesRef.current.clear()
 
         // Verify session exists before attempting SSE connection
         try {
-          const sessionResponse = await fetch(`/api/agents/sessions?sessionId=${sessionId}`)
+          const sessionResponse = await fetch(`/api/agents/sessions?sessionId=${sessionManager.currentSessionId}`)
           if (!sessionResponse.ok) {
             console.error('Session not found, cannot establish SSE connection')
             return
@@ -108,10 +128,12 @@ export default function AgentsPage() {
         }
 
         try {
-          const newEventSource = new EventSource(`/api/agents/stream?sessionId=${sessionId}`)
+          const newEventSource = new EventSource(`/api/agents/stream?sessionId=${sessionManager.currentSessionId}`)
           
+          let connectionAttempted = false
+          let connectionSucceeded = false
+
           newEventSource.onopen = () => {
-            console.log('SSE connection opened for session:', sessionId)
             connectionSucceeded = true
           }
 
@@ -120,150 +142,191 @@ export default function AgentsPage() {
           const data = JSON.parse(event.data)
           
           switch (data.type) {
-            case 'connected':
-              console.log('Connected to stream')
+            case 'connected': {
+              setSseReady(true)
+              sseReadyRef.current = true
               break
-              
-            case 'start':
+            }
+
+            case 'start': {
               setIsStreaming(true)
-              break
-              
-            case 'token':
-              setMessages(prev => {
-                const lastMessage = prev[prev.length - 1]
-                if (lastMessage && lastMessage.id === data.messageId && lastMessage.streaming) {
-                  // Update the streaming message
-                  return prev.map(msg => 
-                    msg.id === data.messageId 
-                      ? { ...msg, content: msg.content + data.content }
-                      : msg
-                  )
-                } else {
-                  // Create new streaming message
-                  return [...prev, {
+              // Use atomic check-and-set to prevent race conditions
+              if (data.messageId && !processingMessagesRef.current.has(data.messageId)) {
+                const existingMessage = messagesMapRef.current.get(data.messageId)
+                if (!existingMessage) {
+                  processingMessagesRef.current.add(data.messageId)
+                  const newMsg: Message = {
                     id: data.messageId,
                     type: 'agent' as const,
-                    content: data.content || '',
+                    content: '',
                     timestamp: new Date(),
                     agent: selectedAgent,
                     streaming: true
-                  }]
+                  }
+                  messagesMapRef.current.set(data.messageId, newMsg)
+                  sessionManager.addMessage(newMsg)
                 }
-              })
+              } else {
+              }
               break
-              
-            case 'tool_call':
-              setMessages(prev => {
-                return prev.map(msg => {
-                  if (msg.id === data.messageId) {
-                    const toolCalls = msg.toolCalls || []
-                    return {
-                      ...msg,
-                      toolCalls: [...toolCalls, data.toolCall]
-                    }
-                  }
-                  return msg
-                })
-              })
+            }
+
+            case 'token': {
+              // Handle streaming tokens - update existing message or create if needed
+              const existingMessage = data.messageId ? messagesMapRef.current.get(data.messageId) : undefined
+              if (existingMessage) {
+                // Update existing message by appending new content
+                const newContent = existingMessage.content + (data.content || '')
+                const updated: Message = { ...existingMessage, content: newContent, streaming: true }
+                messagesMapRef.current.set(existingMessage.id, updated)
+                sessionManager.updateMessage(existingMessage.id, { content: newContent, streaming: true })
+              } else if (data.messageId && !processingMessagesRef.current.has(data.messageId)) {
+                // Create message if it doesn't exist (fallback for missing start event)
+                processingMessagesRef.current.add(data.messageId)
+                const newMsg: Message = {
+                  id: data.messageId,
+                  type: 'agent' as const,
+                  content: data.content || '',
+                  timestamp: new Date(),
+                  agent: selectedAgent,
+                  streaming: true
+                }
+                messagesMapRef.current.set(data.messageId, newMsg)
+                sessionManager.addMessage(newMsg)
+              } else if (data.messageId && processingMessagesRef.current.has(data.messageId)) {
+              }
               break
-              
-            case 'tool_result':
-              setMessages(prev => {
-                return prev.map(msg => {
-                  if (msg.id === data.messageId && msg.toolCalls) {
-                    const updatedToolCalls = msg.toolCalls.map(tc => 
-                      tc.id === data.toolCall.id ? data.toolCall : tc
-                    )
-                    return { ...msg, toolCalls: updatedToolCalls }
-                  }
-                  return msg
-                })
-              })
+            }
+
+            case 'tool_call': {
+              const targetMessage = data.messageId ? messagesMapRef.current.get(data.messageId) : undefined
+              if (targetMessage) {
+                const toolCalls = targetMessage.toolCalls || []
+                const updated: Message = { ...targetMessage, toolCalls: [...toolCalls, data.toolCall] }
+                messagesMapRef.current.set(targetMessage.id, updated)
+                sessionManager.updateMessage(targetMessage.id, { toolCalls: updated.toolCalls })
+              }
               break
-              
-            case 'end':
+            }
+
+            case 'tool_result': {
+              const messageWithTools = data.messageId ? messagesMapRef.current.get(data.messageId) : undefined
+              if (messageWithTools && messageWithTools.toolCalls) {
+                const updatedToolCalls = messageWithTools.toolCalls.map(tc => tc.id === data.toolCall.id ? data.toolCall : tc)
+                const updated: Message = { ...messageWithTools, toolCalls: updatedToolCalls }
+                messagesMapRef.current.set(messageWithTools.id, updated)
+                sessionManager.updateMessage(messageWithTools.id, { toolCalls: updatedToolCalls })
+              }
+              break
+            }
+
+            case 'end': {
               setIsStreaming(false)
               setStreamEndedNormally(true)
-              setMessages(prev => 
-                prev.map(msg => 
-                  msg.id === data.messageId 
-                    ? { ...msg, streaming: false }
-                    : msg
-                )
-              )
+              // Ensure the message exists before updating it
+              const endingMessage = data.messageId ? messagesMapRef.current.get(data.messageId) : undefined
+              if (endingMessage) {
+                const hasContent = endingMessage.content && endingMessage.content.length > 0
+                const nextContent = typeof data.content === 'string' && data.content.length > 0 
+                  ? data.content 
+                  : endingMessage.content
+                const updated: Message = { ...endingMessage, streaming: false, content: hasContent ? endingMessage.content : nextContent }
+                messagesMapRef.current.set(endingMessage.id, updated)
+                sessionManager.updateMessage(endingMessage.id, { 
+                  streaming: false,
+                  // If we missed token events (e.g., subscriber attached late), use final content from 'end'
+                  content: updated.content
+                })
+              } else if (data.messageId) {
+                // Fallback: if we never saw start/token, create the message now with final content
+                processingMessagesRef.current.add(data.messageId)
+                const newMsg: Message = {
+                  id: data.messageId,
+                  type: 'agent' as const,
+                  content: data.content || '',
+                  timestamp: new Date(),
+                  agent: selectedAgent,
+                  streaming: false
+                }
+                messagesMapRef.current.set(data.messageId, newMsg)
+                sessionManager.addMessage(newMsg)
+              }
+              // Clean up processing tracker
+              if (data.messageId) {
+                processingMessagesRef.current.delete(data.messageId)
+              }
               break
-              
-            case 'error':
+            }
+
+            case 'error': {
               setIsStreaming(false)
               console.error('Stream error:', data.error)
-              setMessages(prev => [
-                ...prev,
-                {
-                  id: Date.now().toString(),
-                  type: 'system' as const,
-                  content: `Error: ${data.error}`,
-                  timestamp: new Date()
-                }
-              ])
+              sessionManager.addMessage({
+                id: Date.now().toString(),
+                type: 'system' as const,
+                content: `Error: ${data.error}`,
+                timestamp: new Date()
+              })
+              // Clean up processing tracker
+              if (data.messageId) {
+                processingMessagesRef.current.delete(data.messageId)
+              }
               break
-              
-            case 'heartbeat':
+            }
+
+            case 'heartbeat': {
               // Keep connection alive
               break
-              
-            default:
-              console.log('Unknown SSE event:', data)
+            }
+            
+            default: {
+            }
           }
         } catch (error) {
           console.error('Error parsing SSE data:', error)
         }
       }
 
-          // Track connection attempts to avoid excessive error logging
-          let connectionAttempted = false
-          let connectionSucceeded = false
+          // Variables already declared above
           
-          newEventSource.onerror = () => {
-            setIsStreaming(false)
-            
+          newEventSource.onerror = (error) => {
             const readyState = newEventSource.readyState
             const readyStateText = readyState === 0 ? 'CONNECTING' : readyState === 1 ? 'OPEN' : 'CLOSED'
             
-            // Only treat as error if stream didn't end normally
+            // Only log errors if we haven't seen them before and stream didn't end normally
             if (!streamEndedNormally) {
-              // If connection succeeded before, this might be a normal closure
-              if (connectionSucceeded && readyState === EventSource.CLOSED) {
-                console.log('SSE connection closed after successful operation')
-                return
-              }
-              
-              // Log establishment errors only once to avoid spam
+              // Mark SSE as not ready on any error
+              setSseReady(false)
+              sseReadyRef.current = false
               if (readyState === EventSource.CONNECTING && !connectionAttempted) {
-                console.warn(`SSE connection error during establishment for session: ${sessionId}`, {
-                  readyState: readyStateText,
-                  timestamp: new Date().toISOString()
-                })
                 connectionAttempted = true
-                // Don't treat establishment errors as fatal - connection might still succeed
-                return
-              } else if (readyState === EventSource.CLOSED && connectionSucceeded) {
-                console.log('SSE connection closed unexpectedly, attempting reconnect...')
-                setTimeout(async () => {
-                  if (sessionId && user && !streamEndedNormally) {
-                    await connectSSE()
-                  }
-                }, 3000)
+                return // Don't stop streaming state yet, connection might still succeed
+              } 
+              
+              if (readyState === EventSource.CLOSED) {
+                if (connectionSucceeded) {
+                  setIsStreaming(false)
+                  // Attempt reconnection after delay
+                  setTimeout(async () => {
+                    if (sessionManager.currentSessionId && user && !streamEndedNormally) {
+                      await connectSSE()
+                    }
+                  }, 3000)
+                } else {
+                  console.error('SSE connection failed to establish for session:', sessionManager.currentSessionId)
+                  setIsStreaming(false)
+                }
               }
             } else {
-              // Stream ended normally, just close the connection
-              console.log('SSE connection closed after stream ended normally')
-              if (readyState !== EventSource.CLOSED) {
-                newEventSource.close()
-              }
+              // Stream ended normally
+              setIsStreaming(false)
+              setSseReady(false)
+              sseReadyRef.current = false
             }
           }
 
           setEventSource(newEventSource)
+          // Reset readiness on errors/cleanup is handled below
         } catch (error) {
           console.error('Failed to create EventSource:', error)
           setIsStreaming(false)
@@ -281,15 +344,25 @@ export default function AgentsPage() {
       if (eventSource) {
         eventSource.close()
       }
+      setSseReady(false)
+      sseReadyRef.current = false
     }
-  }, [sessionId, user])
+  }, [sessionManager.currentSessionId, user, sessionManager.isActive])
 
   // Send message handler
   const handleSendMessage = async (message: string) => {
-    if (!sessionId || !user) return
+    if (!sessionManager.currentSessionId || !user || !sessionManager.canSendMessages) return
 
     // Reset stream end flag for new message
     setStreamEndedNormally(false)
+
+    // Ensure SSE is connected to avoid missing early tokens in memory mode
+    if (!sseReadyRef.current) {
+      for (let i = 0; i < 10; i++) { // wait up to ~1s
+        if (sseReadyRef.current) break
+        await new Promise(r => setTimeout(r, 100))
+      }
+    }
 
     // Add user message to UI immediately
     const userMessage: Message = {
@@ -298,7 +371,7 @@ export default function AgentsPage() {
       content: message,
       timestamp: new Date()
     }
-    setMessages(prev => [...prev, userMessage])
+    sessionManager.addMessage(userMessage)
     setIsStreaming(true)
 
     try {
@@ -308,7 +381,7 @@ export default function AgentsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
-          sessionId,
+          sessionId: sessionManager.currentSessionId,
           message,
           userId: user.id
         })
@@ -320,27 +393,24 @@ export default function AgentsPage() {
     } catch (error) {
       console.error('Error sending message:', error)
       setIsStreaming(false)
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          type: 'system',
-          content: 'Failed to send message. Please try again.',
-          timestamp: new Date()
-        }
-      ])
+      sessionManager.addMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        content: 'Failed to send message. Please try again.',
+        timestamp: new Date()
+      })
     }
   }
 
   // Cancel stream handler
   const handleCancelStream = async () => {
-    if (!sessionId) return
+    if (!sessionManager.currentSessionId) return
 
     try {
       await fetch('/api/agents/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
+        body: JSON.stringify({ sessionId: sessionManager.currentSessionId })
       })
     } catch (error) {
       console.error('Error cancelling stream:', error)
@@ -387,11 +457,17 @@ export default function AgentsPage() {
             </div>
             
             <div className="hidden sm:flex space-x-3">
-              <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <button 
+                onClick={() => setSidebarOpen(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
                 <MessageSquare className="w-4 h-4 mr-2" />
                 History
               </button>
-              <button className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-700">
+              <button 
+                onClick={() => sessionManager.createNewSession()}
+                className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-primary-700"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Chat
               </button>
@@ -402,14 +478,23 @@ export default function AgentsPage() {
         {/* Chat Interface */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
           <AgentChatWindow
-            sessionId={sessionId}
-            messages={messages}
+            sessionId={sessionManager.currentSessionId}
+            messages={sessionManager.currentMessages}
             selectedAgent={selectedAgent}
             isStreaming={isStreaming}
+            userId={user?.id}
             availableAgents={availableAgents}
             onSendMessage={handleSendMessage}
             onCancelStream={handleCancelStream}
             onAgentChange={handleAgentChange}
+            sidebarOpen={sidebarOpen}
+            onSidebarToggle={setSidebarOpen}
+            onSelectConversation={(conversation) => {
+              sessionManager.switchToConversation(conversation)
+            }}
+            onCreateNewConversation={() => {
+              sessionManager.createNewSession()
+            }}
           />
         </div>
 

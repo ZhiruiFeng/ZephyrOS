@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, StopCircle, Settings, Paperclip, Mic } from 'lucide-react'
+import { Send, StopCircle, Settings, Paperclip, Mic, History, Menu } from 'lucide-react'
 import { StreamingMessage } from './StreamingMessage'
 import { AgentSelector } from './AgentSelector'
 import { ConversationHistory } from './ConversationHistory'
+import { ConversationHistorySidebar } from './ConversationHistorySidebar'
+import { ConversationSummary } from '../../lib/conversation-history/types'
 
 export interface Message {
   id: string
@@ -29,6 +31,7 @@ interface AgentChatWindowProps {
   messages: Message[]
   selectedAgent: string
   isStreaming: boolean
+  userId?: string | null
   availableAgents: Array<{
     id: string
     name: string
@@ -38,6 +41,10 @@ interface AgentChatWindowProps {
   onSendMessage: (message: string) => void
   onCancelStream: () => void
   onAgentChange: (agentId: string) => void
+  onSelectConversation?: (conversation: ConversationSummary) => void
+  onCreateNewConversation?: () => void
+  sidebarOpen?: boolean
+  onSidebarToggle?: (open: boolean) => void
 }
 
 export default function AgentChatWindow({
@@ -45,13 +52,29 @@ export default function AgentChatWindow({
   messages,
   selectedAgent,
   isStreaming,
+  userId,
   availableAgents,
   onSendMessage,
   onCancelStream,
   onAgentChange,
+  onSelectConversation,
+  onCreateNewConversation,
+  sidebarOpen: externalSidebarOpen,
+  onSidebarToggle,
 }: AgentChatWindowProps) {
   const [inputMessage, setInputMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
+  const [internalSidebarOpen, setInternalSidebarOpen] = useState(false)
+  
+  // Use external sidebar control if provided, otherwise use internal state
+  const sidebarOpen = externalSidebarOpen !== undefined ? externalSidebarOpen : internalSidebarOpen
+  const setSidebarOpen = (open: boolean) => {
+    if (onSidebarToggle) {
+      onSidebarToggle(open)
+    } else {
+      setInternalSidebarOpen(open)
+    }
+  }
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -85,30 +108,59 @@ export default function AgentChatWindow({
   const currentAgent = availableAgents.find(agent => agent.id === selectedAgent)
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-2rem)] bg-white rounded-lg shadow-lg border border-gray-200">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-        <div className="flex items-center space-x-3">
-          <AgentSelector
-            selectedAgent={selectedAgent}
-            availableAgents={availableAgents}
-            onAgentChange={onAgentChange}
-            disabled={isStreaming}
-          />
-          {currentAgent && (
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${
-                currentAgent.status === 'online' ? 'bg-green-500' :
-                currentAgent.status === 'busy' ? 'bg-yellow-500' : 'bg-gray-400'
-              }`} />
-              <span className="text-sm text-gray-600">{currentAgent.description}</span>
-            </div>
-          )}
+    <div className="flex h-full relative">
+      {/* Conversation History Sidebar */}
+      <ConversationHistorySidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        userId={userId || null}
+        currentSessionId={sessionId || null}
+        onSelectConversation={(conversation) => {
+          onSelectConversation?.(conversation)
+          setSidebarOpen(false) // Close sidebar after selection
+        }}
+        onCreateNewConversation={() => {
+          onCreateNewConversation?.()
+          setSidebarOpen(false)
+        }}
+      />
+
+      {/* Main Chat Area */}
+      <div className={`flex flex-col h-full max-h-[calc(100vh-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-300 ${
+        sidebarOpen ? 'ml-80' : 'ml-0'
+      } flex-1`}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+          <div className="flex items-center space-x-3">
+            {/* History Toggle Button */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Toggle conversation history"
+            >
+              {sidebarOpen ? <Menu size={20} /> : <History size={20} />}
+            </button>
+            
+            <AgentSelector
+              selectedAgent={selectedAgent}
+              availableAgents={availableAgents}
+              onAgentChange={onAgentChange}
+              disabled={isStreaming}
+            />
+            {currentAgent && (
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  currentAgent.status === 'online' ? 'bg-green-500' :
+                  currentAgent.status === 'busy' ? 'bg-yellow-500' : 'bg-gray-400'
+                }`} />
+                <span className="text-sm text-gray-600">{currentAgent.description}</span>
+              </div>
+            )}
+          </div>
+          <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+            <Settings size={20} />
+          </button>
         </div>
-        <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
-          <Settings size={20} />
-        </button>
-      </div>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
@@ -189,5 +241,6 @@ export default function AgentChatWindow({
         </div>
       </div>
     </div>
+  </div>
   )
 }

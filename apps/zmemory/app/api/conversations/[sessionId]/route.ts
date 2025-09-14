@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseSessionManager } from '../../../../lib/supabase-session-manager'
+import { jsonWithCors, createOptionsResponse } from '../../../../lib/security'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * OPTIONS - Handle CORS preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request)
+}
 
 /**
  * GET /api/conversations/[sessionId] - Get specific conversation with messages
@@ -17,32 +25,20 @@ export async function GET(
     const userId = request.nextUrl.searchParams.get('userId')
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'sessionId is required' },
-        { status: 400 }
-      )
+      return jsonWithCors(request, { error: 'sessionId is required' }, 400)
     }
 
     const session = await supabaseSessionManager.getSession(sessionId, userId || undefined)
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 }
-      )
+      return jsonWithCors(request, { error: 'Conversation not found' }, 404)
     }
 
-    return NextResponse.json({
-      success: true,
-      conversation: session
-    })
+    return jsonWithCors(request, { success: true, conversation: session })
 
   } catch (error) {
     console.error('Error fetching conversation:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch conversation' },
-      { status: 500 }
-    )
+    return jsonWithCors(request, { error: 'Failed to fetch conversation' }, 500)
   }
 }
 
@@ -60,20 +56,14 @@ export async function PATCH(
     const userId = updates.userId // For access control
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'sessionId is required' },
-        { status: 400 }
-      )
+      return jsonWithCors(request, { error: 'sessionId is required' }, 400)
     }
 
     // Get existing session
     const existingSession = await supabaseSessionManager.getSession(sessionId, userId)
     
     if (!existingSession) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 }
-      )
+      return jsonWithCors(request, { error: 'Conversation not found' }, 404)
     }
 
     // Update session with new metadata
@@ -87,17 +77,11 @@ export async function PATCH(
 
     await supabaseSessionManager.saveSession(updatedSession)
 
-    return NextResponse.json({
-      success: true,
-      conversation: updatedSession
-    })
+    return jsonWithCors(request, { success: true, conversation: updatedSession })
 
   } catch (error) {
     console.error('Error updating conversation:', error)
-    return NextResponse.json(
-      { error: 'Failed to update conversation' },
-      { status: 500 }
-    )
+    return jsonWithCors(request, { error: 'Failed to update conversation' }, 500)
   }
 }
 
@@ -114,35 +98,23 @@ export async function DELETE(
     const userId = body.userId
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'sessionId is required' },
-        { status: 400 }
-      )
+      return jsonWithCors(request, { error: 'sessionId is required' }, 400)
     }
 
     // Verify ownership if userId provided
     if (userId) {
       const session = await supabaseSessionManager.getSession(sessionId, userId)
       if (!session) {
-        return NextResponse.json(
-          { error: 'Conversation not found or access denied' },
-          { status: 404 }
-        )
+        return jsonWithCors(request, { error: 'Conversation not found or access denied' }, 404)
       }
     }
 
     await supabaseSessionManager.deleteSession(sessionId)
 
-    return NextResponse.json({
-      success: true,
-      message: 'Conversation deleted successfully'
-    })
+    return jsonWithCors(request, { success: true, message: 'Conversation deleted successfully' })
 
   } catch (error) {
     console.error('Error deleting conversation:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete conversation' },
-      { status: 500 }
-    )
+    return jsonWithCors(request, { error: 'Failed to delete conversation' }, 500)
   }
 }

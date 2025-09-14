@@ -17,7 +17,7 @@ export function ConversationHistory({ messages }: ConversationHistoryProps) {
         
         return (
           <StreamingMessage
-            key={message.id}
+            key={`${message.id}-${index}`}
             message={message}
             isStreaming={isStreaming}
           />

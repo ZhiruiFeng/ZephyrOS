@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseSessionManager } from '../../../../lib/supabase-session-manager'
+import { jsonWithCors, createOptionsResponse } from '../../../../lib/security'
 
 export const dynamic = 'force-dynamic'
+
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request)
+}
 
 /**
  * GET /api/conversations/search - Search messages across user's conversation history
@@ -18,33 +23,19 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      )
+      return jsonWithCors(request, { error: 'userId is required' }, 400)
     }
 
     if (!query) {
-      return NextResponse.json(
-        { error: 'search query (q) is required' },
-        { status: 400 }
-      )
+      return jsonWithCors(request, { error: 'search query (q) is required' }, 400)
     }
 
     const results = await supabaseSessionManager.searchMessages(userId, query, limit)
 
-    return NextResponse.json({
-      success: true,
-      query,
-      results,
-      count: results.length
-    })
+    return jsonWithCors(request, { success: true, query, results, count: results.length })
 
   } catch (error) {
     console.error('Error searching conversations:', error)
-    return NextResponse.json(
-      { error: 'Failed to search conversations' },
-      { status: 500 }
-    )
+    return jsonWithCors(request, { error: 'Failed to search conversations' }, 500)
   }
 }

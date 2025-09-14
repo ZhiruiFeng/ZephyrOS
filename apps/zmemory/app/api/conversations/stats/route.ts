@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseSessionManager } from '../../../../lib/supabase-session-manager'
+import { jsonWithCors, createOptionsResponse } from '../../../../lib/security'
 
 export const dynamic = 'force-dynamic'
+
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request)
+}
 
 /**
  * GET /api/conversations/stats - Get user's conversation statistics
@@ -14,15 +19,12 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId')
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      )
+      return jsonWithCors(request, { error: 'userId is required' }, 400)
     }
 
     const stats = await supabaseSessionManager.getSessionStats(userId)
 
-    return NextResponse.json({
+    return jsonWithCors(request, {
       success: true,
       stats: {
         totalConversations: stats.totalSessions,
@@ -34,9 +36,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching conversation stats:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch conversation statistics' },
-      { status: 500 }
-    )
+    return jsonWithCors(request, { error: 'Failed to fetch conversation statistics' }, 500)
   }
 }
