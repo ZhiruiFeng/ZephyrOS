@@ -3,7 +3,7 @@
 // Centralized API client for Seasons and Episodes
 // =====================================================
 
-import { getAuthHeader } from './supabase'
+import { authManager } from './auth-manager'
 import type {
   Season,
   Episode,
@@ -17,33 +17,56 @@ import type {
   SeasonRecapResponse
 } from '../types/narrative'
 
-// Use zmemory API service (runs on port 3001)
-const API_BASE = process.env.NODE_ENV === 'production'
-  ? '/api/narrative' // In production, use same domain with proxy
-  : 'http://localhost:3001/api/narrative' // In development, use zmemory port
+// Use the same pattern as memories-api.ts for consistency
+const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
+const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
+// Ensure we target the Next.js API routes under /api when using a cross-origin base
+const NARRATIVE_API_BASE = API_BASE ? `${API_BASE}/api/narrative` : '/api/narrative'
+
+// Debug logging
+if (typeof window !== 'undefined') {
+  console.log('Narrative API Configuration:', {
+    API_BASE,
+    IS_CROSS_ORIGIN,
+    NARRATIVE_API_BASE,
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE
+  })
+}
 
 // =====================================================
 // Utility Functions
 // =====================================================
 
+class NarrativeAPIError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = 'NarrativeAPIError'
+  }
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const authHeader = await getAuthHeader()
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
+  const url = `${NARRATIVE_API_BASE}${endpoint}`
+  
+  // Get authentication headers
+  const authHeaders = await authManager.getAuthHeaders()
+  
+  const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...authHeader,
+      ...authHeaders,
       ...options.headers,
     },
+    ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
+    ...options,
   })
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
-    throw new Error(errorData.message || `API Error: ${response.status}`)
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    throw new NarrativeAPIError(response.status, errorData.error || errorData.message || `API Error: ${response.status}`)
   }
 
   return response.json()
@@ -294,3 +317,6 @@ export const narrativeApiClient = {
 
 // Default export for convenience
 export default narrativeApiClient
+
+// Export error class for error handling
+export { NarrativeAPIError }
