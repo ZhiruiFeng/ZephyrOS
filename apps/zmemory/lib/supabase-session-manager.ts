@@ -6,21 +6,28 @@ export class SupabaseSessionManager {
   /**
    * Create a new chat session in Supabase
    */
-  async createSession(userId: string, agentId: string, title?: string): Promise<ChatSession> {
+  async createSession(userId: string, agentId: string, title?: string, sessionId?: string): Promise<ChatSession> {
     const now = new Date()
-    
+
+    const insertData: any = {
+      user_id: userId,
+      agent_id: agentId,
+      title: title || `Chat with ${agentId}`,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+      message_count: 0,
+      is_archived: false,
+      metadata: {}
+    }
+
+    // Use custom sessionId if provided
+    if (sessionId) {
+      insertData.id = sessionId
+    }
+
     const { data, error } = await supabaseServer
       .from('chat_sessions')
-      .insert({
-        user_id: userId,
-        agent_id: agentId,
-        title: title || `Chat with ${agentId}`,
-        created_at: now.toISOString(),
-        updated_at: now.toISOString(),
-        message_count: 0,
-        is_archived: false,
-        metadata: {}
-      })
+      .insert(insertData)
       .select()
       .single()
 
@@ -149,6 +156,20 @@ export class SupabaseSessionManager {
    * Add a single message to an existing session
    */
   async addMessage(sessionId: string, message: AgentMessage): Promise<void> {
+    // Check if message already exists to prevent duplicates
+    const { data: existingMessage } = await supabaseServer
+      .from('chat_messages')
+      .select('message_id')
+      .eq('session_id', sessionId)
+      .eq('message_id', message.id)
+      .single()
+
+    if (existingMessage) {
+      // Message already exists, skip insertion
+      console.log(`Message ${message.id} already exists in session ${sessionId}, skipping`)
+      return
+    }
+
     // Get current message count
     const { data: session, error: sessionError } = await supabaseServer
       .from('chat_sessions')

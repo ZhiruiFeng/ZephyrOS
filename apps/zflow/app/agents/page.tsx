@@ -30,8 +30,13 @@ export default function AgentsPage() {
   // Track messages being processed to prevent race conditions
   const processingMessagesRef = useRef<Set<string>>(new Set())
 
+  // Create ref for conversation history refresh function
+  const refreshHistoryRef = useRef<(() => Promise<void>) | null>(null)
+
   // Session management with conversation history
-  const sessionManager = useSessionManager(user?.id || null, selectedAgent)
+  const sessionManager = useSessionManager(user?.id || null, selectedAgent, () => {
+    refreshHistoryRef.current?.()
+  })
 
   // Sync messages into a ref map for up-to-date lookups inside event handlers
   useEffect(() => {
@@ -115,12 +120,48 @@ export default function AgentsPage() {
         // Clear processing messages for new session
         processingMessagesRef.current.clear()
 
-        // Verify session exists before attempting SSE connection
+        // For historical conversations, try to restore session if it doesn't exist in Redis
         try {
           const sessionResponse = await fetch(`/api/agents/sessions?sessionId=${sessionManager.currentSessionId}`)
           if (!sessionResponse.ok) {
-            console.error('Session not found, cannot establish SSE connection')
-            return
+            // If session doesn't exist and we're viewing a historical conversation, restore it
+            if (sessionManager.viewingHistoricalConversation || sessionManager.needsRedisSession) {
+              console.log('🔄 Restoring historical session to Redis for SSE connection')
+              try {
+                const restoreResponse = await fetch('/api/agents/sessions/restore', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    sessionId: sessionManager.currentSessionId,
+                    userId: user?.id,
+                    agentId: selectedAgent,
+                    messages: sessionManager.currentMessages.map(msg => ({
+                      id: msg.id,
+                      type: msg.type,
+                      content: msg.content,
+                      timestamp: msg.timestamp,
+                      agent: msg.agent,
+                      toolCalls: msg.toolCalls || []
+                    }))
+                  })
+                })
+
+                if (!restoreResponse.ok) {
+                  console.warn('Failed to restore session for SSE connection')
+                  return
+                } else {
+                  console.log('✅ Session restored to Redis for SSE connection')
+                  // Clear the restoration flag since session is now in Redis
+                  sessionManager.setCurrentSessionId(sessionManager.currentSessionId)
+                }
+              } catch (restoreError) {
+                console.warn('Error restoring session for SSE:', restoreError)
+                return
+              }
+            } else {
+              console.error('Session not found, cannot establish SSE connection')
+              return
+            }
           }
         } catch (error) {
           console.error('Failed to verify session existence:', error)
@@ -289,9 +330,8 @@ export default function AgentsPage() {
 
           // Variables already declared above
           
-          newEventSource.onerror = (error) => {
+          newEventSource.onerror = () => {
             const readyState = newEventSource.readyState
-            const readyStateText = readyState === 0 ? 'CONNECTING' : readyState === 1 ? 'OPEN' : 'CLOSED'
             
             // Only log errors if we haven't seen them before and stream didn't end normally
             if (!streamEndedNormally) {
@@ -351,7 +391,68 @@ export default function AgentsPage() {
 
   // Send message handler
   const handleSendMessage = async (message: string) => {
-    if (!sessionManager.currentSessionId || !user || !sessionManager.canSendMessages) return
+    if (!user || !sessionManager.canSendMessages) return
+
+    // If we need a Redis session (no active session), create one
+    if (!sessionManager.currentSessionId) {
+      try {
+        const response = await fetch('/api/agents/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            agentId: selectedAgent
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          sessionManager.setCurrentSessionId(data.sessionId)
+          console.log(`✅ Created new Redis session: ${data.sessionId}`)
+        } else {
+          console.error('Failed to create session:', await response.text())
+          return
+        }
+      } catch (error) {
+        console.error('Failed to create session:', error)
+        return
+      }
+    } else {
+      // Check if this Redis session exists, if not populate it with current messages
+      try {
+        const checkResponse = await fetch(`/api/agents/sessions?sessionId=${sessionManager.currentSessionId}`)
+        if (!checkResponse.ok) {
+          // Session doesn't exist in Redis, need to populate it
+          console.log(`🔄 Populating Redis session ${sessionManager.currentSessionId} with historical messages`)
+
+          const createResponse = await fetch('/api/agents/sessions/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: sessionManager.currentSessionId,
+              userId: user.id,
+              agentId: selectedAgent,
+              messages: sessionManager.currentMessages.map(msg => ({
+                id: msg.id,
+                type: msg.type,
+                content: msg.content,
+                timestamp: msg.timestamp,
+                agent: msg.agent,
+                toolCalls: msg.toolCalls || []
+              }))
+            })
+          })
+
+          if (!createResponse.ok) {
+            console.warn('Failed to restore session to Redis')
+          }
+        }
+      } catch (error) {
+        console.warn('Error checking/restoring Redis session:', error)
+      }
+    }
+
+    if (!sessionManager.currentSessionId) return
 
     // Reset stream end flag for new message
     setStreamEndedNormally(false)
@@ -377,13 +478,26 @@ export default function AgentsPage() {
     try {
       const { getAuthHeader } = await import('../../lib/supabase')
       const authHeaders = await getAuthHeader()
+      // For historical conversations, send current UI messages as context
+      const contextMessages = sessionManager.viewingHistoricalConversation || sessionManager.needsRedisSession
+        ? sessionManager.currentMessages.map(msg => ({
+            id: msg.id,
+            type: msg.type,
+            content: msg.content,
+            timestamp: msg.timestamp,
+            agent: msg.agent,
+            toolCalls: msg.toolCalls || []
+          }))
+        : undefined
+
       const response = await fetch('/api/agents/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           sessionId: sessionManager.currentSessionId,
           message,
-          userId: user.id
+          userId: user.id,
+          contextMessages
         })
       })
 
@@ -495,6 +609,7 @@ export default function AgentsPage() {
             onCreateNewConversation={() => {
               sessionManager.createNewSession()
             }}
+            refreshHistoryRef={refreshHistoryRef}
           />
         </div>
 

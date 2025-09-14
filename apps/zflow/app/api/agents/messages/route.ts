@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const { sessionId, message, userId } = await request.json()
+    const { sessionId, message, userId, contextMessages } = await request.json()
 
     if (!sessionId || !message || !userId) {
       return NextResponse.json(
@@ -80,12 +80,32 @@ export async function POST(request: NextRequest) {
     // Create streaming service
     const streamingService = new StreamingService()
 
+    // Use context messages if provided (for historical conversations), otherwise use session messages
+    let messagesToSend: AgentMessage[]
+    if (contextMessages && Array.isArray(contextMessages) && contextMessages.length > 0) {
+      // Convert frontend messages to AgentMessage format
+      messagesToSend = contextMessages.map((msg: any) => ({
+        id: msg.id,
+        type: msg.type,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        agent: msg.agent,
+        streaming: false,
+        toolCalls: msg.toolCalls || []
+      }))
+      console.log(`📝 Using ${contextMessages.length} context messages from UI (historical continuation)`)
+    } else {
+      // Use messages from Redis session (normal flow)
+      messagesToSend = session.messages
+      console.log(`📝 Using ${session.messages.length} messages from Redis session (normal flow)`)
+    }
+
     // Start streaming response (async)
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || undefined
     const chatContext = {
       sessionId,
       userId,
-      messages: session.messages,
+      messages: messagesToSend,
       agent,
       metadata: { ...(session.metadata || {}), authToken: authHeader }
     }

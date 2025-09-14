@@ -45,6 +45,7 @@ interface AgentChatWindowProps {
   onCreateNewConversation?: () => void
   sidebarOpen?: boolean
   onSidebarToggle?: (open: boolean) => void
+  refreshHistoryRef?: React.MutableRefObject<(() => Promise<void>) | null>
 }
 
 export default function AgentChatWindow({
@@ -61,6 +62,7 @@ export default function AgentChatWindow({
   onCreateNewConversation,
   sidebarOpen: externalSidebarOpen,
   onSidebarToggle,
+  refreshHistoryRef,
 }: AgentChatWindowProps) {
   const [inputMessage, setInputMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
@@ -122,6 +124,11 @@ export default function AgentChatWindow({
         onCreateNewConversation={() => {
           onCreateNewConversation?.()
           setSidebarOpen(false)
+        }}
+        onHistoryUpdate={(refreshFn) => {
+          if (refreshHistoryRef) {
+            refreshHistoryRef.current = refreshFn
+          }
         }}
       />
 

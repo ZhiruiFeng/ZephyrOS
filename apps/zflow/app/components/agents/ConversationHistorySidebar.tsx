@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { X, Plus, Search, Clock, Archive, MessageSquare } from 'lucide-react'
 import { useConversationHistory, useConversationSearch } from '../../lib/conversation-history'
 import { ConversationSummary } from '../../lib/conversation-history/types'
@@ -14,6 +14,7 @@ interface ConversationHistorySidebarProps {
   currentSessionId: string | null
   onSelectConversation: (conversation: ConversationSummary) => void
   onCreateNewConversation: () => void
+  onHistoryUpdate?: (refreshFn: () => Promise<void>) => void
   className?: string
 }
 
@@ -24,24 +25,32 @@ export function ConversationHistorySidebar({
   currentSessionId,
   onSelectConversation,
   onCreateNewConversation,
+  onHistoryUpdate,
   className = ''
 }: ConversationHistorySidebarProps) {
   const [activeTab, setActiveTab] = useState<'recent' | 'archived'>('recent')
   const [searchMode, setSearchMode] = useState(false)
   
-  const { 
-    conversations, 
-    loading, 
-    error, 
-    refreshConversations 
+  const {
+    conversations,
+    loading,
+    error,
+    refreshConversations
   } = useConversationHistory(userId)
-  
+
   const {
     results: searchResults,
     loading: searchLoading,
     search,
     clearSearch
   } = useConversationSearch(userId)
+
+  // Expose refreshConversations through a ref that parent can access
+  useEffect(() => {
+    if (onHistoryUpdate) {
+      onHistoryUpdate(refreshConversations)
+    }
+  }, [onHistoryUpdate, refreshConversations])
 
   // Filter conversations based on active tab
   const filteredConversations = conversations.filter(conv => 

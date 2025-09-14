@@ -226,8 +226,8 @@ export class ConversationHistoryService {
    * Create a new conversation in zmemory (for backup purposes)
    */
   async createConversation(
-    userId: string, 
-    agentId: string, 
+    userId: string,
+    agentId: string,
     title?: string
   ): Promise<ConversationSummary> {
     try {
@@ -242,13 +242,13 @@ export class ConversationHistoryService {
           title
         })
       })
-      
+
       if (!response.ok) {
         throw new Error(`Failed to create conversation: ${response.statusText}`)
       }
 
       const data: ConversationDetailResponse = await response.json()
-      
+
       return {
         ...data.conversation,
         createdAt: new Date(data.conversation.createdAt),
@@ -257,9 +257,103 @@ export class ConversationHistoryService {
         lastMessagePreview: '',
         agentName: this.getAgentDisplayName(data.conversation.agentId)
       }
-      
+
     } catch (error) {
       console.error('Error creating conversation:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Save conversation with messages to zmemory
+   */
+  async saveConversationWithMessages(
+    sessionId: string,
+    userId: string,
+    agentId: string,
+    messages: HistoricalMessage[],
+    title?: string
+  ): Promise<ConversationSummary> {
+    try {
+      // First, try to get existing conversation
+      const existing = await this.getConversation(sessionId, userId)
+
+      if (existing) {
+        // Find new messages that aren't already saved
+        const existingMessageIds = new Set(existing.messages.map(msg => msg.id))
+        const newMessages = messages.filter(msg => !existingMessageIds.has(msg.id))
+
+        if (newMessages.length > 0) {
+          // Only send new messages to avoid duplicates
+          const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/${sessionId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              messages: newMessages.map(msg => ({
+                id: msg.id,
+                type: msg.type,
+                content: msg.content,
+                timestamp: msg.timestamp.toISOString(),
+                agent: msg.agent,
+                toolCalls: msg.toolCalls || []
+              }))
+            })
+          })
+
+          if (!response.ok) {
+            console.warn(`Failed to update conversation messages: ${response.statusText}`)
+          }
+        }
+
+        return {
+          ...existing,
+          messageCount: messages.length,
+          lastMessagePreview: this.truncateText(messages[messages.length - 1]?.content || '', 60)
+        }
+      } else {
+        // Create new conversation with all messages
+        const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            agentId,
+            title,
+            sessionId,
+            messages: messages.map(msg => ({
+              id: msg.id,
+              type: msg.type,
+              content: msg.content,
+              timestamp: msg.timestamp.toISOString(),
+              agent: msg.agent,
+              toolCalls: msg.toolCalls || []
+            }))
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to create conversation: ${response.statusText}`)
+        }
+
+        const data: ConversationDetailResponse = await response.json()
+
+        return {
+          ...data.conversation,
+          createdAt: new Date(data.conversation.createdAt),
+          updatedAt: new Date(data.conversation.updatedAt),
+          messageCount: messages.length,
+          lastMessagePreview: this.truncateText(messages[messages.length - 1]?.content || '', 60),
+          agentName: this.getAgentDisplayName(data.conversation.agentId)
+        }
+      }
+
+    } catch (error) {
+      console.error('Error saving conversation with messages:', error)
       throw error
     }
   }

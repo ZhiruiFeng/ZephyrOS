@@ -49,14 +49,18 @@ export class SessionManager {
   }
 
   async createSession(userId: string, agentId: string): Promise<ChatSession> {
+    const sessionId = this.generateSessionId()
+    return this.createSessionWithId(sessionId, userId, agentId)
+  }
+
+  async createSessionWithId(sessionId: string, userId: string, agentId: string): Promise<ChatSession> {
     await this.ensureReady()
     if (!this.useRedis) {
-      return await this.memoryManager.createSession(userId, agentId)
+      return await this.memoryManager.createSessionWithId(sessionId, userId, agentId)
     }
 
-    const sessionId = this.generateSessionId()
     const now = new Date()
-    
+
     const session: ChatSession = {
       id: sessionId,
       userId,
@@ -67,7 +71,7 @@ export class SessionManager {
     }
 
     await this.saveSession(session)
-    
+
     // Add session to user's session set for efficient retrieval
     try {
       await this.redis.zadd(`user_sessions:${userId}`, now.getTime(), sessionId)
@@ -75,7 +79,7 @@ export class SessionManager {
     } catch (error) {
       console.warn('Failed to add session to user set:', error)
     }
-    
+
     return session
   }
 

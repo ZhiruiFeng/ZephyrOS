@@ -1,32 +1,47 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { ConversationSummary, ConversationDetail, HistoricalMessage } from './types'
 import { conversationHistoryService } from './service'
 import { Message } from '../../components/agents/AgentChatWindow'
 
 export interface SessionManagerState {
-  // Current active session
+  // Current active session (Redis)
   currentSessionId: string | null
   currentMessages: Message[]
   isLoadingMessages: boolean
-  
+
   // Historical conversation being viewed
   viewingHistoricalConversation: boolean
   historicalConversation: ConversationDetail | null
-  
+  historicalSessionId: string | null // Store the historical session ID separately
+  needsRedisRestore: boolean // Flag to indicate session needs Redis restoration
+
   // Session management
   isCreatingSession: boolean
   error: string | null
 }
 
-export function useSessionManager(userId: string | null, selectedAgent: string) {
+export function useSessionManager(userId: string | null, selectedAgent: string, onHistoryUpdate?: () => void) {
   const [state, setState] = useState<SessionManagerState>({
     currentSessionId: null,
     currentMessages: [],
     isLoadingMessages: false,
     viewingHistoricalConversation: false,
     historicalConversation: null,
+    historicalSessionId: null,
+    needsRedisRestore: false,
     isCreatingSession: false,
     error: null
+  })
+
+  // Track last saved state to prevent duplicate saves
+  const lastSavedStateRef = useRef<{
+    messageCount: number
+    lastMessageId: string | null
+    isSaving: boolean
+  }>({
+    messageCount: 0,
+    lastMessageId: null,
+    isSaving: false
   })
 
   // Convert historical messages to current message format
@@ -46,16 +61,17 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
   const loadHistoricalConversation = useCallback(async (sessionId: string) => {
     if (!userId) return
 
+    console.log('📖 Loading historical conversation:', sessionId)
     setState(prev => ({ ...prev, isLoadingMessages: true, error: null }))
 
     try {
       const conversation = await conversationHistoryService.getConversation(sessionId, userId)
-      
+
       if (!conversation) {
-        setState(prev => ({ 
-          ...prev, 
-          isLoadingMessages: false, 
-          error: 'Conversation not found' 
+        setState(prev => ({
+          ...prev,
+          isLoadingMessages: false,
+          error: 'Conversation not found'
         }))
         return
       }
@@ -65,13 +81,17 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
 
       setState(prev => ({
         ...prev,
-        currentSessionId: sessionId,
+        currentSessionId: sessionId, // Use original session ID
         currentMessages,
-        viewingHistoricalConversation: true,
+        viewingHistoricalConversation: false, // Treat as active conversation
         historicalConversation: conversation,
+        historicalSessionId: null, // No need for separate tracking
+        needsRedisRestore: true, // Flag that this session needs Redis restoration
         isLoadingMessages: false,
         error: null
       }))
+
+      console.log(`📖 Loaded ${currentMessages.length} historical messages from session: ${sessionId}`)
 
     } catch (error) {
       console.error('Failed to load historical conversation:', error)
@@ -87,6 +107,7 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
   const createNewSession = useCallback(async () => {
     if (!userId) return
 
+    console.log('🆕 Creating new chat session...')
     setState(prev => ({ ...prev, isCreatingSession: true, error: null }))
 
     try {
@@ -97,10 +118,13 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
         currentMessages: [],
         viewingHistoricalConversation: false,
         historicalConversation: null,
+        historicalSessionId: null, // Clear historical session ID for new chat
+        needsRedisRestore: false, // Clear restoration flag for new chat
         isCreatingSession: false,
         error: null
       }))
 
+      console.log('🆕 New chat session state reset - ready for fresh conversation')
       return true
     } catch (error) {
       console.error('Failed to create new session:', error)
@@ -123,6 +147,8 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
     setState(prev => ({
       ...prev,
       currentSessionId: sessionId,
+      isCreatingSession: false, // Reset creating session flag
+      needsRedisRestore: false, // Clear restoration flag since session is now in Redis
       // If we're setting a new Redis session, we're no longer viewing historical
       viewingHistoricalConversation: sessionId ? false : prev.viewingHistoricalConversation
     }))
@@ -138,8 +164,23 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
     }))
   }, [])
 
+  // Transition historical conversation to active session for continued messaging
+  const continueHistoricalConversation = useCallback(async () => {
+    if (!state.viewingHistoricalConversation || !userId) return null
+
+    // We need to signal that a Redis session should be created
+    // The session ID will be set by setCurrentSessionId when the Redis session is created
+    setState(prev => ({
+      ...prev,
+      viewingHistoricalConversation: false, // Now it becomes an active conversation
+      isCreatingSession: true
+    }))
+
+    return state.historicalSessionId // Return the historical ID for reference
+  }, [state.viewingHistoricalConversation, state.historicalSessionId, userId])
+
   // Add a message to current session
-  const addMessage = useCallback((message: Message) => {
+  const addMessage = useCallback(async (message: Message) => {
     setState(prev => {
       // Check if message with this ID already exists to prevent duplicates
       const existingIndex = prev.currentMessages.findIndex(msg => msg.id === message.id)
@@ -147,12 +188,19 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
         // Message already exists, don't add duplicate
         return prev
       }
-      
-      return {
+
+      let newState = {
         ...prev,
-        currentMessages: [...prev.currentMessages, message],
-        viewingHistoricalConversation: false
+        currentMessages: [...prev.currentMessages, message]
       }
+
+      // If we're viewing historical conversation, transition to active
+      if (prev.viewingHistoricalConversation) {
+        newState.viewingHistoricalConversation = false
+        newState.isCreatingSession = true // Signal that we need a Redis session
+      }
+
+      return newState
     })
   }, [])
 
@@ -176,28 +224,88 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
 
   // Save current session to Supabase (for backup/archival)
   const saveCurrentSessionToHistory = useCallback(async () => {
-    if (!userId || !state.currentSessionId || state.currentMessages.length === 0) return
+    if (!userId || state.currentMessages.length === 0) return
+
+    // Check if we need to save (prevent duplicate saves)
+    const currentMessageCount = state.currentMessages.length
+    const lastMessageId = state.currentMessages[state.currentMessages.length - 1]?.id || null
+    const lastSavedState = lastSavedStateRef.current
+
+    // Skip if already saving or no changes since last save
+    if (lastSavedState.isSaving ||
+        (lastSavedState.messageCount === currentMessageCount &&
+         lastSavedState.lastMessageId === lastMessageId)) {
+      return
+    }
+
+    // Set saving flag to prevent concurrent saves
+    lastSavedStateRef.current.isSaving = true
 
     try {
-      // Create the session in Supabase if it doesn't exist
-      const title = conversationHistoryService.generateConversationTitle(
-        conversationHistoryService.convertToHistoricalMessages(state.currentMessages)
+      // Convert messages to historical format
+      const historicalMessages = conversationHistoryService.convertToHistoricalMessages(state.currentMessages)
+
+      // Generate title from first user message
+      const title = conversationHistoryService.generateConversationTitle(historicalMessages)
+
+      // Determine which session ID to use for saving
+      let sessionIdToUse: string
+      if (state.viewingHistoricalConversation && state.historicalSessionId) {
+        // Continuing historical conversation - use historical session ID
+        sessionIdToUse = state.historicalSessionId
+        console.log('💾 Saving to historical session:', state.historicalSessionId)
+      } else if (state.currentSessionId) {
+        // New conversation - use current Redis session ID
+        sessionIdToUse = state.currentSessionId
+        console.log('💾 Saving to new session:', state.currentSessionId)
+      } else {
+        console.warn('💾 No session ID available for saving')
+        return
+      }
+
+      // Save the conversation with all messages to zmemory
+      await conversationHistoryService.saveConversationWithMessages(
+        sessionIdToUse,
+        userId,
+        selectedAgent,
+        historicalMessages,
+        title
       )
 
-      await conversationHistoryService.createConversation(userId, selectedAgent, title)
-      
-    } catch (error) {
-      // Intentionally ignore backup failures in UI; backend logs should capture details
-    }
-  }, [userId, selectedAgent, state.currentSessionId, state.currentMessages])
+      // Update last saved state
+      lastSavedStateRef.current = {
+        messageCount: currentMessageCount,
+        lastMessageId: lastMessageId,
+        isSaving: false
+      }
 
-  // Auto-save current session periodically
-  useEffect(() => {
-    if (!state.viewingHistoricalConversation && state.currentMessages.length > 0) {
-      const timeoutId = setTimeout(saveCurrentSessionToHistory, 30000) // Save every 30 seconds
-      return () => clearTimeout(timeoutId)
+      // Refresh the conversation history sidebar to show the new/updated conversation
+      onHistoryUpdate?.()
+
+    } catch (error) {
+      // Reset saving flag on error
+      lastSavedStateRef.current.isSaving = false
+      // Intentionally ignore backup failures in UI; backend logs should capture details
+      console.warn('Failed to save conversation to history:', error)
     }
-  }, [state.currentMessages, state.viewingHistoricalConversation, saveCurrentSessionToHistory])
+  }, [userId, selectedAgent, state.currentSessionId, state.historicalSessionId, state.currentMessages, onHistoryUpdate])
+
+  // Save to history when LLM completes a response (better UX than periodic saves)
+  useEffect(() => {
+    if (!state.viewingHistoricalConversation &&
+        state.currentMessages.length > 0 &&
+        state.currentSessionId) {
+
+      // Check if the last message is a completed agent response
+      const lastMessage = state.currentMessages[state.currentMessages.length - 1]
+      const isCompletedAgentResponse = lastMessage?.type === 'agent' && !lastMessage?.streaming
+
+      if (isCompletedAgentResponse) {
+        // Save immediately after agent completes response
+        saveCurrentSessionToHistory()
+      }
+    }
+  }, [state.currentMessages, state.viewingHistoricalConversation, state.currentSessionId, saveCurrentSessionToHistory])
 
   return {
     // State
@@ -212,11 +320,13 @@ export function useSessionManager(userId: string | null, selectedAgent: string) 
     addMessage,
     updateMessage,
     saveCurrentSessionToHistory,
+    continueHistoricalConversation,
 
     // Computed properties
     isActive: !state.viewingHistoricalConversation,
-    canSendMessages: !state.viewingHistoricalConversation && !state.isLoadingMessages,
+    canSendMessages: !state.isLoadingMessages, // Allow sending messages to historical conversations
     displayTitle: state.historicalConversation?.title || 'New Conversation',
-    messageCount: state.currentMessages.length
+    messageCount: state.currentMessages.length,
+    needsRedisSession: state.viewingHistoricalConversation || (state.isCreatingSession && !state.currentSessionId) || state.needsRedisRestore
   }
 }

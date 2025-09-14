@@ -51,11 +51,11 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/conversations - Create a new conversation
- * Body: { userId: string, agentId: string, title?: string }
+ * Body: { userId: string, agentId: string, title?: string, sessionId?: string, messages?: AgentMessage[] }
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId, agentId, title } = await request.json()
+    const { userId, agentId, title, sessionId, messages } = await request.json()
 
     if (!userId || !agentId) {
       return jsonWithCors(request,
@@ -64,7 +64,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const session = await supabaseSessionManager.createSession(userId, agentId, title)
+    // Create session with optional sessionId and messages
+    const session = await supabaseSessionManager.createSession(userId, agentId, title, sessionId)
+
+    // If messages are provided, add them to the session
+    if (messages && Array.isArray(messages) && messages.length > 0) {
+      for (const message of messages) {
+        try {
+          await supabaseSessionManager.addMessage(session.id, {
+            id: message.id,
+            type: message.type,
+            content: message.content,
+            timestamp: new Date(message.timestamp),
+            agent: message.agent,
+            streaming: false,
+            toolCalls: message.toolCalls || []
+          })
+        } catch (error) {
+          console.warn(`Failed to add message ${message.id}:`, error)
+        }
+      }
+
+      // Refresh session to get updated message count
+      const updatedSession = await supabaseSessionManager.getSession(session.id, userId)
+      if (updatedSession) {
+        return jsonWithCors(request, {
+          success: true,
+          conversation: updatedSession
+        })
+      }
+    }
 
     return jsonWithCors(request, {
       success: true,

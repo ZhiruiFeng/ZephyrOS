@@ -19,8 +19,12 @@ export class MemorySessionManager {
 
   async createSession(userId: string, agentId: string): Promise<ChatSession> {
     const sessionId = this.generateSessionId()
+    return this.createSessionWithId(sessionId, userId, agentId)
+  }
+
+  async createSessionWithId(sessionId: string, userId: string, agentId: string): Promise<ChatSession> {
     const now = new Date()
-    
+
     const session: ChatSession = {
       id: sessionId,
       userId,
