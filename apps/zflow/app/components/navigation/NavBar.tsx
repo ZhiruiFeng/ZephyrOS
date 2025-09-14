@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Mic, LayoutDashboard, Target, Bot, Zap, User } from 'lucide-react'
+import { Mic, LayoutDashboard, Target, Bot, User } from 'lucide-react'
 import AuthButton from '../auth/AuthButton'
 import LanguageSelector from '../selectors/LanguageSelector'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -49,11 +49,6 @@ export default function NavBar() {
               <NavLink href="/speech">
                 <span className="inline-flex items-center gap-1">
                   <Mic className="w-4 h-4" /> {t.nav.speech}
-                </span>
-              </NavLink>
-              <NavLink href="/zephyros">
-                <span className="inline-flex items-center gap-1">
-                  <Zap className="w-4 h-4" /> ZephyrOS
                 </span>
               </NavLink>
             </div>

@@ -10,6 +10,7 @@ import { LanguageProvider } from '../contexts/LanguageContext'
 import { STTConfigProvider } from '../contexts/STTConfigContext'
 import NavBar from './components/navigation/NavBar'
 import MobileBottomNav from './components/navigation/MobileBottomNav'
+import Footer from './components/navigation/Footer'
 import DynamicHead from './components/utils/DynamicHead'
 import AddTaskPortal from './components/global/AddTaskPortal'
 import VoiceInputController from './components/global/VoiceInputController'
@@ -28,7 +29,7 @@ export default function RootLayout({
         <title>ZFlow - Task Management System</title>
         <meta name="description" content="Personal AI operating system task management module" />
       </head>
-      <body className="bg-gray-50 min-h-screen pb-14 sm:pb-0">
+      <body className="bg-gray-50 min-h-screen pb-14 sm:pb-0 flex flex-col">
         <AuthProvider>
           <LanguageProvider>
             <PrefsProvider>
@@ -38,7 +39,10 @@ export default function RootLayout({
                 <AddTaskPortal />
                 <VoiceInputController />
                 <SWRConfig value={{ ...globalSWRConfig, fetcher: authJsonFetcher }}>
-                  {children}
+                  <div className="flex-1">
+                    {children}
+                  </div>
+                  <Footer />
                   <MobileBottomNav />
                 </SWRConfig>
               </STTConfigProvider>

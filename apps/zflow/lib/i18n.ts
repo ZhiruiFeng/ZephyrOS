@@ -450,6 +450,19 @@ export interface TranslationKeys {
     notSupported: string;
   };
 
+  // Footer
+  footer: {
+    zephyrDescription: string;
+    learnMore: string;
+    quickLinks: string;
+    applications: string;
+    taskManagement: string;
+    memorySystem: string;
+    operatingSystem: string;
+    madeWith: string;
+    built: string;
+  };
+
   // Agents directory
   agents: {
     // Header and summary
@@ -997,6 +1010,17 @@ const translations: Record<Language, TranslationKeys> = {
       deleteInteractionTitle: 'Delete Interaction',
       deleteInteractionDescription: 'Are you sure you want to delete this interaction? This action cannot be undone.',
     },
+    footer: {
+      zephyrDescription: 'A modern, intelligent operating system designed for the future of personal computing.',
+      learnMore: 'Learn About Our Vision',
+      quickLinks: 'Quick Links',
+      applications: 'Applications',
+      taskManagement: 'Task Management',
+      memorySystem: 'Memory System',
+      operatingSystem: 'Operating System',
+      madeWith: 'Made with',
+      built: 'built',
+    },
   },
   zh: {
     common: {
@@ -1469,6 +1493,17 @@ const translations: Record<Language, TranslationKeys> = {
       deleteAgentDescription: '确定要删除这个代理吗？这个操作无法撤销。',
       deleteInteractionTitle: '删除交互',
       deleteInteractionDescription: '确定要删除这个交互记录吗？这个操作无法撤销。',
+    },
+    footer: {
+      zephyrDescription: '面向未来的现代智能操作系统，让您的个人计算体验更加高效。',
+      learnMore: '了解我们的理念',
+      quickLinks: '快捷链接',
+      applications: '应用模块',
+      taskManagement: '任务管理',
+      memorySystem: '记忆系统',
+      operatingSystem: '操作系统',
+      madeWith: '用',
+      built: '构建',
     },
   },
 };
