@@ -230,7 +230,7 @@ export const SEASON_THEMES: Record<SeasonTheme, SeasonThemeConfig> = {
       text: '#14532d',
       background: '#f0fdf4'
     },
-    gradient: 'from-emerald-100 via-green-50 to-teal-50',
+    gradient: 'from-emerald-200 via-green-100 to-teal-100 dark:from-emerald-900/40 dark:via-green-800/30 dark:to-teal-800/30',
     emoji: '🌱',
     description: 'Growth, renewal, and new beginnings'
   },
@@ -243,7 +243,7 @@ export const SEASON_THEMES: Record<SeasonTheme, SeasonThemeConfig> = {
       text: '#92400e',
       background: '#fffbeb'
     },
-    gradient: 'from-amber-100 via-yellow-50 to-orange-50',
+    gradient: 'from-amber-200 via-yellow-100 to-orange-100 dark:from-amber-900/40 dark:via-yellow-800/30 dark:to-orange-800/30',
     emoji: '☀️',
     description: 'Energy, vitality, and peak activity'
   },
@@ -256,7 +256,7 @@ export const SEASON_THEMES: Record<SeasonTheme, SeasonThemeConfig> = {
       text: '#9a3412',
       background: '#fff7ed'
     },
-    gradient: 'from-orange-100 via-amber-50 to-red-50',
+    gradient: 'from-orange-200 via-amber-100 to-red-100 dark:from-orange-900/40 dark:via-amber-800/30 dark:to-red-800/30',
     emoji: '🍂',
     description: 'Reflection, harvest, and transformation'
   },
@@ -269,7 +269,7 @@ export const SEASON_THEMES: Record<SeasonTheme, SeasonThemeConfig> = {
       text: '#1e293b',
       background: '#f8fafc'
     },
-    gradient: 'from-slate-100 via-gray-50 to-blue-50',
+    gradient: 'from-slate-200 via-blue-100 to-indigo-100 dark:from-slate-900/40 dark:via-blue-800/30 dark:to-indigo-800/30',
     emoji: '❄️',
     description: 'Rest, contemplation, and inner work'
   }

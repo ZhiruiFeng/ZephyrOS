@@ -28,7 +28,7 @@ export function SeasonCover({
   const titleInputRef = useRef<HTMLInputElement>(null)
   const intentionTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const { theme, gradientClasses } = useNarrativeTheme(season.theme)
+  const { theme, gradientClasses, cssVariables } = useNarrativeTheme(season.theme)
 
   // Pre-compute theme configs for all seasons to avoid calling hooks inside callbacks
   const springTheme = useNarrativeTheme('spring').theme
@@ -94,10 +94,26 @@ export function SeasonCover({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Background pattern */}
+      {/* Background pattern and contrast overlay */}
       <div className="absolute inset-0 opacity-10">
         <div className="h-full w-full bg-gradient-to-br from-white/20 to-transparent" />
       </div>
+
+      {/* Artistic colorful glow (themed by season) */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute -inset-16 blur-3xl opacity-40"
+          style={{
+            ...cssVariables,
+            background:
+              'radial-gradient(600px circle at 0% 10%, var(--season-primary) 0%, transparent 60%),\n               radial-gradient(500px circle at 90% 20%, var(--season-accent) 0%, transparent 60%),\n               radial-gradient(420px circle at 10% 90%, var(--season-secondary) 0%, transparent 55%)',
+            transform: 'translateZ(0)'
+          }}
+        />
+      </div>
+
+      {/* Subtle contrast overlay for better text readability */}
+      <div className="absolute inset-0 bg-white/20 dark:bg-black/30" />
 
       {/* Content */}
       <div className="relative z-10">
@@ -107,7 +123,7 @@ export function SeasonCover({
             <span className="text-3xl" role="img" aria-label={theme.name}>
               {theme.emoji}
             </span>
-            <div className="text-sm font-medium text-white/80">
+            <div className="text-sm font-medium text-gray-700 dark:text-white/80">
               {theme.name} Season
             </div>
           </div>
@@ -115,7 +131,7 @@ export function SeasonCover({
           {isEditable && !isEditing && (
             <button
               onClick={handleEdit}
-              className="rounded-lg bg-white/10 p-2 text-white/80 transition-colors hover:bg-white/20"
+              className="rounded-lg bg-black/10 dark:bg-white/10 p-2 text-gray-700 dark:text-white/80 transition-colors hover:bg-black/20 dark:hover:bg-white/20"
               title="Edit season"
             >
               <PencilIcon className="h-4 w-4" />
@@ -127,7 +143,7 @@ export function SeasonCover({
               <button
                 onClick={handleSave}
                 disabled={isUpdating || !editedTitle.trim()}
-                className="rounded-lg bg-green-500/80 p-2 text-white transition-colors hover:bg-green-500 disabled:opacity-50"
+                className="rounded-lg bg-green-500 p-2 text-white transition-colors hover:bg-green-600 disabled:opacity-50"
                 title="Save changes"
               >
                 <CheckIcon className="h-4 w-4" />
@@ -135,7 +151,7 @@ export function SeasonCover({
               <button
                 onClick={handleCancel}
                 disabled={isUpdating}
-                className="rounded-lg bg-white/10 p-2 text-white/80 transition-colors hover:bg-white/20 disabled:opacity-50"
+                className="rounded-lg bg-black/10 dark:bg-white/10 p-2 text-gray-700 dark:text-white/80 transition-colors hover:bg-black/20 dark:hover:bg-white/20 disabled:opacity-50"
                 title="Cancel editing"
               >
                 <X className="h-4 w-4" />
@@ -153,11 +169,11 @@ export function SeasonCover({
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full bg-transparent text-2xl font-bold text-white placeholder-white/60 outline-none md:text-3xl"
+              className="w-full bg-transparent text-2xl font-bold text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-white/60 outline-none md:text-3xl"
               placeholder="Season title..."
             />
           ) : (
-            <h1 className="text-2xl font-bold text-white md:text-3xl">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
               {season.title}
             </h1>
           )}
@@ -166,7 +182,7 @@ export function SeasonCover({
         {/* Theme selector (when editing) */}
         {isEditing && (
           <div className="mb-4">
-            <div className="mb-2 text-sm font-medium text-white/80">Theme</div>
+            <div className="mb-2 text-sm font-medium text-gray-700 dark:text-white/80">Theme</div>
             <div className="flex gap-2">
               {(['spring', 'summer', 'autumn', 'winter'] as SeasonTheme[]).map((themeOption) => {
                 const themeConfig = themeConfigs[themeOption]
@@ -176,8 +192,8 @@ export function SeasonCover({
                     onClick={() => setEditedTheme(themeOption)}
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       editedTheme === themeOption
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white/10 text-white/70 hover:bg-white/15'
+                        ? 'bg-black/20 dark:bg-white/20 text-gray-800 dark:text-white'
+                        : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:bg-black/15 dark:hover:bg-white/15'
                     }`}
                   >
                     {themeConfig.emoji} {themeConfig.name}
@@ -192,22 +208,22 @@ export function SeasonCover({
         <div className="mb-6">
           {isEditing ? (
             <div>
-              <div className="mb-2 text-sm font-medium text-white/80">Intention</div>
+              <div className="mb-2 text-sm font-medium text-gray-700 dark:text-white/80">Intention</div>
               <textarea
                 ref={intentionTextareaRef}
                 value={editedIntention}
                 onChange={(e) => setEditedIntention(e.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={3}
-                className="w-full resize-none bg-white/10 rounded-lg p-3 text-white placeholder-white/60 outline-none focus:bg-white/15"
+                className="w-full resize-none bg-black/5 dark:bg-white/10 rounded-lg p-3 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-white/60 outline-none focus:bg-black/10 dark:focus:bg-white/15"
                 placeholder="What's your intention for this season?"
               />
             </div>
           ) : (
             season.intention && (
               <div>
-                <div className="mb-2 text-sm font-medium text-white/80">Intention</div>
-                <p className="text-white/90 leading-relaxed">
+                <div className="mb-2 text-sm font-medium text-gray-700 dark:text-white/80">Intention</div>
+                <p className="text-gray-700 dark:text-white/90 leading-relaxed">
                   {season.intention}
                 </p>
               </div>
@@ -216,7 +232,7 @@ export function SeasonCover({
         </div>
 
         {/* Season metadata */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-white/70">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-white/70">
           <div className="flex items-center gap-2">
             <span className="font-medium">Status:</span>
             <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
@@ -246,7 +262,7 @@ export function SeasonCover({
         </div>
 
         {/* Theme description */}
-        <div className="mt-4 text-sm text-white/60">
+        <div className="mt-4 text-sm text-gray-500 dark:text-white/60">
           {theme.description}
         </div>
       </div>
