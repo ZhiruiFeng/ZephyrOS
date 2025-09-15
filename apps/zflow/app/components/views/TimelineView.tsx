@@ -2,11 +2,10 @@
 
 import React from 'react'
 import { TimelineItem } from '@/hooks/useTimeline'
-import ModernTimelineView, { TimelineEvent, Category } from './ModernTimelineView'
-import { Language } from '../../../lib/i18n'
-import { getCrossDayBorderClass } from '../../utils/crossDayUtils'
-import { timeTrackingApi } from '../../../lib/api'
-import CreateTimelineItemModal from '../modals/CreateTimelineItemModal'
+import ModernTimelineView, { TimelineEvent, Category } from '@/app/components/views/ModernTimelineView'
+import { Language } from '@/lib/i18n'
+import { timeTrackingApi } from '@/lib/api'
+import CreateTimelineItemModal from '@/app/components/modals/CreateTimelineItemModal'
 
 interface TimelineViewProps {
   selectedDate: Date
