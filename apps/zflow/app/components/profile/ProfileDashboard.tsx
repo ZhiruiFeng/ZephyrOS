@@ -12,6 +12,7 @@ import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
 import { STTConfigModule } from './modules/STTConfigModule'
+import { ZRelationsModule } from './modules/ZRelationsModule'
 import { useProfileModules } from './hooks/useProfileModules'
 import type { ProfileModule, ProfileModuleConfig } from './types'
 
@@ -111,11 +112,21 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
         )
       case 'stt-config':
         return (
-          <STTConfigModule 
+          <STTConfigModule
             key={moduleConfig.id}
             config={moduleConfig}
             onConfigChange={(newConfig) => {
               console.log('STT config changed:', newConfig)
+            }}
+          />
+        )
+      case 'zrelations':
+        return (
+          <ZRelationsModule
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Z-Relations config changed:', newConfig)
             }}
           />
         )

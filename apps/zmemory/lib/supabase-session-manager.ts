@@ -2,6 +2,12 @@ import { supabaseServer, supabaseAuth, ChatSessionRow, ChatMessageRow } from './
 import { ChatSession, AgentMessage } from '../types/agents'
 
 export class SupabaseSessionManager {
+  private getDb() {
+    if (!supabaseServer) {
+      throw new Error('Supabase is not configured on the server')
+    }
+    return supabaseServer
+  }
   
   /**
    * Create a new chat session in Supabase
@@ -25,7 +31,8 @@ export class SupabaseSessionManager {
       insertData.id = sessionId
     }
 
-    const { data, error } = await supabaseServer
+    const db = this.getDb()
+    const { data, error } = await db
       .from('chat_sessions')
       .insert(insertData)
       .select()
@@ -42,7 +49,8 @@ export class SupabaseSessionManager {
    * Get a specific session by ID
    */
   async getSession(sessionId: string, userId?: string): Promise<ChatSession | null> {
-    let query = supabaseServer
+    const db = this.getDb()
+    let query = db
       .from('chat_sessions')
       .select(`
         *,
@@ -79,7 +87,8 @@ export class SupabaseSessionManager {
    * Get all sessions for a user
    */
   async getUserSessions(userId: string, limit = 50, includeArchived = false): Promise<ChatSession[]> {
-    let query = supabaseServer
+    const db = this.getDb()
+    let query = db
       .from('chat_sessions')
       .select('*')
       .eq('user_id', userId)
@@ -103,7 +112,8 @@ export class SupabaseSessionManager {
    * Save/update a complete session with all messages
    */
   async saveSession(session: ChatSession): Promise<void> {
-    const { error: sessionError } = await supabaseServer
+    const db = this.getDb()
+    const { error: sessionError } = await db
       .from('chat_sessions')
       .upsert({
         id: session.id,
@@ -136,13 +146,13 @@ export class SupabaseSessionManager {
       }))
 
       // Delete existing messages first to handle updates
-      await supabaseServer
+      await db
         .from('chat_messages')
         .delete()
         .eq('session_id', session.id)
 
       // Insert all messages
-      const { error: messagesError } = await supabaseServer
+      const { error: messagesError } = await db
         .from('chat_messages')
         .insert(messagesData)
 
@@ -156,8 +166,9 @@ export class SupabaseSessionManager {
    * Add a single message to an existing session
    */
   async addMessage(sessionId: string, message: AgentMessage): Promise<void> {
+    const db = this.getDb()
     // Check if message already exists to prevent duplicates
-    const { data: existingMessage } = await supabaseServer
+    const { data: existingMessage } = await db
       .from('chat_messages')
       .select('message_id')
       .eq('session_id', sessionId)
@@ -171,7 +182,7 @@ export class SupabaseSessionManager {
     }
 
     // Get current message count
-    const { data: session, error: sessionError } = await supabaseServer
+    const { data: session, error: sessionError } = await db
       .from('chat_sessions')
       .select('message_count')
       .eq('id', sessionId)
@@ -183,7 +194,7 @@ export class SupabaseSessionManager {
 
     const messageIndex = session.message_count
 
-    const { error } = await supabaseServer
+    const { error } = await db
       .from('chat_messages')
       .insert({
         session_id: sessionId,
@@ -212,7 +223,8 @@ export class SupabaseSessionManager {
     if (updates.toolCalls !== undefined) updateData.tool_calls = updates.toolCalls
     if (updates.streaming !== undefined) updateData.streaming = updates.streaming
 
-    const { error } = await supabaseServer
+    const db = this.getDb()
+    const { error } = await db
       .from('chat_messages')
       .update(updateData)
       .eq('session_id', sessionId)
@@ -227,7 +239,8 @@ export class SupabaseSessionManager {
    * Archive a session (soft delete)
    */
   async archiveSession(sessionId: string): Promise<void> {
-    const { error } = await supabaseServer
+    const db = this.getDb()
+    const { error } = await db
       .from('chat_sessions')
       .update({ 
         is_archived: true,
@@ -244,7 +257,8 @@ export class SupabaseSessionManager {
    * Permanently delete a session and all its messages
    */
   async deleteSession(sessionId: string): Promise<void> {
-    const { error } = await supabaseServer
+    const db = this.getDb()
+    const { error } = await db
       .from('chat_sessions')
       .delete()
       .eq('id', sessionId)
@@ -262,7 +276,8 @@ export class SupabaseSessionManager {
     sessionTitle: string
     message: AgentMessage
   }[]> {
-    const { data, error } = await supabaseServer
+    const db = this.getDb()
+    const { data, error } = await db
       .from('chat_messages')
       .select(`
         *,
@@ -304,7 +319,8 @@ export class SupabaseSessionManager {
     totalMessages: number
     archivedSessions: number
   }> {
-    const { data, error } = await supabaseServer
+    const db = this.getDb()
+    const { data, error } = await db
       .from('chat_sessions')
       .select('message_count, is_archived')
       .eq('user_id', userId)

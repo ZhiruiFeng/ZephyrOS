@@ -249,8 +249,11 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
+    // At this point supabaseServer is guaranteed non-null (mock path returned earlier)
+    const db = supabaseServer!;
+
     // Use the pre-built view for check-in queue with additional filtering
-    let dbQuery = supabaseServer
+    let dbQuery = db
       .from('checkin_queue')
       .select(`
         person_id,
@@ -329,7 +332,7 @@ export async function GET(request: NextRequest) {
     const checkinResults = await Promise.all(
       (checkinData || []).map(async (checkin) => {
         // Get the 2 most recent touchpoints for context
-        const { data: touchpoints } = await supabaseServer
+        const { data: touchpoints } = await db
           .from('relationship_touchpoints')
           .select('id, summary, channel, sentiment, created_at')
           .eq('person_id', checkin.person_id)

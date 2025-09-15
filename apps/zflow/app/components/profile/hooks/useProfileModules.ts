@@ -92,6 +92,20 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       autoSave: true,
       showProviderInUI: false
     }
+  },
+  {
+    id: 'zrelations',
+    name: 'Z-Relations',
+    description: 'Manage relationships and social connections',
+    icon: 'Users',
+    category: 'productivity',
+    defaultEnabled: false,
+    defaultConfig: {
+      showCheckinQueue: true,
+      showHealthScores: true,
+      maxQueueItems: 5,
+      enableNotifications: true
+    }
   }
 ]
 
