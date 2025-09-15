@@ -34,12 +34,15 @@ const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
     const capturedAt = isMemory ? (item.metadata?.capturedAt as string | undefined) : undefined
     const memoryStart = isMemory ? (capturedAt || item.startTime) : undefined
 
+    // For standalone tasks (not time entries): show as creation point-in-time
+    const isCreationTask = item.type === 'task'
+
     return {
       id: item.id,
       title: item.title,
       start: isMemory ? (memoryStart as string) : item.startTime,
-      end: isMemory 
-        ? (memoryStart as string)
+      end: (isMemory || isCreationTask)
+        ? (isMemory ? (memoryStart as string) : item.startTime)
         : (item.endTime || new Date(new Date(item.startTime).getTime() + (item.duration || 30) * 60000).toISOString()),
       type: displayType as 'task' | 'activity' | 'memory',
       categoryId: item.category?.id,
@@ -66,7 +69,9 @@ const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
         timelineItemId: item.metadata?.timelineItemId,
         // Add old task metadata
         isOldTask: item.metadata?.isOldTask,
-        createdAt: item.metadata?.createdAt
+        createdAt: item.metadata?.createdAt,
+        // Mark creation-only task events (no explicit time entry)
+        isCreationEvent: isCreationTask
       }
     }
   })

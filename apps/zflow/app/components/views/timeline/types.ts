@@ -27,6 +27,6 @@ export interface TimelineEvent {
     capturedAt?: string
     isOldTask?: boolean
     createdAt?: string
+    isCreationEvent?: boolean
   }
 }
-
