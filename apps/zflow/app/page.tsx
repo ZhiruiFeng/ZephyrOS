@@ -58,7 +58,13 @@ function ZFlowPageContent() {
   const [selectedDate, setSelectedDate] = React.useState(new Date())
 
   // Data hooks
-  const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
+  // Fetch more tasks and sort by recent activity to avoid hiding older unfinished ones
+  const { tasks, isLoading, error } = useTasks(user ? { 
+    root_tasks_only: true,
+    limit: 500,
+    sort_by: 'updated_at',
+    sort_order: 'desc'
+  } : null)
   // Do not fetch activities list on home page unless needed
   const { activities, isLoading: activitiesLoading } = useActivities(user ? undefined : undefined, { enabled: false })
   const { categories } = useCategories()

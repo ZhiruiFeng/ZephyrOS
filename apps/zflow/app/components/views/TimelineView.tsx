@@ -63,7 +63,10 @@ const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
         relatedItemId: item.type === 'time_entry' ? item.metadata?.taskId : undefined,
         timelineItemType: item.metadata?.timelineItemType,
         timelineItemTitle: item.metadata?.timelineItemTitle,
-        timelineItemId: item.metadata?.timelineItemId
+        timelineItemId: item.metadata?.timelineItemId,
+        // Add old task metadata
+        isOldTask: item.metadata?.isOldTask,
+        createdAt: item.metadata?.createdAt
       }
     }
   })

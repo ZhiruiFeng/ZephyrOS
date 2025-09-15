@@ -62,6 +62,11 @@ export default function TaskCard({
   const isTiming = timer.runningTaskId === task.id
   const isCompleted = c.status === 'completed'
   const isOnHold = variant === 'future'
+  const isUnfinished = c.status !== 'completed' && c.status !== 'cancelled'
+  const createdAt = new Date(task.created_at)
+  const daysOld = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+  const STALE_DAYS = 30
+  const isStaleUnfinished = isUnfinished && daysOld >= STALE_DAYS
 
   // Format elapsed time from milliseconds
   const formatElapsedTime = (elapsedMs: number): string => {
@@ -83,6 +88,10 @@ export default function TaskCard({
     }
     if (isInProgress && variant === 'current') {
       return 'bg-gradient-to-r from-primary-50 to-primary-100 border-2 border-primary-300 shadow-lg shadow-primary-200/50 hover:shadow-xl hover:shadow-primary-200/60'
+    }
+    // Highlight old unfinished tasks differently on home views (current/future)
+    if ((variant === 'current' || variant === 'future') && isStaleUnfinished) {
+      return 'bg-gradient-to-r from-amber-50 to-amber-100 border-2 border-amber-300 shadow-lg shadow-amber-200/50 hover:shadow-xl hover:shadow-amber-200/60'
     }
     return 'glass'
   }

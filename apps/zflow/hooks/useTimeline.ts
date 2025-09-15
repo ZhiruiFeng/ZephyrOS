@@ -1,5 +1,5 @@
 import useSWR from 'swr'
-import { timeTrackingApi, timelineItemsApi } from '../lib/api'
+import { timeTrackingApi, timelineItemsApi, apiClient } from '../lib/api'
 import { memoriesApi } from '../lib/memories-api'
 import { processDayEntries, type TimeEntryWithCrossDay } from '../app/utils/crossDayUtils'
 
@@ -70,13 +70,16 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
     // Fetch all data in parallel
     const [timeEntriesResult, memoriesResult, tasksResult] = await Promise.all([
       timeTrackingApi.listDay({ from, to }),
-      memoriesApi.search({ 
-        date_from: from, 
+      memoriesApi.search({
+        date_from: from,
         date_to: to,
-        limit: 100 
+        limit: 100
       }),
-      // TODO: Add tasks API call when available
-      Promise.resolve({ tasks: [] })
+      // Fetch all unfinished tasks (not filtered by date)
+      apiClient.getTasks({
+        limit: 500,
+        root_tasks_only: true
+      }).then(tasks => ({ tasks }))
     ])
 
     // Since we queried the exact local day range, we can use the entries directly
@@ -164,32 +167,48 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
         }
       })
 
-    // Transform tasks (placeholder for now)
-    const taskItems: TimelineItem[] = (tasksResult.tasks || []).map((task: any) => ({
-      id: task.id,
-      type: 'task' as const,
-      title: task.title,
-      description: task.description,
-      startTime: task.created_at,
-      endTime: task.completion_date,
-      duration: task.estimated_duration,
-      category: task.category ? {
-        id: task.category.id,
-        name: task.category.name,
-        color: task.category.color,
-        icon: task.category.icon
-      } : undefined,
-      tags: task.tags || [],
-      location: undefined,
-      isHighlight: false,
-      status: task.status,
-      priority: task.priority,
-      metadata: {
-        progress: task.progress,
-        assignee: task.assignee,
-        dueDate: task.due_date
-      }
-    }))
+    // Transform tasks - include all unfinished tasks and add age-based styling
+    const now = new Date()
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+    const taskItems: TimelineItem[] = (tasksResult.tasks || [])
+      .filter((task: any) => {
+        const status = task.content.status
+        // Include only unfinished tasks
+        return status === 'pending' || status === 'in_progress' || status === 'on_hold'
+      })
+      .map((task: any) => {
+        const createdAt = new Date(task.created_at)
+        const isOldTask = createdAt < oneMonthAgo
+
+        return {
+          id: task.id,
+          type: 'task' as const,
+          title: task.content.title,
+          description: task.content.description,
+          startTime: task.created_at,
+          endTime: task.content.completion_date,
+          duration: task.content.estimated_duration,
+          category: task.category ? {
+            id: task.category.id,
+            name: task.category.name,
+            color: task.category.color,
+            icon: task.category.icon
+          } : undefined,
+          tags: task.tags || [],
+          location: undefined,
+          isHighlight: false,
+          status: task.content.status,
+          priority: task.content.priority,
+          metadata: {
+            progress: task.content.progress,
+            assignee: task.content.assignee,
+            dueDate: task.content.due_date,
+            isOldTask: isOldTask,
+            createdAt: task.created_at
+          }
+        }
+      })
 
     // Combine all items and sort by start time
     const allItems = [...timeEntryItems, ...memoryItems, ...taskItems].sort(

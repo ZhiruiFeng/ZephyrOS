@@ -26,6 +26,7 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
   const cat = categories.find(c => c.id === ev.categoryId) || { name: 'General', color: '#C6D2DE' }
   const typeProps = getTypeProperties(ev.type)
   const isTimeEntry = ev.meta?.originalType === 'time_entry'
+  const isOldTask = ev.type === 'task' && ev.meta?.isOldTask
 
   const handleSaveEdit = async () => {
     const startTime = new Date(editStart)
@@ -85,17 +86,21 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
       </div>
 
       <div
-        className={`rounded-2xl overflow-hidden transition-all ${ev.meta?.isCrossDaySegment ? 'border-dashed' : 'border'}`}
-        style={{ background: TOKENS.color.elevated, borderColor: ev.meta?.isCrossDaySegment ? TOKENS.color.accent : TOKENS.color.border, boxShadow: TOKENS.shadowCard }}
+        className={`rounded-2xl overflow-hidden transition-all ${ev.meta?.isCrossDaySegment ? 'border-dashed' : 'border'} ${isOldTask ? 'opacity-75' : ''}`}
+        style={{
+          background: isOldTask ? '#fef3c7' : TOKENS.color.elevated,
+          borderColor: isOldTask ? '#f59e0b' : (ev.meta?.isCrossDaySegment ? TOKENS.color.accent : TOKENS.color.border),
+          boxShadow: TOKENS.shadowCard
+        }}
         onMouseEnter={(e) => { e.currentTarget.style.boxShadow = TOKENS.shadowHover }}
         onMouseLeave={(e) => { e.currentTarget.style.boxShadow = TOKENS.shadowCard }}
-        title={ev.meta?.isCrossDaySegment ? `Cross-day segment: ${ev.title}` : ev.title}
+        title={isOldTask ? `Old task (created: ${new Date(ev.meta?.createdAt || '').toLocaleDateString()}): ${ev.title}` : (ev.meta?.isCrossDaySegment ? `Cross-day segment: ${ev.title}` : ev.title)}
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 pt-3">
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
             <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-medium" style={{ background: typeProps.bgColor, color: typeProps.color }}>
               <span className="text-[9px] sm:text-[10px]">{typeProps.icon}</span>
-              <span>{typeProps.label}</span>
+              <span>{isOldTask ? `⏰ ${typeProps.label}` : typeProps.label}</span>
             </span>
             <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-medium" style={{ background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}44` }}>
               <i className="h-2 w-2 rounded-full" style={{ background: cat.color }} />
