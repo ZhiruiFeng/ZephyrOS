@@ -115,7 +115,7 @@ export interface BrokerageOpportunity {
 
 // API configuration
 const ZMEMORY_API_BASE = (() => {
-  const envBase = process.env.NEXT_PUBLIC_ZMEMORY_API_BASE
+  const envBase = process.env.NEXT_PUBLIC_API_BASE
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     const { protocol, hostname, port } = window.location
