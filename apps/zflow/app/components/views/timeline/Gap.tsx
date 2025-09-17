@@ -30,7 +30,13 @@ export function Gap({ from, to, onCreateEvent, t }: { from: Date; to: Date; onCr
           <span className="opacity-80">{fmtHM(from)} – {fmtHM(to)}</span>
           <span className="opacity-60">{t?.ui?.noData ?? 'No records'} · {mins}{t?.ui?.minutes ?? 'm'}</span>
           <button
-            onClick={() => onCreateEvent?.(from.toISOString(), to.toISOString())}
+            onClick={() => {
+              const now = new Date()
+              const start = from.toISOString()
+              // Default end time: use now if within the gap, otherwise use end of interval
+              const end = (now >= from && now <= to) ? now.toISOString() : to.toISOString()
+              onCreateEvent?.(start, end)
+            }}
             className="px-2 py-1 rounded-lg text-[11px] font-medium transition-all hover:scale-105"
             style={{ background: TOKENS.color.accentSubtle, color: TOKENS.color.accent }}
           >
