@@ -132,6 +132,27 @@ export const MemoryAnchorsQuerySchema = z.object({
   offset: z.string().optional().transform(v => parseInt(v || '0')),
 });
 
+// ===== Memory ↔ Episode Anchors Schemas =====
+export const MemoryEpisodeAnchorCreateSchema = z.object({
+  episode_id: z.string().uuid(),
+  relation_type: z.enum(relationTypes),
+  local_time_range: z.object({
+    start: isoDateTime,
+    end: isoDateTime.optional()
+  }).optional(),
+  weight: z.number().min(0.0).max(10.0).default(1.0),
+  notes: z.string().optional(),
+});
+
+export const MemoryEpisodeAnchorUpdateSchema = MemoryEpisodeAnchorCreateSchema.partial().omit({ episode_id: true });
+
+export const MemoryEpisodeAnchorsQuerySchema = z.object({
+  relation_type: z.enum(relationTypes).optional(),
+  min_weight: z.number().min(0.0).max(10.0).optional(),
+  limit: z.string().optional().transform(v => parseInt(v || '50')),
+  offset: z.string().optional().transform(v => parseInt(v || '0')),
+});
+
 // ===== Assets Schemas =====
 const assetKinds = ['image', 'audio', 'video', 'document', 'link'] as const;
 
@@ -178,6 +199,9 @@ export type MemoriesQuery = z.infer<typeof MemoriesQuerySchema>;
 export type MemoryAnchorCreateBody = z.infer<typeof MemoryAnchorCreateSchema>;
 export type MemoryAnchorUpdateBody = z.infer<typeof MemoryAnchorUpdateSchema>;
 export type MemoryAnchorsQuery = z.infer<typeof MemoryAnchorsQuerySchema>;
+export type MemoryEpisodeAnchorCreateBody = z.infer<typeof MemoryEpisodeAnchorCreateSchema>;
+export type MemoryEpisodeAnchorUpdateBody = z.infer<typeof MemoryEpisodeAnchorUpdateSchema>;
+export type MemoryEpisodeAnchorsQuery = z.infer<typeof MemoryEpisodeAnchorsQuerySchema>;
 export type AssetCreateBody = z.infer<typeof AssetCreateSchema>;
 export type AssetUpdateBody = z.infer<typeof AssetUpdateSchema>;
 export type MemoryAssetCreateBody = z.infer<typeof MemoryAssetCreateSchema>;

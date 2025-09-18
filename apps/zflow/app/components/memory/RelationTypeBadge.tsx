@@ -24,7 +24,7 @@ interface RelationTypeBadgeProps {
   type: RelationType
   className?: string
   showLabel?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
 }
 
 const relationConfig = {
@@ -82,16 +82,18 @@ export default function RelationTypeBadge({
   const Icon = config.icon
 
   const sizeClasses = {
+    xs: 'px-1.5 py-0.5 text-[10px]',
     sm: 'px-1.5 py-0.5 text-xs',
     md: 'px-2 py-1 text-sm',
     lg: 'px-3 py-1.5 text-base'
-  }
+  } as const
 
   const iconSizes = {
-    sm: 'w-3 h-3',
+    xs: 'w-3 h-3',
+    sm: 'w-3.5 h-3.5',
     md: 'w-4 h-4',
     lg: 'w-5 h-5'
-  }
+  } as const
 
   return (
     <span

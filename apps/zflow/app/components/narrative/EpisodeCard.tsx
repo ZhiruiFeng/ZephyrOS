@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PencilIcon, TrashIcon, CheckIcon, X, Calendar } from 'lucide-react'
+import { PencilIcon, TrashIcon, CheckIcon, X, Calendar, Plus } from 'lucide-react'
 import { useNarrativeTheme } from '../../../hooks/useNarrativeTheme'
 import type { Episode, SeasonTheme } from '../../../types/narrative'
+import EpisodeStoryMemoryDisplay from './EpisodeStoryMemoryDisplay'
+import MemoryManagementModal from '../memory/MemoryManagementModal'
+import { useMemories } from '../../../hooks/useMemoryAnchors'
+import { useEpisodeMemoryActions } from '../../../hooks/useEpisodeMemoryAnchors'
+import { useEpisodeAnchors } from '../../../hooks/useEpisodeAnchors'
 
 interface EpisodeCardProps {
   episode: Episode
@@ -23,6 +29,7 @@ export function EpisodeCard({
   onDelete,
   className = ''
 }: EpisodeCardProps) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -36,6 +43,18 @@ export function EpisodeCard({
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const { colorClasses } = useNarrativeTheme(seasonTheme)
+
+  // Memory anchors under episode (INS story-like strip)
+  const [showMemories, setShowMemories] = useState(false)
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false)
+  const { memories: allMemories, isLoading: memoriesLoading } = useMemories({ limit: 100 })
+  const { createMemoryWithEpisodeAnchor, linkMemoryToEpisode, removeMemoryFromEpisode, isLoading: memActionLoading } = useEpisodeMemoryActions()
+  const { anchors: episodeAnchors, isLoading: anchorsLoading, refetch } = useEpisodeAnchors(episode.id)
+
+  const handleOpenMemory = (memoryId: string) => {
+    const returnTo = encodeURIComponent('/narrative')
+    router.push(`/focus/memory?memoryId=${encodeURIComponent(memoryId)}&from=narrative&returnTo=${returnTo}`)
+  }
 
   // Calculate episode duration
   const startDate = new Date(episode.date_range_start)
@@ -123,7 +142,7 @@ export function EpisodeCard({
       <div className={`px-4 py-3 ${colorClasses.primaryBg} border-b ${colorClasses.border}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Mood emoji */}
+            {/* Mood emoji and Add memory button */}
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 dark:bg-gray-700">
               {isEditing ? (
                 <input
@@ -184,8 +203,16 @@ export function EpisodeCard({
           </div>
 
           {/* Actions */}
-          {isEditable && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMemoryModalOpen(true)}
+              className={`rounded-lg p-2 transition-colors ${colorClasses.hover} bg-white/70`}
+              title="Add memory to episode"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            {isEditable && (
+              <>
               {isEditing ? (
                 <>
                   <button
@@ -205,8 +232,8 @@ export function EpisodeCard({
                     <X className="h-4 w-4" />
                   </button>
                 </>
-              ) : (
-                <>
+                ) : (
+                  <>
                   <button
                     onClick={handleEdit}
                     className={`rounded-lg p-2 transition-colors ${colorClasses.hover}`}
@@ -221,10 +248,11 @@ export function EpisodeCard({
                   >
                     <TrashIcon className="h-4 w-4" />
                   </button>
-                </>
-              )}
-            </div>
-          )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -251,6 +279,48 @@ export function EpisodeCard({
           )}
         </div>
       )}
+
+      {/* INS story-like memory strip */}
+      <div className="border-t border-gray-100">
+        <EpisodeStoryMemoryDisplay
+          episodeId={episode.id}
+          memories={episodeAnchors}
+          onAddMemory={() => setMemoryModalOpen(true)}
+          onOpenMemory={handleOpenMemory}
+          onRemoveMemory={async (memoryId) => {
+            // 默认删除 about 关系，如需多关系可在展示中加操作
+            await removeMemoryFromEpisode(memoryId, episode.id)
+            refetch()
+          }}
+          isLoading={anchorsLoading || memoriesLoading || memActionLoading}
+        />
+      </div>
+
+      {/* Memory Management Modal re-used */}
+      <MemoryManagementModal
+        isOpen={memoryModalOpen}
+        onClose={() => setMemoryModalOpen(false)}
+        taskId={episode.id}
+        taskTitle={episode.title}
+        onMemoryCreated={async (memory, anchor) => {
+          await createMemoryWithEpisodeAnchor(
+            { title: memory.title, note: memory.note, tags: memory.tags },
+            { episode_id: episode.id, relation_type: anchor.relation_type, weight: anchor.weight, local_time_range: anchor.local_time_range, notes: anchor.notes }
+          )
+          setMemoryModalOpen(false)
+          refetch()
+        }}
+        onMemoryLinked={async (memoryId, anchor) => {
+          await linkMemoryToEpisode(
+            memoryId,
+            { episode_id: episode.id, relation_type: anchor.relation_type, weight: anchor.weight, local_time_range: anchor.local_time_range, notes: anchor.notes }
+          )
+          setMemoryModalOpen(false)
+          refetch()
+        }}
+        existingMemories={allMemories}
+        isLoading={memoriesLoading || memActionLoading}
+      />
 
       {/* Delete confirmation modal */}
       <AnimatePresence>
