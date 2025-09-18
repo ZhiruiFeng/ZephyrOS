@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { PencilIcon, CheckIcon, X } from 'lucide-react'
+import { PencilIcon, CheckIcon, X, Trash2 } from 'lucide-react'
 import { useNarrativeTheme } from '../../../hooks/useNarrativeTheme'
 import type { Season, SeasonTheme } from '../../../types/narrative'
 
@@ -10,6 +10,7 @@ interface SeasonCoverProps {
   season: Season
   isEditable?: boolean
   onUpdate?: (updates: { title?: string; intention?: string; theme?: SeasonTheme }) => Promise<void>
+  onDelete?: () => Promise<void> | void
   className?: string
 }
 
@@ -17,6 +18,7 @@ export function SeasonCover({
   season,
   isEditable = false,
   onUpdate,
+  onDelete,
   className = ''
 }: SeasonCoverProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -24,6 +26,7 @@ export function SeasonCover({
   const [editedIntention, setEditedIntention] = useState(season.intention || '')
   const [editedTheme, setEditedTheme] = useState(season.theme)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const intentionTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -87,6 +90,21 @@ export function SeasonCover({
     }
   }
 
+  const handleDelete = async () => {
+    if (!onDelete) return
+    const confirmDelete = window.confirm('Delete this season? Episodes inside will also be removed.')
+    if (!confirmDelete) return
+
+    setIsDeleting(true)
+    try {
+      await onDelete()
+    } catch (error) {
+      console.error('Failed to delete season:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <motion.div
       className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradientClasses.background} p-6 ${className}`}
@@ -128,34 +146,50 @@ export function SeasonCover({
             </div>
           </div>
 
-          {isEditable && !isEditing && (
-            <button
-              onClick={handleEdit}
-              className="rounded-lg bg-black/10 dark:bg-white/10 p-2 text-gray-700 dark:text-white/80 transition-colors hover:bg-black/20 dark:hover:bg-white/20"
-              title="Edit season"
-            >
-              <PencilIcon className="h-4 w-4" />
-            </button>
-          )}
-
-          {isEditing && (
+          {isEditable && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleSave}
-                disabled={isUpdating || !editedTitle.trim()}
-                className="rounded-lg bg-green-500 p-2 text-white transition-colors hover:bg-green-600 disabled:opacity-50"
-                title="Save changes"
-              >
-                <CheckIcon className="h-4 w-4" />
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={isUpdating}
-                className="rounded-lg bg-black/10 dark:bg-white/10 p-2 text-gray-700 dark:text-white/80 transition-colors hover:bg-black/20 dark:hover:bg-white/20 disabled:opacity-50"
-                title="Cancel editing"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {onDelete && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting || isUpdating}
+                  className="rounded-lg border border-red-200/80 bg-red-500/10 p-2 text-red-600 transition-colors hover:border-red-300 hover:bg-red-500/15 disabled:opacity-50 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-300 dark:hover:border-red-400/50 dark:hover:bg-red-400/15"
+                  title="Delete season"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+
+              {!isEditing && (
+                <button
+                  onClick={handleEdit}
+                  disabled={isDeleting}
+                  className="rounded-lg bg-black/10 dark:bg-white/10 p-2 text-gray-700 dark:text-white/80 transition-colors hover:bg-black/20 dark:hover:bg-white/20 disabled:opacity-50"
+                  title="Edit season"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+              )}
+
+              {isEditing && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={isUpdating || !editedTitle.trim()}
+                    className="rounded-lg bg-green-500 p-2 text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+                    title="Save changes"
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={isUpdating}
+                    className="rounded-lg bg-black/10 dark:bg-white/10 p-2 text-gray-700 dark:text-white/80 transition-colors hover:bg-black/20 dark:hover:bg-white/20 disabled:opacity-50"
+                    title="Cancel editing"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
