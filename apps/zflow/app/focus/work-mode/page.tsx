@@ -17,6 +17,10 @@ import { useTranslation } from '../../../contexts/LanguageContext'
 import { useTimer } from '../../../hooks/useTimer'
 import SubtaskSection from '../../components/editors/SubtaskSection'
 import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
+import MemoryAnchorButton from '../../components/memory/MemoryAnchorButton'
+import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
+import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
+import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/useMemoryAnchors'
 import eventBus from '../../core/events/event-bus'
 
 interface TaskWithCategory extends TaskMemory {
@@ -73,6 +77,13 @@ function WorkModeViewInner() {
   const timer = useTimer(5000)
   const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
+
+  // Memory anchoring
+  const [showMemories, setShowMemories] = useState(false)
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false)
+  const { anchors: taskAnchors, isLoading: anchorsLoading, refetch: refetchAnchors } = useTaskMemoryAnchors(selectedTask?.id || '')
+  const { memories: allMemories, isLoading: memoriesLoading } = useMemories({ limit: 100 })
+  const { createMemoryWithAnchor, linkMemoryToTask, removeMemoryFromTask, isLoading: memoryActionLoading } = useMemoryActions()
 
   // Context-aware back navigation
   const handleBack = () => {
@@ -294,6 +305,11 @@ function WorkModeViewInner() {
     }
   }, [selectedSubtask])
 
+  // Hide memory panel when switching tasks
+  useEffect(() => {
+    setShowMemories(false)
+  }, [selectedTask?.id])
+
   // Reset auto-save state when switching tasks or subtasks
   useEffect(() => {
     autoSave.resetAutoSave()
@@ -411,33 +427,33 @@ function WorkModeViewInner() {
 
   const handleCompleteTask = async () => {
     if (!selectedTask) return
-    
+
     setIsSaving(true)
     try {
-      const updatedTask = await updateTask(selectedTask.id, { 
+      const updatedTask = await updateTask(selectedTask.id, {
         content: {
           status: 'completed',
           progress: 100,
           completion_date: new Date().toISOString()
-        } 
+        }
       })
-      
+
       // Update the selectedTask state with the updated task data
       const taskWithCategory = {
         ...updatedTask,
         category: selectedTask.category,
         category_id: selectedTask.category_id || selectedTask.content.category_id
       } as TaskWithCategory
-      
+
       setSelectedTask(taskWithCategory)
-      
+
       // Update taskInfo to reflect the completion
       setTaskInfo(prev => ({
         ...prev,
         status: 'completed',
         progress: 100
       }))
-      
+
       // Stop timer if running
       if (timer.isRunning && timer.runningTaskId === selectedTask.id) {
         timer.stop(selectedTask.id)
@@ -446,6 +462,54 @@ function WorkModeViewInner() {
       console.error('Failed to complete task:', error)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  // Memory management handlers
+  const handleMemoryCreated = async (memory: any, anchorData: any) => {
+    try {
+      await createMemoryWithAnchor(
+        {
+          title: memory.title,
+          note: memory.note,
+          tags: memory.tags
+        },
+        {
+          anchor_item_id: selectedTask!.id,
+          relation_type: anchorData.relation_type,
+          weight: anchorData.weight,
+          local_time_range: anchorData.local_time_range,
+          notes: anchorData.notes
+        }
+      )
+      refetchAnchors()
+    } catch (error) {
+      console.error('Failed to create memory:', error)
+    }
+  }
+
+  const handleMemoryLinked = async (memoryId: string, anchorData: any) => {
+    try {
+      await linkMemoryToTask(memoryId, {
+        anchor_item_id: selectedTask!.id,
+        relation_type: anchorData.relation_type,
+        weight: anchorData.weight,
+        local_time_range: anchorData.local_time_range,
+        notes: anchorData.notes
+      })
+      refetchAnchors()
+    } catch (error) {
+      console.error('Failed to link memory:', error)
+    }
+  }
+
+  const handleMemoryRemoved = async (memoryId: string) => {
+    if (!selectedTask) return
+    try {
+      await removeMemoryFromTask(memoryId, selectedTask.id)
+      refetchAnchors()
+    } catch (error) {
+      console.error('Failed to remove memory:', error)
     }
   }
 
@@ -779,6 +843,23 @@ function WorkModeViewInner() {
                     <ListTodo className="w-3 h-3 flex-shrink-0" />
                     <span className="hidden sm:inline ml-1 truncate">{t.ui.subtasks}</span>
                   </button>
+                  {/* Memory Anchor Button */}
+                  <MemoryAnchorButton
+                    onClick={() => {
+                      setShowMemories(prev => {
+                        const next = !prev
+                        if (!prev && selectedTask) {
+                          refetchAnchors()
+                        }
+                        return next
+                      })
+                    }}
+                    memoryCount={taskAnchors.length}
+                    disabled={!selectedTask}
+                    size="md"
+                    variant="default"
+                    isActive={showMemories}
+                  />
                 </div>
 
                 {/* Save Controls - Right Side (wraps below on mobile) */}
@@ -1042,6 +1123,24 @@ function WorkModeViewInner() {
               </div>
             )}
 
+            {/* Memory Display Section */}
+            {selectedTask && showMemories && (
+              <div className="p-4 lg:p-6 border-b border-gray-200 bg-gray-50">
+                <TaskMemoryDisplay
+                  taskId={selectedTask.id}
+                  memories={taskAnchors}
+                  onAddMemory={() => setMemoryModalOpen(true)}
+                  onRemoveMemory={handleMemoryRemoved}
+                  onViewMemory={() => {
+                    // TODO: Implement memory detail view
+                  }}
+                  isLoading={anchorsLoading}
+                  collapsible={true}
+                  compact={false}
+                />
+              </div>
+            )}
+
             {/* Subtasks Section (toggled) */}
             {showSubtasks && (
               <>
@@ -1119,6 +1218,17 @@ function WorkModeViewInner() {
         )}
       </div>
     </div>
+    {/* Memory Management Modal */}
+    <MemoryManagementModal
+      isOpen={memoryModalOpen}
+      onClose={() => setMemoryModalOpen(false)}
+      taskId={selectedTask?.id || ''}
+      taskTitle={selectedTask?.content.title || ''}
+      onMemoryCreated={handleMemoryCreated}
+      onMemoryLinked={handleMemoryLinked}
+      existingMemories={allMemories}
+      isLoading={memoriesLoading || memoryActionLoading}
+    />
     {/* Energy Review Modal */}
     <EnergyReviewModal
       open={energyReviewOpen}
