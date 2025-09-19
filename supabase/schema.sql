@@ -133,6 +133,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   subtask_count INTEGER DEFAULT 0,
   completed_subtask_count INTEGER DEFAULT 0,
   
+  -- AI task identification
+  is_ai_task BOOLEAN DEFAULT false NOT NULL,
+  
   -- Supertype/subtype relationship
   type TEXT DEFAULT 'task' CHECK (type = 'task'),
   FOREIGN KEY (id, type) REFERENCES timeline_items(id, type) ON DELETE CASCADE
@@ -398,6 +401,10 @@ CREATE INDEX IF NOT EXISTS idx_tasks_subtask_order ON tasks(parent_task_id, subt
 CREATE INDEX IF NOT EXISTS idx_tasks_completion_behavior ON tasks(completion_behavior);
 CREATE INDEX IF NOT EXISTS idx_tasks_progress_calculation ON tasks(progress_calculation);
 
+-- Tasks indexes - AI task identification
+CREATE INDEX IF NOT EXISTS idx_tasks_is_ai_task ON tasks(is_ai_task);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_ai_task ON tasks(user_id, is_ai_task);
+
 -- Task relations indexes
 CREATE INDEX IF NOT EXISTS idx_task_relations_parent ON task_relations(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_task_relations_child ON task_relations(child_task_id);
@@ -523,7 +530,8 @@ BEGIN
       jsonb_build_object(
         'estimated_duration', NEW.estimated_duration,
         'progress', NEW.progress,
-        'assignee', NEW.assignee
+        'assignee', NEW.assignee,
+        'is_ai_task', NEW.is_ai_task
       )
     );
   END IF;
@@ -556,7 +564,8 @@ BEGIN
       metadata = metadata || jsonb_build_object(
         'estimated_duration', NEW.estimated_duration,
         'progress', NEW.progress,
-        'assignee', NEW.assignee
+        'assignee', NEW.assignee,
+        'is_ai_task', NEW.is_ai_task
       )
     WHERE id = NEW.id AND type = 'task';
     
@@ -857,7 +866,8 @@ BEGIN
         jsonb_build_object(
           'estimated_duration', task_record.estimated_duration,
           'progress', task_record.progress,
-          'assignee', task_record.assignee
+          'assignee', task_record.assignee,
+          'is_ai_task', COALESCE(task_record.is_ai_task, false)
         )
       );
       
@@ -1730,6 +1740,13 @@ ON CONFLICT DO NOTHING;
 -- ✅ Memories subtype added for lived experience capture
 -- ✅ Memory anchors for contextual linking
 -- ✅ Assets system for media attachments
+
+-- =====================================================
+-- COLUMN COMMENTS
+-- =====================================================
+
+-- Add comment to the is_ai_task column
+COMMENT ON COLUMN tasks.is_ai_task IS 'Indicates whether this task is assigned to an AI (true) or created to a user (false)';
 
 -- =====================================================
 -- SCHEMA VERSION 2.1.0 COMPLETE

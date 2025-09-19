@@ -1071,6 +1071,339 @@ COMMENT ON COLUMN ai_interactions.input_tokens IS 'Token usage for cost tracking
 COMMENT ON COLUMN ai_interactions.total_cost IS 'Calculated cost for this interaction';
 
 -- =====================================================
+-- 11. AI TASKS SYSTEM
+-- =====================================================
+
+-- AI Tasks table for associating tasks with agents
+CREATE TABLE IF NOT EXISTS ai_tasks (
+  -- Core identification
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  
+  -- Relationships (foreign keys, non-null)
+  task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  agent_id UUID NOT NULL REFERENCES ai_agents(id) ON DELETE RESTRICT,
+  
+  -- Task assignment core information
+  objective TEXT NOT NULL, -- Task objective
+  deliverables TEXT, -- Deliverable outcomes
+  context TEXT, -- Task context
+  acceptance_criteria TEXT, -- Acceptance criteria
+  
+  -- Task type (foreign key to agent_features)
+  task_type TEXT NOT NULL REFERENCES agent_features(id),
+  
+  -- Dependencies
+  dependencies UUID[] DEFAULT '{}', -- Array of other task IDs
+  
+  -- Execution mode
+  mode TEXT NOT NULL DEFAULT 'plan_only' CHECK (mode IN (
+    'plan_only',      -- Plan only (no actions)
+    'dry_run',        -- Dry-run (simulate actions, estimate cost/time)
+    'execute'         -- Execute (actions gated by approvals)
+  )),
+  
+  -- Guardrails settings (JSONB structure)
+  guardrails JSONB DEFAULT '{
+    "costCapUSD": null,
+    "timeCapMin": null,
+    "requiresHumanApproval": true,
+    "dataScopes": []
+  }' NOT NULL,
+  
+  -- Metadata (JSONB structure)
+  metadata JSONB DEFAULT '{
+    "priority": "medium",
+    "tags": []
+  }' NOT NULL,
+  
+  -- Status management
+  status TEXT DEFAULT 'pending' CHECK (status IN (
+    'pending',        -- Waiting to start
+    'assigned',       -- Assigned to agent
+    'in_progress',    -- In execution
+    'paused',         -- Paused
+    'completed',      -- Completed
+    'failed',         -- Failed
+    'cancelled'       -- Cancelled
+  )),
+  
+  -- History records (JSONB array)
+  history JSONB DEFAULT '[]' NOT NULL,
+  
+  -- Execution results and cost tracking
+  execution_result JSONB DEFAULT '{}',
+  estimated_cost_usd DECIMAL(10,4),
+  actual_cost_usd DECIMAL(10,4),
+  estimated_duration_min INTEGER,
+  actual_duration_min INTEGER,
+  
+  -- Timestamps
+  assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  started_at TIMESTAMP WITH TIME ZONE,
+  completed_at TIMESTAMP WITH TIME ZONE,
+  due_at TIMESTAMP WITH TIME ZONE,
+  
+  -- User ownership
+  user_id UUID NOT NULL DEFAULT auth.uid(),
+  
+  -- Audit fields
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  -- Constraints
+  UNIQUE(task_id, agent_id) -- Prevent same task assigned to same agent multiple times
+);
+
+-- =====================================================
+-- 12. AI TASKS INDEXES
+-- =====================================================
+
+-- Core query indexes
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_task_id ON ai_tasks(task_id);
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_agent_id ON ai_tasks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_user_id ON ai_tasks(user_id);
+
+-- Status and time related indexes
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_status ON ai_tasks(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_assigned_at ON ai_tasks(user_id, assigned_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_due_at ON ai_tasks(user_id, due_at) WHERE due_at IS NOT NULL;
+
+-- Composite query indexes
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_agent_status ON ai_tasks(agent_id, status);
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_task_type ON ai_tasks(task_type);
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_mode ON ai_tasks(mode);
+
+-- JSONB field indexes
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_metadata_priority ON ai_tasks USING GIN((metadata->'priority'));
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_metadata_tags ON ai_tasks USING GIN((metadata->'tags'));
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_guardrails ON ai_tasks USING GIN(guardrails);
+
+-- =====================================================
+-- 13. AI TASKS FUNCTIONS
+-- =====================================================
+
+-- Get AI task details with related task and agent information
+CREATE OR REPLACE FUNCTION get_ai_task_details(p_ai_task_id UUID)
+RETURNS TABLE (
+  ai_task_id UUID,
+  task_title TEXT,
+  task_status TEXT,
+  agent_name TEXT,
+  agent_vendor TEXT,
+  objective TEXT,
+  status TEXT,
+  mode TEXT,
+  estimated_cost DECIMAL(10,4),
+  actual_cost DECIMAL(10,4)
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    at.id,
+    t.title,
+    t.status,
+    a.name,
+    v.name,
+    at.objective,
+    at.status,
+    at.mode,
+    at.estimated_cost_usd,
+    at.actual_cost_usd
+  FROM ai_tasks at
+  JOIN tasks t ON t.id = at.task_id
+  JOIN ai_agents a ON a.id = at.agent_id
+  JOIN vendors v ON v.id = a.vendor_id
+  WHERE at.id = p_ai_task_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- 14. AI TASKS TRIGGERS
+-- =====================================================
+
+-- Automatically set task.is_ai_task = true when creating ai_task
+CREATE OR REPLACE FUNCTION set_task_as_ai_task()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- When creating ai_task, mark corresponding task as AI task
+  UPDATE tasks 
+  SET is_ai_task = true,
+      updated_at = NOW()
+  WHERE id = NEW.task_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_set_task_as_ai_task
+  AFTER INSERT ON ai_tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION set_task_as_ai_task();
+
+-- History record management
+CREATE OR REPLACE FUNCTION update_ai_task_history()
+RETURNS TRIGGER AS $$
+DECLARE
+  history_entry JSONB;
+BEGIN
+  -- Only record history on status changes or important field changes
+  IF TG_OP = 'UPDATE' AND (
+    OLD.status IS DISTINCT FROM NEW.status OR
+    OLD.mode IS DISTINCT FROM NEW.mode OR
+    OLD.agent_id IS DISTINCT FROM NEW.agent_id
+  ) THEN
+    history_entry := jsonb_build_object(
+      'timestamp', NOW(),
+      'action', CASE 
+        WHEN OLD.status IS DISTINCT FROM NEW.status THEN 'status_change'
+        WHEN OLD.mode IS DISTINCT FROM NEW.mode THEN 'mode_change'
+        WHEN OLD.agent_id IS DISTINCT FROM NEW.agent_id THEN 'agent_change'
+        ELSE 'update'
+      END,
+      'old_values', jsonb_build_object(
+        'status', OLD.status,
+        'mode', OLD.mode,
+        'agent_id', OLD.agent_id
+      ),
+      'new_values', jsonb_build_object(
+        'status', NEW.status,
+        'mode', NEW.mode,
+        'agent_id', NEW.agent_id
+      ),
+      'user_id', NEW.user_id
+    );
+    
+    NEW.history := COALESCE(NEW.history, '[]'::jsonb) || history_entry;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_ai_task_history
+  BEFORE UPDATE ON ai_tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION update_ai_task_history();
+
+-- Automatic timestamp management
+CREATE OR REPLACE FUNCTION manage_ai_task_timestamps()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Automatically set timestamps based on status changes
+  IF TG_OP = 'UPDATE' THEN
+    -- Set started_at when starting execution
+    IF OLD.status != 'in_progress' AND NEW.status = 'in_progress' THEN
+      NEW.started_at := NOW();
+    END IF;
+    
+    -- Set completed_at when finished
+    IF OLD.status NOT IN ('completed', 'failed', 'cancelled') 
+       AND NEW.status IN ('completed', 'failed', 'cancelled') THEN
+      NEW.completed_at := NOW();
+      
+      -- Calculate actual duration
+      IF NEW.started_at IS NOT NULL THEN
+        NEW.actual_duration_min := EXTRACT(EPOCH FROM (NOW() - NEW.started_at)) / 60;
+      END IF;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_manage_ai_task_timestamps
+  BEFORE UPDATE ON ai_tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION manage_ai_task_timestamps();
+
+-- Dependency relationship validation
+CREATE OR REPLACE FUNCTION validate_ai_task_dependencies()
+RETURNS TRIGGER AS $$
+DECLARE
+  dep_id UUID;
+  invalid_deps UUID[] := '{}';
+BEGIN
+  -- Validate each task_id in dependencies array exists and belongs to same user
+  IF NEW.dependencies IS NOT NULL AND array_length(NEW.dependencies, 1) > 0 THEN
+    FOREACH dep_id IN ARRAY NEW.dependencies
+    LOOP
+      IF NOT EXISTS (
+        SELECT 1 FROM tasks 
+        WHERE id = dep_id 
+        AND user_id = NEW.user_id
+      ) THEN
+        invalid_deps := invalid_deps || dep_id;
+      END IF;
+    END LOOP;
+    
+    IF array_length(invalid_deps, 1) > 0 THEN
+      RAISE EXCEPTION 'Invalid task dependencies: %', invalid_deps;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_validate_ai_task_dependencies
+  BEFORE INSERT OR UPDATE ON ai_tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION validate_ai_task_dependencies();
+
+-- Updated timestamp trigger for ai_tasks
+CREATE TRIGGER update_ai_tasks_updated_at 
+  BEFORE UPDATE ON ai_tasks 
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================
+-- 15. AI TASKS ROW LEVEL SECURITY
+-- =====================================================
+
+ALTER TABLE ai_tasks ENABLE ROW LEVEL SECURITY;
+
+-- Users can only view their own AI tasks
+CREATE POLICY "Users can view their own AI tasks" ON ai_tasks
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Users can only create AI tasks for their own tasks and agents
+CREATE POLICY "Users can insert their own AI tasks" ON ai_tasks
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+    AND task_id IN (SELECT id FROM tasks WHERE user_id = auth.uid())
+    AND agent_id IN (SELECT id FROM ai_agents WHERE user_id = auth.uid())
+  );
+
+-- Users can only update their own AI tasks
+CREATE POLICY "Users can update their own AI tasks" ON ai_tasks
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can only delete their own AI tasks
+CREATE POLICY "Users can delete their own AI tasks" ON ai_tasks
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- =====================================================
+-- 16. AI TASKS COMMENTS
+-- =====================================================
+
+COMMENT ON TABLE ai_tasks IS 'AI task assignments linking tasks to agents for execution';
+COMMENT ON COLUMN ai_tasks.task_id IS 'Reference to the task being assigned to an agent';
+COMMENT ON COLUMN ai_tasks.agent_id IS 'Reference to the AI agent assigned to execute the task';
+COMMENT ON COLUMN ai_tasks.objective IS 'Clear objective description for the AI agent';
+COMMENT ON COLUMN ai_tasks.deliverables IS 'Expected deliverable outcomes from task execution';
+COMMENT ON COLUMN ai_tasks.context IS 'Additional context and background information';
+COMMENT ON COLUMN ai_tasks.acceptance_criteria IS 'Criteria for determining task completion success';
+COMMENT ON COLUMN ai_tasks.task_type IS 'Type of task referencing agent_features';
+COMMENT ON COLUMN ai_tasks.dependencies IS 'Array of task IDs that must be completed first';
+COMMENT ON COLUMN ai_tasks.mode IS 'Execution mode: plan_only, dry_run, or execute';
+COMMENT ON COLUMN ai_tasks.guardrails IS 'Safety constraints and limits for AI execution';
+COMMENT ON COLUMN ai_tasks.metadata IS 'Additional metadata including priority and tags';
+COMMENT ON COLUMN ai_tasks.history IS 'Audit trail of all changes and status updates';
+COMMENT ON COLUMN ai_tasks.execution_result IS 'Results and outputs from AI task execution';
+
+-- =====================================================
 -- CONSOLIDATED SCHEMA COMPLETE
 -- =====================================================
 -- This consolidated schema includes:
