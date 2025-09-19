@@ -13,6 +13,7 @@ import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
 import { STTConfigModule } from './modules/STTConfigModule'
 import { ZRelationsModule } from './modules/ZRelationsModule'
+import AITaskGrantorModule from './modules/AITaskGrantorModule'
 import { useProfileModules } from './hooks/useProfileModules'
 import { FullscreenModal, useFullscreenModal } from './FullscreenModal'
 import type { ProfileModule, ProfileModuleConfig } from './types'
@@ -122,6 +123,16 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             onConfigChange={(newConfig) => {
               console.log('Agent directory config changed:', newConfig)
             }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'ai-task-grantor':
+        return (
+          <AITaskGrantorModule
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => { console.log('AI Task Grantor config changed:', newConfig) }}
             isFullscreen={isFullscreen}
             onToggleFullscreen={handleToggleFullscreenForModule}
           />

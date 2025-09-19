@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { 
   Plus, 
   ChevronRight, 
@@ -44,6 +44,7 @@ interface SubtaskSectionProps {
   taskId: string
   onSubtaskSelect?: (subtask: TaskMemory) => void
   selectedSubtaskId?: string
+  autoSelectSubtaskId?: string | null
 }
 
 interface SubtaskItemProps {
@@ -533,7 +534,7 @@ const CreateSubtaskForm: React.FC<{
   )
 }
 
-export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtaskId }: SubtaskSectionProps) {
+export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtaskId, autoSelectSubtaskId }: SubtaskSectionProps) {
   const { t } = useTranslation()
   const { data, isLoading, error, refresh } = useSubtasks(taskId, { 
     format: 'flat', 
@@ -543,6 +544,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   const [editingSubtask, setEditingSubtask] = useState<TaskMemory | null>(null)
   const [creatingForParentId, setCreatingForParentId] = useState<string | null>(null)
   const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set())
+  const [autoSelectedId, setAutoSelectedId] = useState<string | null>(null)
   
 
   // 设置拖拽传感器
@@ -610,9 +612,17 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
     return visibleItems.filter((i: any) => i.id !== rootId)
   }, [visibleItems, rootItem])
 
-  
+  useEffect(() => {
+    if (!autoSelectSubtaskId || !onSubtaskSelect || !data?.subtasks) return
+    if (autoSelectedId === autoSelectSubtaskId) return
 
-  
+    const target = data.subtasks.find(subtask => subtask.id === autoSelectSubtaskId)
+    if (target) {
+      onSubtaskSelect(target)
+      setAutoSelectedId(autoSelectSubtaskId)
+    }
+  }, [autoSelectSubtaskId, autoSelectedId, data?.subtasks, onSubtaskSelect])
+
 
   const handleStatusToggle = async (subtaskId: string, newStatus: Task['status']) => {
     try {

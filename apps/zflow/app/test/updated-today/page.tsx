@@ -93,23 +93,23 @@ export default function UpdatedTodayPage() {
   });
 
   // 使用新的API，直接传递日期和时区参数，让API处理日期范围计算
-  const getApiParamsFromFilter = (filter: DateTimeFilter) => {
+  const getApiParamsFromFilter = React.useCallback((filter: DateTimeFilter) => {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // 如果是今天且使用当前时区，则不传递start_date和end_date，让API使用默认的getTodayDateRange
     if (filter.date === today && filter.timezone === getCurrentTimezone()) {
       return {
         timezone: filter.timezone
       };
     }
-    
+
     // 否则传递指定的日期和时区
     return {
       start_date: filter.date,
       end_date: filter.date,
       timezone: filter.timezone
     };
-  };
+  }, []);
 
   // 获取任务数据
   const fetchTasks = React.useCallback(async () => {
@@ -138,7 +138,7 @@ export default function UpdatedTodayPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, filters, dateTimeFilter]);
+  }, [user, filters, dateTimeFilter, getApiParamsFromFilter]);
 
   useEffect(() => {
     fetchTasks();

@@ -315,17 +315,37 @@ function WorkModeViewInner() {
     autoSave.resetAutoSave()
   }, [selectedTask?.id, selectedSubtask?.id])
 
-  // Auto-select task from query param taskId
+  // Auto-select task and subtask from query params
   useEffect(() => {
-    const id = searchParams.get('taskId')
-    if (!id || !tasks.length) return
-    
-    // Find the task and only select it if it's different from current selection
-    const found = tasks.find(t => t.id === id)
-    if (found && !selectedTask) {
+    const taskId = searchParams.get('taskId')
+    const subtaskId = searchParams.get('subtaskId')
+    if (!taskId || !tasks.length) return
+
+    // Find the main task and only select it if it's different from current selection
+    const found = tasks.find(t => t.id === taskId)
+    if (found && (!selectedTask || selectedTask.id !== taskId)) {
       setSelectedTask(found as TaskWithCategory)
+      setSelectedSubtask(null) // Reset subtask selection
     }
   }, [searchParams, tasks])
+
+  // Auto-select subtask if subtaskId is provided
+  useEffect(() => {
+    const subtaskId = searchParams.get('subtaskId')
+    if (!subtaskId || !selectedTask || selectedSubtask?.id === subtaskId) return
+
+    // We need to fetch the subtask to select it
+    // For now, we'll show the subtasks section and let user navigate
+    // In a full implementation, you'd fetch the subtask here
+    setShowSubtasks(true)
+
+    // Attempt to find and select the subtask from loaded tasks
+    const foundSubtask = tasks.find(t => t.id === subtaskId)
+    if (foundSubtask) {
+      setSelectedSubtask(foundSubtask as TaskMemory)
+      setShowSubtasks(false) // Hide the subtasks panel since we found it
+    }
+  }, [searchParams, selectedTask, tasks])
 
   const toggleCategory = (categoryId: string) => {
     const newExpanded = new Set(expandedCategories)
@@ -743,14 +763,16 @@ function WorkModeViewInner() {
               {/* Task Info Section */}
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-xl lg:text-2xl font-bold text-gray-900 break-words">{selectedTask.content.title}</h1>
-                  {selectedTask.content.description && (
+                  <h1 className="text-xl lg:text-2xl font-bold text-gray-900 break-words">
+                    {selectedSubtask ? selectedSubtask.content.title : selectedTask.content.title}
+                  </h1>
+                  {((selectedSubtask && selectedSubtask.content.description) || (!selectedSubtask && selectedTask.content.description)) && (
                     <button
-                      onClick={() => toggleDescriptionExpansion(selectedTask.id)}
+                      onClick={() => toggleDescriptionExpansion(selectedSubtask ? selectedSubtask.id : selectedTask.id)}
                       className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                      title={expandedDescriptions.has(selectedTask.id) ? "Hide description" : "Show description"}
+                      title={expandedDescriptions.has(selectedSubtask ? selectedSubtask.id : selectedTask.id) ? "Hide description" : "Show description"}
                     >
-                      {expandedDescriptions.has(selectedTask.id) ? (
+                      {expandedDescriptions.has(selectedSubtask ? selectedSubtask.id : selectedTask.id) ? (
                         <ChevronDown className="w-4 h-4 lg:w-5 lg:h-5" />
                       ) : (
                         <Info className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -758,12 +780,15 @@ function WorkModeViewInner() {
                     </button>
                   )}
                 </div>
-                {selectedTask.content.description && expandedDescriptions.has(selectedTask.id) && (
-                  <p className="text-gray-600 mt-2 break-words">{selectedTask.content.description}</p>
+                {((selectedSubtask && selectedSubtask.content.description && expandedDescriptions.has(selectedSubtask.id)) ||
+                  (!selectedSubtask && selectedTask.content.description && expandedDescriptions.has(selectedTask.id))) && (
+                  <p className="text-gray-600 mt-2 break-words">
+                    {selectedSubtask ? selectedSubtask.content.description : selectedTask.content.description}
+                  </p>
                 )}
                 {selectedTask.category && (
                   <div className="flex items-center gap-2 mt-2">
-                    <span 
+                    <span
                       className="w-3 h-3 rounded-full flex-shrink-0"
                       style={{ backgroundColor: selectedTask.category.color }}
                     />
@@ -1146,13 +1171,18 @@ function WorkModeViewInner() {
               <>
                 {/* Desktop/tablet inline section */}
                 <div className="hidden lg:block p-4 lg:p-6 border-b border-gray-200">
-                  <SubtaskSection 
+                  <SubtaskSection
                     taskId={selectedTask.id}
                     onSubtaskSelect={(subtask) => {
                       setSelectedSubtask(subtask)
                       setShowSubtasks(false)
+                      // Update URL to reflect subtask selection
+                      const url = new URL(window.location.href)
+                      url.searchParams.set('subtaskId', subtask.id)
+                      window.history.replaceState({}, '', url.toString())
                     }}
                     selectedSubtaskId={selectedSubtask?.id}
+                    autoSelectSubtaskId={searchParams.get('subtaskId')}
                   />
                 </div>
 
@@ -1174,13 +1204,18 @@ function WorkModeViewInner() {
                       </button>
                     </div>
                     <div className="p-4 overflow-y-auto">
-                      <SubtaskSection 
+                      <SubtaskSection
                         taskId={selectedTask.id}
                         onSubtaskSelect={(subtask) => {
                           setSelectedSubtask(subtask)
                           setShowSubtasks(false)
+                          // Update URL to reflect subtask selection
+                          const url = new URL(window.location.href)
+                          url.searchParams.set('subtaskId', subtask.id)
+                          window.history.replaceState({}, '', url.toString())
                         }}
                         selectedSubtaskId={selectedSubtask?.id}
+                        autoSelectSubtaskId={searchParams.get('subtaskId')}
                       />
                     </div>
                   </div>
@@ -1192,12 +1227,28 @@ function WorkModeViewInner() {
             <div className="flex-1 min-h-0 p-4 lg:p-6">
               {/* Editing mode indicator */}
               <div className="flex items-center gap-1 sm:gap-2 mb-2 text-xs text-gray-500 w-full overflow-hidden">
-                <span className="px-2 py-0.5 bg-gray-100 rounded-full flex-shrink-0">
-                  {selectedSubtask ? t.ui.subtasks : 'Task'}
-                </span>
-                <span className="flex-1 min-w-0 truncate">
-                  {selectedSubtask ? selectedSubtask.content.title : selectedTask.content.title}
-                </span>
+                {selectedSubtask ? (
+                  <>
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full flex-shrink-0 font-medium">
+                      📝 Subtask
+                    </span>
+                    <span className="flex-1 min-w-0 truncate font-medium text-blue-900">
+                      {selectedSubtask.content.title}
+                    </span>
+                    <span className="text-gray-400 flex-shrink-0 text-xs">
+                      of: {selectedTask.content.title}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-2 py-0.5 bg-gray-100 rounded-full flex-shrink-0">
+                      📋 Task
+                    </span>
+                    <span className="flex-1 min-w-0 truncate">
+                      {selectedTask.content.title}
+                    </span>
+                  </>
+                )}
                 <span className="ml-auto italic flex-shrink-0 hidden sm:inline">{t.common.edit}</span>
               </div>
               <NotionEditor

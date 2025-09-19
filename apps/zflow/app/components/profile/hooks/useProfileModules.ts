@@ -20,6 +20,18 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     fullScreenPath: '/profile/modules/energy-spectrum'
   },
   {
+    id: 'ai-task-grantor',
+    name: 'AI Task Grantor',
+    description: 'Assign your tasks to AI agents with guardrails',
+    icon: 'Bot',
+    category: 'tools',
+    defaultEnabled: false,
+    defaultConfig: {
+      defaultView: 'list'
+    },
+    fullScreenPath: '/profile/modules/ai-task-grantor'
+  },
+  {
     id: 'stats',
     name: 'Productivity Stats',
     description: 'Overview of your productivity metrics',
