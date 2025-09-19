@@ -387,3 +387,63 @@ export const ActivitiesQuerySchema = z.object({
 export type ActivityCreateBody = z.infer<typeof ActivityCreateSchema>;
 export type ActivityUpdateBody = z.infer<typeof ActivityUpdateSchema>;
 export type ActivitiesQuery = z.infer<typeof ActivitiesQuerySchema>;
+
+// ===== AI Tasks Schemas =====
+const aiTaskModes = ['plan_only', 'dry_run', 'execute'] as const;
+const aiTaskStatuses = ['pending', 'assigned', 'in_progress', 'paused', 'completed', 'failed', 'cancelled'] as const;
+
+export const AITaskGuardrailsSchema = z.object({
+  costCapUSD: z.number().nonnegative().nullable().optional(),
+  timeCapMin: z.number().int().nonnegative().nullable().optional(),
+  requiresHumanApproval: z.boolean().default(true),
+  dataScopes: z.array(z.string()).default([]),
+});
+
+export const AITaskMetadataSchema = z.object({
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  tags: z.array(z.string()).default([]),
+});
+
+export const AITaskCreateSchema = z.object({
+  task_id: z.string().uuid(),
+  agent_id: z.string().uuid(),
+  objective: z.string().min(1),
+  deliverables: z.string().optional(),
+  context: z.string().optional(),
+  acceptance_criteria: z.string().optional(),
+  task_type: z.string().min(1),
+  dependencies: z.array(z.string().uuid()).default([]),
+  mode: z.enum(aiTaskModes).default('plan_only'),
+  guardrails: AITaskGuardrailsSchema.default({ requiresHumanApproval: true, dataScopes: [] }),
+  metadata: AITaskMetadataSchema.default({ priority: 'medium', tags: [] }),
+  status: z.enum(aiTaskStatuses).default('pending'),
+  execution_result: z.record(z.any()).optional(),
+  estimated_cost_usd: z.number().nonnegative().optional(),
+  actual_cost_usd: z.number().nonnegative().optional(),
+  estimated_duration_min: z.number().int().nonnegative().optional(),
+  actual_duration_min: z.number().int().nonnegative().optional(),
+  due_at: isoDateTime.optional(),
+});
+
+export const AITaskUpdateSchema = AITaskCreateSchema.partial().omit({ task_id: true, agent_id: true });
+
+export const AITasksQuerySchema = z.object({
+  task_id: z.string().uuid().optional(),
+  agent_id: z.string().uuid().optional(),
+  task_type: z.string().optional(),
+  mode: z.enum(aiTaskModes).optional(),
+  status: z.enum(aiTaskStatuses).optional(),
+  search: z.string().optional(),
+  assigned_from: isoDateTime.optional(),
+  assigned_to: isoDateTime.optional(),
+  due_from: isoDateTime.optional(),
+  due_to: isoDateTime.optional(),
+  limit: z.string().optional().transform(v => parseInt(v || '50')),
+  offset: z.string().optional().transform(v => parseInt(v || '0')),
+  sort_by: z.enum(['assigned_at', 'due_at', 'status', 'mode', 'updated_at']).default('assigned_at'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export type AITaskCreateBody = z.infer<typeof AITaskCreateSchema>;
+export type AITaskUpdateBody = z.infer<typeof AITaskUpdateSchema>;
+export type AITasksQuery = z.infer<typeof AITasksQuerySchema>;
