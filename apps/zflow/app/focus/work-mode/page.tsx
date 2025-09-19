@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react'
+import React, { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '../../../hooks/useMemories'
@@ -21,6 +21,7 @@ import MemoryAnchorButton from '../../components/memory/MemoryAnchorButton'
 import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
 import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
 import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/useMemoryAnchors'
+import { useSubtaskActions } from '../../../hooks/useSubtasks'
 import eventBus from '../../core/events/event-bus'
 
 interface TaskWithCategory extends TaskMemory {
@@ -84,6 +85,15 @@ function WorkModeViewInner() {
   const { anchors: taskAnchors, isLoading: anchorsLoading, refetch: refetchAnchors } = useTaskMemoryAnchors(selectedTask?.id || '')
   const { memories: allMemories, isLoading: memoriesLoading } = useMemories({ limit: 100 })
   const { createMemoryWithAnchor, linkMemoryToTask, removeMemoryFromTask, isLoading: memoryActionLoading } = useMemoryActions()
+  const { updateSubtask: updateSubtaskAction } = useSubtaskActions()
+
+  const subtaskStatusOptions = useMemo(() => ([
+    { value: 'pending' as TaskContent['status'], label: t.task.statusPending },
+    { value: 'in_progress' as TaskContent['status'], label: t.task.statusInProgress },
+    { value: 'completed' as TaskContent['status'], label: t.task.statusCompleted },
+    { value: 'on_hold' as TaskContent['status'], label: t.task.statusOnHold },
+    { value: 'cancelled' as TaskContent['status'], label: t.task.statusCancelled },
+  ]), [t])
 
   // Context-aware back navigation
   const handleBack = () => {
@@ -356,6 +366,26 @@ function WorkModeViewInner() {
     }
     setExpandedCategories(newExpanded)
   }
+
+  const handleSubtaskStatusChange = useCallback(async (newStatus: TaskContent['status']) => {
+    if (!selectedSubtask) return
+    try {
+      const updated = await updateSubtaskAction(selectedSubtask.id, { status: newStatus })
+      if (updated) {
+        setSelectedSubtask(updated as TaskMemory)
+      } else {
+        setSelectedSubtask(prev => prev ? ({
+          ...prev,
+          content: {
+            ...prev.content,
+            status: newStatus,
+          }
+        }) : prev)
+      }
+    } catch (error) {
+      console.error('Failed to update subtask status:', error)
+    }
+  }, [selectedSubtask, updateSubtaskAction])
 
   // Toggle task description expansion
   const toggleDescriptionExpansion = (taskId: string) => {
@@ -839,6 +869,22 @@ function WorkModeViewInner() {
                         </>
                       )}
                     </button>
+                  )}
+                  {selectedSubtask && (
+                    <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
+                      <span className="hidden sm:inline text-gray-500">{t.task.status}:</span>
+                      <select
+                        value={selectedSubtask.content.status}
+                        onChange={(e) => handleSubtaskStatusChange(e.target.value as TaskContent['status'])}
+                        className="bg-transparent text-gray-700 focus:outline-none"
+                      >
+                        {subtaskStatusOptions.map(option => (
+                          <option key={option.value} value={option.value} className="text-gray-900">
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                   {/* Complete Button - Only show if task is not already completed */}
                   {selectedTask && selectedTask.content.status !== 'completed' && (

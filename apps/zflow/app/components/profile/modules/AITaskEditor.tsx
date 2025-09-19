@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { X, Copy } from 'lucide-react'
+import { X, Copy, ChevronDown, Search, Check } from 'lucide-react'
 import { tasksApi, aiAgentsApi, aiTasksApi, agentFeaturesApi } from '../../../../lib/api'
 
 export type AITaskForm = {
@@ -35,7 +35,12 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
   const [agents, setAgents] = React.useState<any[]>([])
   const [features, setFeatures] = React.useState<Array<{ id: string; name: string }>>([])
   const [error, setError] = React.useState<string | null>(null)
+  const [taskQuery, setTaskQuery] = React.useState('')
+  const [taskMenuOpen, setTaskMenuOpen] = React.useState(false)
   const [useGuardrails, setUseGuardrails] = React.useState<boolean>(false)
+  const taskSelectRef = React.useRef<HTMLDivElement | null>(null)
+  const taskSearchRef = React.useRef<HTMLInputElement | null>(null)
+  const isTaskSelectDisabled = Boolean(initial?.isEditing)
   const [form, setForm] = React.useState<AITaskForm>({
     task_id: initial?.task_id,
     agent_id: initial?.agent_id,
@@ -100,7 +105,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
       aiAgentsApi.list({ limit: 100, sort_by: 'activity_score', sort_order: 'desc' as any }),
       agentFeaturesApi.list({ is_active: true, limit: 200 })
     ]).then(([ts, ags, fts]) => {
-      // Filter tasks to show only pending and in_progress status (current focus tasks)
+      // Filter tasks to show statuses that are ready for AI assignment
       const filteredTasks = ts.filter((task: any) => {
         const status = task.content?.status || task.status
         return status === 'pending' || status === 'in_progress'
@@ -117,6 +122,102 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
   }, [isOpen, initial])
 
   const handleChange = (patch: Partial<AITaskForm>) => setForm(prev => ({ ...prev, ...patch }))
+
+  React.useEffect(() => {
+    if (!taskMenuOpen) return
+    const handleClick = (event: MouseEvent) => {
+      if (taskSelectRef.current && !taskSelectRef.current.contains(event.target as Node)) {
+        setTaskMenuOpen(false)
+      }
+    }
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setTaskMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    const timer = window.setTimeout(() => taskSearchRef.current?.focus(), 0)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+      window.clearTimeout(timer)
+    }
+  }, [taskMenuOpen])
+
+  React.useEffect(() => {
+    if (!taskMenuOpen) {
+      setTaskQuery('')
+    }
+  }, [taskMenuOpen])
+
+  React.useEffect(() => {
+    if (isTaskSelectDisabled) {
+      setTaskMenuOpen(false)
+    }
+  }, [isTaskSelectDisabled])
+
+  const orderedTasks = React.useMemo(() => {
+    if (!tasks?.length) return []
+
+    const byId = new Map(tasks.map(task => [task.id, task]))
+    const childrenMap = new Map<string, any[]>()
+    const rootTasks: any[] = []
+
+    for (const task of tasks) {
+      const parentId = task.content?.parent_task_id || task.parent_id
+      if (parentId && byId.has(parentId)) {
+        if (!childrenMap.has(parentId)) {
+          childrenMap.set(parentId, [])
+        }
+        childrenMap.get(parentId)!.push(task)
+      } else {
+        rootTasks.push(task)
+      }
+    }
+
+    const ordered: any[] = []
+    const visited = new Set<string>()
+
+    const addTaskWithChildren = (task: any) => {
+      if (!task || visited.has(task.id)) return
+      visited.add(task.id)
+      ordered.push(task)
+      const children = childrenMap.get(task.id)
+      if (children) {
+        for (const child of children) {
+          addTaskWithChildren(child)
+        }
+      }
+    }
+
+    for (const root of rootTasks) {
+      addTaskWithChildren(root)
+    }
+
+    for (const task of tasks) {
+      if (!visited.has(task.id)) {
+        addTaskWithChildren(task)
+      }
+    }
+
+    return ordered
+  }, [tasks])
+
+  const selectedTaskInfo = React.useMemo(() => {
+    return orderedTasks.find((task: any) => task.id === form.task_id)
+  }, [orderedTasks, form.task_id])
+
+  const filteredTasks = React.useMemo(() => {
+    const query = taskQuery.trim().toLowerCase()
+    if (!query) return orderedTasks
+    return orderedTasks.filter((task: any) => {
+      const title = (task.content?.title || task.title || '').toLowerCase()
+      const category = (task.content?.category || '').toLowerCase()
+      const status = (task.content?.status || task.status || '').toLowerCase()
+      return title.includes(query) || category.includes(query) || status.includes(query) || task.id.toLowerCase().includes(query)
+    })
+  }, [orderedTasks, taskQuery])
 
   const brief = React.useMemo(() => {
     return [
@@ -237,35 +338,108 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
           {/* Task Selector - Enhanced */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Link to Task</label>
-            <div className="relative">
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 pr-10 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                value={form.task_id || ''}
-                onChange={e => handleChange({ task_id: e.target.value })}
-                disabled={initial?.isEditing}
+            <div ref={taskSelectRef} className="relative">
+              <button
+                type="button"
+                className={`w-full rounded-xl border px-4 py-2.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isTaskSelectDisabled
+                    ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                    : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-indigo-200 hover:bg-indigo-50'
+                } ${taskMenuOpen ? '!border-indigo-300 shadow-md' : ''}`}
+                onClick={() => {
+                  if (isTaskSelectDisabled) return
+                  setTaskMenuOpen(prev => !prev)
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={taskMenuOpen}
+                aria-disabled={isTaskSelectDisabled}
               >
-                <option value="" className="text-gray-500">Choose a task to assign to AI...</option>
-                {tasks.map((t: any) => {
-                  const title = t.content?.title || t.title || 'Untitled'
-                  const category = t.content?.category
-                  const isSubtask = t.content?.parent_task_id || t.parent_id
-                  const status = t.content?.status || t.status
+                <div className="flex items-center justify-between gap-3">
+                  {selectedTaskInfo ? (
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {selectedTaskInfo.content?.title || selectedTaskInfo.title || 'Untitled Task'}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {selectedTaskInfo.content?.category ? `${selectedTaskInfo.content.category} • ` : ''}
+                        {(selectedTaskInfo.content?.status || selectedTaskInfo.status || 'pending').replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                  ) : (
+                    <span className="flex-1 text-sm text-slate-400">
+                      Choose a task to assign to AI…
+                    </span>
+                  )}
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${taskMenuOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
 
-                  return (
-                    <option key={t.id} value={t.id} className="py-2">
-                      {isSubtask ? '  ↳ ' : ''}
-                      {category && `[${category}] `}
-                      {title}
-                      {` • ${status}`}
-                    </option>
-                  )
-                })}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+              {!isTaskSelectDisabled && taskMenuOpen && (
+                <div className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                  <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
+                    <Search className="h-4 w-4 text-slate-400" />
+                    <input
+                      ref={taskSearchRef}
+                      type="text"
+                      value={taskQuery}
+                      onChange={(e) => setTaskQuery(e.target.value)}
+                      placeholder="Search by title, status, or id"
+                      className="w-full border-0 bg-transparent text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
+                    />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {filteredTasks.length === 0 ? (
+                      <p className="px-4 py-8 text-center text-xs text-slate-500">No matching tasks found.</p>
+                    ) : (
+                      filteredTasks.map((task: any) => {
+                        const isSelected = task.id === form.task_id
+                        const title = task.content?.title || task.title || 'Untitled Task'
+                        const category = task.content?.category
+                        const status = (task.content?.status || task.status || 'pending').replace(/_/g, ' ')
+                        const isSubtask = Boolean(task.content?.parent_task_id || task.parent_id)
+                        return (
+                          <button
+                            key={task.id}
+                            type="button"
+                            className={`flex w-full items-start gap-3 px-4 py-2 text-left text-sm transition ${
+                              isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                            onClick={() => {
+                              handleChange({ task_id: task.id })
+                              setTaskMenuOpen(false)
+                            }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate font-medium">
+                                {isSubtask && <span className="text-slate-400">↳ </span>}
+                                {title}
+                              </p>
+                              <p className="truncate text-xs text-slate-500">
+                                {category ? `${category} • ` : ''}{status}
+                              </p>
+                            </div>
+                            {isSelected && <Check className="h-4 w-4 text-indigo-500" />}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                  {form.task_id && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-right">
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-slate-600 underline-offset-2 transition hover:text-slate-900 hover:underline"
+                        onClick={() => {
+                          handleChange({ task_id: undefined })
+                          setTaskMenuOpen(false)
+                        }}
+                      >
+                        Clear selection
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {initial?.isEditing ? (
               <p className="mt-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
@@ -485,5 +659,3 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
     </div>
   )
 }
-
-

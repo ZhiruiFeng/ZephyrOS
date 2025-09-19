@@ -470,11 +470,17 @@ const CreateSubtaskForm: React.FC<{
     if (!formData.title.trim()) return
 
     try {
+      const parentStatus = (
+        (parentTask?.content?.status as Task['status'] | undefined) ||
+        ((parentTask as any)?.status as Task['status'] | undefined) ||
+        'pending'
+      )
+
       await createSubtask(parentTaskId, {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         priority: 'medium', // 默认中等优先级
-        status: 'pending',
+        status: parentStatus,
         // 继承父任务的类别
         category_id: parentTask?.category_id
       })

@@ -288,7 +288,7 @@ export function useSessionManager(userId: string | null, selectedAgent: string, 
       // Intentionally ignore backup failures in UI; backend logs should capture details
       console.warn('Failed to save conversation to history:', error)
     }
-  }, [userId, selectedAgent, state.currentSessionId, state.historicalSessionId, state.currentMessages, onHistoryUpdate])
+  }, [userId, selectedAgent, state.currentSessionId, state.historicalSessionId, state.currentMessages, state.viewingHistoricalConversation, onHistoryUpdate])
 
   // Save to history when LLM completes a response (better UX than periodic saves)
   useEffect(() => {
