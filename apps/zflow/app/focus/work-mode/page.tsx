@@ -21,7 +21,6 @@ import MemoryAnchorButton from '../../components/memory/MemoryAnchorButton'
 import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
 import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
 import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/useMemoryAnchors'
-import { useSubtaskActions } from '../../../hooks/useSubtasks'
 import eventBus from '../../core/events/event-bus'
 
 interface TaskWithCategory extends TaskMemory {
@@ -47,6 +46,7 @@ function WorkModeViewInner() {
   const searchParams = useSearchParams()
   const returnTo = searchParams.get('returnTo')
   const from = searchParams.get('from')
+  const subtaskIdParam = searchParams.get('subtaskId')
   const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
   const [selectedSubtask, setSelectedSubtask] = useState<TaskMemory | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -79,21 +79,30 @@ function WorkModeViewInner() {
   const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 
+  const autoOpenSubtasksRef = useRef(false)
+  const lastSubtaskIdRef = useRef<string | null>(null)
+
   // Memory anchoring
   const [showMemories, setShowMemories] = useState(false)
   const [memoryModalOpen, setMemoryModalOpen] = useState(false)
   const { anchors: taskAnchors, isLoading: anchorsLoading, refetch: refetchAnchors } = useTaskMemoryAnchors(selectedTask?.id || '')
   const { memories: allMemories, isLoading: memoriesLoading } = useMemories({ limit: 100 })
   const { createMemoryWithAnchor, linkMemoryToTask, removeMemoryFromTask, isLoading: memoryActionLoading } = useMemoryActions()
-  const { updateSubtask: updateSubtaskAction } = useSubtaskActions()
 
-  const subtaskStatusOptions = useMemo(() => ([
-    { value: 'pending' as TaskContent['status'], label: t.task.statusPending },
-    { value: 'in_progress' as TaskContent['status'], label: t.task.statusInProgress },
-    { value: 'completed' as TaskContent['status'], label: t.task.statusCompleted },
-    { value: 'on_hold' as TaskContent['status'], label: t.task.statusOnHold },
-    { value: 'cancelled' as TaskContent['status'], label: t.task.statusCancelled },
-  ]), [t])
+  const updateFocusUrl = useCallback((updates: Record<string, string | null | undefined>) => {
+    if (typeof window === 'undefined') return
+    const current = new URLSearchParams(window.location.search)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') {
+        current.delete(key)
+      } else {
+        current.set(key, value)
+      }
+    })
+    const queryString = current.toString()
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}`
+    router.replace(nextUrl, { scroll: false })
+  }, [router])
 
   // Context-aware back navigation
   const handleBack = () => {
@@ -155,6 +164,34 @@ function WorkModeViewInner() {
       return lengthDiff >= 20 || changeRatio >= 0.3
     }
   })
+
+  const handleTaskSelect = useCallback((task: TaskWithCategory) => {
+    setSelectedTask(task)
+    setSelectedSubtask(null)
+    setShowSubtasks(false)
+    updateFocusUrl({ taskId: task.id, subtaskId: null })
+  }, [updateFocusUrl])
+
+  const handleSubtaskSelect = useCallback((subtask: TaskMemory) => {
+    if (selectedTask && subtask.id === selectedTask.id) {
+      const taskNotes = selectedTask.content?.notes || ''
+      setSelectedSubtask(null)
+      setNotes(taskNotes)
+      setOriginalNotes(taskNotes)
+      autoSave.resetAutoSave()
+      setShowSubtasks(false)
+      updateFocusUrl({ subtaskId: null })
+      return
+    }
+
+    const nextNotes = subtask.content?.notes || ''
+    setSelectedSubtask(subtask)
+    setNotes(nextNotes)
+    setOriginalNotes(nextNotes)
+    autoSave.resetAutoSave()
+    setShowSubtasks(false)
+    updateFocusUrl({ subtaskId: subtask.id })
+  }, [autoSave, selectedTask, updateFocusUrl])
 
   // Trigger auto-save when notes change
   useEffect(() => {
@@ -328,7 +365,6 @@ function WorkModeViewInner() {
   // Auto-select task and subtask from query params
   useEffect(() => {
     const taskId = searchParams.get('taskId')
-    const subtaskId = searchParams.get('subtaskId')
     if (!taskId || !tasks.length) return
 
     // Find the main task and only select it if it's different from current selection
@@ -339,23 +375,22 @@ function WorkModeViewInner() {
     }
   }, [searchParams, tasks])
 
-  // Auto-select subtask if subtaskId is provided
+  // Auto-open subtasks panel for direct subtask links so the section can auto-select
   useEffect(() => {
-    const subtaskId = searchParams.get('subtaskId')
-    if (!subtaskId || !selectedTask || selectedSubtask?.id === subtaskId) return
-
-    // We need to fetch the subtask to select it
-    // For now, we'll show the subtasks section and let user navigate
-    // In a full implementation, you'd fetch the subtask here
-    setShowSubtasks(true)
-
-    // Attempt to find and select the subtask from loaded tasks
-    const foundSubtask = tasks.find(t => t.id === subtaskId)
-    if (foundSubtask) {
-      setSelectedSubtask(foundSubtask as TaskMemory)
-      setShowSubtasks(false) // Hide the subtasks panel since we found it
+    if (lastSubtaskIdRef.current !== subtaskIdParam) {
+      autoOpenSubtasksRef.current = false
+      lastSubtaskIdRef.current = subtaskIdParam
     }
-  }, [searchParams, selectedTask, tasks])
+
+    if (!subtaskIdParam || !selectedTask) return
+    if (subtaskIdParam === selectedTask.id) return
+    if (selectedSubtask?.id === subtaskIdParam) return
+
+    if (!autoOpenSubtasksRef.current) {
+      autoOpenSubtasksRef.current = true
+      setShowSubtasks(true)
+    }
+  }, [selectedSubtask?.id, selectedTask, subtaskIdParam])
 
   const toggleCategory = (categoryId: string) => {
     const newExpanded = new Set(expandedCategories)
@@ -366,26 +401,6 @@ function WorkModeViewInner() {
     }
     setExpandedCategories(newExpanded)
   }
-
-  const handleSubtaskStatusChange = useCallback(async (newStatus: TaskContent['status']) => {
-    if (!selectedSubtask) return
-    try {
-      const updated = await updateSubtaskAction(selectedSubtask.id, { status: newStatus })
-      if (updated) {
-        setSelectedSubtask(updated as TaskMemory)
-      } else {
-        setSelectedSubtask(prev => prev ? ({
-          ...prev,
-          content: {
-            ...prev.content,
-            status: newStatus,
-          }
-        }) : prev)
-      }
-    } catch (error) {
-      console.error('Failed to update subtask status:', error)
-    }
-  }, [selectedSubtask, updateSubtaskAction])
 
   // Toggle task description expansion
   const toggleDescriptionExpansion = (taskId: string) => {
@@ -592,6 +607,10 @@ function WorkModeViewInner() {
     )
   }
 
+  const subtaskPanelTaskId = selectedTask?.id
+  const subtaskPanelTitle = selectedTask?.content?.title
+  const subtaskPanelAutoSelectId = selectedSubtask ? null : subtaskIdParam
+
   return (
     <>
     <div className="flex min-h-[calc(100vh-200px)] lg:min-h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border border-gray-200">
@@ -683,7 +702,7 @@ function WorkModeViewInner() {
                   {tasksByCategory.uncategorized.map((task) => (
                     <button
                       key={task.id}
-                      onClick={() => setSelectedTask(task)}
+                      onClick={() => handleTaskSelect(task as TaskWithCategory)}
                       className={`flex items-center gap-2 w-full text-left p-2 rounded-md text-sm transition-colors ${
                         selectedTask?.id === task.id
                           ? 'bg-primary-100 text-primary-700'
@@ -727,7 +746,7 @@ function WorkModeViewInner() {
                     {categoryTasks.map((task) => (
                       <button
                         key={task.id}
-                        onClick={() => setSelectedTask(task)}
+                        onClick={() => handleTaskSelect(task as TaskWithCategory)}
                         className={`flex items-center gap-2 w-full text-left p-2 rounded-md text-sm transition-colors ${
                           selectedTask?.id === task.id
                             ? 'bg-primary-100 text-primary-700'
@@ -794,7 +813,7 @@ function WorkModeViewInner() {
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <h1 className="text-xl lg:text-2xl font-bold text-gray-900 break-words">
-                    {selectedSubtask ? selectedSubtask.content.title : selectedTask.content.title}
+                    {selectedTask.content.title}
                   </h1>
                   {((selectedSubtask && selectedSubtask.content.description) || (!selectedSubtask && selectedTask.content.description)) && (
                     <button
@@ -870,22 +889,6 @@ function WorkModeViewInner() {
                       )}
                     </button>
                   )}
-                  {selectedSubtask && (
-                    <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
-                      <span className="hidden sm:inline text-gray-500">{t.task.status}:</span>
-                      <select
-                        value={selectedSubtask.content.status}
-                        onChange={(e) => handleSubtaskStatusChange(e.target.value as TaskContent['status'])}
-                        className="bg-transparent text-gray-700 focus:outline-none"
-                      >
-                        {subtaskStatusOptions.map(option => (
-                          <option key={option.value} value={option.value} className="text-gray-900">
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
                   {/* Complete Button - Only show if task is not already completed */}
                   {selectedTask && selectedTask.content.status !== 'completed' && (
                     <button
@@ -907,9 +910,10 @@ function WorkModeViewInner() {
                   </button>
                   {/* Toggle Subtasks Button */}
                   <button
-                    onClick={() => setShowSubtasks(prev => !prev)}
-                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px]"
-                    title={t.ui.subtasks}
+                    onClick={() => subtaskPanelTaskId && setShowSubtasks(prev => !prev)}
+                    disabled={!subtaskPanelTaskId}
+                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={subtaskPanelTitle ? `${t.ui.subtasks}: ${subtaskPanelTitle}` : t.ui.subtasks}
                   >
                     <ListTodo className="w-3 h-3 flex-shrink-0" />
                     <span className="hidden sm:inline ml-1 truncate">{t.ui.subtasks}</span>
@@ -1213,22 +1217,20 @@ function WorkModeViewInner() {
             )}
 
             {/* Subtasks Section (toggled) */}
-            {showSubtasks && (
+            {showSubtasks && subtaskPanelTaskId && (
               <>
                 {/* Desktop/tablet inline section */}
                 <div className="hidden lg:block p-4 lg:p-6 border-b border-gray-200">
+                  {subtaskPanelTitle && (
+                    <div className="mb-3 text-sm font-semibold text-gray-700">
+                      {t.ui.subtasks} - <span className="text-gray-900">{subtaskPanelTitle}</span>
+                    </div>
+                  )}
                   <SubtaskSection
-                    taskId={selectedTask.id}
-                    onSubtaskSelect={(subtask) => {
-                      setSelectedSubtask(subtask)
-                      setShowSubtasks(false)
-                      // Update URL to reflect subtask selection
-                      const url = new URL(window.location.href)
-                      url.searchParams.set('subtaskId', subtask.id)
-                      window.history.replaceState({}, '', url.toString())
-                    }}
+                    taskId={subtaskPanelTaskId}
+                    onSubtaskSelect={handleSubtaskSelect}
                     selectedSubtaskId={selectedSubtask?.id}
-                    autoSelectSubtaskId={searchParams.get('subtaskId')}
+                    autoSelectSubtaskId={subtaskPanelAutoSelectId}
                   />
                 </div>
 
@@ -1239,8 +1241,10 @@ function WorkModeViewInner() {
                     onClick={() => setShowSubtasks(false)}
                   />
                   <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-white rounded-t-2xl shadow-lg">
-                    <div className="flex items-center justify-between p-3 border-b border-gray-200">
-                      <span className="text-sm font-medium text-gray-900">{t.ui.subtasks}</span>
+                    <div className="flex items-center justify-between p-3 border-b border-gray-200 gap-2">
+                      <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">
+                        {subtaskPanelTitle ? `${t.ui.subtasks} - ${subtaskPanelTitle}` : t.ui.subtasks}
+                      </span>
                       <button
                         onClick={() => setShowSubtasks(false)}
                         className="p-2 text-gray-500 hover:text-gray-700"
@@ -1251,17 +1255,10 @@ function WorkModeViewInner() {
                     </div>
                     <div className="p-4 overflow-y-auto">
                       <SubtaskSection
-                        taskId={selectedTask.id}
-                        onSubtaskSelect={(subtask) => {
-                          setSelectedSubtask(subtask)
-                          setShowSubtasks(false)
-                          // Update URL to reflect subtask selection
-                          const url = new URL(window.location.href)
-                          url.searchParams.set('subtaskId', subtask.id)
-                          window.history.replaceState({}, '', url.toString())
-                        }}
+                        taskId={subtaskPanelTaskId}
+                        onSubtaskSelect={handleSubtaskSelect}
                         selectedSubtaskId={selectedSubtask?.id}
-                        autoSelectSubtaskId={searchParams.get('subtaskId')}
+                        autoSelectSubtaskId={subtaskPanelAutoSelectId}
                       />
                     </div>
                   </div>
