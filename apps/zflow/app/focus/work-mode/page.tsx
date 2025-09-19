@@ -1,446 +1,175 @@
 'use client'
 
-import React, { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { useTasks, useUpdateTask } from '../../../hooks/useMemories'
-import { useAutoSave } from '../../../hooks/useAutoSave'
+import React, { Suspense, useEffect, useCallback, startTransition } from 'react'
+import { useTasks } from '../../../hooks/useMemories'
 import { useCategories } from '../../../hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
-import { usePrefs } from '../../../contexts/PrefsContext'
 import LoginPage from '../../components/auth/LoginPage'
-import { TaskMemory, categoriesApi, TaskContent } from '../../../lib/api'
-import { Folder, FileText, ChevronRight, ChevronDown, Plus, Save, Settings, Calendar, Clock, User, Tag, KanbanSquare, PanelLeftClose, PanelLeftOpen, X, Menu, Play, Square, Info, CheckCircle, ListTodo, ArrowLeft } from 'lucide-react'
-import NotionEditor from '../../components/editors/NotionEditor'
-import { Category } from '../../types/task'
-import { useTranslation } from '../../../contexts/LanguageContext'
-import { useTimer } from '../../../hooks/useTimer'
+import { X } from 'lucide-react'
 import SubtaskSection from '../../components/editors/SubtaskSection'
 import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
-import MemoryAnchorButton from '../../components/memory/MemoryAnchorButton'
 import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
 import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
 import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/useMemoryAnchors'
 import eventBus from '../../core/events/event-bus'
+import { useTranslation } from '../../../contexts/LanguageContext'
 
-interface TaskWithCategory extends TaskMemory {
-  category?: Category
-  category_id?: string
-}
+// Import modular components
+import TaskSidebar from './components/TaskSidebar'
+import TaskHeader from './components/TaskHeader'
+import TaskInfoPanel from './components/TaskInfoPanel'
+import WorkModeEditor from './components/WorkModeEditor'
 
-function WorkModeViewInner() {
+// Import custom hooks
+import { useWorkModeState } from './hooks/useWorkModeState'
+
+// Import hooks directly
+import { useUpdateTask } from '../../../hooks/useMemories'
+import { useTimer } from '../../../hooks/useTimer'
+import { useAutoSave } from '../../../hooks/useAutoSave'
+
+// Create a simplified task operations hook that includes auto-save internally
+function useTaskOperationsWithAutoSave({
+  selectedTask,
+  selectedSubtask,
+  notes,
+  setNotes,
+  originalNotes,
+  setOriginalNotes,
+  setSelectedTask,
+  setSelectedSubtask,
+  setIsSaving,
+  taskInfo,
+  setTaskInfo,
+  setEditingTaskInfo,
+  updateFocusUrl,
+  setShowSubtasks,
+}: any) {
   const { t } = useTranslation()
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
-  const { tasks, isLoading, error } = useTasks(user ? {
-    // 提高上限，避免老任务被默认分页丢失
-    limit: 500,
-    // 仅取根任务，减少无关数据量
-    root_tasks_only: true,
-    // 使用最近更新排序，更贴近“正在处理/今日相关”的工作流
-    sort_by: 'updated_at',
-    sort_order: 'desc'
-  } : null)
-  const { categories } = useCategories()
   const { updateTask, updateTaskSilent } = useUpdateTask()
-  const searchParams = useSearchParams()
-  const returnTo = searchParams.get('returnTo')
-  const from = searchParams.get('from')
-  const subtaskIdParam = searchParams.get('subtaskId')
-  const [selectedTask, setSelectedTask] = useState<TaskWithCategory | null>(null)
-  const [selectedSubtask, setSelectedSubtask] = useState<TaskMemory | null>(null)
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
-  const [notes, setNotes] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [originalNotes, setOriginalNotes] = useState('')
-  const [viewMode, setViewMode] = useState<'current' | 'backlog'>('current')
-  const [showTaskInfo, setShowTaskInfo] = useState(false)
-  const [showSubtasks, setShowSubtasks] = useState(false)
-  const [editingTaskInfo, setEditingTaskInfo] = useState(false)
-  const [sidebarVisible, setSidebarVisible] = useState(true)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [taskInfo, setTaskInfo] = useState({
-    title: '',
-    description: '',
-    status: 'pending' as TaskContent['status'],
-    priority: 'medium' as TaskContent['priority'],
-    progress: 0,
-    due_date: '',
-    estimated_duration: 0,
-    assignee: '',
-    tags: [] as string[]
-  })
-
-  // Task description expansion
-  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set())
-
-  // Time tracking
   const timer = useTimer(5000)
-  const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
-  const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 
-  const autoOpenSubtasksRef = useRef(false)
-  const lastSubtaskIdRef = useRef<string | null>(null)
-
-  // Memory anchoring
-  const [showMemories, setShowMemories] = useState(false)
-  const [memoryModalOpen, setMemoryModalOpen] = useState(false)
-  const { anchors: taskAnchors, isLoading: anchorsLoading, refetch: refetchAnchors } = useTaskMemoryAnchors(selectedTask?.id || '')
-  const { memories: allMemories, isLoading: memoriesLoading } = useMemories({ limit: 100 })
-  const { createMemoryWithAnchor, linkMemoryToTask, removeMemoryFromTask, isLoading: memoryActionLoading } = useMemoryActions()
-
-  const updateFocusUrl = useCallback((updates: Record<string, string | null | undefined>) => {
-    if (typeof window === 'undefined') return
-    const current = new URLSearchParams(window.location.search)
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null || value === undefined || value === '') {
-        current.delete(key)
-      } else {
-        current.set(key, value)
-      }
-    })
-    const queryString = current.toString()
-    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}`
-    router.replace(nextUrl, { scroll: false })
-  }, [router])
-
-  // Context-aware back navigation
-  const handleBack = () => {
-    if (returnTo) {
-      router.push(returnTo)
-      return
-    }
-    if (from) {
-      try { router.back(); return } catch {}
-    }
-    router.push('/')
-  }
-
-  // Auto-save functionality for notes
+  // Auto-save logic built directly into the hook to avoid circular dependencies
   const autoSaveNotes = useCallback(async () => {
     if (!selectedTask && !selectedSubtask) return
-    
+
     try {
-      const targetId = selectedSubtask ? selectedSubtask.id : (selectedTask as TaskWithCategory).id
-      const updated = await updateTaskSilent(targetId, { 
-        content: { 
-          notes 
-        } 
+      const targetId = selectedSubtask ? selectedSubtask.id : selectedTask.id
+      const updated = await updateTaskSilent(targetId, {
+        content: { notes }
       })
+
       if (selectedSubtask) {
-        setSelectedSubtask(updated as TaskMemory)
+        setSelectedSubtask(updated)
       } else if (selectedTask) {
-        // Preserve the category information from the original selectedTask
         const taskWithCategory = {
           ...updated,
           category: selectedTask.category,
           category_id: selectedTask.category_id || selectedTask.content.category_id
-        } as TaskWithCategory
+        }
         setSelectedTask(taskWithCategory)
       }
       setOriginalNotes(notes)
     } catch (error) {
-      throw error
+      console.error('Auto-save failed:', error)
     }
-  }, [selectedTask, selectedSubtask, notes, updateTaskSilent])
+  }, [selectedTask, selectedSubtask, notes, updateTaskSilent, setSelectedSubtask, setSelectedTask, setOriginalNotes])
 
+  // Auto-save setup with stable configuration
   const autoSave = useAutoSave({
-    delay: 5000, // 5 seconds after user stops typing - less sensitive
+    delay: 5000,
     enabled: !!(selectedTask || selectedSubtask),
     onSave: autoSaveNotes,
-    hasChanges: () => {
-      // Only save if there's meaningful change
+    hasChanges: useCallback(() => {
       const trimmedNotes = notes.trim()
       const trimmedOriginal = originalNotes.trim()
-      
       if (trimmedNotes === trimmedOriginal) return false
-      
-      // Only trigger if substantial change (at least 20 characters difference or significant content change)
+
       const lengthDiff = Math.abs(trimmedNotes.length - trimmedOriginal.length)
       const minLength = Math.min(trimmedNotes.length, trimmedOriginal.length)
       const changeRatio = minLength > 0 ? lengthDiff / minLength : 1
-      
-      // More conservative: require at least 20 chars change OR 30% content change
+
       return lengthDiff >= 20 || changeRatio >= 0.3
-    }
+    }, [notes, originalNotes])
   })
 
-  const handleTaskSelect = useCallback((task: TaskWithCategory) => {
-    setSelectedTask(task)
-    setSelectedSubtask(null)
-    setShowSubtasks(false)
-    updateFocusUrl({ taskId: task.id, subtaskId: null })
-  }, [updateFocusUrl])
+  const handleTaskSelect = useCallback((task: any) => {
+    // Cancel auto-save during task switching
+    autoSave.cancelAutoSave()
 
-  const handleSubtaskSelect = useCallback((subtask: TaskMemory) => {
+    // Use startTransition for non-urgent UI updates
+    startTransition(() => {
+      const taskNotes = task.content?.notes || ''
+
+      setSelectedTask(task)
+      setSelectedSubtask(null)
+      setShowSubtasks(false)
+      setNotes(taskNotes)
+      setOriginalNotes(taskNotes)
+      setTaskInfo({
+        title: task.content.title || '',
+        description: task.content.description || '',
+        status: task.content.status || 'pending',
+        priority: task.content.priority || 'medium',
+        progress: task.content.progress || 0,
+        due_date: task.content.due_date ? new Date(task.content.due_date).toISOString().slice(0, 16) : '',
+        estimated_duration: task.content.estimated_duration || 0,
+        assignee: task.content.assignee || '',
+        tags: task.tags || []
+      })
+    })
+
+    // Update URL synchronously for immediate feedback
+    updateFocusUrl({ taskId: task.id, subtaskId: null })
+
+    // Reset auto-save after state settles
+    setTimeout(() => autoSave.resetAutoSave(), 50)
+  }, [setSelectedTask, setSelectedSubtask, setShowSubtasks, setNotes, setOriginalNotes, setTaskInfo, updateFocusUrl, autoSave])
+
+  const handleSubtaskSelect = useCallback((subtask: any) => {
+    autoSave.cancelAutoSave()
+
     const shouldAutoClose = typeof window !== 'undefined' && window.innerWidth < 1024
 
-    if (selectedTask && subtask.id === selectedTask.id) {
-      const taskNotes = selectedTask.content?.notes || ''
-      setSelectedSubtask(null)
-      setNotes(taskNotes)
-      setOriginalNotes(taskNotes)
-      autoSave.resetAutoSave()
-      if (shouldAutoClose) {
-        setShowSubtasks(false)
-      }
-      updateFocusUrl({ subtaskId: null })
-      return
-    }
-
-    const nextNotes = subtask.content?.notes || ''
-    setSelectedSubtask(subtask)
-    setNotes(nextNotes)
-    setOriginalNotes(nextNotes)
-    autoSave.resetAutoSave()
-    if (shouldAutoClose) {
-      setShowSubtasks(false)
-    }
-    updateFocusUrl({ subtaskId: subtask.id })
-  }, [autoSave, selectedTask, updateFocusUrl])
-
-  // Trigger auto-save when notes change
-  useEffect(() => {
-    if ((selectedTask || selectedSubtask) && notes !== originalNotes) {
-      autoSave.triggerAutoSave()
-    }
-  }, [notes, selectedTask, selectedSubtask, originalNotes])
-
-  // Load categories
-  // Categories are now loaded via useCategories hook
-
-  // Auto-hide mobile sidebar when task is selected on mobile
-  useEffect(() => {
-    if (selectedTask && window.innerWidth < 1024) {
-      setMobileSidebarOpen(false)
-    }
-  }, [selectedTask])
-
-  // Listen for timer stopped to open energy review modal
-  useEffect(() => {
-    const off = eventBus.onTimerStopped((detail: any) => {
-      const entry = detail?.entry
-      if (entry) {
-        setEnergyReviewEntry(entry)
-        setEnergyReviewOpen(true)
-      }
-    })
-    return off
-  }, [])
-
-  // Filter tasks based on view mode
-  const filteredTasks = React.useMemo(() => {
-    // Skip filtering on server side to avoid hydration mismatch
-    if (typeof window === 'undefined') return tasks
-
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const endOfToday = new Date(startOfToday)
-    endOfToday.setHours(23, 59, 59, 999)
-
-    return tasks.filter((task) => {
-      const content = task.content as TaskContent
-      const dueDate = content.due_date ? new Date(content.due_date) : null
-
-      if (viewMode === 'current') {
-        // Current: in progress, pending without due date, pending due today (until 23:59:59), or overdue
-        if (content.status === 'in_progress') return true
-        if (content.status === 'pending' && !dueDate) return true
-        if (content.status === 'pending' && dueDate && dueDate <= endOfToday) return true
-        return false
+    startTransition(() => {
+      if (selectedTask && subtask.id === selectedTask.id) {
+        const taskNotes = selectedTask.content?.notes || ''
+        setSelectedSubtask(null)
+        setNotes(taskNotes)
+        setOriginalNotes(taskNotes)
+        if (shouldAutoClose) setShowSubtasks(false)
+        updateFocusUrl({ subtaskId: null })
       } else {
-        // Backlog: on_hold or pending with future due date (after today)
-        if (content.status === 'on_hold') return true
-        if (content.status === 'pending' && dueDate && dueDate > endOfToday) return true
-        return false
-      }
-    })
-  }, [tasks, viewMode])
-
-  // Group tasks by category
-  const tasksByCategory = React.useMemo(() => {
-    const grouped: Record<string, TaskWithCategory[]> = {}
-    const uncategorized: TaskWithCategory[] = []
-
-    filteredTasks.forEach((task) => {
-      // 仅展示根任务（hierarchy_level = 0 或没有 parent_task_id）
-      const level = (task as any).hierarchy_level
-      const parentId = (task as any).content?.parent_task_id
-      const isRoot = (level === 0) || (level === undefined && !parentId)
-      if (!isRoot) return
-
-      const taskWithCategory = task as TaskWithCategory
-      const categoryId = task.category_id || task.content.category_id
-      
-      if (categoryId) {
-        const category = categories.find(c => c.id === categoryId)
-        taskWithCategory.category = category
-        if (!grouped[categoryId]) {
-          grouped[categoryId] = []
-        }
-        grouped[categoryId].push(taskWithCategory)
-      } else {
-        uncategorized.push(taskWithCategory)
+        const nextNotes = subtask.content?.notes || ''
+        setSelectedSubtask(subtask)
+        setNotes(nextNotes)
+        setOriginalNotes(nextNotes)
+        if (shouldAutoClose) setShowSubtasks(false)
+        updateFocusUrl({ subtaskId: subtask.id })
       }
     })
 
-    return { grouped, uncategorized }
-  }, [filteredTasks, categories])
+    setTimeout(() => autoSave.resetAutoSave(), 50)
+  }, [selectedTask, updateFocusUrl, setSelectedSubtask, setNotes, setOriginalNotes, setShowSubtasks, autoSave])
 
-  // Auto-expand categories with tasks
-  const prevCategoryKeysRef = useRef<string>('')
-  
-  useEffect(() => {
-    const categoryKeys = Object.keys(tasksByCategory.grouped)
-      .filter(categoryId => tasksByCategory.grouped[categoryId].length > 0)
-      .sort()
-      .join(',')
-    
-    // Only update if the categories with tasks actually changed
-    if (prevCategoryKeysRef.current !== categoryKeys) {
-      const newExpanded = new Set<string>()
-      Object.keys(tasksByCategory.grouped).forEach(categoryId => {
-        if (tasksByCategory.grouped[categoryId].length > 0) {
-          newExpanded.add(categoryId)
-        }
-      })
-      setExpandedCategories(newExpanded)
-      prevCategoryKeysRef.current = categoryKeys
-    }
-  }, [tasksByCategory])
-
-  // Load notes and task info when task is selected
-  useEffect(() => {
-    // Reset selected subtask when switching root task
-    setSelectedSubtask(null)
-    if (selectedTask) {
-      const taskNotes = selectedTask.content.notes || ''
-      setNotes(taskNotes)
-      setOriginalNotes(taskNotes)
-      setTaskInfo({
-        title: selectedTask.content.title || '',
-        description: selectedTask.content.description || '',
-        status: selectedTask.content.status || 'pending',
-        priority: selectedTask.content.priority || 'medium',
-        progress: selectedTask.content.progress || 0,
-        due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
-        estimated_duration: selectedTask.content.estimated_duration || 0,
-        assignee: selectedTask.content.assignee || '',
-        tags: selectedTask.tags || []
-      })
-    } else {
-      setNotes('')
-      setOriginalNotes('')
-      setTaskInfo({
-        title: '',
-        description: '',
-        status: 'pending',
-        priority: 'medium',
-        progress: 0,
-        due_date: '',
-        estimated_duration: 0,
-        assignee: '',
-        tags: []
-      })
-    }
-  }, [selectedTask])
-
-  // Load notes when a subtask is selected
-  useEffect(() => {
-    if (selectedSubtask) {
-      const subtaskNotes = selectedSubtask.content.notes || ''
-      setNotes(subtaskNotes)
-      setOriginalNotes(subtaskNotes)
-    } else if (selectedTask) {
-      const taskNotes = selectedTask.content.notes || ''
-      setNotes(taskNotes)
-      setOriginalNotes(taskNotes)
-    }
-  }, [selectedSubtask])
-
-  // Hide memory panel when switching tasks
-  useEffect(() => {
-    setShowMemories(false)
-  }, [selectedTask?.id])
-
-  // Reset auto-save state when switching tasks or subtasks
-  useEffect(() => {
-    autoSave.resetAutoSave()
-  }, [selectedTask?.id, selectedSubtask?.id])
-
-  // Auto-select task and subtask from query params
-  useEffect(() => {
-    const taskId = searchParams.get('taskId')
-    if (!taskId || !tasks.length) return
-
-    // Find the main task and only select it if it's different from current selection
-    const found = tasks.find(t => t.id === taskId)
-    if (found && (!selectedTask || selectedTask.id !== taskId)) {
-      setSelectedTask(found as TaskWithCategory)
-      setSelectedSubtask(null) // Reset subtask selection
-    }
-  }, [searchParams, tasks])
-
-  // Auto-open subtasks panel for direct subtask links so the section can auto-select
-  useEffect(() => {
-    if (lastSubtaskIdRef.current !== subtaskIdParam) {
-      autoOpenSubtasksRef.current = false
-      lastSubtaskIdRef.current = subtaskIdParam
-    }
-
-    if (!subtaskIdParam || !selectedTask) return
-    if (subtaskIdParam === selectedTask.id) return
-    if (selectedSubtask?.id === subtaskIdParam) return
-
-    if (!autoOpenSubtasksRef.current) {
-      autoOpenSubtasksRef.current = true
-      setShowSubtasks(true)
-    }
-  }, [selectedSubtask?.id, selectedTask, subtaskIdParam])
-
-  const toggleCategory = (categoryId: string) => {
-    const newExpanded = new Set(expandedCategories)
-    if (newExpanded.has(categoryId)) {
-      newExpanded.delete(categoryId)
-    } else {
-      newExpanded.add(categoryId)
-    }
-    setExpandedCategories(newExpanded)
-  }
-
-  // Toggle task description expansion
-  const toggleDescriptionExpansion = (taskId: string) => {
-    const newExpanded = new Set(expandedDescriptions)
-    if (newExpanded.has(taskId)) {
-      newExpanded.delete(taskId)
-    } else {
-      newExpanded.add(taskId)
-    }
-    setExpandedDescriptions(newExpanded)
-  }
-
-  const handleSaveNotes = async () => {
+  const handleSaveNotes = useCallback(async () => {
     if (!selectedTask && !selectedSubtask) return
-    
-    // Cancel any pending auto-save
+
     autoSave.cancelAutoSave()
-    
     setIsSaving(true)
+
     try {
-      const targetId = selectedSubtask ? selectedSubtask.id : (selectedTask as TaskWithCategory).id
-      const updated = await updateTask(targetId, { 
-        content: { 
-          notes 
-        } 
-      })
+      const targetId = selectedSubtask ? selectedSubtask.id : selectedTask.id
+      const updated = await updateTask(targetId, { content: { notes } })
+
       if (selectedSubtask) {
-        setSelectedSubtask(updated as TaskMemory)
+        setSelectedSubtask(updated)
       } else if (selectedTask) {
         const taskWithCategory = {
           ...updated,
           category: selectedTask.category,
           category_id: selectedTask.category_id || selectedTask.content.category_id
-        } as TaskWithCategory
+        }
         setSelectedTask(taskWithCategory)
       }
       setOriginalNotes(notes)
@@ -449,14 +178,14 @@ function WorkModeViewInner() {
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [selectedTask, selectedSubtask, notes, updateTask, autoSave, setIsSaving, setSelectedSubtask, setSelectedTask, setOriginalNotes])
 
-  const handleSaveTaskInfo = async () => {
+  const handleSaveTaskInfo = useCallback(async () => {
     if (!selectedTask) return
-    
+
     setIsSaving(true)
     try {
-      const updatedTask = await updateTask(selectedTask.id, { 
+      const updatedTask = await updateTask(selectedTask.id, {
         content: {
           title: taskInfo.title,
           description: taskInfo.description,
@@ -469,34 +198,33 @@ function WorkModeViewInner() {
         },
         tags: taskInfo.tags
       })
-      // Update the selectedTask state with the updated task data
-      setSelectedTask(updatedTask as TaskWithCategory)
+      setSelectedTask(updatedTask)
       setEditingTaskInfo(false)
     } catch (error) {
       console.error('Failed to save task info:', error)
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [selectedTask, taskInfo, updateTask, setIsSaving, setSelectedTask, setEditingTaskInfo])
 
-  const addTag = () => {
+  const addTag = useCallback(() => {
     const tag = prompt(t.ui.enterTag)
     if (tag && tag.trim()) {
-      setTaskInfo(prev => ({
+      setTaskInfo((prev: any) => ({
         ...prev,
         tags: [...prev.tags, tag.trim()]
       }))
     }
-  }
+  }, [t.ui.enterTag, setTaskInfo])
 
-  const removeTag = (tagToRemove: string) => {
-    setTaskInfo(prev => ({
+  const removeTag = useCallback((tagToRemove: string) => {
+    setTaskInfo((prev: any) => ({
       ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
+      tags: prev.tags.filter((tag: string) => tag !== tagToRemove)
     }))
-  }
+  }, [setTaskInfo])
 
-  const handleCompleteTask = async () => {
+  const handleCompleteTask = useCallback(async () => {
     if (!selectedTask) return
 
     setIsSaving(true)
@@ -509,23 +237,19 @@ function WorkModeViewInner() {
         }
       })
 
-      // Update the selectedTask state with the updated task data
       const taskWithCategory = {
         ...updatedTask,
         category: selectedTask.category,
         category_id: selectedTask.category_id || selectedTask.content.category_id
-      } as TaskWithCategory
+      }
 
       setSelectedTask(taskWithCategory)
-
-      // Update taskInfo to reflect the completion
-      setTaskInfo(prev => ({
+      setTaskInfo((prev: any) => ({
         ...prev,
         status: 'completed',
         progress: 100
       }))
 
-      // Stop timer if running
       if (timer.isRunning && timer.runningTaskId === selectedTask.id) {
         timer.stop(selectedTask.id)
       }
@@ -534,19 +258,128 @@ function WorkModeViewInner() {
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [selectedTask, updateTask, setIsSaving, setSelectedTask, setTaskInfo, timer])
 
-  // Memory management handlers
-  const handleMemoryCreated = async (memory: any, anchorData: any) => {
+  // Auto-save trigger
+  useEffect(() => {
+    if ((selectedTask || selectedSubtask) && notes !== originalNotes) {
+      autoSave.triggerAutoSave()
+    }
+  }, [notes, originalNotes, selectedTask, selectedSubtask, autoSave])
+
+  return {
+    timer,
+    autoSave,
+    autoSaveNotes,
+    handleTaskSelect,
+    handleSubtaskSelect,
+    handleSaveNotes,
+    handleSaveTaskInfo,
+    addTag,
+    removeTag,
+    handleCompleteTask
+  }
+}
+
+function WorkModeViewInner() {
+  const { t } = useTranslation()
+  const { user, loading: authLoading } = useAuth()
+  const { tasks, isLoading, error } = useTasks(user ? {
+    limit: 500,
+    root_tasks_only: true,
+    sort_by: 'updated_at',
+    sort_order: 'desc'
+  } : null)
+  const { categories } = useCategories()
+
+  // Use custom hooks for state management
+  const workModeState = useWorkModeState(tasks, categories)
+  const {
+    selectedTask,
+    selectedSubtask,
+    notes,
+    setNotes,
+    originalNotes,
+    setOriginalNotes,
+    isSaving,
+    setIsSaving,
+    taskInfo,
+    setTaskInfo,
+    editingTaskInfo,
+    setEditingTaskInfo,
+    sidebarVisible,
+    setSidebarVisible,
+    mobileSidebarOpen,
+    setMobileSidebarOpen,
+    viewMode,
+    setViewMode,
+    showTaskInfo,
+    setShowTaskInfo,
+    showSubtasks,
+    setShowSubtasks,
+    expandedDescriptions,
+    showMemories,
+    setShowMemories,
+    memoryModalOpen,
+    setMemoryModalOpen,
+    energyReviewOpen,
+    setEnergyReviewOpen,
+    energyReviewEntry,
+    setEnergyReviewEntry,
+    tasksByCategory,
+    handleBack,
+    toggleDescriptionExpansion,
+    toggleCategory,
+    expandedCategories,
+    subtaskIdParam
+  } = workModeState
+
+  // Simplified task operations with built-in auto-save
+  const taskOperations = useTaskOperationsWithAutoSave({
+    selectedTask,
+    selectedSubtask,
+    notes,
+    setNotes,
+    originalNotes,
+    setOriginalNotes,
+    setSelectedTask: workModeState.setSelectedTask,
+    setSelectedSubtask: workModeState.setSelectedSubtask,
+    setIsSaving,
+    taskInfo,
+    setTaskInfo,
+    setEditingTaskInfo,
+    updateFocusUrl: workModeState.updateFocusUrl,
+    setShowSubtasks,
+  })
+
+  // Stable memory hooks
+  const selectedTaskId = selectedTask?.id || ''
+  const { anchors: taskAnchors, isLoading: anchorsLoading, refetch: refetchAnchors } = useTaskMemoryAnchors(selectedTaskId)
+  const { memories: allMemories, isLoading: memoriesLoading } = useMemories({ limit: 100 })
+  const { createMemoryWithAnchor, linkMemoryToTask, removeMemoryFromTask, isLoading: memoryActionLoading } = useMemoryActions()
+
+  // Stable event listeners with startTransition
+  useEffect(() => {
+    const off = eventBus.onTimerStopped((detail: any) => {
+      const entry = detail?.entry
+      if (entry) {
+        startTransition(() => {
+          setEnergyReviewEntry(entry)
+          setEnergyReviewOpen(true)
+        })
+      }
+    })
+    return off
+  }, [setEnergyReviewEntry, setEnergyReviewOpen])
+
+  // Stable memory handlers
+  const handleMemoryCreated = useCallback(async (memory: any, anchorData: any) => {
+    if (!selectedTask) return
     try {
       await createMemoryWithAnchor(
+        { title: memory.title, note: memory.note, tags: memory.tags },
         {
-          title: memory.title,
-          note: memory.note,
-          tags: memory.tags
-        },
-        {
-          anchor_item_id: selectedTask!.id,
+          anchor_item_id: selectedTask.id,
           relation_type: anchorData.relation_type,
           weight: anchorData.weight,
           local_time_range: anchorData.local_time_range,
@@ -557,12 +390,13 @@ function WorkModeViewInner() {
     } catch (error) {
       console.error('Failed to create memory:', error)
     }
-  }
+  }, [selectedTask, createMemoryWithAnchor, refetchAnchors])
 
-  const handleMemoryLinked = async (memoryId: string, anchorData: any) => {
+  const handleMemoryLinked = useCallback(async (memoryId: string, anchorData: any) => {
+    if (!selectedTask) return
     try {
       await linkMemoryToTask(memoryId, {
-        anchor_item_id: selectedTask!.id,
+        anchor_item_id: selectedTask.id,
         relation_type: anchorData.relation_type,
         weight: anchorData.weight,
         local_time_range: anchorData.local_time_range,
@@ -572,9 +406,9 @@ function WorkModeViewInner() {
     } catch (error) {
       console.error('Failed to link memory:', error)
     }
-  }
+  }, [selectedTask, linkMemoryToTask, refetchAnchors])
 
-  const handleMemoryRemoved = async (memoryId: string) => {
+  const handleMemoryRemoved = useCallback(async (memoryId: string) => {
     if (!selectedTask) return
     try {
       await removeMemoryFromTask(memoryId, selectedTask.id)
@@ -582,9 +416,9 @@ function WorkModeViewInner() {
     } catch (error) {
       console.error('Failed to remove memory:', error)
     }
-  }
+  }, [selectedTask, removeMemoryFromTask, refetchAnchors])
 
-  // Show loading while checking authentication
+  // Early returns for loading/error states
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -593,12 +427,8 @@ function WorkModeViewInner() {
     )
   }
 
-  // Show login page if not authenticated
-  if (!user) {
-    return <LoginPage />
-  }
+  if (!user) return <LoginPage />
 
-  // Show loading while fetching data
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -619,733 +449,160 @@ function WorkModeViewInner() {
 
   return (
     <>
-    <div className="flex min-h-[calc(100vh-200px)] lg:min-h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Mobile Sidebar Overlay */}
-      {mobileSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
+      <div className="flex min-h-[calc(100vh-200px)] lg:min-h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border border-gray-200">
+        <TaskSidebar
+          sidebarVisible={sidebarVisible}
+          mobileSidebarOpen={mobileSidebarOpen}
+          setMobileSidebarOpen={setMobileSidebarOpen}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          tasksByCategory={tasksByCategory}
+          categories={categories}
+          expandedCategories={expandedCategories}
+          toggleCategory={toggleCategory}
+          selectedTask={selectedTask}
+          handleTaskSelect={taskOperations.handleTaskSelect}
         />
-      )}
 
-      {/* Left Sidebar - Task Explorer */}
-      <div className={`
-        ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto
-        w-80 border-r border-gray-200 flex flex-col bg-white
-        transition-transform duration-300 ease-in-out lg:transition-none
-        ${!sidebarVisible ? 'lg:hidden' : ''}
-      `}>
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between lg:hidden">
-            <h2 className="text-lg font-semibold text-gray-900">{t.ui.taskExplorer}</h2>
-            <button
-              onClick={() => setMobileSidebarOpen(false)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="hidden lg:block">
-            <h2 className="text-lg font-semibold text-gray-900">{t.ui.taskExplorer}</h2>
-            <p className="text-sm text-gray-600 mt-1">{t.ui.selectTaskToWork}</p>
-          </div>
-          
-          {/* View Mode Toggle */}
-          <div className="mt-4">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-              <button
-                onClick={() => setViewMode('current')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'current'
-                    ? 'bg-white text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-{t.ui.currentTasks}
-              </button>
-              <button
-                onClick={() => setViewMode('backlog')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'backlog'
-                    ? 'bg-white text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                Backlog
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {viewMode === 'current' ? t.ui.currentTasksDesc : t.ui.backlogTasksDesc}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-4">
-          {/* Uncategorized Tasks */}
-          {tasksByCategory.uncategorized.length > 0 && (
-            <div className="mb-6">
-              <button
-                onClick={() => toggleCategory('uncategorized')}
-                className="flex items-center gap-2 w-full text-left p-2 rounded-md hover:bg-gray-100 transition-colors"
-              >
-                {expandedCategories.has('uncategorized') ? (
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
-                )}
-                <Folder className="w-4 h-4 text-gray-500" />
-                <span className="font-medium text-gray-700">{t.ui.uncategorized}</span>
-                <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                  {tasksByCategory.uncategorized.length}
-                </span>
-              </button>
-              
-              {expandedCategories.has('uncategorized') && (
-                <div className="ml-6 mt-2 space-y-1">
-                  {tasksByCategory.uncategorized.map((task) => (
-                    <button
-                      key={task.id}
-                      onClick={() => handleTaskSelect(task as TaskWithCategory)}
-                      className={`flex items-center gap-2 w-full text-left p-2 rounded-md text-sm transition-colors ${
-                        selectedTask?.id === task.id
-                          ? 'bg-primary-100 text-primary-700'
-                          : 'hover:bg-gray-50 text-gray-700'
-                      }`}
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span className="truncate">{task.content.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+        <div className="flex-1 flex flex-col">
+          <TaskHeader
+            selectedTask={selectedTask}
+            selectedSubtask={selectedSubtask}
+            expandedDescriptions={expandedDescriptions}
+            toggleDescriptionExpansion={toggleDescriptionExpansion}
+            handleBack={handleBack}
+            setMobileSidebarOpen={setMobileSidebarOpen}
+            sidebarVisible={sidebarVisible}
+            setSidebarVisible={setSidebarVisible}
+            showTaskInfo={showTaskInfo}
+            setShowTaskInfo={setShowTaskInfo}
+            showSubtasks={showSubtasks}
+            setShowSubtasks={setShowSubtasks}
+            subtaskPanelTaskId={subtaskPanelTaskId}
+            subtaskPanelTitle={subtaskPanelTitle}
+            handleCompleteTask={taskOperations.handleCompleteTask}
+            handleSaveNotes={taskOperations.handleSaveNotes}
+            isSaving={isSaving}
+            autoSave={taskOperations.autoSave}
+            timer={taskOperations.timer}
+            taskAnchors={taskAnchors}
+            setShowMemories={setShowMemories}
+            showMemories={showMemories}
+            refetchAnchors={refetchAnchors}
+          />
+
+          <TaskInfoPanel
+            showTaskInfo={showTaskInfo}
+            editingTaskInfo={editingTaskInfo}
+            setEditingTaskInfo={setEditingTaskInfo}
+            taskInfo={taskInfo}
+            setTaskInfo={setTaskInfo}
+            handleSaveTaskInfo={taskOperations.handleSaveTaskInfo}
+            isSaving={isSaving}
+            addTag={taskOperations.addTag}
+            removeTag={taskOperations.removeTag}
+            selectedTask={selectedTask}
+          />
+
+          {selectedTask && showMemories && (
+            <div className="p-4 lg:p-6 border-b border-gray-200 bg-gray-50">
+              <TaskMemoryDisplay
+                taskId={selectedTask.id}
+                memories={taskAnchors}
+                onAddMemory={() => setMemoryModalOpen(true)}
+                onRemoveMemory={handleMemoryRemoved}
+                onViewMemory={() => {}}
+                isLoading={anchorsLoading}
+                collapsible={true}
+                compact={false}
+              />
             </div>
           )}
 
-          {/* Categorized Tasks */}
-          {categories.map((category) => {
-            const categoryTasks = tasksByCategory.grouped[category.id] || []
-            if (categoryTasks.length === 0) return null
-
-            return (
-              <div key={category.id} className="mb-6">
-                <button
-                  onClick={() => toggleCategory(category.id)}
-                  className="flex items-center gap-2 w-full text-left p-2 rounded-md hover:bg-gray-100 transition-colors"
-                >
-                  {expandedCategories.has(category.id) ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
-                  )}
-                  <Folder className="w-4 h-4" style={{ color: category.color }} />
-                  <span className="font-medium text-gray-700">{category.name}</span>
-                  <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                    {categoryTasks.length}
-                  </span>
-                </button>
-                
-                {expandedCategories.has(category.id) && (
-                  <div className="ml-6 mt-2 space-y-1">
-                    {categoryTasks.map((task) => (
-                      <button
-                        key={task.id}
-                        onClick={() => handleTaskSelect(task as TaskWithCategory)}
-                        className={`flex items-center gap-2 w-full text-left p-2 rounded-md text-sm transition-colors ${
-                          selectedTask?.id === task.id
-                            ? 'bg-primary-100 text-primary-700'
-                            : 'hover:bg-gray-50 text-gray-700'
-                        }`}
-                      >
-                        <FileText className="w-4 h-4" />
-                        <span className="truncate">{task.content.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Right Content - Markdown Editor */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Toolbar */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleBack}
-                className="flex items-center gap-2 px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
-                title={t.common?.back || 'Back'}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setMobileSidebarOpen(true)}
-              className="lg:hidden flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
-            >
-              <Menu className="w-4 h-4" />
-              {t.ui.taskList}
-            </button>
-            <button
-              onClick={() => setSidebarVisible(!sidebarVisible)}
-              className="hidden lg:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
-              title={sidebarVisible ? t.ui.hideSidebar : t.ui.showSidebar}
-            >
-              {sidebarVisible ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-              {sidebarVisible ? t.ui.hideSidebar : t.ui.showSidebar}
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/focus?view=kanban"
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm"
-            >
-              <KanbanSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">{t.ui.switchToKanban}</span>
-              <span className="sm:hidden">{t.nav.kanban}</span>
-            </Link>
-          </div>
-        </div>
-
-        {selectedTask ? (
-          <>
-            {/* Task Header */}
-            <div className="p-4 lg:p-6 border-b border-gray-200">
-              {/* Task Info Section */}
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-xl lg:text-2xl font-bold text-gray-900 break-words">
-                    {selectedTask.content.title}
-                  </h1>
-                  {((selectedSubtask && selectedSubtask.content.description) || (!selectedSubtask && selectedTask.content.description)) && (
-                    <button
-                      onClick={() => toggleDescriptionExpansion(selectedSubtask ? selectedSubtask.id : selectedTask.id)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                      title={expandedDescriptions.has(selectedSubtask ? selectedSubtask.id : selectedTask.id) ? "Hide description" : "Show description"}
-                    >
-                      {expandedDescriptions.has(selectedSubtask ? selectedSubtask.id : selectedTask.id) ? (
-                        <ChevronDown className="w-4 h-4 lg:w-5 lg:h-5" />
-                      ) : (
-                        <Info className="w-4 h-4 lg:w-5 lg:h-5" />
-                      )}
-                    </button>
-                  )}
-                </div>
-                {((selectedSubtask && selectedSubtask.content.description && expandedDescriptions.has(selectedSubtask.id)) ||
-                  (!selectedSubtask && selectedTask.content.description && expandedDescriptions.has(selectedTask.id))) && (
-                  <p className="text-gray-600 mt-2 break-words">
-                    {selectedSubtask ? selectedSubtask.content.description : selectedTask.content.description}
-                  </p>
-                )}
-                {selectedTask.category && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: selectedTask.category.color }}
-                    />
-                    <span className="text-sm text-gray-500">{selectedTask.category.name}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Controls Section */}
-              <div className="flex flex-wrap items-center gap-1 md:gap-2 min-h-[36px] sm:min-h-[40px]">
-                {/* Timer and Controls - Compact Row */}
-                <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 overflow-x-auto">
-                  {/* Ultra-compact Timer */}
-                  {selectedTask && (
-                    <div className="flex items-center gap-0 sm:gap-1 px-1 py-0.5 bg-gray-100 rounded text-xs min-w-[45px] sm:min-w-[120px]">
-                      <Clock className="w-3 h-3 text-gray-600 flex-shrink-0" />
-                      <span className="text-gray-700 font-mono min-w-[25px] sm:min-w-[60px] text-center text-xs">
-                        {timer.isRunning && timer.runningTaskId === selectedTask.id ? (
-                          `${Math.floor(timer.elapsedMs / 60000).toString().padStart(2, '0')}:${Math.floor((timer.elapsedMs % 60000) / 1000).toString().padStart(2, '0')}`
-                        ) : (
-                          t.ui.idle
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {/* Start/Stop Button */}
-                  {selectedTask && (
-                    <button
-                      onClick={() => timer.isRunning && timer.runningTaskId === selectedTask.id 
-                        ? timer.stop(selectedTask.id) 
-                        : timer.start(selectedTask.id, { autoSwitch: true })
-                      }
-                      className={`flex items-center justify-center px-2 py-2 text-white rounded transition-colors text-xs min-w-[36px] ${
-                        timer.isRunning && timer.runningTaskId === selectedTask.id 
-                          ? 'bg-red-600 hover:bg-red-700' 
-                          : 'bg-green-600 hover:bg-green-700'
-                      }`}
-                    >
-                      {timer.isRunning && timer.runningTaskId === selectedTask.id ? (
-                        <>
-                          <Square className="w-3 h-3 flex-shrink-0" />
-                          <span className="hidden sm:inline ml-1">{t.common.stop}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3 h-3 flex-shrink-0" />
-                          <span className="hidden sm:inline ml-1">{t.common.start}</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {/* Complete Button - Only show if task is not already completed */}
-                  {selectedTask && selectedTask.content.status !== 'completed' && (
-                    <button
-                      onClick={handleCompleteTask}
-                      disabled={isSaving}
-                      className="flex items-center justify-center px-2 py-2 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[36px] disabled:opacity-50"
-                    >
-                      <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                      <span className="hidden sm:inline ml-1 truncate">{t.task.markCompleted}</span>
-                    </button>
-                  )}
-                  {/* Task Info Button */}
-                  <button
-                    onClick={() => setShowTaskInfo(!showTaskInfo)}
-                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px]"
-                  >
-                    <Settings className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden sm:inline ml-1 truncate">{showTaskInfo ? t.ui.hideTaskInfo : t.ui.showTaskInfo}</span>
-                  </button>
-                  {/* Toggle Subtasks Button */}
-                  <button
-                    onClick={() => subtaskPanelTaskId && setShowSubtasks(prev => !prev)}
-                    disabled={!subtaskPanelTaskId}
-                    className="flex items-center justify-center px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors text-xs min-w-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={subtaskPanelTitle ? `${t.ui.subtasks}: ${subtaskPanelTitle}` : t.ui.subtasks}
-                  >
-                    <ListTodo className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden sm:inline ml-1 truncate">{t.ui.subtasks}</span>
-                  </button>
-              {/* Memory Anchor Button */}
-              <MemoryAnchorButton
-                onClick={() => {
-                  setShowMemories(prev => {
-                    const next = !prev
-                        if (!prev && selectedTask) {
-                          refetchAnchors()
-                        }
-                        return next
-                      })
-                    }}
-                    memoryCount={taskAnchors.length}
-                    disabled={!selectedTask}
-                    size="md"
-                    variant="default"
-                    isActive={showMemories}
-                  />
-                </div>
-
-                {/* Save Controls - Right Side (wraps below on mobile) */}
-                <div className="flex items-center ml-0 md:ml-auto gap-1 md:gap-2 w-full md:w-auto justify-end mt-2 md:mt-0">
-                  {/* Auto-save indicator - Hidden on mobile */}
-                  <div className="hidden sm:flex items-center text-xs text-gray-400 min-w-[140px] justify-end">
-                    {autoSave.status === 'error' ? (
-                      <span className="flex items-center gap-1 text-red-500">
-                        <div className="w-2 h-2 bg-red-400 rounded-full flex-shrink-0"></div>
-                        Save failed
-                      </span>
-                    ) : autoSave.lastSaved ? (
-                      <span>Auto-saved {autoSave.lastSaved.toLocaleTimeString()}</span>
-                    ) : null}
-                  </div>
-                  
-                  {/* Save Button */}
-                  <button
-                    onClick={handleSaveNotes}
-                    disabled={isSaving}
-                    className="flex items-center justify-center px-3 py-2 sm:px-4 sm:py-2 bg-primary-600 text-white rounded transition-colors text-xs min-w-[50px] sm:min-w-[100px] hover:bg-primary-700 disabled:opacity-50"
-                  >
-                    <Save className="w-3 h-3 flex-shrink-0" />
-                    <span className="hidden sm:inline ml-1 truncate">{isSaving ? t.ui.saving : t.ui.saveNotes}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Task Info Section */}
-            {showTaskInfo && (
-              <div className="p-4 lg:p-6 border-b border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    {t.ui.taskInfo}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    {editingTaskInfo ? (
-                      <>
-                        <button
-                          onClick={handleSaveTaskInfo}
-                          disabled={isSaving}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm transition-colors"
-                        >
-                          <Save className="w-4 h-4" />
-                          {t.common.save}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingTaskInfo(false)
-                            if (selectedTask) {
-                              setTaskInfo({
-                                title: selectedTask.content.title || '',
-                                description: selectedTask.content.description || '',
-                                status: selectedTask.content.status || 'pending',
-                                priority: selectedTask.content.priority || 'medium',
-                                progress: selectedTask.content.progress || 0,
-                                due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
-                                estimated_duration: selectedTask.content.estimated_duration || 0,
-                                assignee: selectedTask.content.assignee || '',
-                                tags: selectedTask.tags || []
-                              })
-                            }
-                          }}
-                          className="px-3 py-1.5 text-gray-600 hover:text-gray-900 text-sm transition-colors"
-                        >
-                          {t.common.cancel}
-                        </button>
-                      </>
+          {showSubtasks && subtaskPanelTaskId && (
+            <>
+              <div className="hidden lg:block p-4 lg:p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold text-gray-700 truncate">
+                    {subtaskPanelTitle ? (
+                      <>{t.ui.subtasks} - <span className="text-gray-900">{subtaskPanelTitle}</span></>
                     ) : (
-                      <button
-                        onClick={() => setEditingTaskInfo(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm transition-colors"
-                      >
-                        <Settings className="w-4 h-4" />
-                        {t.common.edit}
-                      </button>
+                      t.ui.subtasks
                     )}
                   </div>
+                  <button
+                    onClick={() => setShowSubtasks(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                    title="Close subtasks"
+                    aria-label="Close subtasks"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-
-                {editingTaskInfo ? (
-                  <div className="space-y-4">
-                    {/* Title */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.title}</label>
-                      <input
-                        type="text"
-                        value={taskInfo.title}
-                        onChange={(e) => setTaskInfo(prev => ({ ...prev, title: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.description}</label>
-                      <textarea
-                        value={taskInfo.description}
-                        onChange={(e) => setTaskInfo(prev => ({ ...prev, description: e.target.value }))}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-
-                    {/* Status and Priority */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.status}</label>
-                        <select
-                          value={taskInfo.status}
-                          onChange={(e) => setTaskInfo(prev => ({ ...prev, status: e.target.value as any }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="pending">{t.task.statusPending}</option>
-                          <option value="in_progress">{t.task.statusInProgress}</option>
-                          <option value="completed">{t.task.statusCompleted}</option>
-                          <option value="cancelled">{t.task.statusCancelled}</option>
-                          <option value="on_hold">{t.task.statusOnHold}</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.priority}</label>
-                        <select
-                          value={taskInfo.priority}
-                          onChange={(e) => setTaskInfo(prev => ({ ...prev, priority: e.target.value as any }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="low">{t.task.priorityLow}</option>
-                          <option value="medium">{t.task.priorityMedium}</option>
-                          <option value="high">{t.task.priorityHigh}</option>
-                          <option value="urgent">{t.task.priorityUrgent}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Progress */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.progress} ({taskInfo.progress}%)</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={taskInfo.progress}
-                        onChange={(e) => setTaskInfo(prev => ({ ...prev, progress: parseInt(e.target.value) }))}
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Due Date and Estimated Duration */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.ui.dueDate}</label>
-                        <input
-                          type="datetime-local"
-                          value={taskInfo.due_date}
-                          onChange={(e) => setTaskInfo(prev => ({ ...prev, due_date: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{t.ui.estimatedDurationMinutes}</label>
-                        <input
-                          type="number"
-                          value={taskInfo.estimated_duration}
-                          onChange={(e) => setTaskInfo(prev => ({ ...prev, estimated_duration: parseInt(e.target.value) || 0 }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Assignee */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.ui.assignee}</label>
-                      <input
-                        type="text"
-                        value={taskInfo.assignee}
-                        onChange={(e) => setTaskInfo(prev => ({ ...prev, assignee: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-
-                    {/* Tags */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.task.tags}</label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {taskInfo.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded-md text-sm"
-                          >
-                            {tag}
-                            <button
-                              onClick={() => removeTag(tag)}
-                              className="text-primary-600 hover:text-primary-800"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                      <button
-                        onClick={addTag}
-                        className="flex items-center gap-2 px-3 py-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-md transition-colors text-sm"
-                      >
-                        <Plus className="w-4 h-4" />
-                        {t.ui.addTag}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">{t.task.status}:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.status}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">{t.task.priority}:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.priority}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">{t.task.progress}:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.progress}%</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">{t.ui.assignee}:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.assignee || t.ui.unassigned}</span>
-                      </div>
-                    </div>
-                    {taskInfo.due_date && (
-                      <div>
-                        <span className="font-medium text-gray-700">{t.ui.dueDate}:</span>
-                        <span className="ml-2 text-gray-600">{new Date(taskInfo.due_date).toLocaleString()}</span>
-                      </div>
-                    )}
-                    {taskInfo.estimated_duration > 0 && (
-                      <div>
-                        <span className="font-medium text-gray-700">{t.task.estimatedDuration}:</span>
-                        <span className="ml-2 text-gray-600">{taskInfo.estimated_duration} {t.ui.minutes}</span>
-                      </div>
-                    )}
-                    {taskInfo.tags.length > 0 && (
-                      <div>
-                        <span className="font-medium text-gray-700">{t.task.tags}:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {taskInfo.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 bg-primary-100 text-primary-800 rounded-md text-xs"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Memory Display Section */}
-            {selectedTask && showMemories && (
-              <div className="p-4 lg:p-6 border-b border-gray-200 bg-gray-50">
-                <TaskMemoryDisplay
-                  taskId={selectedTask.id}
-                  memories={taskAnchors}
-                  onAddMemory={() => setMemoryModalOpen(true)}
-                  onRemoveMemory={handleMemoryRemoved}
-                  onViewMemory={() => {
-                    // TODO: Implement memory detail view
-                  }}
-                  isLoading={anchorsLoading}
-                  collapsible={true}
-                  compact={false}
+                <SubtaskSection
+                  taskId={subtaskPanelTaskId}
+                  onSubtaskSelect={taskOperations.handleSubtaskSelect}
+                  selectedSubtaskId={selectedSubtask?.id}
+                  autoSelectSubtaskId={subtaskPanelAutoSelectId}
                 />
               </div>
-            )}
 
-            {/* Subtasks Section (toggled) */}
-            {showSubtasks && subtaskPanelTaskId && (
-              <>
-                {/* Desktop/tablet inline section */}
-                <div className="hidden lg:block p-4 lg:p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm font-semibold text-gray-700 truncate">
-                      {subtaskPanelTitle ? (
-                        <>
-                          {t.ui.subtasks} - <span className="text-gray-900">{subtaskPanelTitle}</span>
-                        </>
-                      ) : (
-                        t.ui.subtasks
-                      )}
-                    </div>
+              <div className="lg:hidden fixed inset-0 z-50">
+                <div
+                  className="absolute inset-0 bg-black/50"
+                  onClick={() => setShowSubtasks(false)}
+                />
+                <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-white rounded-t-2xl shadow-lg">
+                  <div className="flex items-center justify-between p-3 border-b border-gray-200 gap-2">
+                    <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">
+                      {subtaskPanelTitle ? `${t.ui.subtasks} - ${subtaskPanelTitle}` : t.ui.subtasks}
+                    </span>
                     <button
                       onClick={() => setShowSubtasks(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                      title="Close subtasks"
+                      className="p-2 text-gray-500 hover:text-gray-700"
                       aria-label="Close subtasks"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </button>
                   </div>
-                  <SubtaskSection
-                    taskId={subtaskPanelTaskId}
-                    onSubtaskSelect={handleSubtaskSelect}
-                    selectedSubtaskId={selectedSubtask?.id}
-                    autoSelectSubtaskId={subtaskPanelAutoSelectId}
-                  />
-                </div>
-
-                {/* Mobile floating bottom sheet */}
-                <div className="lg:hidden fixed inset-0 z-50">
-                  <div
-                    className="absolute inset-0 bg-black/50"
-                    onClick={() => setShowSubtasks(false)}
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-white rounded-t-2xl shadow-lg">
-                    <div className="flex items-center justify-between p-3 border-b border-gray-200 gap-2">
-                      <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">
-                        {subtaskPanelTitle ? `${t.ui.subtasks} - ${subtaskPanelTitle}` : t.ui.subtasks}
-                      </span>
-                      <button
-                        onClick={() => setShowSubtasks(false)}
-                        className="p-2 text-gray-500 hover:text-gray-700"
-                        aria-label="Close subtasks"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <div className="p-4 overflow-y-auto">
-                      <SubtaskSection
-                        taskId={subtaskPanelTaskId}
-                        onSubtaskSelect={handleSubtaskSelect}
-                        selectedSubtaskId={selectedSubtask?.id}
-                        autoSelectSubtaskId={subtaskPanelAutoSelectId}
-                      />
-                    </div>
+                  <div className="p-4 overflow-y-auto">
+                    <SubtaskSection
+                      taskId={subtaskPanelTaskId}
+                      onSubtaskSelect={taskOperations.handleSubtaskSelect}
+                      selectedSubtaskId={selectedSubtask?.id}
+                      autoSelectSubtaskId={subtaskPanelAutoSelectId}
+                    />
                   </div>
                 </div>
-              </>
-            )}
-
-            {/* Markdown Editor */}
-            <div className="flex-1 min-h-0 p-4 lg:p-6">
-              {/* Editing mode indicator */}
-              <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-2 text-xs text-gray-500 w-full">
-                {selectedSubtask ? (
-                  <>
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full flex-shrink-0 font-medium">
-                      📝 Subtask
-                    </span>
-                    <span className="flex-1 min-w-0 font-medium text-blue-900 break-words">
-                      {selectedSubtask.content.title}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="px-2 py-0.5 bg-gray-100 rounded-full flex-shrink-0">
-                      📋 Task
-                    </span>
-                    <span className="flex-1 min-w-0 truncate">
-                      {selectedTask.content.title}
-                    </span>
-                  </>
-                )}
-                <span className="ml-auto italic flex-shrink-0 hidden sm:inline">{t.common.edit}</span>
               </div>
-              <NotionEditor
-                value={notes}
-                onChange={setNotes}
-                placeholder={t.ui.writeNotesHere}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-4">
-            <div className="text-center">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{t.ui.selectTaskToStart}</h3>
-              <p className="text-gray-600">{t.ui.selectTaskFromLeft}</p>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+
+          <WorkModeEditor
+            selectedTask={selectedTask}
+            selectedSubtask={selectedSubtask}
+            notes={notes}
+            setNotes={setNotes}
+          />
+        </div>
       </div>
-    </div>
-    {/* Memory Management Modal */}
-    <MemoryManagementModal
-      isOpen={memoryModalOpen}
-      onClose={() => setMemoryModalOpen(false)}
-      taskId={selectedTask?.id || ''}
-      taskTitle={selectedTask?.content.title || ''}
-      onMemoryCreated={handleMemoryCreated}
-      onMemoryLinked={handleMemoryLinked}
-      existingMemories={allMemories}
-      isLoading={memoriesLoading || memoryActionLoading}
-    />
-    {/* Energy Review Modal */}
-    <EnergyReviewModal
-      open={energyReviewOpen}
-      entry={energyReviewEntry}
-      onClose={() => setEnergyReviewOpen(false)}
-    />
+
+      <MemoryManagementModal
+        isOpen={memoryModalOpen}
+        onClose={() => setMemoryModalOpen(false)}
+        taskId={selectedTask?.id || ''}
+        taskTitle={selectedTask?.content.title || ''}
+        onMemoryCreated={handleMemoryCreated}
+        onMemoryLinked={handleMemoryLinked}
+        existingMemories={allMemories}
+        isLoading={memoriesLoading || memoryActionLoading}
+      />
+
+      <EnergyReviewModal
+        open={energyReviewOpen}
+        entry={energyReviewEntry}
+        onClose={() => setEnergyReviewOpen(false)}
+      />
     </>
   )
 }
