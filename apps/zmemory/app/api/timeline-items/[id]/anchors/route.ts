@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getUserIdFromRequest } from '../../../../../lib/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../../lib/security';
@@ -10,6 +10,16 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
+
+const VALID_RELATION_TYPES = new Set([
+  'context_of',
+  'result_of',
+  'insight_from',
+  'about',
+  'co_occurred',
+  'triggered_by',
+  'reflects_on'
+]);
 
 /**
  * @swagger
@@ -60,11 +70,11 @@ const supabase = supabaseUrl && supabaseKey
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: timelineItemId } = await params;
-
   try {
+    const { id: timelineItemId } = await context.params;
+
     // Rate limiting
     const clientIP = getClientIP(request);
     if (isRateLimited(clientIP)) {
@@ -73,9 +83,31 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const relationType = searchParams.get('relation_type');
-    const minWeight = searchParams.get('min_weight');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    if (relationType && !VALID_RELATION_TYPES.has(relationType)) {
+      return jsonWithCors(request, { error: 'Invalid relation_type parameter' }, 400);
+    }
+
+    const minWeightParam = searchParams.get('min_weight');
+    let parsedMinWeight: number | null = null;
+    if (minWeightParam !== null) {
+      parsedMinWeight = Number(minWeightParam);
+      if (!Number.isFinite(parsedMinWeight) || parsedMinWeight < 0 || parsedMinWeight > 10) {
+        return jsonWithCors(request, { error: 'min_weight must be a number between 0 and 10' }, 400);
+      }
+    }
+
+    const limitParam = parseInt(searchParams.get('limit') ?? '50', 10);
+    if (!Number.isFinite(limitParam) || limitParam < 1 || limitParam > 100) {
+      return jsonWithCors(request, { error: 'limit must be between 1 and 100' }, 400);
+    }
+
+    const offsetParam = parseInt(searchParams.get('offset') ?? '0', 10);
+    if (!Number.isFinite(offsetParam) || offsetParam < 0) {
+      return jsonWithCors(request, { error: 'offset must be greater than or equal to 0' }, 400);
+    }
+
+    const limit = limitParam;
+    const offset = offsetParam;
 
     // If Supabase is not configured, return mock anchors
     if (!supabase) {
@@ -107,18 +139,20 @@ export async function GET(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
+    // Ensure timeline item exists and belongs to current user
+    let timelineLookup;
+    try {
+      timelineLookup = await supabase
+        .from('timeline_items')
+        .select('id, user_id')
+        .eq('id', timelineItemId)
+        .single();
+    } catch (timelineException) {
+      console.error('Timeline item lookup threw:', timelineException);
+      return jsonWithCors(request, { error: 'Timeline item lookup failed' }, 500);
     }
 
-    const client = supabase;
-
-    // Ensure timeline item exists and belongs to current user
-    const { data: timelineItem, error: timelineError } = await client
-      .from('timeline_items')
-      .select('id, user_id')
-      .eq('id', timelineItemId)
-      .single();
+    const { data: timelineItem, error: timelineError } = timelineLookup;
 
     if (timelineError) {
       console.error('Timeline item lookup error:', timelineError);
@@ -135,7 +169,7 @@ export async function GET(
     }
 
     // Build query to get memory anchors with memory data
-    let dbQuery = client
+    let dbQuery = supabase
       .from('memory_anchors')
       .select(`
         *,
@@ -150,22 +184,27 @@ export async function GET(
           updated_at
         )
       `)
-      .eq('anchor_item_id', timelineItemId);
-
-    // Apply filters
-    if (relationType) {
-      dbQuery = dbQuery.eq('relation_type', relationType);
-    }
-    if (minWeight) {
-      dbQuery = dbQuery.gte('weight', parseFloat(minWeight));
-    }
-
-    // Apply pagination and ordering
-    dbQuery = dbQuery
+      .eq('anchor_item_id', timelineItemId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    const { data, error } = await dbQuery;
+    if (relationType) {
+      dbQuery = dbQuery.eq('relation_type', relationType);
+    }
+
+    if (parsedMinWeight !== null) {
+      dbQuery = dbQuery.gte('weight', parsedMinWeight);
+    }
+
+    let queryResult;
+    try {
+      queryResult = await dbQuery;
+    } catch (queryError) {
+      console.error('Memory anchor query threw:', queryError);
+      return jsonWithCors(request, { error: 'Failed to fetch memory anchors' }, 500);
+    }
+
+    const { data, error } = queryResult;
 
     if (error) {
       console.error('Database error:', error);

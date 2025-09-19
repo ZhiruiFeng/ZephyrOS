@@ -173,13 +173,17 @@ function WorkModeViewInner() {
   }, [updateFocusUrl])
 
   const handleSubtaskSelect = useCallback((subtask: TaskMemory) => {
+    const shouldAutoClose = typeof window !== 'undefined' && window.innerWidth < 1024
+
     if (selectedTask && subtask.id === selectedTask.id) {
       const taskNotes = selectedTask.content?.notes || ''
       setSelectedSubtask(null)
       setNotes(taskNotes)
       setOriginalNotes(taskNotes)
       autoSave.resetAutoSave()
-      setShowSubtasks(false)
+      if (shouldAutoClose) {
+        setShowSubtasks(false)
+      }
       updateFocusUrl({ subtaskId: null })
       return
     }
@@ -189,7 +193,9 @@ function WorkModeViewInner() {
     setNotes(nextNotes)
     setOriginalNotes(nextNotes)
     autoSave.resetAutoSave()
-    setShowSubtasks(false)
+    if (shouldAutoClose) {
+      setShowSubtasks(false)
+    }
     updateFocusUrl({ subtaskId: subtask.id })
   }, [autoSave, selectedTask, updateFocusUrl])
 
@@ -769,11 +775,11 @@ function WorkModeViewInner() {
       <div className="flex-1 flex flex-col">
         {/* Top Toolbar */}
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-2 px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
-              title={t.common?.back || 'Back'}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-2 px-2 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
+                title={t.common?.back || 'Back'}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -918,11 +924,11 @@ function WorkModeViewInner() {
                     <ListTodo className="w-3 h-3 flex-shrink-0" />
                     <span className="hidden sm:inline ml-1 truncate">{t.ui.subtasks}</span>
                   </button>
-                  {/* Memory Anchor Button */}
-                  <MemoryAnchorButton
-                    onClick={() => {
-                      setShowMemories(prev => {
-                        const next = !prev
+              {/* Memory Anchor Button */}
+              <MemoryAnchorButton
+                onClick={() => {
+                  setShowMemories(prev => {
+                    const next = !prev
                         if (!prev && selectedTask) {
                           refetchAnchors()
                         }
@@ -1221,11 +1227,25 @@ function WorkModeViewInner() {
               <>
                 {/* Desktop/tablet inline section */}
                 <div className="hidden lg:block p-4 lg:p-6 border-b border-gray-200">
-                  {subtaskPanelTitle && (
-                    <div className="mb-3 text-sm font-semibold text-gray-700">
-                      {t.ui.subtasks} - <span className="text-gray-900">{subtaskPanelTitle}</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-semibold text-gray-700 truncate">
+                      {subtaskPanelTitle ? (
+                        <>
+                          {t.ui.subtasks} - <span className="text-gray-900">{subtaskPanelTitle}</span>
+                        </>
+                      ) : (
+                        t.ui.subtasks
+                      )}
                     </div>
-                  )}
+                    <button
+                      onClick={() => setShowSubtasks(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                      title="Close subtasks"
+                      aria-label="Close subtasks"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                   <SubtaskSection
                     taskId={subtaskPanelTaskId}
                     onSubtaskSelect={handleSubtaskSelect}
@@ -1269,17 +1289,14 @@ function WorkModeViewInner() {
             {/* Markdown Editor */}
             <div className="flex-1 min-h-0 p-4 lg:p-6">
               {/* Editing mode indicator */}
-              <div className="flex items-center gap-1 sm:gap-2 mb-2 text-xs text-gray-500 w-full overflow-hidden">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-2 text-xs text-gray-500 w-full">
                 {selectedSubtask ? (
                   <>
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full flex-shrink-0 font-medium">
                       📝 Subtask
                     </span>
-                    <span className="flex-1 min-w-0 truncate font-medium text-blue-900">
+                    <span className="flex-1 min-w-0 font-medium text-blue-900 break-words">
                       {selectedSubtask.content.title}
-                    </span>
-                    <span className="text-gray-400 flex-shrink-0 text-xs">
-                      of: {selectedTask.content.title}
                     </span>
                   </>
                 ) : (

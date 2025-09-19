@@ -33,26 +33,31 @@ export function getAllowedOrigins(): string[] {
 export function jsonWithCors(request: NextRequest, body: any, status = 200): NextResponse {
   const origin = request.headers.get('origin');
   const allowedOrigins = getAllowedOrigins();
-  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'))
-  
+  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'));
+  const requestedHeaders = request.headers.get('access-control-request-headers');
+
   const res = NextResponse.json(body, { status });
 
   // Broaden CORS policy:
   // - Allow configured origins
   // - Allow all *.vercel.app
   // - If Authorization bearer token is present, allow the requesting origin (no cookies used)
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
-    res.headers.set('Access-Control-Allow-Origin', origin);
+  const allowOrigin = origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || hasAuth)
+    ? origin
+    : '*';
+
+  if (allowOrigin !== '*') {
+    res.headers.set('Access-Control-Allow-Origin', allowOrigin);
     res.headers.set('Vary', 'Origin');
+    res.headers.append('Vary', 'Access-Control-Request-Headers');
     res.headers.set('Access-Control-Allow-Credentials', 'true');
   } else {
-    // Fallback for cross-origin token-based requests without cookies
     res.headers.set('Access-Control-Allow-Origin', '*');
   }
   
   // Security headers
   res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.headers.set('Access-Control-Allow-Headers', requestedHeaders || 'Content-Type, Authorization');
   res.headers.set('Access-Control-Max-Age', '600');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
@@ -68,11 +73,12 @@ export function jsonWithCors(request: NextRequest, body: any, status = 200): Nex
 export function createOptionsResponse(request: NextRequest): NextResponse {
   const origin = request.headers.get('origin');
   const allowedOrigins = getAllowedOrigins();
-  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'))
+  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'));
+  const requestedHeaders = request.headers.get('access-control-request-headers');
   
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': requestedHeaders || 'Content-Type, Authorization',
     'Access-Control-Max-Age': '600',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
@@ -80,13 +86,15 @@ export function createOptionsResponse(request: NextRequest): NextResponse {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
   };
 
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
-    headers['Access-Control-Allow-Origin'] = origin;
-    headers['Vary'] = 'Origin';
+  const allowOrigin = origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || hasAuth)
+    ? origin
+    : '*';
+
+  headers['Access-Control-Allow-Origin'] = allowOrigin;
+
+  if (allowOrigin !== '*') {
+    headers['Vary'] = 'Origin, Access-Control-Request-Headers';
     headers['Access-Control-Allow-Credentials'] = 'true';
-  } else {
-    // Preflight fallback for arbitrary origins when using Authorization header
-    headers['Access-Control-Allow-Origin'] = '*';
   }
   
   return new NextResponse(null, {
