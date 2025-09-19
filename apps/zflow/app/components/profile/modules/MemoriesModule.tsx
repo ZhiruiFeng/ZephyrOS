@@ -12,7 +12,7 @@ import MemoryCapture from '../../memories/MemoryCapture'
 import MemoryCard from '../../memories/MemoryCard'
 import type { ProfileModuleProps } from '../types'
 
-export function MemoriesModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
+export function MemoriesModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { user } = useAuth()
   const { t } = useTranslation()
   const router = useRouter()
@@ -42,8 +42,9 @@ export function MemoriesModule({ config, onConfigChange, fullScreenPath }: Profi
     show_highlights_only: false
   })
 
-  // Configuration options
-  const maxDisplayItems = config.config.maxDisplayItems || 5
+  // Configuration options - adjust for fullscreen mode
+  const baseMaxItems = config.config.maxDisplayItems || 5
+  const maxDisplayItems = isFullscreen ? baseMaxItems * 3 : baseMaxItems
   const showQuickActions = config.config.showQuickActions !== false
   const showCollectionsView = config.config.showCollectionsView !== false
 
@@ -238,7 +239,7 @@ export function MemoriesModule({ config, onConfigChange, fullScreenPath }: Profi
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+    <div className={`bg-white ${isFullscreen ? 'p-8' : 'p-6'} rounded-lg shadow-sm border border-gray-200 ${isFullscreen ? 'h-full' : ''}`}>
       {/* Module Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -251,8 +252,8 @@ export function MemoriesModule({ config, onConfigChange, fullScreenPath }: Profi
             <Link
               href={fullScreenPath}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title={t.profile.viewFullModule}
-              aria-label={t.profile.viewFullModule}
+              title="查看完整页面"
+              aria-label="查看完整页面"
             >
               <Maximize2 className="w-4 h-4" />
             </Link>
@@ -268,6 +269,16 @@ export function MemoriesModule({ config, onConfigChange, fullScreenPath }: Profi
               title="New Memory"
             >
               <Plus className="w-4 h-4" />
+            </button>
+          )}
+          
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title={isFullscreen ? "退出全屏" : "全屏显示"}
+            >
+              <Maximize2 className="w-4 h-4" />
             </button>
           )}
           

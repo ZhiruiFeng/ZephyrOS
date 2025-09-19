@@ -1,13 +1,21 @@
 'use client'
 
 import React from 'react'
-import { User, Settings, Plus } from 'lucide-react'
+import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp } from 'lucide-react'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { ModuleSelector } from './ModuleSelector'
+import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
+import { StatsModule } from './modules/StatsModule'
+import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
+import AgentDirectory from './modules/AgentDirectory'
+import { MemoriesModule } from './modules/MemoriesModule'
+import { ApiKeysModule } from './modules/ApiKeysModule'
+import { STTConfigModule } from './modules/STTConfigModule'
+import { ZRelationsModule } from './modules/ZRelationsModule'
 import { useProfileModules } from './hooks/useProfileModules'
-import { ProfileModuleRenderer } from './ProfileModuleRenderer'
-import type { ProfileModuleConfig } from './types'
+import { FullscreenModal, useFullscreenModal } from './FullscreenModal'
+import type { ProfileModule, ProfileModuleConfig } from './types'
 
 interface ProfileDashboardProps {
   className?: string
@@ -23,6 +31,26 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
     reorderModules, 
     isLoading 
   } = useProfileModules()
+
+  // Fullscreen modal state
+  const [fullscreenModule, setFullscreenModule] = React.useState<string | null>(null)
+  const fullscreenModal = useFullscreenModal()
+
+  // Handle fullscreen mode
+  const handleToggleFullscreen = React.useCallback((moduleId: string) => {
+    if (fullscreenModule === moduleId) {
+      setFullscreenModule(null)
+      fullscreenModal.close()
+    } else {
+      setFullscreenModule(moduleId)
+      fullscreenModal.open()
+    }
+  }, [fullscreenModule, fullscreenModal])
+
+  const handleCloseFullscreen = React.useCallback(() => {
+    setFullscreenModule(null)
+    fullscreenModal.close()
+  }, [fullscreenModal])
 
   // Extract display name from user data
   const displayName = React.useMemo(() => {
@@ -45,15 +73,110 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
     const moduleDefinition = availableModules.find(m => m.id === moduleConfig.id)
     if (!moduleDefinition) return null
 
-    return (
-      <ProfileModuleRenderer
-        moduleConfig={moduleConfig}
-        moduleDefinition={moduleDefinition}
-        onConfigChange={(newConfig) => {
-          console.log(`${moduleDefinition.name} config changed:`, newConfig)
-        }}
-      />
-    )
+    const isFullscreen = fullscreenModule === moduleConfig.id
+    const handleToggleFullscreenForModule = () => handleToggleFullscreen(moduleConfig.id)
+
+    switch (moduleConfig.id) {
+      case 'energy-spectrum':
+        return (
+          <EnergySpectrumModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              // Handle module-specific config changes
+              console.log('Energy spectrum config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'stats':
+        return (
+          <StatsModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Stats config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'activity-summary':
+        return (
+          <ActivitySummaryModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Activity summary config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'agent-directory':
+        return (
+          <AgentDirectory 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Agent directory config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'memories':
+        return (
+          <MemoriesModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Memories config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'api-keys':
+        return (
+          <ApiKeysModule 
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('API keys config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'stt-config':
+        return (
+          <STTConfigModule
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('STT config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'zrelations':
+        return (
+          <ZRelationsModule
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Z-Relations config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      default:
+        return null
+    }
   }
 
   if (isLoading) {
@@ -127,6 +250,25 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
           ))
         )}
       </div>
+
+      {/* Fullscreen Modal */}
+      {fullscreenModule && (
+        <FullscreenModal
+          isOpen={fullscreenModal.isOpen}
+          onClose={handleCloseFullscreen}
+          title={availableModules.find(m => m.id === fullscreenModule)?.name || 'Module'}
+          icon={
+            fullscreenModule === 'energy-spectrum' ? <BarChart3 className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'memories' ? <BookOpen className="w-6 h-6 text-purple-600" /> :
+            fullscreenModule === 'agent-directory' ? <Bot className="w-6 h-6 text-green-600" /> :
+            fullscreenModule === 'zrelations' ? <Users className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'stats' ? <TrendingUp className="w-6 h-6 text-green-600" /> :
+            <Settings className="w-6 h-6 text-gray-600" />
+          }
+        >
+          {renderModule(enabledModules.find(m => m.id === fullscreenModule)!)}
+        </FullscreenModal>
+      )}
     </div>
   )
 }

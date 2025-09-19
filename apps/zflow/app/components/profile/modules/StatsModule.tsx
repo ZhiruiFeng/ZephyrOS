@@ -6,7 +6,7 @@ import { TrendingUp, Settings, X, Calendar, Clock, Target, CheckCircle, Maximize
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import type { ProfileModuleProps } from '../types'
 
-export function StatsModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
+export function StatsModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()
   const [showSettings, setShowSettings] = React.useState(false)
 
@@ -34,7 +34,7 @@ export function StatsModule({ config, onConfigChange, fullScreenPath }: ProfileM
   const goalProgress = Math.round((statsData.tasksCompleted / statsData.weeklyGoal) * 100)
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+    <div className={`bg-white ${isFullscreen ? 'p-8' : 'p-6'} rounded-lg shadow-sm border border-gray-200 ${isFullscreen ? 'h-full' : ''}`}>
       {/* Module Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -43,19 +43,29 @@ export function StatsModule({ config, onConfigChange, fullScreenPath }: ProfileM
             {t.profile.productivityStats}
           </h2>
         </div>
-
+        
         <div className="flex items-center gap-2">
           {fullScreenPath && (
             <Link
               href={fullScreenPath}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title={t.profile.viewFullModule}
-              aria-label={t.profile.viewFullModule}
+              title="查看完整页面"
+              aria-label="查看完整页面"
             >
               <Maximize2 className="w-4 h-4" />
             </Link>
           )}
 
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title={isFullscreen ? "退出全屏" : "全屏显示"}
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+          )}
+          
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

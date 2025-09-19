@@ -19,6 +19,8 @@ export interface ProfileModuleConfig {
 export interface ProfileModuleProps {
   config: ProfileModuleConfig
   onConfigChange: (newConfig: ProfileModuleConfig) => void
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
   fullScreenPath?: string
 }
 

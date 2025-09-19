@@ -73,7 +73,7 @@ interface LocalPerson extends Person {
   relationshipContext?: string
 }
 
-export function ZRelationsModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
+export function ZRelationsModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()
   // API hooks
   const { queue, isLoading: queueLoading, error: queueError, refresh: refreshQueue } = useCheckinQueue()
@@ -343,28 +343,42 @@ export function ZRelationsModule({ config, onConfigChange, fullScreenPath }: Pro
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[800px]">
+    <div className={`bg-white rounded-lg border border-gray-200 ${isFullscreen ? 'p-8' : 'p-6'} ${isFullscreen ? 'h-full' : 'min-h-[800px]'}`}>
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Users className="w-5 h-5 text-blue-600" />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Z-Relations</h2>
+              <p className="text-gray-600 text-sm">Manage relationships and social connections</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900">Z-Relations</h2>
-            <p className="text-gray-600 text-sm">Manage relationships and social connections</p>
+          
+          <div className="flex items-center gap-2">
+            {fullScreenPath && (
+              <Link
+                href={fullScreenPath}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="查看完整页面"
+                aria-label="查看完整页面"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Link>
+            )}
+            
+            {onToggleFullscreen && (
+              <button
+                onClick={onToggleFullscreen}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title={isFullscreen ? "退出全屏" : "全屏显示"}
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
-
-          {fullScreenPath && (
-            <Link
-              href={fullScreenPath}
-              className="self-start sm:self-center p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title={t.profile.viewFullModule}
-              aria-label={t.profile.viewFullModule}
-            >
-              <Maximize2 className="w-4 h-4" />
-            </Link>
-          )}
         </div>
       </div>
 

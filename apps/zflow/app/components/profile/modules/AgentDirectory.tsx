@@ -139,7 +139,6 @@ interface AgentDirectoryProps {
   onAddInteraction?: (interaction: InteractionItem) => void
   showAnalytics?: boolean // Show cost and analytics
   enableAdvancedFeatures?: boolean // Enable advanced vendor/service selection
-  fullScreenPath?: string
 }
 
 // Helper functions for dynamic icons and colors
@@ -1784,8 +1783,18 @@ export default function AgentDirectory({
   initialHistory = [],
   onAddAgent,
   onAddInteraction,
+  config,
+  onConfigChange,
+  isFullscreen = false,
+  onToggleFullscreen,
   fullScreenPath
-}: AgentDirectoryProps) {
+}: AgentDirectoryProps & {
+  config?: any
+  onConfigChange?: (config: any) => void
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
+  fullScreenPath?: string
+}) {
   const { t } = useTranslation()
   // API hooks
   const { 
@@ -2035,30 +2044,44 @@ export default function AgentDirectory({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="p-6 space-y-6">
+    <div className={`bg-white rounded-lg border border-gray-200 shadow-sm ${isFullscreen ? 'h-full' : ''}`}>
+      <div className={`${isFullscreen ? 'p-8' : 'p-6'} space-y-6 ${isFullscreen ? 'h-full overflow-auto' : ''}`}>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="flex items-start justify-between gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{t.agents.title}</h2>
               <p className="text-gray-600">{t.agents.subtitle}</p>
             </div>
-
-            {fullScreenPath && (
-              <Link
-                href={fullScreenPath}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title={t.profile.viewFullModule}
-                aria-label={t.profile.viewFullModule}
-              >
-                <Maximize2 className="w-4 h-4" />
-              </Link>
-            )}
+            
+            <div className="flex items-center gap-2">
+              {fullScreenPath && (
+                <Link
+                  href={fullScreenPath}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="查看完整页面"
+                  aria-label="查看完整页面"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </Link>
+              )}
+              
+              {onToggleFullscreen && (
+                <button
+                  onClick={onToggleFullscreen}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title={isFullscreen ? "退出全屏" : "全屏显示"}
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
-
-          {/* Summary Pills */}
-          <div className="flex flex-wrap gap-2 sm:justify-end">
+        </div>
+        
+        {/* Summary Pills */}
+        <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
             {filteredData.agents.length} {t.agents.summaryAgents}
           </span>
