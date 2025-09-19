@@ -260,6 +260,37 @@ function useTaskOperationsWithAutoSave({
     }
   }, [selectedTask, updateTask, setIsSaving, setSelectedTask, setTaskInfo, timer])
 
+  const handleStatusChange = useCallback(async (newStatus: any) => {
+    if (!selectedTask && !selectedSubtask) return
+
+    setIsSaving(true)
+    try {
+      const targetId = selectedSubtask ? selectedSubtask.id : selectedTask.id
+      const updated = await updateTask(targetId, {
+        content: { status: newStatus }
+      })
+
+      if (selectedSubtask) {
+        setSelectedSubtask(updated)
+      } else if (selectedTask) {
+        const taskWithCategory = {
+          ...updated,
+          category: selectedTask.category,
+          category_id: selectedTask.category_id || selectedTask.content.category_id
+        }
+        setSelectedTask(taskWithCategory)
+        setTaskInfo((prev: any) => ({
+          ...prev,
+          status: newStatus
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [selectedTask, selectedSubtask, updateTask, setIsSaving, setSelectedTask, setSelectedSubtask, setTaskInfo])
+
   // Auto-save trigger
   useEffect(() => {
     if ((selectedTask || selectedSubtask) && notes !== originalNotes) {
@@ -277,7 +308,8 @@ function useTaskOperationsWithAutoSave({
     handleSaveTaskInfo,
     addTag,
     removeTag,
-    handleCompleteTask
+    handleCompleteTask,
+    handleStatusChange
   }
 }
 
@@ -351,6 +383,8 @@ function WorkModeViewInner() {
     updateFocusUrl: workModeState.updateFocusUrl,
     setShowSubtasks,
   })
+
+  const { handleStatusChange } = taskOperations
 
   // Stable memory hooks
   const selectedTaskId = selectedTask?.id || ''
@@ -583,6 +617,7 @@ function WorkModeViewInner() {
             selectedSubtask={selectedSubtask}
             notes={notes}
             setNotes={setNotes}
+            onStatusChange={handleStatusChange}
           />
         </div>
       </div>

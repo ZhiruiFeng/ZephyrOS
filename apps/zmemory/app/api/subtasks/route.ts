@@ -205,9 +205,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    console.log('=== CREATE SUBTASK API DEBUG ===');
-    console.log('Received body:', JSON.stringify(body, null, 2));
-    
     // Validate request body
     const validationResult = CreateSubtaskSchema.safeParse(body);
     if (!validationResult.success) {
