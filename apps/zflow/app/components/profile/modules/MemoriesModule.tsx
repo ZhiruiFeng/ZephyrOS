@@ -1,8 +1,9 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Plus, Search, Calendar, Star, Heart, Settings, X, Filter, TrendingUp, Loader2, RefreshCw } from 'lucide-react'
+import { BookOpen, Plus, Search, Calendar, Star, Heart, Settings, X, Filter, TrendingUp, Loader2, RefreshCw, Maximize2 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import { Memory, MemoryFilters } from '../../../types/memory'
@@ -11,7 +12,7 @@ import MemoryCapture from '../../memories/MemoryCapture'
 import MemoryCard from '../../memories/MemoryCard'
 import type { ProfileModuleProps } from '../types'
 
-export function MemoriesModule({ config, onConfigChange }: ProfileModuleProps) {
+export function MemoriesModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
   const { user } = useAuth()
   const { t } = useTranslation()
   const router = useRouter()
@@ -246,8 +247,19 @@ export function MemoriesModule({ config, onConfigChange }: ProfileModuleProps) {
         </div>
         
         <div className="flex items-center gap-2">
+          {fullScreenPath && (
+            <Link
+              href={fullScreenPath}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title={t.profile.viewFullModule}
+              aria-label={t.profile.viewFullModule}
+            >
+              <Maximize2 className="w-4 h-4" />
+            </Link>
+          )}
+
           {showQuickActions && (
-            <button 
+            <button
               onClick={() => {
                 setEditingMemory(undefined)
                 setIsCaptureOpen(true)
@@ -263,6 +275,7 @@ export function MemoriesModule({ config, onConfigChange }: ProfileModuleProps) {
             onClick={() => setShowSettings(!showSettings)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title={t.common.settings}
+            aria-label={t.common.settings}
           >
             <Settings className="w-4 h-4" />
           </button>

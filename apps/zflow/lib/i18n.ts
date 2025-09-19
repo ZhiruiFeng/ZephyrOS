@@ -428,6 +428,9 @@ export interface TranslationKeys {
     completed: string;
     inProgress: string;
     pending: string;
+    viewFullModule: string;
+    moduleNotFound: string;
+    moduleNotFoundDescription: string;
   };
 
   // Speech to text
@@ -964,6 +967,9 @@ const translations: Record<Language, TranslationKeys> = {
       completed: 'Completed',
       inProgress: 'In Progress',
       pending: 'Pending',
+      viewFullModule: 'View full module',
+      moduleNotFound: 'Module not found',
+      moduleNotFoundDescription: 'The module you are looking for is unavailable or has been disabled. Return to your profile to manage your modules.',
     },
     speech: {
       title: 'Speech to Text (Batch Fallback Version)',
@@ -1479,6 +1485,9 @@ const translations: Record<Language, TranslationKeys> = {
       completed: '已完成',
       inProgress: '进行中',
       pending: '待处理',
+      viewFullModule: '查看完整模块',
+      moduleNotFound: '未找到模块',
+      moduleNotFoundDescription: '您访问的模块不可用或已被禁用。请返回个人主页以管理模块配置。',
     },
     speech: {
       title: '语音转文字（批量回退版）',

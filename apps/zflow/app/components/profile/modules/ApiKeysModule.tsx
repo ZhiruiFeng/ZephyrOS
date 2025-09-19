@@ -1,19 +1,21 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { 
-  Key, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  CheckCircle, 
-  XCircle, 
+import Link from 'next/link'
+import {
+  Key,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   ExternalLink,
   Shield,
-  Zap
+  Zap,
+  Maximize2
 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
@@ -159,7 +161,7 @@ class ApiKeyClient {
 
 const apiClient = new ApiKeyClient()
 
-export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
+export function ApiKeysModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
   const { user, session } = useAuth()
   const { t } = useTranslation()
   
@@ -336,16 +338,30 @@ export function ApiKeysModule({ config, onConfigChange }: ProfileModuleProps) {
               <p className="text-sm text-gray-600">Manage your AI service API keys</p>
             </div>
           </div>
-          
-          {!showAddForm && !editingKey && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Key
-            </button>
-          )}
+
+          <div className="flex items-center gap-2">
+            {fullScreenPath && (
+              <Link
+                href={fullScreenPath}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title={t.profile.viewFullModule}
+                aria-label={t.profile.viewFullModule}
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Link>
+            )}
+
+            {!showAddForm && !editingKey && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                aria-label="Add API Key"
+              >
+                <Plus className="w-4 h-4" />
+                Add Key
+              </button>
+            )}
+          </div>
         </div>
 
         {error && (

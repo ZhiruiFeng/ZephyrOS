@@ -4,15 +4,16 @@
 'use client'
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Search, 
-  Plus, 
-  ExternalLink, 
-  Bot, 
-  MessageSquare, 
-  Zap, 
-  Code, 
+import {
+  Search,
+  Plus,
+  ExternalLink,
+  Bot,
+  MessageSquare,
+  Zap,
+  Code,
   Search as SearchIcon,
   Newspaper,
   Mic,
@@ -31,7 +32,8 @@ import {
   DollarSign,
   Activity,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Maximize2
 } from 'lucide-react'
 import { 
   useAIAgents, 
@@ -137,6 +139,7 @@ interface AgentDirectoryProps {
   onAddInteraction?: (interaction: InteractionItem) => void
   showAnalytics?: boolean // Show cost and analytics
   enableAdvancedFeatures?: boolean // Enable advanced vendor/service selection
+  fullScreenPath?: string
 }
 
 // Helper functions for dynamic icons and colors
@@ -1780,7 +1783,8 @@ export default function AgentDirectory({
   initialAgents = [],
   initialHistory = [],
   onAddAgent,
-  onAddInteraction
+  onAddInteraction,
+  fullScreenPath
 }: AgentDirectoryProps) {
   const { t } = useTranslation()
   // API hooks
@@ -2034,14 +2038,27 @@ export default function AgentDirectory({
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{t.agents.title}</h2>
-          <p className="text-gray-600">{t.agents.subtitle}</p>
-        </div>
-        
-        {/* Summary Pills */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-start justify-between gap-3 w-full sm:w-auto">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{t.agents.title}</h2>
+              <p className="text-gray-600">{t.agents.subtitle}</p>
+            </div>
+
+            {fullScreenPath && (
+              <Link
+                href={fullScreenPath}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title={t.profile.viewFullModule}
+                aria-label={t.profile.viewFullModule}
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Link>
+            )}
+          </div>
+
+          {/* Summary Pills */}
+          <div className="flex flex-wrap gap-2 sm:justify-end">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
             {filteredData.agents.length} {t.agents.summaryAgents}
           </span>
