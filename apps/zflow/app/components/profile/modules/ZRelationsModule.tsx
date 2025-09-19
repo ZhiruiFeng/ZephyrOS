@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import {
   Users,
   Heart,
@@ -12,7 +13,8 @@ import {
   ChevronDown,
   Trash2,
   Edit3,
-  Loader2
+  Loader2,
+  Maximize2
 } from 'lucide-react'
 import {
   useCheckinQueue,
@@ -28,6 +30,7 @@ import {
   type RelationshipProfile,
   type Touchpoint
 } from '../../../../hooks/useZRelations'
+import { useTranslation } from '../../../../contexts/LanguageContext'
 import type { ProfileModuleProps } from '../types'
 
 const TIER_LABELS = {
@@ -70,7 +73,8 @@ interface LocalPerson extends Person {
   relationshipContext?: string
 }
 
-export function ZRelationsModule({ config, onConfigChange }: ProfileModuleProps) {
+export function ZRelationsModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
+  const { t } = useTranslation()
   // API hooks
   const { queue, isLoading: queueLoading, error: queueError, refresh: refreshQueue } = useCheckinQueue()
   const { profiles, isLoading: profilesLoading, refresh: refreshProfiles } = useRelationshipProfiles()
@@ -342,14 +346,25 @@ export function ZRelationsModule({ config, onConfigChange }: ProfileModuleProps)
     <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[800px]">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
           <div className="p-2 bg-blue-100 rounded-lg">
             <Users className="w-5 h-5 text-blue-600" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900">Z-Relations</h2>
             <p className="text-gray-600 text-sm">Manage relationships and social connections</p>
           </div>
+
+          {fullScreenPath && (
+            <Link
+              href={fullScreenPath}
+              className="self-start sm:self-center p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title={t.profile.viewFullModule}
+              aria-label={t.profile.viewFullModule}
+            >
+              <Maximize2 className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
 

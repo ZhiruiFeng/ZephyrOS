@@ -6,6 +6,7 @@ export interface ProfileModule {
   category: 'analytics' | 'productivity' | 'insights' | 'tools'
   defaultEnabled: boolean
   defaultConfig?: Record<string, any>
+  fullScreenPath: string
 }
 
 export interface ProfileModuleConfig {
@@ -18,6 +19,7 @@ export interface ProfileModuleConfig {
 export interface ProfileModuleProps {
   config: ProfileModuleConfig
   onConfigChange: (newConfig: ProfileModuleConfig) => void
+  fullScreenPath?: string
 }
 
 export interface ModuleSelectorProps {

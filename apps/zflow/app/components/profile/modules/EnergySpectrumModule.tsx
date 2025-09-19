@@ -1,13 +1,14 @@
 'use client'
 
 import React from 'react'
-import { BarChart3, Settings, X } from 'lucide-react'
+import Link from 'next/link'
+import { BarChart3, Settings, X, Maximize2 } from 'lucide-react'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import EnergySpectrum from '../../../components/ui/EnergySpectrum'
 import { getUserTimezone, getTimezoneAbbr } from '../../../../app/utils/timeUtils'
 import type { ProfileModuleProps } from '../types'
 
-export function EnergySpectrumModule({ config, onConfigChange }: ProfileModuleProps) {
+export function EnergySpectrumModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()
   const [showSettings, setShowSettings] = React.useState(false)
   const [selectedDate, setSelectedDate] = React.useState<string>(() => {
@@ -53,10 +54,22 @@ export function EnergySpectrumModule({ config, onConfigChange }: ProfileModulePr
         </div>
         
         <div className="flex items-center gap-2">
+          {fullScreenPath && (
+            <Link
+              href={fullScreenPath}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title={t.profile.viewFullModule}
+              aria-label={t.profile.viewFullModule}
+            >
+              <Maximize2 className="w-4 h-4" />
+            </Link>
+          )}
+
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title={t.common.settings}
+            aria-label={t.common.settings}
           >
             <Settings className="w-4 h-4" />
           </button>
