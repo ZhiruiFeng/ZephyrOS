@@ -1,11 +1,12 @@
 'use client'
 
 import React from 'react'
-import { TrendingUp, Settings, X, Calendar, Clock, Target, CheckCircle } from 'lucide-react'
+import Link from 'next/link'
+import { TrendingUp, Settings, X, Calendar, Clock, Target, CheckCircle, Maximize2 } from 'lucide-react'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import type { ProfileModuleProps } from '../types'
 
-export function StatsModule({ config, onConfigChange }: ProfileModuleProps) {
+export function StatsModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()
   const [showSettings, setShowSettings] = React.useState(false)
 
@@ -42,14 +43,28 @@ export function StatsModule({ config, onConfigChange }: ProfileModuleProps) {
             {t.profile.productivityStats}
           </h2>
         </div>
-        
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title={t.common.settings}
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+
+        <div className="flex items-center gap-2">
+          {fullScreenPath && (
+            <Link
+              href={fullScreenPath}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title={t.profile.viewFullModule}
+              aria-label={t.profile.viewFullModule}
+            >
+              <Maximize2 className="w-4 h-4" />
+            </Link>
+          )}
+
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title={t.common.settings}
+            aria-label={t.common.settings}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Settings Panel */}

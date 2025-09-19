@@ -16,7 +16,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     defaultConfig: {
       showTimezone: true,
       defaultDate: 'today'
-    }
+    },
+    fullScreenPath: '/profile/modules/energy-spectrum'
   },
   {
     id: 'stats',
@@ -28,7 +29,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     defaultConfig: {
       timeRange: 'week',
       showTrends: true
-    }
+    },
+    fullScreenPath: '/profile/modules/stats'
   },
   {
     id: 'activity-summary',
@@ -40,7 +42,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     defaultConfig: {
       showRecentTasks: true,
       maxItems: 10
-    }
+    },
+    fullScreenPath: '/profile/modules/activity-summary'
   },
   {
     id: 'agent-directory',
@@ -52,7 +55,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     defaultConfig: {
       showOrbitView: false,
       defaultView: 'simple'
-    }
+    },
+    fullScreenPath: '/profile/modules/agent-directory'
   },
   {
     id: 'memories',
@@ -66,7 +70,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       maxDisplayItems: 5,
       showQuickActions: true,
       showCollectionsView: true
-    }
+    },
+    fullScreenPath: '/profile/modules/memories'
   },
   {
     id: 'api-keys',
@@ -78,7 +83,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     defaultConfig: {
       showInactiveKeys: false,
       groupByVendor: true
-    }
+    },
+    fullScreenPath: '/profile/modules/api-keys'
   },
   {
     id: 'stt-config',
@@ -91,7 +97,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       provider: 'elevenlabs',
       autoSave: true,
       showProviderInUI: false
-    }
+    },
+    fullScreenPath: '/profile/modules/stt-config'
   },
   {
     id: 'zrelations',
@@ -105,7 +112,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       showHealthScores: true,
       maxQueueItems: 5,
       enableNotifications: true
-    }
+    },
+    fullScreenPath: '/profile/modules/zrelations'
   }
 ]
 

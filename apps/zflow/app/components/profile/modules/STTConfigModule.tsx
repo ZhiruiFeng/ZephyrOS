@@ -1,8 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Mic, CheckCircle, AlertCircle, Settings2, Zap, Shield } from 'lucide-react'
+import Link from 'next/link'
+import { Mic, CheckCircle, AlertCircle, Settings2, Zap, Shield, Maximize2 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
+import { useTranslation } from '../../../../contexts/LanguageContext'
 import type { ProfileModuleProps } from '../types'
 
 // STT Provider types
@@ -60,8 +62,9 @@ const DEFAULT_STT_CONFIG: STTConfig = {
   showProviderInUI: false
 }
 
-export function STTConfigModule({ config, onConfigChange }: ProfileModuleProps) {
+export function STTConfigModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const [sttConfig, setSTTConfig] = useState<STTConfig>(
     { ...DEFAULT_STT_CONFIG, ...(config.config || {}) }
   )
@@ -165,24 +168,37 @@ export function STTConfigModule({ config, onConfigChange }: ProfileModuleProps) 
           
           {/* Save Status */}
           <div className="flex items-center gap-2">
-            {saveStatus === 'saving' && (
-              <div className="flex items-center gap-2 text-blue-600">
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Saving...</span>
-              </div>
+            {fullScreenPath && (
+              <Link
+                href={fullScreenPath}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title={t.profile.viewFullModule}
+                aria-label={t.profile.viewFullModule}
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Link>
             )}
-            {saveStatus === 'saved' && (
-              <div className="flex items-center gap-2 text-green-600">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm">Saved</span>
-              </div>
-            )}
-            {saveStatus === 'error' && (
-              <div className="flex items-center gap-2 text-red-600">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">Error</span>
-              </div>
-            )}
+
+            <div className="flex items-center gap-2">
+              {saveStatus === 'saving' && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm">Saving...</span>
+                </div>
+              )}
+              {saveStatus === 'saved' && (
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm">Saved</span>
+                </div>
+              )}
+              {saveStatus === 'error' && (
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">Error</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

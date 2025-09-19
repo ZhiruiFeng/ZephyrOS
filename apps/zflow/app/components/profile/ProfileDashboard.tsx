@@ -5,16 +5,9 @@ import { User, Settings, Plus } from 'lucide-react'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { ModuleSelector } from './ModuleSelector'
-import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
-import { StatsModule } from './modules/StatsModule'
-import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
-import AgentDirectory from './modules/AgentDirectory'
-import { MemoriesModule } from './modules/MemoriesModule'
-import { ApiKeysModule } from './modules/ApiKeysModule'
-import { STTConfigModule } from './modules/STTConfigModule'
-import { ZRelationsModule } from './modules/ZRelationsModule'
 import { useProfileModules } from './hooks/useProfileModules'
-import type { ProfileModule, ProfileModuleConfig } from './types'
+import { ProfileModuleRenderer } from './ProfileModuleRenderer'
+import type { ProfileModuleConfig } from './types'
 
 interface ProfileDashboardProps {
   className?: string
@@ -49,90 +42,18 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
   }, [user, t.profile.yourProfile])
 
   const renderModule = (moduleConfig: ProfileModuleConfig) => {
-    const mod = availableModules.find(m => m.id === moduleConfig.id)
-    if (!mod) return null
+    const moduleDefinition = availableModules.find(m => m.id === moduleConfig.id)
+    if (!moduleDefinition) return null
 
-    switch (moduleConfig.id) {
-      case 'energy-spectrum':
-        return (
-          <EnergySpectrumModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              // Handle module-specific config changes
-              console.log('Energy spectrum config changed:', newConfig)
-            }}
-          />
-        )
-      case 'stats':
-        return (
-          <StatsModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Stats config changed:', newConfig)
-            }}
-          />
-        )
-      case 'activity-summary':
-        return (
-          <ActivitySummaryModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Activity summary config changed:', newConfig)
-            }}
-          />
-        )
-      case 'agent-directory':
-        return (
-          <AgentDirectory 
-            key={moduleConfig.id}
-          />
-        )
-      case 'memories':
-        return (
-          <MemoriesModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Memories config changed:', newConfig)
-            }}
-          />
-        )
-      case 'api-keys':
-        return (
-          <ApiKeysModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('API keys config changed:', newConfig)
-            }}
-          />
-        )
-      case 'stt-config':
-        return (
-          <STTConfigModule
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('STT config changed:', newConfig)
-            }}
-          />
-        )
-      case 'zrelations':
-        return (
-          <ZRelationsModule
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Z-Relations config changed:', newConfig)
-            }}
-          />
-        )
-      default:
-        return null
-    }
+    return (
+      <ProfileModuleRenderer
+        moduleConfig={moduleConfig}
+        moduleDefinition={moduleDefinition}
+        onConfigChange={(newConfig) => {
+          console.log(`${moduleDefinition.name} config changed:`, newConfig)
+        }}
+      />
+    )
   }
 
   if (isLoading) {
