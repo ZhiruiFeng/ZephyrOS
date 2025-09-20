@@ -165,7 +165,7 @@ const useRecorder = (): [RecorderState, {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
-  const dataArrayRef = useRef<Uint8Array | null>(null)
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
   const animationRef = useRef<number | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
@@ -200,7 +200,7 @@ const useRecorder = (): [RecorderState, {
       source.connect(analyserRef.current)
       
       analyserRef.current.fftSize = 256
-      dataArrayRef.current = new Uint8Array(analyserRef.current.frequencyBinCount)
+      dataArrayRef.current = new Uint8Array(new ArrayBuffer(analyserRef.current.frequencyBinCount))
       
       // Set up media recorder
       mediaRecorderRef.current = new MediaRecorder(stream)

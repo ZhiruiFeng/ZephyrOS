@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
 import { encryptApiKey, decryptApiKey, generateKeyPreview, validateApiKeyFormat } from './encryption';
 
 /**
@@ -61,14 +62,14 @@ export interface UpdateApiKeyRequest {
 }
 
 class ApiKeyService {
-  private supabase: ReturnType<typeof createClient>;
+  private supabase: SupabaseClient<Database>;
 
   constructor() {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing Supabase configuration');
     }
 
-    this.supabase = createClient(
+    this.supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
       {
