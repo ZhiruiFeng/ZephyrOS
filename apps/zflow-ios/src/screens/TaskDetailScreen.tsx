@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/core';
 import { Ionicons } from '@expo/vector-icons';
 import { useTask } from '../hooks/useTask';
 
