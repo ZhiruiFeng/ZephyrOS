@@ -103,6 +103,11 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/strategy" className="text-gray-600 hover:text-primary-600 transition-colors text-sm">
+                    Strategy - 战略规划
+                  </Link>
+                </li>
+                <li>
                   <Link href="/memories" className="text-gray-600 hover:text-primary-600 transition-colors text-sm">
                     ZMemory - {t.footer?.memorySystem || '记忆系统'}
                   </Link>

@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Mic, LayoutDashboard, Target, Bot, User, BookOpen } from 'lucide-react'
+import { Mic, LayoutDashboard, Target, Bot, User, BookOpen, Brain } from 'lucide-react'
 import AuthButton from '../auth/AuthButton'
 import LanguageSelector from '../selectors/LanguageSelector'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -59,6 +59,9 @@ export default function NavBar() {
             <LanguageSelector compact className="hidden sm:block" />
             <NavLink href="/profile">
               <User className="w-4 h-4" />
+            </NavLink>
+            <NavLink href="/strategy">
+              <Brain className="w-4 h-4" />
             </NavLink>
             <AuthButton />
           </div>

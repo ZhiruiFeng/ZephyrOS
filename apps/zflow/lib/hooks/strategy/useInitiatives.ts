@@ -17,7 +17,8 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
       dedupingInterval: 15000, // 15 seconds
       onError: (error) => {
         console.error('Error fetching initiative tasks:', error)
-      }
+      },
+      fallbackData: []
     }
   )
 

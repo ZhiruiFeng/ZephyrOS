@@ -12,7 +12,6 @@ import {
   Bot,
   PenLine,
   Send,
-  LayoutDashboard,
   CalendarClock,
   Settings2,
   Shuffle,
@@ -26,7 +25,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/auth/LoginPage'
 import { useStrategyDashboard, useStrategyTasks, useStrategyMemories } from '../../lib/hooks/strategy'
-import { generateWhatIfScenarios, runWhatIfScenario, generateStrategicInsights } from '../../lib/mocks/strategy'
+import { generateWhatIfScenarios, generateStrategicInsights } from '../../lib/mocks/strategy'
 import type { StrategyLens, WhatIfScenario } from '../../lib/types/strategy'
 
 // Simple UI Components
@@ -308,54 +307,60 @@ export default function StrategyPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-white">
-      {/* Top Nav */}
-      <div className="sticky top-0 z-30 backdrop-blur bg-white/70 border-b">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-5 w-5" />
-            <span className="font-semibold">Strategy</span>
-            <Badge variant="outline" className="ml-2">Cockpit</Badge>
-          </div>
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="secondary" className="rounded-2xl" onClick={refetch}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Button variant="secondary" className="rounded-2xl">
-              <CalendarClock className="h-4 w-4 mr-2" />
-              Weekly Review
-            </Button>
-            <Button className="rounded-2xl">
-              <Rocket className="h-4 w-4 mr-2" />
-              New Initiative
-            </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Page Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-sm">
+                <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Strategy Cockpit</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Strategic planning and execution dashboard</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <Button variant="secondary" onClick={refetch} className="flex-shrink-0">
+                <RefreshCw className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+              <Button variant="secondary" className="flex-shrink-0">
+                <CalendarClock className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Weekly Review</span>
+              </Button>
+              <Button className="bg-primary-600 hover:bg-primary-700 text-white flex-shrink-0">
+                <Rocket className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Initiative</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Page Body */}
-      <div className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Main Column */}
         <div className="lg:col-span-2 space-y-4">
           {/* Season Goal */}
           <Card className="rounded-2xl shadow-sm">
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-lg sm:text-xl truncate">
                     Current Season — {season?.theme || 'No Active Season'}
                   </CardTitle>
-                  <CardDescription className="mt-1">
+                  <CardDescription className="mt-1 text-xs sm:text-sm">
                     Anchor goal: <span className="font-medium text-slate-800">
                       {season?.title || 'No season title'}
                     </span>
                     {season?.metric && <> • Metric: {season.metric}</>}
                   </CardDescription>
                 </div>
-                <Button variant="outline" className="rounded-2xl">
-                  <Settings2 className="h-4 w-4 mr-2" />
-                  Refine
+                <Button variant="outline" className="rounded-2xl flex-shrink-0 self-start sm:self-center">
+                  <Settings2 className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Refine</span>
                 </Button>
               </div>
             </CardHeader>
@@ -442,7 +447,7 @@ export default function StrategyPage() {
             </CardHeader>
             <CardContent>
               {/* Simple Tab Navigation */}
-              <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+              <div className="flex overflow-x-auto space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
                 {[
                   { id: 'vision', label: 'Vision', icon: Eye },
                   { id: 'execution', label: 'Execution', icon: ClipboardCheck },
@@ -452,7 +457,7 @@ export default function StrategyPage() {
                   <button
                     key={id}
                     onClick={() => setLens(id as StrategyLens)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                       lens === id
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
@@ -851,11 +856,6 @@ export default function StrategyPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mx-auto max-w-7xl px-4 pb-8 text-center text-xs text-gray-500">
-        ZephyrOS Strategy Cockpit · Production · {new Date().getFullYear()}
       </div>
 
       {/* Agent Selection Modal */}

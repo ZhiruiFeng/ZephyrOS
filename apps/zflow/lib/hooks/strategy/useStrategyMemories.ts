@@ -7,21 +7,10 @@ import type { Memory } from '../../../app/types/memory'
 const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useStrategyMemories(seasonId?: string, initiativeId?: string): UseStrategyMemoriesReturn {
-  // Build query parameters for strategic memories
+  // Fetch all memories and filter on frontend since we don't have strategic tags yet
   const queryParams = new URLSearchParams({
-    tags: 'strategy,strategic,reflection,goal,insight',
-    limit: '50',
-    sort_by: 'created_at',
-    sort_order: 'desc'
+    limit: '50'
   })
-
-  if (seasonId) {
-    queryParams.append('tags', `season:${seasonId}`)
-  }
-
-  if (initiativeId) {
-    queryParams.append('tags', `initiative:${initiativeId}`)
-  }
 
   const { data: memories, error, mutate } = useSWR<Memory[]>(
     `${ZMEMORY_API_BASE}/memories?${queryParams.toString()}`,
@@ -31,18 +20,31 @@ export function useStrategyMemories(seasonId?: string, initiativeId?: string): U
       revalidateOnReconnect: true,
       dedupingInterval: 15000, // 15 seconds
       onError: (error) => {
-        console.error('Error fetching strategic memories:', error)
-      }
+        console.error('Error fetching memories for strategy:', error)
+        console.error('Query URL:', `${ZMEMORY_API_BASE}/memories?${queryParams.toString()}`)
+      },
+      // Add fallback data on error
+      fallbackData: []
     }
   )
 
-  // Filter and adapt memories
+  // For now, adapt all memories as potential strategic content
+  // In production, we'd have proper strategic tagging
   const strategyMemories = memories
-    ?.filter(memory =>
-      memory.tags?.some(tag =>
-        ['strategy', 'strategic', 'reflection', 'goal', 'insight', 'learning'].includes(tag)
-      ) || memory.memory_type === 'insight'
-    )
+    ?.filter(memory => {
+      // Include memories that could be strategic in nature
+      const content = memory.note?.toLowerCase() || ''
+      const title = memory.title?.toLowerCase() || ''
+
+      // Look for strategic keywords or important memories
+      const strategicKeywords = ['goal', 'plan', 'strategy', 'learn', 'insight', 'reflect', 'habit', 'improve']
+      const hasStrategicContent = strategicKeywords.some(keyword =>
+        content.includes(keyword) || title.includes(keyword)
+      )
+
+      // Include highlights and important memories
+      return hasStrategicContent || memory.is_highlight || memory.memory_type === 'insight'
+    })
     ?.map(adaptMemoryToStrategy) || []
 
   const createReflection = async (data: StrategyReflectionForm) => {

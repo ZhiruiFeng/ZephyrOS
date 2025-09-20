@@ -4,14 +4,16 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@zephyros/shared": ["../../packages/shared/src"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@zephyros/shared": [
+        "../../packages/shared/src"
+      ]
     }
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.tsx"
   ]
 }

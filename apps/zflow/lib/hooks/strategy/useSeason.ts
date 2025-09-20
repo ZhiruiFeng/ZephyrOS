@@ -7,45 +7,81 @@ import type { Season } from '../../../../zmemory/types/narrative'
 const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useSeason(): UseStrategySeasonReturn {
-  const { data, error, mutate } = useSWR<Season>(
-    `${ZMEMORY_API_BASE}/narrative/seasons/current`,
-    authJsonFetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 30000, // 30 seconds
-      onError: (error) => {
-        console.error('Error fetching current season:', error)
-      }
+  // For now, create a mock current season since the API endpoint doesn't exist yet
+  const mockSeason: Season = {
+    id: 'current-season-2024',
+    user_id: 'mock-user-123',
+    title: 'Focus & Growth Season',
+    theme: 'spring',
+    intention: 'Focus on productivity improvements and strategic thinking workflows',
+    start_date: '2024-09-01',
+    end_date: '2024-12-31',
+    status: 'active',
+    created_at: '2024-09-01T00:00:00Z',
+    updated_at: '2024-09-19T00:00:00Z',
+    metadata: {
+      strategicTheme: 'Operational Excellence',
+      keyMetrics: ['Task completion rate', 'Focus sessions completed', 'Strategic insights captured'],
+      quarterlyGoals: ['Improve workflow efficiency', 'Implement strategic planning system', 'Build habit tracking']
     }
-  )
+  }
 
-  const season = data ? adaptSeasonToStrategy(data) : null
+  // Use mock data for now, but keep the same interface for when API is ready
+  const season = adaptSeasonToStrategy(mockSeason)
 
   return {
     season,
-    loading: !data && !error,
-    error: error?.message || null,
-    refetch: () => mutate()
+    loading: false,
+    error: null,
+    refetch: () => Promise.resolve()
   }
 }
 
 export function useSeasons() {
-  const { data, error, mutate } = useSWR<{ seasons: Season[] }>(
-    `${ZMEMORY_API_BASE}/narrative/seasons`,
-    authJsonFetcher,
+  // Mock seasons data for now since API endpoint doesn't exist yet
+  const mockSeasons: Season[] = [
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true
+      id: 'current-season-2024',
+      user_id: 'mock-user-123',
+      title: 'Focus & Growth Season',
+      theme: 'spring',
+      intention: 'Focus on productivity improvements and strategic thinking workflows',
+      start_date: '2024-09-01',
+      end_date: '2024-12-31',
+      status: 'active',
+      created_at: '2024-09-01T00:00:00Z',
+      updated_at: '2024-09-19T00:00:00Z',
+      metadata: {
+        strategicTheme: 'Operational Excellence',
+        keyMetrics: ['Task completion rate', 'Focus sessions completed', 'Strategic insights captured'],
+        quarterlyGoals: ['Improve workflow efficiency', 'Implement strategic planning system', 'Build habit tracking']
+      }
+    },
+    {
+      id: 'previous-season-2024',
+      user_id: 'mock-user-123',
+      title: 'Foundation Season',
+      theme: 'winter',
+      intention: 'Build core systems and establish workflows',
+      start_date: '2024-05-01',
+      end_date: '2024-08-31',
+      status: 'completed',
+      created_at: '2024-05-01T00:00:00Z',
+      updated_at: '2024-08-31T00:00:00Z',
+      metadata: {
+        strategicTheme: 'System Building',
+        keyMetrics: ['Systems implemented', 'Processes documented'],
+        quarterlyGoals: ['Set up productivity stack', 'Define workflows']
+      }
     }
-  )
+  ]
 
-  const seasons = data?.seasons?.map(adaptSeasonToStrategy) || []
+  const seasons = mockSeasons.map(adaptSeasonToStrategy)
 
   return {
     seasons,
-    loading: !data && !error,
-    error: error?.message || null,
-    refetch: () => mutate()
+    loading: false,
+    error: null,
+    refetch: () => Promise.resolve()
   }
 }
