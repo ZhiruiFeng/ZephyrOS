@@ -2,6 +2,7 @@ import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptMemoryToStrategy } from '../../adapters/strategy'
 import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
+import { authManager } from '../../auth-manager'
 import type { UseStrategyMemoriesReturn, StrategyReflectionForm } from '../../types/strategy'
 import type { Memory } from '../../../app/types/memory'
 
@@ -69,10 +70,12 @@ export function useStrategyMemories(seasonId?: string, initiativeId?: string): U
         source: 'manual'
       }
 
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/memories`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(memoryData)
       })
@@ -125,10 +128,12 @@ export function useWeeklyReview() {
         source: 'manual'
       }
 
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/memories`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(reflection)
       })

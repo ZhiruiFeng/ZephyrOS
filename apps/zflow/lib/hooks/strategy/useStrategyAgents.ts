@@ -2,6 +2,7 @@ import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptAgentToStrategy } from '../../adapters/strategy'
 import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
+import { authManager } from '../../auth-manager'
 import type { UseStrategyAgentsReturn, Agent } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
 
@@ -40,10 +41,12 @@ export function useStrategyAgents(): UseStrategyAgentsReturn {
   const sendBrief = async (agentId: string, content: string) => {
     try {
       // Try to send brief to zflow agent endpoint first
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZFLOW_API_BASE}/agents/${agentId}/brief`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify({
           content,
@@ -60,7 +63,8 @@ export function useStrategyAgents(): UseStrategyAgentsReturn {
         await fetch(`${ZMEMORY_API_BASE}/memories`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...authHeaders
           },
           body: JSON.stringify({
             title: `Brief sent to ${agentId}`,

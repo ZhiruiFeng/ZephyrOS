@@ -2,6 +2,7 @@ import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptTasksToInitiatives, adaptTaskToInitiative } from '../../adapters/strategy'
 import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
+import { authManager } from '../../auth-manager'
 import type { UseInitiativesReturn, CreateInitiativeForm } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
 
@@ -64,10 +65,12 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
         }
       }
 
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/tasks`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(taskData)
       })
@@ -91,10 +94,12 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
 
   const updateInitiative = async (id: string, updateData: Partial<any>) => {
     try {
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/tasks/${id}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify({
           content: updateData,
@@ -121,8 +126,10 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
 
   const deleteInitiative = async (id: string) => {
     try {
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/tasks/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: authHeaders
       })
 
       if (!response.ok) {

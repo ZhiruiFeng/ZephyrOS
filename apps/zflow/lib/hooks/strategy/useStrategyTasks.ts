@@ -2,6 +2,7 @@ import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptTaskToStrategy } from '../../adapters/strategy'
 import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
+import { authManager } from '../../auth-manager'
 import type { UseStrategyTasksReturn } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
 
@@ -38,10 +39,12 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
 
   const createTask = async (data: any) => {
     try {
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/tasks`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(data)
       })
@@ -65,10 +68,12 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
 
   const updateTask = async (id: string, updateData: Partial<any>) => {
     try {
+      const authHeaders = await authManager.getAuthHeaders()
       const response = await fetch(`${ZMEMORY_API_BASE}/tasks/${id}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(updateData)
       })
@@ -102,10 +107,12 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
 
       // Optionally send a brief to the agent (this would be a separate API call)
       try {
+        const authHeaders = await authManager.getAuthHeaders()
         await fetch(`${ZMEMORY_API_BASE}/agents/${agentId}/brief`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...authHeaders
           },
           body: JSON.stringify({
             content: briefing,
