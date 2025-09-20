@@ -1,10 +1,9 @@
 import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptMemoryToStrategy } from '../../adapters/strategy'
+import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
 import type { UseStrategyMemoriesReturn, StrategyReflectionForm } from '../../types/strategy'
 import type { Memory } from '../../../app/types/memory'
-
-const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useStrategyMemories(seasonId?: string, initiativeId?: string): UseStrategyMemoriesReturn {
   // Fetch all memories and filter on frontend since we don't have strategic tags yet

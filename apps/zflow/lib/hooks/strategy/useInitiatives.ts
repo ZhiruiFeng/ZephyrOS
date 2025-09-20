@@ -1,10 +1,9 @@
 import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptTasksToInitiatives, adaptTaskToInitiative } from '../../adapters/strategy'
+import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
 import type { UseInitiativesReturn, CreateInitiativeForm } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
-
-const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useInitiatives(seasonId?: string): UseInitiativesReturn {
   // Fetch tasks that represent initiatives

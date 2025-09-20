@@ -1,10 +1,9 @@
 import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptTaskToStrategy } from '../../adapters/strategy'
+import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
 import type { UseStrategyTasksReturn } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
-
-const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
   // Fetch all tasks, then filter and adapt on the frontend

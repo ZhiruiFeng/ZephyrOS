@@ -2,6 +2,7 @@
 // This file can be used to test the connection during development
 
 import { conversationHistoryService } from './service'
+import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
 
 export async function testZmemoryIntegration(userId: string) {
   console.log('🧪 Testing zmemory API integration...')
@@ -44,7 +45,7 @@ export async function testZmemoryIntegration(userId: string) {
     // Check if it's a network/connection error
     if (error instanceof TypeError && error.message.includes('fetch')) {
       console.log('💡 Tip: Make sure zmemory API is running on the expected port')
-      console.log('   Current API URL:', process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001')
+      console.log('   Current API URL:', resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001')
     }
     
     return false
@@ -53,7 +54,7 @@ export async function testZmemoryIntegration(userId: string) {
 
 // Simple connectivity test
 export async function testZmemoryConnectivity() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
+  const apiUrl = resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
   
   try {
     console.log(`🌐 Testing connection to ${apiUrl}...`)

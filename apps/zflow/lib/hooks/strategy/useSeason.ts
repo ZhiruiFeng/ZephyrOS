@@ -1,10 +1,6 @@
-import useSWR from 'swr'
-import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptSeasonToStrategy } from '../../adapters/strategy'
 import type { UseStrategySeasonReturn } from '../../types/strategy'
 import type { Season } from '../../../../zmemory/types/narrative'
-
-const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useSeason(): UseStrategySeasonReturn {
   // For now, create a mock current season since the API endpoint doesn't exist yet

@@ -10,9 +10,10 @@ import {
   ConversationStatsResponse,
   HistoricalMessage
 } from './types'
+import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
 
 // Configuration for zmemory API endpoints
-const ZMEMORY_API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
+const ZMEMORY_ORIGIN = resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
 
 /**
  * Service for managing conversation history via zmemory API
@@ -39,7 +40,7 @@ export class ConversationHistoryService {
         params.set('includeArchived', 'true')
       }
 
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations?${params}`)
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations?${params}`)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch conversations: ${response.statusText}`)
@@ -67,7 +68,7 @@ export class ConversationHistoryService {
   async getConversation(sessionId: string, userId: string): Promise<ConversationDetail | null> {
     try {
       const params = new URLSearchParams({ userId })
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/${sessionId}?${params}`)
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations/${sessionId}?${params}`)
       
       if (response.status === 404) {
         return null
@@ -110,7 +111,7 @@ export class ConversationHistoryService {
         limit: limit.toString()
       })
 
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/search?${params}`)
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations/search?${params}`)
       
       if (!response.ok) {
         throw new Error(`Failed to search conversations: ${response.statusText}`)
@@ -145,7 +146,7 @@ export class ConversationHistoryService {
     }
   ): Promise<ConversationDetail> {
     try {
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/${sessionId}`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations/${sessionId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +184,7 @@ export class ConversationHistoryService {
    */
   async deleteConversation(sessionId: string, userId: string): Promise<void> {
     try {
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/${sessionId}`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations/${sessionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -207,7 +208,7 @@ export class ConversationHistoryService {
   async getConversationStats(userId: string): Promise<ConversationStats> {
     try {
       const params = new URLSearchParams({ userId })
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/stats?${params}`)
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations/stats?${params}`)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch conversation stats: ${response.statusText}`)
@@ -231,7 +232,7 @@ export class ConversationHistoryService {
     title?: string
   ): Promise<ConversationSummary> {
     try {
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -285,7 +286,7 @@ export class ConversationHistoryService {
 
         if (newMessages.length > 0) {
           // Only send new messages to avoid duplicates
-          const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations/${sessionId}/messages`, {
+          const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations/${sessionId}/messages`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -315,7 +316,7 @@ export class ConversationHistoryService {
         }
       } else {
         // Create new conversation with all messages
-        const response = await fetch(`${ZMEMORY_API_BASE}/api/conversations`, {
+        const response = await fetch(`${ZMEMORY_ORIGIN}/api/conversations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

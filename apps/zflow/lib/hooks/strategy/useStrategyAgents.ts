@@ -1,11 +1,11 @@
 import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptAgentToStrategy } from '../../adapters/strategy'
+import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
 import type { UseStrategyAgentsReturn, Agent } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
 
 const ZFLOW_API_BASE = '/api'
-const ZMEMORY_API_BASE = 'http://localhost:3001/api'
 
 export function useStrategyAgents(): UseStrategyAgentsReturn {
   // Fetch agents from zflow

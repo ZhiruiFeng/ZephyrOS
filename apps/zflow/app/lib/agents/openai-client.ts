@@ -1,10 +1,9 @@
 import OpenAI from 'openai'
+import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
 import { AgentProvider, ChatContext, StreamingResponse, ZFlowTool } from './types'
 
 function getZmemoryBase(): string {
-  const raw = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
-  const trimmed = raw.replace(/\/+$/, '')
-  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed
+  return resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
 }
 
 async function resolveUserOpenAIKey(authToken?: string, service: string = 'openai_gpt4'): Promise<string | null> {

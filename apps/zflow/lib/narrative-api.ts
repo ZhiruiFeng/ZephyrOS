@@ -4,6 +4,11 @@
 // =====================================================
 
 import { authManager } from './auth-manager'
+import {
+  ZMEMORY_API_BASE,
+  ZMEMORY_API_ORIGIN,
+  IS_ZMEMORY_CROSS_ORIGIN
+} from './zmemory-api-base'
 import type {
   Season,
   Episode,
@@ -18,15 +23,14 @@ import type {
 } from '../types/narrative'
 
 // Use the same pattern as memories-api.ts for consistency
-const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
-const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
+const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
 // Ensure we target the Next.js API routes under /api when using a cross-origin base
-const NARRATIVE_API_BASE = API_BASE ? `${API_BASE}/api/narrative` : '/api/narrative'
+const NARRATIVE_API_BASE = `${ZMEMORY_API_BASE}/narrative`
 
 // Debug logging
 if (typeof window !== 'undefined') {
   console.log('Narrative API Configuration:', {
-    API_BASE,
+    API_BASE: ZMEMORY_API_ORIGIN,
     IS_CROSS_ORIGIN,
     NARRATIVE_API_BASE,
     NODE_ENV: process.env.NODE_ENV,

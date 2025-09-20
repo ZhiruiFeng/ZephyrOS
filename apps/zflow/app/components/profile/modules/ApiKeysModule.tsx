@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
+import { resolveZmemoryOrigin } from '../../../../lib/zmemory-api-base'
 import type { ProfileModuleProps } from '../types'
 
 // Types
@@ -61,10 +62,7 @@ class ApiKeyClient {
 
   constructor() {
     // Use zmemory API URL
-    const raw = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
-    // Normalize: remove trailing slashes and a trailing "/api" if present
-    const trimmed = raw.replace(/\/+$/, '')
-    this.baseUrl = trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed
+    this.baseUrl = resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
   }
 
   private async getAuthHeaders(session: any) {

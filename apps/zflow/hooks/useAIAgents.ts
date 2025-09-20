@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAuthHeader } from '../lib/supabase'
+import { ZMEMORY_API_ORIGIN, IS_ZMEMORY_CROSS_ORIGIN } from '../lib/zmemory-api-base'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
-const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
-const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
+const API_BASE = ZMEMORY_API_ORIGIN
+const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
 
 // Updated API Response Types for new schema
 export interface Vendor {

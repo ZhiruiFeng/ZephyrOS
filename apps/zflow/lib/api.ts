@@ -2,10 +2,11 @@ import { Task, Category, TaskRelationType } from '../app/types/task'
 import { supabase } from './supabase'
 import { authManager } from './auth-manager'
 import { toUTC } from '../app/utils/timeUtils'
+import { ZMEMORY_API_ORIGIN, IS_ZMEMORY_CROSS_ORIGIN } from './zmemory-api-base'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
-export const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
-const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
+export const API_BASE = ZMEMORY_API_ORIGIN
+const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
 
 // Compatible type definitions (for hooks and page references)
 export interface TaskContent {

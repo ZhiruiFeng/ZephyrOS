@@ -1,6 +1,7 @@
 import useSWR from 'swr'
 import { useState } from 'react'
 import { getAuthHeader } from '../lib/supabase'
+import { resolveZmemoryOrigin } from '../lib/zmemory-api-base'
 
 // Types based on our API schema
 export interface Person {
@@ -114,28 +115,13 @@ export interface BrokerageOpportunity {
 }
 
 // API configuration
-const ZMEMORY_API_BASE = (() => {
-  const envBase = process.env.NEXT_PUBLIC_API_BASE
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname, port } = window.location
-    // Local dev: zflow on 3000, zmemory on 3001
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const targetPort = port === '3000' ? '3001' : (port || '3001')
-      return `${protocol}//${hostname}:${targetPort}`
-    }
-    // Production default: same origin (avoid mixed content)
-    return `${protocol}//${hostname}${port ? `:${port}` : ''}`
-  }
-  // SSR fallback (rare for this client hook): assume local dev
-  return 'http://localhost:3001'
-})()
+const ZMEMORY_ORIGIN = resolveZmemoryOrigin('http://localhost:3001')
 
 // Fetcher function for SWR with authentication
 const fetcher = async (url: string) => {
   const authHeaders = await getAuthHeader()
   try {
-    const response = await fetch(`${ZMEMORY_API_BASE}${url}`, {
+    const response = await fetch(`${ZMEMORY_ORIGIN}${url}`, {
       method: 'GET',
       mode: 'cors',
       headers: {
@@ -151,7 +137,7 @@ const fetcher = async (url: string) => {
   } catch (err) {
     if (err instanceof TypeError) {
       // Likely CORS, mixed content (https->http), or network error
-      throw new Error(`Network error while fetching ${ZMEMORY_API_BASE}${url}. Possible CORS or mixed content. Original: ${err.message}`)
+      throw new Error(`Network error while fetching ${ZMEMORY_ORIGIN}${url}. Possible CORS or mixed content. Original: ${err.message}`)
     }
     throw err
   }
@@ -287,7 +273,7 @@ export function useLogTouchpoint() {
 
     try {
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/relations/touchpoints`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/relations/touchpoints`, {
         method: 'POST',
         mode: 'cors',
         headers: {
@@ -337,7 +323,7 @@ export function useRelationshipProfile() {
 
     try {
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/relations/profiles`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/relations/profiles`, {
         method: 'POST',
         mode: 'cors',
         headers: {
@@ -377,7 +363,7 @@ export function useRelationshipProfile() {
 
     try {
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/relations/profiles/${profileId}`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/relations/profiles/${profileId}`, {
         method: 'PUT',
         mode: 'cors',
         headers: {
@@ -430,7 +416,7 @@ export function usePeopleManager() {
 
     try {
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/relations/people`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/relations/people`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -472,7 +458,7 @@ export function usePeopleManager() {
 
     try {
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${ZMEMORY_API_BASE}/api/relations/people/${personId}`, {
+      const response = await fetch(`${ZMEMORY_ORIGIN}/api/relations/people/${personId}`, {
         method: 'PUT',
         mode: 'cors',
         headers: {

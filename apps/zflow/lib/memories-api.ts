@@ -7,17 +7,20 @@ import {
   WeeklyReview 
 } from '../app/types/memory'
 import { authManager } from './auth-manager'
+import { 
+  ZMEMORY_API_BASE, 
+  ZMEMORY_API_ORIGIN, 
+  IS_ZMEMORY_CROSS_ORIGIN 
+} from './zmemory-api-base'
 
-// Use the same pattern as api.ts for consistency
-const API_BASE = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE : ''
-const IS_CROSS_ORIGIN = API_BASE && API_BASE.length > 0
 // Ensure we target the Next.js API routes under /api when using a cross-origin base
-const MEMORIES_API_BASE = API_BASE ? `${API_BASE}/api/memories` : '/api/memories'
+const MEMORIES_API_BASE = `${ZMEMORY_API_BASE}/memories`
+const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
 
 // Debug logging
 if (typeof window !== 'undefined') {
   console.log('Memories API Configuration:', {
-    API_BASE,
+    API_BASE: ZMEMORY_API_ORIGIN,
     IS_CROSS_ORIGIN,
     MEMORIES_API_BASE,
     NODE_ENV: process.env.NODE_ENV,

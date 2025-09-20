@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server'
+import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
 
 export function getZmemoryBase(): string {
-  const raw = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001'
-  const trimmed = raw.replace(/\/+$/, '')
-  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed
+  return resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
 }
 
 // Resolve the user's ElevenLabs key via the zmemory backend internal endpoint.
