@@ -28,6 +28,11 @@
       "cache": false,
       "persistent": true,
       "env": ["ZMEMORY_API_URL", "ZMEMORY_API_KEY", "ZMEMORY_TIMEOUT"]
+    },
+    "apps/zflow-ios#dev": {
+      "cache": false,
+      "persistent": true,
+      "env": ["EXPO_PUBLIC_API_URL"]
     }
   }
 } 

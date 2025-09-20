@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "ZFlow iOS",
+    "slug": "zflow-ios",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zephyros.zflow"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.zephyros.zflow"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "zflow"
+  }
+}
