@@ -21,7 +21,7 @@ export interface UseTimerState {
 export function useTimer(pollMs: number = 5000): UseTimerState {
   const { data, mutate } = useSWR('running-timer', async () => {
     const authHeaders = await authManager.getAuthHeaders()
-    const res = await fetch(`${API_BASE}/api/time-entries/running`, {
+    const res = await fetch(`${API_BASE}/time-entries/running`, {
       headers: authHeaders,
     })
     if (!res.ok) throw new Error('Failed to fetch running timer')
@@ -55,7 +55,7 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
 
   const startActivity = useCallback(async (activityId: string) => {
     const authHeaders = await authManager.getAuthHeaders()
-    const response = await fetch(`${API_BASE}/api/timeline-items/${activityId}/time-entries`, {
+    const response = await fetch(`${API_BASE}/timeline-items/${activityId}/time-entries`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
 
     // Update the running time entry to set end_at
     const authHeaders = await authManager.getAuthHeaders()
-    const response = await fetch(`${API_BASE}/api/time-entries/${currentTimer.id}`, {
+    const response = await fetch(`${API_BASE}/time-entries/${currentTimer.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

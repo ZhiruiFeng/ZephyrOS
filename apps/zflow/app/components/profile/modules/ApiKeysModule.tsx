@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import { resolveZmemoryOrigin } from '../../../../lib/zmemory-api-base'
+import { resolveZmemoryOrigin } from '../../../../lib/api/zmemory-api-base'
 import type { ProfileModuleProps } from '../types'
 
 // Types

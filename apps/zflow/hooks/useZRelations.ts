@@ -1,7 +1,7 @@
 import useSWR from 'swr'
 import { useState } from 'react'
 import { getAuthHeader } from '../lib/supabase'
-import { resolveZmemoryOrigin } from '../lib/zmemory-api-base'
+import { resolveZmemoryOrigin } from '../lib/api/zmemory-api-base'
 
 // Types based on our API schema
 export interface Person {

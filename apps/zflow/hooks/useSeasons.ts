@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { useState, useCallback } from 'react'
-import { narrativeApiClient } from '../lib/narrative-api'
+import { narrativeApiClient } from '../lib/api/narrative-api'
 import type {
   Season,
   SeasonWithEpisodes,

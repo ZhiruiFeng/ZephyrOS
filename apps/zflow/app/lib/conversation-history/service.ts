@@ -10,7 +10,7 @@ import {
   ConversationStatsResponse,
   HistoricalMessage
 } from './types'
-import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
+import { resolveZmemoryOrigin } from '../../../lib/api/zmemory-api-base'
 
 // Configuration for zmemory API endpoints
 const ZMEMORY_ORIGIN = resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'

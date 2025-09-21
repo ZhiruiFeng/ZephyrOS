@@ -3,12 +3,7 @@
 // Centralized API client for Seasons and Episodes
 // =====================================================
 
-import { authManager } from './auth-manager'
-import {
-  ZMEMORY_API_BASE,
-  ZMEMORY_API_ORIGIN,
-  IS_ZMEMORY_CROSS_ORIGIN
-} from './zmemory-api-base'
+import { API_BASE, authenticatedFetch } from './api-base'
 import type {
   Season,
   Episode,
@@ -20,23 +15,7 @@ import type {
   SeasonsResponse,
   EpisodesResponse,
   SeasonRecapResponse
-} from '../types/narrative'
-
-// Use the same pattern as memories-api.ts for consistency
-const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
-// Ensure we target the Next.js API routes under /api when using a cross-origin base
-const NARRATIVE_API_BASE = `${ZMEMORY_API_BASE}/narrative`
-
-// Debug logging
-if (typeof window !== 'undefined') {
-  console.log('Narrative API Configuration:', {
-    API_BASE: ZMEMORY_API_ORIGIN,
-    IS_CROSS_ORIGIN,
-    NARRATIVE_API_BASE,
-    NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE
-  })
-}
+} from '../../types/narrative'
 
 // =====================================================
 // Utility Functions
@@ -53,18 +32,13 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${NARRATIVE_API_BASE}${endpoint}`
-  
-  // Get authentication headers
-  const authHeaders = await authManager.getAuthHeaders()
-  
-  const response = await fetch(url, {
+  const url = `${API_BASE}/narrative${endpoint}`
+
+  const response = await authenticatedFetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...authHeaders,
       ...options.headers,
     },
-    ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     ...options,
   })
 

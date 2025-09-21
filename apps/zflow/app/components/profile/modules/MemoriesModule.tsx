@@ -7,7 +7,7 @@ import { BookOpen, Plus, Search, Calendar, Star, Heart, Settings, X, Filter, Tre
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import { Memory, MemoryFilters } from '../../../types/memory'
-import { memoriesApi } from '../../../../lib/memories-api'
+import { memoriesApi } from '../../../../lib/api/memories-api'
 import MemoryCapture from '../../memories/MemoryCapture'
 import MemoryCard from '../../memories/MemoryCard'
 import type { ProfileModuleProps } from '../types'

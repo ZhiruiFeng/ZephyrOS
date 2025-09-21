@@ -7,6 +7,7 @@ import { Surface, Text, useTheme } from 'react-native-paper';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import TasksScreen from '../screens/TasksScreen';
+import FocusScreen from '../screens/FocusScreen';
 import NarrativeScreen from '../screens/NarrativeScreen';
 import { useAuth } from '../contexts/AuthContext';
 import CustomBottomNav from '../components/navigation/CustomBottomNav';
@@ -87,7 +88,7 @@ function MainTabs() {
       case 'Overview':
         return <HomeScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
       case 'Focus':
-        return <TasksScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
+        return <FocusScreen />;
       case 'Agents':
         return <PlaceholderScreen title="Agents" subtitle="AI assistants and automation" />;
       case 'Narrative':

@@ -2,7 +2,7 @@
 // This file can be used to test the connection during development
 
 import { conversationHistoryService } from './service'
-import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
+import { resolveZmemoryOrigin } from '../../../lib/api/zmemory-api-base'
 
 export async function testZmemoryIntegration(userId: string) {
   console.log('🧪 Testing zmemory API integration...')

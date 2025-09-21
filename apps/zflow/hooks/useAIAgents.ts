@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAuthHeader } from '../lib/supabase'
-import { ZMEMORY_API_ORIGIN, IS_ZMEMORY_CROSS_ORIGIN } from '../lib/zmemory-api-base'
+import { ZMEMORY_API_ORIGIN, IS_ZMEMORY_CROSS_ORIGIN } from '../lib/api/zmemory-api-base'
 
 // If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
 const API_BASE = ZMEMORY_API_ORIGIN
@@ -200,7 +200,7 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-agents`, {
+      const response = await fetch(`${API_BASE}/ai-agents`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -234,8 +234,8 @@ export function useAIAgents() {
       if (!authHeaders.Authorization) {
         throw new Error('User not authenticated. Please sign in to create agents.')
       }
-      
-      const response = await fetch(`${API_BASE}/api/ai-agents`, {
+
+      const response = await fetch(`${API_BASE}/ai-agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -270,7 +270,7 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-agents`, {
+      const response = await fetch(`${API_BASE}/ai-agents`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -303,7 +303,7 @@ export function useAIAgents() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-agents?id=${id}`, {
+      const response = await fetch(`${API_BASE}/ai-agents?id=${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
@@ -353,7 +353,7 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-interactions`, {
+      const response = await fetch(`${API_BASE}/ai-interactions`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -387,8 +387,8 @@ export function useAIInteractions() {
       if (!authHeaders.Authorization) {
         throw new Error('User not authenticated. Please sign in to create interactions.')
       }
-      
-      const response = await fetch(`${API_BASE}/api/ai-interactions`, {
+
+      const response = await fetch(`${API_BASE}/ai-interactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +423,7 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-interactions`, {
+      const response = await fetch(`${API_BASE}/ai-interactions`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -456,7 +456,7 @@ export function useAIInteractions() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/ai-interactions?id=${id}`, {
+      const response = await fetch(`${API_BASE}/ai-interactions?id=${id}`, {
         method: 'DELETE',
         headers: {
           ...authHeaders,
@@ -507,7 +507,7 @@ export function useAIUsageStats() {
       
       const authHeaders = await getAuthHeader()
       const queryParams = days ? `?days=${days}` : ''
-      const response = await fetch(`${API_BASE}/api/ai-usage-stats${queryParams}`, {
+      const response = await fetch(`${API_BASE}/ai-usage-stats${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -554,7 +554,7 @@ export function useVendors() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/vendors?include_services=${includeServices}`, {
+      const response = await fetch(`${API_BASE}/vendors?include_services=${includeServices}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -602,7 +602,7 @@ export function useAgentFeatures() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/agent-features`, {
+      const response = await fetch(`${API_BASE}/agent-features`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -650,7 +650,7 @@ export function useInteractionTypes() {
       setError(null)
       
       const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/api/interaction-types`, {
+      const response = await fetch(`${API_BASE}/interaction-types`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

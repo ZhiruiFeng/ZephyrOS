@@ -5,28 +5,9 @@ import {
   MemorySearchParams, 
   MemorySearchResult, 
   WeeklyReview 
-} from '../app/types/memory'
-import { authManager } from './auth-manager'
-import { 
-  ZMEMORY_API_BASE, 
-  ZMEMORY_API_ORIGIN, 
-  IS_ZMEMORY_CROSS_ORIGIN 
-} from './zmemory-api-base'
-
-// Ensure we target the Next.js API routes under /api when using a cross-origin base
-const MEMORIES_API_BASE = `${ZMEMORY_API_BASE}/memories`
-const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
-
-// Debug logging
-if (typeof window !== 'undefined') {
-  console.log('Memories API Configuration:', {
-    API_BASE: ZMEMORY_API_ORIGIN,
-    IS_CROSS_ORIGIN,
-    MEMORIES_API_BASE,
-    NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE
-  })
-}
+} from '../../app/types/memory'
+import { authManager } from '../auth-manager'
+import { API_BASE, authenticatedFetch } from './api-base'
 
 class MemoryAPIError extends Error {
   constructor(public status: number, message: string) {
@@ -36,21 +17,16 @@ class MemoryAPIError extends Error {
 }
 
 async function memoryApiRequest<T>(
-  endpoint: string, 
+  endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${MEMORIES_API_BASE}${endpoint}`
-  
-  // Get authentication headers
-  const authHeaders = await authManager.getAuthHeaders()
-  
-  const response = await fetch(url, {
+  const url = `${API_BASE}/memories${endpoint}`
+
+  const response = await authenticatedFetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...authHeaders,
       ...options.headers,
     },
-    ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     ...options,
   })
 
@@ -183,14 +159,9 @@ export const memoriesApi = {
     const formData = new FormData()
     formData.append('file', file)
 
-    // Get authentication headers
-    const authHeaders = await authManager.getAuthHeaders()
-
-    const response = await fetch(`${MEMORIES_API_BASE}/${memoryId}/assets`, {
+    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/assets`, {
       method: 'POST',
       body: formData,
-      headers: authHeaders,
-      ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' }),
     })
 
     if (!response.ok) {

@@ -23,7 +23,7 @@ export interface EpisodeAnchoredMemory {
 
 async function fetchEpisodeAnchors(episodeId: string): Promise<EpisodeAnchoredMemory[]> {
   const headers = await authManager.getAuthHeaders()
-  const resp = await fetch(`${API_BASE}/api/episodes/${episodeId}/anchors`, { headers })
+  const resp = await fetch(`${API_BASE}/episodes/${episodeId}/anchors`, { headers })
   if (!resp.ok) {
     if (resp.status === 404) return []
     const text = await resp.text()

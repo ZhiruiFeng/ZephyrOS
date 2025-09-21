@@ -50,7 +50,7 @@ const memoryApi = {
       source: 'manual'
     }
 
-    const response = await fetch(`${API_BASE}/api/memories`, {
+    const response = await fetch(`${API_BASE}/memories`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ const memoryApi = {
       if (params?.search) searchParams.set('search', params.search)
       if (params?.tags?.length) searchParams.set('tags', params.tags.join(','))
 
-      const response = await fetch(`${API_BASE}/api/memories?${searchParams}`, {
+      const response = await fetch(`${API_BASE}/memories?${searchParams}`, {
         headers: {
           ...authHeaders
         }
@@ -107,7 +107,7 @@ const memoryApi = {
     try {
       const authHeaders = await authManager.getAuthHeaders()
 
-      const url = `${API_BASE}/api/timeline-items/${taskId}/anchors`
+      const url = `${API_BASE}/timeline-items/${taskId}/anchors`
 
       const response = await fetch(url, {
         headers: {
@@ -137,7 +137,7 @@ const memoryApi = {
   async createAnchor(memoryId: string, data: CreateAnchorRequest): Promise<MemoryAnchor> {
     const authHeaders = await authManager.getAuthHeaders()
 
-    const response = await fetch(`${API_BASE}/api/memories/${memoryId}/anchors`, {
+    const response = await fetch(`${API_BASE}/memories/${memoryId}/anchors`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ const memoryApi = {
 
   async deleteAnchor(memoryId: string, anchorItemId: string): Promise<void> {
     const authHeaders = await authManager.getAuthHeaders()
-    const response = await fetch(`${API_BASE}/api/memories/${memoryId}/anchors/${anchorItemId}`, {
+    const response = await fetch(`${API_BASE}/memories/${memoryId}/anchors/${anchorItemId}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders

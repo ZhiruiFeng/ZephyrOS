@@ -43,7 +43,7 @@ interface Memory {
 const memoryEpisodeApi = {
   async getEpisodeAnchors(memoryId: string): Promise<EpisodeMemoryAnchor[]> {
     const authHeaders = await authManager.getAuthHeaders()
-    const resp = await fetch(`${API_BASE}/api/memories/${memoryId}/episode-anchors`, {
+    const resp = await fetch(`${API_BASE}/memories/${memoryId}/episode-anchors`, {
       headers: { ...authHeaders }
     })
     if (!resp.ok) {
@@ -56,7 +56,7 @@ const memoryEpisodeApi = {
 
   async createEpisodeAnchor(memoryId: string, data: CreateEpisodeAnchorRequest): Promise<EpisodeMemoryAnchor> {
     const authHeaders = await authManager.getAuthHeaders()
-    const resp = await fetch(`${API_BASE}/api/memories/${memoryId}/episode-anchors`, {
+    const resp = await fetch(`${API_BASE}/memories/${memoryId}/episode-anchors`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(data)
@@ -70,7 +70,7 @@ const memoryEpisodeApi = {
 
   async updateEpisodeAnchor(memoryId: string, episodeId: string, data: Partial<CreateEpisodeAnchorRequest>): Promise<EpisodeMemoryAnchor> {
     const authHeaders = await authManager.getAuthHeaders()
-    const resp = await fetch(`${API_BASE}/api/memories/${memoryId}/episode-anchors/${episodeId}`, {
+    const resp = await fetch(`${API_BASE}/memories/${memoryId}/episode-anchors/${episodeId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(data)
@@ -84,7 +84,7 @@ const memoryEpisodeApi = {
 
   async deleteEpisodeAnchor(memoryId: string, episodeId: string, relationType?: RelationType): Promise<void> {
     const authHeaders = await authManager.getAuthHeaders()
-    const url = new URL(`${API_BASE}/api/memories/${memoryId}/episode-anchors/${episodeId}`)
+    const url = new URL(`${API_BASE}/memories/${memoryId}/episode-anchors/${episodeId}`)
     if (relationType) url.searchParams.set('relation_type', relationType)
     const resp = await fetch(url.toString(), { method: 'DELETE', headers: { ...authHeaders } })
     if (!resp.ok) {
@@ -120,7 +120,7 @@ export function useEpisodeMemoryActions() {
     try {
       // Create memory
       const authHeaders = await authManager.getAuthHeaders()
-      const createResp = await fetch(`${API_BASE}/api/memories`, {
+      const createResp = await fetch(`${API_BASE}/memories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({

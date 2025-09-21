@@ -1,7 +1,7 @@
 import useSWR from 'swr'
 import { authJsonFetcher } from '../../utils/auth-fetcher'
 import { adaptTaskToStrategy } from '../../adapters/strategy'
-import { ZMEMORY_API_BASE } from '../../zmemory-api-base'
+import { ZMEMORY_API_BASE } from '../../api/zmemory-api-base'
 import { authManager } from '../../auth-manager'
 import type { UseStrategyTasksReturn } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'

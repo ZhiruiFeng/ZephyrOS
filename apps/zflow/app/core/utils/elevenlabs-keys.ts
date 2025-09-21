@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { resolveZmemoryOrigin } from '../../../lib/zmemory-api-base'
+import { resolveZmemoryOrigin } from '../../../lib/api/zmemory-api-base'
 
 export function getZmemoryBase(): string {
   return resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
