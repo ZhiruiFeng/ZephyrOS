@@ -3,14 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getUserIdFromRequest } from '../../../lib/auth'
 import { AIInteraction, CreateAIInteractionRequest, UpdateAIInteractionRequest } from '../../../types'
-
-// Helper function to add CORS headers to responses
-function addCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  return response
-}
+import { jsonWithCors, createOptionsResponse } from '../../../lib/security'
 
 // Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -53,12 +46,12 @@ const UpdateInteractionSchema = CreateInteractionSchema.partial().omit({ agent_i
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const { searchParams } = new URL(request.url)
@@ -145,13 +138,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching AI interactions:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch interactions' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to fetch interactions' }, 500)
     }
 
-    return addCorsHeaders(NextResponse.json({ interactions }))
+    return jsonWithCors(request, { interactions })
   } catch (error) {
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
@@ -159,12 +152,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const body = await request.json()
@@ -174,10 +167,10 @@ export async function POST(request: NextRequest) {
       validatedData = CreateInteractionSchema.parse(body)
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
-        return addCorsHeaders(NextResponse.json({ 
+        return jsonWithCors(request, { 
           error: 'Invalid input data', 
           details: validationError.errors
-        }, { status: 400 }))
+        }, 400)
       }
       throw validationError
     }
@@ -191,7 +184,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (agentError || !agent) {
-      return addCorsHeaders(NextResponse.json({ error: 'Agent not found or access denied' }, { status: 404 }))
+      return jsonWithCors(request, { error: 'Agent not found or access denied' }, 404)
     }
 
     const { data: interaction, error } = await supabase
@@ -205,19 +198,19 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating AI interaction:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to create interaction' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to create interaction' }, 500)
     }
 
     // The trigger will automatically update agent stats and activity score
     // No manual update needed with the new schema
 
-    return addCorsHeaders(NextResponse.json({ interaction }, { status: 201 }))
+    return jsonWithCors(request, { interaction }, 201)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400)
     }
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
@@ -225,19 +218,19 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const body = await request.json()
     const { id, ...updateData } = body
 
     if (!id) {
-      return addCorsHeaders(NextResponse.json({ error: 'Interaction ID is required' }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Interaction ID is required' }, 400)
     }
 
     const validatedData = UpdateInteractionSchema.parse(updateData)
@@ -252,11 +245,11 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Error updating AI interaction:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to update interaction' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to update interaction' }, 500)
     }
 
     if (!interaction) {
-      return addCorsHeaders(NextResponse.json({ error: 'Interaction not found' }, { status: 404 }))
+      return jsonWithCors(request, { error: 'Interaction not found' }, 404)
     }
 
     // Get enriched interaction data from view
@@ -269,13 +262,13 @@ export async function PUT(request: NextRequest) {
 
     const finalInteraction = enrichedInteraction || interaction
 
-    return addCorsHeaders(NextResponse.json({ interaction: finalInteraction }))
+    return jsonWithCors(request, { interaction: finalInteraction })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400)
     }
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
@@ -283,19 +276,19 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (!id) {
-      return addCorsHeaders(NextResponse.json({ error: 'Interaction ID is required' }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Interaction ID is required' }, 400)
     }
 
     const { error } = await supabase
@@ -306,24 +299,17 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('Error deleting AI interaction:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to delete interaction' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to delete interaction' }, 500)
     }
 
-    return addCorsHeaders(NextResponse.json({ success: true }))
+    return jsonWithCors(request, { success: true })
   } catch (error) {
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
 // OPTIONS - Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
+  return createOptionsResponse(request)
 }

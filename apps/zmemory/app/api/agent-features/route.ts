@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getUserIdFromRequest } from '../../../lib/auth'
-
-// Helper function to add CORS headers to responses
-function addCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  return response
-}
+import { jsonWithCors, createOptionsResponse } from '../../../lib/security'
 
 // Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -22,12 +15,12 @@ const supabase = supabaseUrl && supabaseKey
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const { searchParams } = new URL(request.url)
@@ -56,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching agent features:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch features' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to fetch features' }, 500)
     }
 
     // Group by category for easier UI consumption
@@ -71,24 +64,17 @@ export async function GET(request: NextRequest) {
         return acc
       }, {})
       
-      return addCorsHeaders(NextResponse.json({ features: grouped, categories: Object.keys(grouped) }))
+      return jsonWithCors(request, { features: grouped, categories: Object.keys(grouped) })
     }
 
-    return addCorsHeaders(NextResponse.json({ features }))
+    return jsonWithCors(request, { features })
   } catch (error) {
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
 // OPTIONS - Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
+  return createOptionsResponse(request)
 }

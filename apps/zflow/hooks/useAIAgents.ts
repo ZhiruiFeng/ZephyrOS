@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getAuthHeader } from '../lib/supabase'
-import { ZMEMORY_API_ORIGIN, IS_ZMEMORY_CROSS_ORIGIN } from '../lib/api/zmemory-api-base'
-
-// If NEXT_PUBLIC_API_BASE is not configured, use relative path, proxy to zmemory via Next.js rewrites
-const API_BASE = ZMEMORY_API_ORIGIN
-const IS_CROSS_ORIGIN = IS_ZMEMORY_CROSS_ORIGIN
+import { API_BASE, authenticatedFetch } from '../lib/api/api-base'
 
 // Updated API Response Types for new schema
 export interface Vendor {
@@ -199,14 +194,11 @@ export function useAIAgents() {
       setLoading(true)
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/ai-agents`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-agents`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
-        },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
+        }
       })
 
       if (!response.ok) {
@@ -228,21 +220,12 @@ export function useAIAgents() {
     try {
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      
-      // Check if user is authenticated
-      if (!authHeaders.Authorization) {
-        throw new Error('User not authenticated. Please sign in to create agents.')
-      }
-
-      const response = await fetch(`${API_BASE}/ai-agents`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
-        body: JSON.stringify(agentData),
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
+        body: JSON.stringify(agentData)
       })
 
       if (!response.ok) {
@@ -269,15 +252,12 @@ export function useAIAgents() {
     try {
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/ai-agents`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-agents`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
         body: JSON.stringify({ id, ...agentData }),
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -302,13 +282,11 @@ export function useAIAgents() {
     try {
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/ai-agents?id=${id}`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-agents?id=${id}`, {
         method: 'DELETE',
         headers: {
-          ...authHeaders,
+          'Content-Type': 'application/json',
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -352,14 +330,11 @@ export function useAIInteractions() {
       setLoading(true)
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/ai-interactions`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-interactions`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -381,21 +356,14 @@ export function useAIInteractions() {
     try {
       setError(null)
       
-      const authHeaders = await getAuthHeader()
       
-      // Check if user is authenticated
-      if (!authHeaders.Authorization) {
-        throw new Error('User not authenticated. Please sign in to create interactions.')
-      }
 
-      const response = await fetch(`${API_BASE}/ai-interactions`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-interactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
         body: JSON.stringify(interactionData),
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -422,15 +390,12 @@ export function useAIInteractions() {
     try {
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/ai-interactions`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-interactions`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
         body: JSON.stringify({ id, ...interactionData }),
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -455,13 +420,11 @@ export function useAIInteractions() {
     try {
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/ai-interactions?id=${id}`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-interactions?id=${id}`, {
         method: 'DELETE',
         headers: {
-          ...authHeaders,
+          'Content-Type': 'application/json',
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -505,15 +468,12 @@ export function useAIUsageStats() {
       setLoading(true)
       setError(null)
       
-      const authHeaders = await getAuthHeader()
       const queryParams = days ? `?days=${days}` : ''
-      const response = await fetch(`${API_BASE}/ai-usage-stats${queryParams}`, {
+      const response = await authenticatedFetch(`${API_BASE}/ai-usage-stats${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -553,14 +513,11 @@ export function useVendors() {
       setLoading(true)
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/vendors?include_services=${includeServices}`, {
+      const response = await authenticatedFetch(`${API_BASE}/vendors?include_services=${includeServices}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -601,14 +558,11 @@ export function useAgentFeatures() {
       setLoading(true)
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/agent-features`, {
+      const response = await authenticatedFetch(`${API_BASE}/agent-features`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {
@@ -649,14 +603,11 @@ export function useInteractionTypes() {
       setLoading(true)
       setError(null)
       
-      const authHeaders = await getAuthHeader()
-      const response = await fetch(`${API_BASE}/interaction-types`, {
+      const response = await authenticatedFetch(`${API_BASE}/interaction-types`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
         },
-        ...(IS_CROSS_ORIGIN ? {} : { credentials: 'include' })
       })
 
       if (!response.ok) {

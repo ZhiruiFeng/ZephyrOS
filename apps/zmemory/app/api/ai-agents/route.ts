@@ -3,14 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getUserIdFromRequest } from '../../../lib/auth'
 import { AIAgent, CreateAIAgentRequest, UpdateAIAgentRequest } from '../../../types'
-
-// Helper function to add CORS headers to responses
-function addCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  return response
-}
+import { jsonWithCors, createOptionsResponse } from '../../../lib/security'
 
 // Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -50,12 +43,12 @@ const CreateFeatureMappingSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const { searchParams } = new URL(request.url)
@@ -118,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching AI agents:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to fetch agents' }, 500)
     }
 
     // Filter by feature if specified (post-query filtering)
@@ -130,10 +123,10 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return addCorsHeaders(NextResponse.json({ agents: filteredAgents }))
+    return jsonWithCors(request, { agents: filteredAgents })
   } catch (error) {
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
@@ -141,12 +134,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const body = await request.json()
@@ -164,7 +157,7 @@ export async function POST(request: NextRequest) {
 
     if (agentError) {
       console.error('Error creating AI agent:', agentError)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to create agent' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to create agent' }, 500)
     }
 
     // Create feature mappings if provided
@@ -196,13 +189,13 @@ export async function POST(request: NextRequest) {
 
     const finalAgent = enrichedAgent || agent
 
-    return addCorsHeaders(NextResponse.json({ agent: finalAgent }, { status: 201 }))
+    return jsonWithCors(request, { agent: finalAgent }, 201)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400)
     }
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
@@ -210,19 +203,19 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const body = await request.json()
     const { id, feature_ids, ...updateData } = body
 
     if (!id) {
-      return addCorsHeaders(NextResponse.json({ error: 'Agent ID is required' }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Agent ID is required' }, 400)
     }
 
     const validatedData = UpdateAgentSchema.parse(updateData)
@@ -238,11 +231,11 @@ export async function PUT(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating AI agent:', updateError)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to update agent' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to update agent' }, 500)
     }
 
     if (!agent) {
-      return addCorsHeaders(NextResponse.json({ error: 'Agent not found' }, { status: 404 }))
+      return jsonWithCors(request, { error: 'Agent not found' }, 404)
     }
 
     // Update feature mappings if provided
@@ -284,13 +277,13 @@ export async function PUT(request: NextRequest) {
 
     const finalAgent = enrichedAgent || agent
 
-    return addCorsHeaders(NextResponse.json({ agent: finalAgent }))
+    return jsonWithCors(request, { agent: finalAgent })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400)
     }
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
@@ -298,19 +291,19 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500)
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (!id) {
-      return addCorsHeaders(NextResponse.json({ error: 'Agent ID is required' }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Agent ID is required' }, 400)
     }
 
     // Delete feature mappings first (cascade should handle this, but let's be explicit)
@@ -329,24 +322,17 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('Error deleting AI agent:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to delete agent' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to delete agent' }, 500)
     }
 
-    return addCorsHeaders(NextResponse.json({ success: true }))
+    return jsonWithCors(request, { success: true })
   } catch (error) {
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
 }
 
 // OPTIONS - Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
+  return createOptionsResponse(request)
 }
