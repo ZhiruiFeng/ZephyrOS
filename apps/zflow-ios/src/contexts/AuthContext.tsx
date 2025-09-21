@@ -61,11 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      console.log('🔐 Starting in-app Google OAuth...');
-
       // Force use of our custom scheme (don't let Expo override it in development)
       const redirectUri = 'zflow://auth';
-      console.log('📱 Redirect URI (custom):', redirectUri);
 
       // Get Supabase OAuth URL
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -90,9 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log('🌐 Opening in-app browser...');
-      console.log('🔗 Auth URL:', data.url);
-      console.log('🔄 Expected redirect back to:', redirectUri);
+      // Open in-app browser for OAuth
 
       // Use WebBrowser to open in-app browser with auth URL
       const result = await WebBrowser.openAuthSessionAsync(
@@ -100,13 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectUri
       );
 
-      console.log('🔄 WebBrowser result type:', result.type);
-      if (result.url) {
-        console.log('🔄 WebBrowser result URL:', result.url);
-      }
-
       if (result.type === 'success' && result.url) {
-        console.log('✅ Authentication successful!');
         const url = result.url;
 
         // Extract tokens from URL fragments (Supabase uses fragment, not query params)
@@ -117,10 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
 
-          console.log('🔑 Extracted tokens:', {
-            hasAccessToken: !!accessToken,
-            hasRefreshToken: !!refreshToken
-          });
+          // Process tokens
 
           if (accessToken) {
             // Set the session in Supabase
@@ -130,23 +116,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (sessionError) {
-              console.error('❌ Session error:', sessionError);
+              console.error('Session error:', sessionError);
               Alert.alert('Authentication Error', 'Failed to establish session');
-            } else {
-              console.log('✅ Session established successfully!');
             }
           } else {
-            console.log('❌ No access token found in URL');
             Alert.alert('Authentication Error', 'No access token received');
           }
         } else {
-          console.log('❌ No URL fragment found');
           Alert.alert('Authentication Error', 'Invalid authentication response');
         }
       } else if (result.type === 'cancel') {
-        console.log('⏹️ User cancelled authentication');
+        // User cancelled authentication
       } else {
-        console.log('❌ Authentication failed:', result);
         Alert.alert('Authentication Error', 'Authentication was not completed');
       }
     } catch (error) {
