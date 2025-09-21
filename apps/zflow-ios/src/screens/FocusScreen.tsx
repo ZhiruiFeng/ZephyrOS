@@ -1,15 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Surface, useTheme } from 'react-native-paper';
 
 export default function FocusScreen() {
   return (
-    <SafeAreaView style={styles.container}>
+    <Surface style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Focus</Text>
         <Text style={styles.subtitle}>Work sessions and time tracking</Text>
       </View>
-    </SafeAreaView>
+    </Surface>
   );
 }
 

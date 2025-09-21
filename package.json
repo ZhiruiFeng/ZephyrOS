@@ -28,6 +28,8 @@
     "next-swagger-doc": "^0.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-native-paper": "^5.14.5",
+    "react-native-vector-icons": "^10.3.0",
     "swagger-jsdoc": "^6.2.8"
   },
   "engines": {

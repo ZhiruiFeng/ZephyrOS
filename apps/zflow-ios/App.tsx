@@ -5,6 +5,7 @@ import 'react-native-gesture-handler';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
+import ThemeProvider from './src/theme/ThemeProvider';
 
 export default function App() {
   useEffect(() => {
@@ -33,9 +34,11 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AppNavigator />
-      <StatusBar style="auto" />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppNavigator />
+        <StatusBar style="auto" />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

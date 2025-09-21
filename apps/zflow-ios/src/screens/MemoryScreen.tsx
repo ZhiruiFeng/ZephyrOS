@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Surface, useTheme } from 'react-native-paper';
 
 export default function MemoryScreen() {
   return (
-    <SafeAreaView style={styles.container}>
+    <Surface style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Memory</Text>
         <Text style={styles.subtitle}>Your knowledge base and insights</Text>
@@ -13,7 +13,7 @@ export default function MemoryScreen() {
         <Text style={styles.comingSoon}>Coming Soon</Text>
         <Text style={styles.description}>Knowledge management and AI insights</Text>
       </View>
-    </SafeAreaView>
+    </Surface>
   );
 }
 

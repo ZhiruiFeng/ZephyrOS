@@ -1,15 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Surface, useTheme } from 'react-native-paper';
 import { TaskService } from '../services/taskService';
 import { TaskMemory } from '../types/task';
 import { useAuth } from '../contexts/AuthContext';
+import TaskEditor from '../components/TaskEditor';
+import FilterControls from '../components/FilterControls';
+import SwipeableTaskItem from '../components/SwipeableTaskItem';
+import { useTaskFiltering } from '../hooks/useTaskFiltering';
 
 export default function TasksScreen() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showTaskEditor, setShowTaskEditor] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskMemory | null>(null);
+  
+  // Filter states
+  const [search, setSearch] = useState('');
+  const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high' | 'urgent'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'uncategorized' | string>('all');
+  const [sortMode, setSortMode] = useState<'none' | 'priority' | 'due_date'>('none');
+  
+  // Mock categories for now - in real app, this would come from API
+  const categories = [
+    { id: 'work', name: 'Work' },
+    { id: 'personal', name: 'Personal' },
+    { id: 'health', name: 'Health' },
+  ];
 
   const fetchTasks = async () => {
     try {
@@ -30,6 +49,15 @@ export default function TasksScreen() {
     }
   };
 
+  // Apply filtering
+  const { filteredTasks, stats } = useTaskFiltering({
+    tasks,
+    selectedCategory,
+    search,
+    filterPriority,
+    sortMode,
+  });
+
   useEffect(() => {
     if (user) {
       fetchTasks();
@@ -41,28 +69,127 @@ export default function TasksScreen() {
     fetchTasks();
   };
 
-  const renderTask = ({ item }: { item: TaskMemory }) => (
-    <TouchableOpacity style={styles.taskCard}>
-      <View style={styles.taskHeader}>
-        <Text style={styles.taskTitle}>{item.content.title}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.content.status) }]}>
-          <Text style={styles.statusText}>{item.content.status}</Text>
+  // CRUD Operations
+  const handleCreateTask = () => {
+    setEditingTask(null);
+    setShowTaskEditor(true);
+  };
+
+  const handleEditTask = (task: TaskMemory) => {
+    setEditingTask(task);
+    setShowTaskEditor(true);
+  };
+
+  const handleSaveTask = async (taskId: string | null, data: any) => {
+    try {
+      if (taskId) {
+        // Update existing task
+        await TaskService.updateTask(taskId, data);
+        console.log('✅ Task updated successfully');
+      } else {
+        // Create new task
+        await TaskService.createTask(data);
+        console.log('✅ Task created successfully');
+      }
+      
+      // Refresh the task list
+      await fetchTasks();
+      setShowTaskEditor(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error('❌ Error saving task:', error);
+      Alert.alert('Error', 'Failed to save task. Please try again.');
+    }
+  };
+
+  const handleDeleteTask = (task: TaskMemory) => {
+    Alert.alert(
+      'Delete Task',
+      `Are you sure you want to delete "${task.content.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await TaskService.deleteTask(task.id);
+              console.log('✅ Task deleted successfully');
+              await fetchTasks();
+            } catch (error) {
+              console.error('❌ Error deleting task:', error);
+              Alert.alert('Error', 'Failed to delete task. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleToggleComplete = async (task: TaskMemory) => {
+    try {
+      const newStatus = task.content.status === 'completed' ? 'pending' : 'completed';
+      await TaskService.updateTask(task.id, {
+        content: { ...task.content, status: newStatus }
+      });
+      console.log('✅ Task status updated successfully');
+      await fetchTasks();
+    } catch (error) {
+      console.error('❌ Error updating task status:', error);
+      Alert.alert('Error', 'Failed to update task status. Please try again.');
+    }
+  };
+
+  // Simple task content renderer for swipeable component
+  const renderTaskContent = (item: TaskMemory) => (
+    <View style={styles.taskCard}>
+      <View style={styles.taskContent}>
+        <View style={styles.taskHeader}>
+          <View style={styles.taskTitleContainer}>
+            <View style={styles.completeButton}>
+              <Text style={[
+                styles.completeButtonText,
+                { color: item.content.status === 'completed' ? '#10B981' : '#d1d5db' }
+              ]}>
+                {item.content.status === 'completed' ? '✓' : '○'}
+              </Text>
+            </View>
+            <Text style={[
+              styles.taskTitle,
+              item.content.status === 'completed' && styles.completedTaskTitle
+            ]}>
+              {item.content.title}
+            </Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.content.status) }]}>
+            <Text style={styles.statusText}>{item.content.status}</Text>
+          </View>
+        </View>
+        {item.content.description && (
+          <Text style={styles.taskDescription} numberOfLines={2}>
+            {item.content.description}
+          </Text>
+        )}
+        <View style={styles.taskFooter}>
+          <Text style={styles.taskMeta}>
+            {item.content.priority && `Priority: ${item.content.priority}`}
+          </Text>
+          <Text style={styles.taskDate}>
+            {new Date(item.updated_at).toLocaleDateString()}
+          </Text>
         </View>
       </View>
-      {item.content.description && (
-        <Text style={styles.taskDescription} numberOfLines={2}>
-          {item.content.description}
-        </Text>
-      )}
-      <View style={styles.taskFooter}>
-        <Text style={styles.taskMeta}>
-          {item.content.priority && `Priority: ${item.content.priority}`}
-        </Text>
-        <Text style={styles.taskDate}>
-          {new Date(item.updated_at).toLocaleDateString()}
-        </Text>
-      </View>
-    </TouchableOpacity>
+    </View>
+  );
+
+  const renderTask = ({ item }: { item: TaskMemory }) => (
+    <SwipeableTaskItem
+      task={item}
+      onEdit={handleEditTask}
+      onDelete={handleDeleteTask}
+      onToggleComplete={handleToggleComplete}
+      renderTask={renderTaskContent}
+    />
   );
 
   const getStatusColor = (status: string) => {
@@ -78,20 +205,43 @@ export default function TasksScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container}>
+      <Surface style={styles.container}>
         <View style={styles.content}>
           <Text style={styles.title}>Please sign in to view tasks</Text>
         </View>
-      </SafeAreaView>
+      </Surface>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Surface style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Tasks</Text>
-        <Text style={styles.subtitle}>Connected to ZMemory API</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Tasks</Text>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleCreateTask}
+          >
+            <Text style={styles.addButtonText}>+ Add Task</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.subtitle}>
+          Connected to ZMemory API • {stats.filtered} of {stats.total} tasks
+        </Text>
       </View>
+
+      {/* Filter Controls */}
+      <FilterControls
+        search={search}
+        filterPriority={filterPriority}
+        selectedCategory={selectedCategory}
+        sortMode={sortMode}
+        onSearchChange={setSearch}
+        onPriorityChange={setFilterPriority}
+        onCategoryChange={setSelectedCategory}
+        onSortModeChange={setSortMode}
+        categories={categories}
+      />
 
       {loading && tasks.length === 0 ? (
         <View style={styles.content}>
@@ -99,7 +249,7 @@ export default function TasksScreen() {
         </View>
       ) : (
         <FlatList
-          data={tasks}
+          data={filteredTasks}
           renderItem={renderTask}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
@@ -108,13 +258,32 @@ export default function TasksScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No tasks found</Text>
-              <Text style={styles.emptySubtext}>Pull to refresh or create your first task</Text>
+              <Text style={styles.emptyText}>
+                {tasks.length === 0 ? 'No tasks found' : 'No tasks match your filters'}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {tasks.length === 0 
+                  ? 'Pull to refresh or create your first task' 
+                  : 'Try adjusting your search or filters'
+                }
+              </Text>
             </View>
           }
         />
       )}
-    </SafeAreaView>
+
+      {/* Task Editor Modal */}
+      <TaskEditor
+        isOpen={showTaskEditor}
+        onClose={() => {
+          setShowTaskEditor(false);
+          setEditingTask(null);
+        }}
+        task={editingTask}
+        onSave={handleSaveTask}
+        title={editingTask ? 'Edit Task' : 'Create Task'}
+      />
+    </Surface>
   );
 }
 
@@ -128,6 +297,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  addButton: {
+    backgroundColor: '#0284c7',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -155,7 +341,6 @@ const styles = StyleSheet.create({
   taskCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
@@ -168,18 +353,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  taskContent: {
+    padding: 16,
+  },
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  taskTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  completeButton: {
+    marginRight: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completeButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   taskTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
     flex: 1,
-    marginRight: 12,
+  },
+  completedTaskTitle: {
+    textDecorationLine: 'line-through',
+    color: '#64748b',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -228,5 +436,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94a3b8',
     textAlign: 'center',
+  },
+  taskActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  actionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  deleteButton: {
+    borderColor: '#ef4444',
+  },
+  deleteButtonText: {
+    color: '#ef4444',
   },
 });

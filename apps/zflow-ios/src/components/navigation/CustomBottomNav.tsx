@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface TabItem {
@@ -18,7 +17,6 @@ interface CustomBottomNavProps {
 }
 
 export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPress }: CustomBottomNavProps) {
-  const insets = useSafeAreaInsets();
 
   const renderTab = (tab: TabItem) => {
     const isActive = activeTab === tab.key;
@@ -43,7 +41,7 @@ export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPres
   };
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <View style={styles.container}>
       <View style={styles.innerContainer}>
         {/* First two tabs */}
         {tabs.slice(0, 2).map((tab) => renderTab(tab))}

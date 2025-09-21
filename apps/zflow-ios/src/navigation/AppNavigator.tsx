@@ -1,65 +1,58 @@
 import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Surface, Text, useTheme } from 'react-native-paper';
 
 import LoginScreen from '../screens/LoginScreen';
+import HomeScreen from '../screens/HomeScreen';
+import TasksScreen from '../screens/TasksScreen';
+import NarrativeScreen from '../screens/NarrativeScreen';
 import { useAuth } from '../contexts/AuthContext';
 import CustomBottomNav from '../components/navigation/CustomBottomNav';
 
 export type RootStackParamList = {
   Main: undefined;
   Login: undefined;
+  Loading: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 // Placeholder screen component
 function PlaceholderScreen({ title, subtitle }: { title: string; subtitle: string }) {
+  const theme = useTheme();
+  
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <View style={{
+    <Surface style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Surface style={{
         padding: 20,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0'
+        borderBottomColor: theme.colors.outline,
+        elevation: 2,
       }}>
-        <Text style={{
-          fontSize: 28,
-          fontWeight: 'bold',
-          color: '#1e293b',
-          marginBottom: 4
-        }}>
+        <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
           {title}
         </Text>
-        <Text style={{ fontSize: 14, color: '#64748b' }}>
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
           {subtitle}
         </Text>
-      </View>
+      </Surface>
       <View style={{
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20
       }}>
-        <Text style={{
-          fontSize: 20,
-          fontWeight: '600',
-          color: '#64748b',
-          marginBottom: 8
-        }}>
+        <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, marginBottom: 8 }}>
           Coming Soon
         </Text>
-        <Text style={{
-          fontSize: 14,
-          color: '#94a3b8',
-          textAlign: 'center'
-        }}>
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
           This section will be implemented soon
         </Text>
       </View>
-    </SafeAreaView>
+    </Surface>
   );
 }
 
@@ -70,7 +63,7 @@ function MainTabs() {
     { key: 'Overview', label: 'Overview', icon: 'checkbox-outline' as const, iconFocused: 'checkbox' as const },
     { key: 'Focus', label: 'Focus', icon: 'locate-outline' as const, iconFocused: 'locate' as const },
     { key: 'Agents', label: 'Agents', icon: 'chatbox-ellipses-outline' as const, iconFocused: 'chatbox-ellipses' as const },
-    { key: 'Memory', label: 'Memory', icon: 'book-outline' as const, iconFocused: 'book' as const },
+    { key: 'Narrative', label: 'Narrative', icon: 'book-outline' as const, iconFocused: 'book' as const },
   ];
 
   const handleTabPress = (tab: string) => {
@@ -85,15 +78,15 @@ function MainTabs() {
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview':
-        return <PlaceholderScreen title="Overview" subtitle="Your productivity dashboard" />;
+        return <HomeScreen />;
       case 'Focus':
-        return <PlaceholderScreen title="Focus" subtitle="Work sessions and time tracking" />;
+        return <TasksScreen />;
       case 'Agents':
         return <PlaceholderScreen title="Agents" subtitle="AI assistants and automation" />;
-      case 'Memory':
-        return <PlaceholderScreen title="Memory" subtitle="Your knowledge base and insights" />;
+      case 'Narrative':
+        return <NarrativeScreen />;
       default:
-        return <PlaceholderScreen title="Overview" subtitle="Your productivity dashboard" />;
+        return <HomeScreen />;
     }
   };
 

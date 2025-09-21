@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Surface, Text, Button, useTheme } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen() {
+  const theme = useTheme();
   const { signInWithGoogle, loading } = useAuth();
 
   const handleLogin = async () => {
@@ -12,34 +13,33 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Surface style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome to ZFlow</Text>
-        <Text style={styles.subtitle}>Sign in to access your personal AI workflow</Text>
+        <Text variant="headlineLarge" style={{ color: theme.colors.onBackground, marginBottom: 8 }}>
+          Welcome to ZFlow
+        </Text>
+        <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 32 }}>
+          Sign in to access your personal AI workflow
+        </Text>
 
-        <TouchableOpacity
-          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+        <Button
+          mode="contained"
           onPress={handleLogin}
+          loading={loading}
           disabled={loading}
+          style={styles.loginButton}
+          contentStyle={styles.loginButtonContent}
         >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="white" />
-              <Text style={styles.loginButtonText}>Signing In...</Text>
-            </View>
-          ) : (
-            <Text style={styles.loginButtonText}>Sign In with Google</Text>
-          )}
-        </TouchableOpacity>
+          {loading ? 'Signing in...' : 'Sign in with Google'}
+        </Button>
       </View>
-    </SafeAreaView>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -47,39 +47,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
   loginButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 10,
     minWidth: 200,
   },
-  loginButtonDisabled: {
-    backgroundColor: '#999',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  loginButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
+  loginButtonContent: {
+    paddingVertical: 8,
   },
 });
