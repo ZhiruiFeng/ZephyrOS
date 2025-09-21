@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { Surface, useTheme } from 'react-native-paper';
-import { TaskService } from '../services/taskService';
+import { tasksApi } from '../lib/api';
 import { TaskMemory } from '../types/task';
 import { useAuth } from '../contexts/AuthContext';
 import TaskEditor from '../components/TaskEditor';
@@ -38,7 +38,7 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
   const fetchTasks = async () => {
     try {
       console.log('📋 Fetching tasks for user:', user?.email);
-      const fetchedTasks = await TaskService.getTasks({
+      const fetchedTasks = await tasksApi.list({
         limit: 50,
         sort_by: 'updated_at',
         sort_order: 'desc'
@@ -96,11 +96,11 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
     try {
       if (taskId) {
         // Update existing task
-        await TaskService.updateTask(taskId, data);
+        await tasksApi.update(taskId, data);
         console.log('✅ Task updated successfully');
       } else {
         // Create new task
-        await TaskService.createTask(data);
+        await tasksApi.create(data);
         console.log('✅ Task created successfully');
       }
       
@@ -125,7 +125,7 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
           style: 'destructive',
           onPress: async () => {
             try {
-              await TaskService.deleteTask(task.id);
+              await tasksApi.delete(task.id);
               console.log('✅ Task deleted successfully');
               await fetchTasks();
             } catch (error) {
@@ -141,7 +141,7 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
   const handleToggleComplete = async (task: TaskMemory) => {
     try {
       const newStatus = task.content.status === 'completed' ? 'pending' : 'completed';
-      await TaskService.updateTask(task.id, {
+      await tasksApi.update(task.id, {
         content: { ...task.content, status: newStatus }
       });
       console.log('✅ Task status updated successfully');

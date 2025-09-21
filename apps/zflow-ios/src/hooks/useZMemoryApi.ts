@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { zmemoryApi } from '../lib/zmemoryApi';
+import { zmemoryApi } from '../lib/api';
 import { TaskMemory, CreateTaskRequest, Category } from '../types/task';
 
 // Generic hook for API calls with loading and error states

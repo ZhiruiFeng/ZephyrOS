@@ -1,4 +1,7 @@
-import { httpClient, handleApiResponse } from '../utils/httpClient';
+// Legacy compatibility file - delegates to the new modular API structure
+// This maintains backward compatibility while using the new organized structure
+
+import { tasksApi, categoriesApi } from '../lib/api';
 import {
   Task,
   TaskMemory,
@@ -9,190 +12,119 @@ import {
 } from '../types/task';
 
 export class TaskService {
-  // Get tasks with filtering
+  // Delegate all methods to the new tasksApi
   static async getTasks(params: TaskQueryParams = {}): Promise<TaskMemory[]> {
     console.log('📋 Fetching tasks with params:', params);
-
-    const response = await httpClient.get<TaskMemory[]>('/tasks', params);
-    return handleApiResponse(response);
+    return tasksApi.list(params);
   }
 
-  // Get a specific task by ID
   static async getTask(id: string): Promise<TaskMemory> {
     console.log(`📋 Fetching task: ${id}`);
-
-    const response = await httpClient.get<TaskMemory>(`/tasks/${id}`);
-    return handleApiResponse(response);
+    return tasksApi.get(id);
   }
 
-  // Create a new task
   static async createTask(taskData: CreateTaskRequest): Promise<TaskMemory> {
     console.log('📋 Creating task:', taskData.content.title);
-
-    const response = await httpClient.post<TaskMemory>('/tasks', taskData);
-    return handleApiResponse(response);
+    return tasksApi.create(taskData);
   }
 
-  // Update an existing task
   static async updateTask(id: string, taskData: Partial<CreateTaskRequest>): Promise<TaskMemory> {
     console.log(`📋 Updating task: ${id}`);
-
-    const response = await httpClient.put<TaskMemory>(`/tasks/${id}`, taskData);
-    return handleApiResponse(response);
+    return tasksApi.update(id, taskData);
   }
 
-  // Delete a task
   static async deleteTask(id: string): Promise<void> {
     console.log(`📋 Deleting task: ${id}`);
-
-    const response = await httpClient.delete(`/tasks/${id}`);
-    handleApiResponse(response);
+    return tasksApi.delete(id);
   }
 
-  // Update task status
   static async updateTaskStatus(id: string, status: Task['status']): Promise<TaskMemory> {
     console.log(`📋 Updating task status: ${id} -> ${status}`);
-
-    const response = await httpClient.patch<TaskMemory>(`/tasks/${id}/status`, { status });
-    return handleApiResponse(response);
+    return tasksApi.updateStatus(id, status);
   }
 
-  // Get tasks updated today
   static async getTasksUpdatedToday(): Promise<TaskMemory[]> {
     console.log('📋 Fetching tasks updated today');
-
-    const response = await httpClient.get<TaskMemory[]>('/tasks/updated-today');
-    return handleApiResponse(response);
+    return tasksApi.getUpdatedToday();
   }
 
-  // Get task hierarchy/tree
   static async getTaskTree(id: string): Promise<TaskMemory[]> {
     console.log(`📋 Fetching task tree: ${id}`);
-
-    const response = await httpClient.get<TaskMemory[]>(`/tasks/${id}/tree`);
-    return handleApiResponse(response);
+    return tasksApi.getTree(id);
   }
 
-  // Timer operations
+  // Timer operations - delegate to time tracking API
   static async startTimer(taskId: string): Promise<any> {
     console.log(`⏱️ Starting timer for task: ${taskId}`);
-
-    const response = await httpClient.post(`/tasks/${taskId}/timer/start`);
-    return handleApiResponse(response);
+    const { timeTrackingApi } = await import('../lib/api');
+    return timeTrackingApi.start(taskId);
   }
 
   static async stopTimer(taskId: string): Promise<any> {
     console.log(`⏱️ Stopping timer for task: ${taskId}`);
-
-    const response = await httpClient.post(`/tasks/${taskId}/timer/stop`);
-    return handleApiResponse(response);
+    const { timeTrackingApi } = await import('../lib/api');
+    return timeTrackingApi.stop(taskId);
   }
 
-  // Get time entries for a task
   static async getTaskTimeEntries(taskId: string): Promise<any[]> {
     console.log(`⏱️ Fetching time entries for task: ${taskId}`);
-
-    const response = await httpClient.get<any[]>(`/tasks/${taskId}/time-entries`);
-    return handleApiResponse(response);
+    const { timeTrackingApi } = await import('../lib/api');
+    return timeTrackingApi.getTaskTimeEntries(taskId);
   }
 
-  // Convenience methods for common task operations
+  // Convenience methods using new API
   static async getActiveTasks(): Promise<TaskMemory[]> {
-    return this.getTasks({
-      status: 'in_progress',
-      sort_by: 'updated_at',
-      sort_order: 'desc',
-    });
+    return tasksApi.getActive();
   }
 
   static async getPendingTasks(): Promise<TaskMemory[]> {
-    return this.getTasks({
-      status: 'pending',
-      sort_by: 'created_at',
-      sort_order: 'desc',
-    });
+    return tasksApi.getPending();
   }
 
   static async getCompletedTasks(limit: number = 20): Promise<TaskMemory[]> {
-    return this.getTasks({
-      status: 'completed',
-      sort_by: 'completion_date',
-      sort_order: 'desc',
-      limit,
-    });
+    return tasksApi.getCompleted(limit);
   }
 
   static async getRootTasks(): Promise<TaskMemory[]> {
-    return this.getTasks({
-      root_tasks_only: true,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
-      limit: 500,
-    });
+    return tasksApi.getRootTasks();
   }
 
   static async getOverdueTasks(): Promise<TaskMemory[]> {
-    const now = new Date().toISOString();
-    return this.getTasks({
-      due_before: now,
-      status: 'pending',
-      sort_by: 'due_date',
-      sort_order: 'asc',
-    });
+    return tasksApi.getOverdue();
   }
 
   static async searchTasks(query: string): Promise<TaskMemory[]> {
-    return this.getTasks({
-      search: query,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
-    });
+    return tasksApi.search(query);
   }
 
   static async getTasksByCategory(categoryId: string): Promise<TaskMemory[]> {
-    return this.getTasks({
-      category: categoryId,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
-    });
+    return tasksApi.getByCategory(categoryId);
   }
 
   static async getTasksByPriority(priority: Task['priority']): Promise<TaskMemory[]> {
-    return this.getTasks({
-      priority,
-      sort_by: 'due_date',
-      sort_order: 'asc',
-    });
+    return tasksApi.getByPriority(priority);
   }
 }
 
-// Category service
+// Category service - delegate to new categoriesApi
 export class CategoryService {
   static async getCategories(): Promise<Category[]> {
     console.log('🏷️ Fetching categories');
-
-    const response = await httpClient.get<Category[]>('/categories');
-    return handleApiResponse(response);
+    return categoriesApi.list();
   }
 
   static async createCategory(categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> {
     console.log('🏷️ Creating category:', categoryData.name);
-
-    const response = await httpClient.post<Category>('/categories', categoryData);
-    return handleApiResponse(response);
+    return categoriesApi.create(categoryData);
   }
 
   static async updateCategory(id: string, categoryData: Partial<Category>): Promise<Category> {
     console.log(`🏷️ Updating category: ${id}`);
-
-    const response = await httpClient.put<Category>(`/categories/${id}`, categoryData);
-    return handleApiResponse(response);
+    return categoriesApi.update(id, categoryData);
   }
 
   static async deleteCategory(id: string): Promise<void> {
     console.log(`🏷️ Deleting category: ${id}`);
-
-    const response = await httpClient.delete(`/categories/${id}`);
-    handleApiResponse(response);
+    return categoriesApi.delete(id);
   }
 }
