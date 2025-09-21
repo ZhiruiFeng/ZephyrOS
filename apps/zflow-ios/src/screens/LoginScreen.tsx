@@ -1,9 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen() {
-  const handleLogin = () => {
-    console.log('Login pressed');
+  const { signInWithGoogle, loading } = useAuth();
+
+  const handleLogin = async () => {
+    console.log('🔐 Login button pressed - starting Google OAuth...');
+    await signInWithGoogle();
   };
 
   return (
@@ -12,8 +17,19 @@ export default function LoginScreen() {
         <Text style={styles.title}>Welcome to ZFlow</Text>
         <Text style={styles.subtitle}>Sign in to access your personal AI workflow</Text>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Sign In</Text>
+        <TouchableOpacity
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="white" />
+              <Text style={styles.loginButtonText}>Signing In...</Text>
+            </View>
+          ) : (
+            <Text style={styles.loginButtonText}>Sign In with Google</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -50,6 +66,15 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     minWidth: 200,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#999',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   loginButtonText: {
     color: 'white',

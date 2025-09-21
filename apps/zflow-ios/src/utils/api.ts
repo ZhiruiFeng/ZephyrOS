@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// TODO: Replace with actual environment variables
+// Environment variables loaded from .env.local
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'your-supabase-url';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key';
 
