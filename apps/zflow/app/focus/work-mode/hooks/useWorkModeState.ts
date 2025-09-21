@@ -216,6 +216,37 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
     }
   }, [searchParams, tasks, selectedTask])
 
+  // Load notes when selectedTask changes (for URL-based task selection)
+  // Only update if notes are empty to avoid conflicts with manual task selection
+  useEffect(() => {
+    if (!selectedTask) {
+      setNotes('')
+      setOriginalNotes('')
+      return
+    }
+
+    // Only set notes if they're currently empty (indicating URL-based selection)
+    // Manual task selection via handleTaskSelect will handle notes independently
+    if (notes === '' && originalNotes === '') {
+      const taskNotes = selectedTask.content?.notes || ''
+      setNotes(taskNotes)
+      setOriginalNotes(taskNotes)
+
+      // Also update task info for the selected task
+      setTaskInfo({
+        title: selectedTask.content.title || '',
+        description: selectedTask.content.description || '',
+        status: selectedTask.content.status || 'pending',
+        priority: selectedTask.content.priority || 'medium',
+        progress: selectedTask.content.progress || 0,
+        due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
+        estimated_duration: selectedTask.content.estimated_duration || 0,
+        assignee: selectedTask.content.assignee || '',
+        tags: selectedTask.tags || []
+      })
+    }
+  }, [selectedTask?.id, selectedTask?.content, notes, originalNotes])
+
   // Auto-open subtasks panel for direct subtask links
   useEffect(() => {
     if (lastSubtaskIdRef.current !== subtaskIdParam) {
