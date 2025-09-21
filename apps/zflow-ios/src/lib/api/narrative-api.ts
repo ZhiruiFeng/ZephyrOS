@@ -114,7 +114,7 @@ export const seasonApi = {
     if (params?.offset) searchParams.set('offset', params.offset.toString());
 
     const queryString = searchParams.toString();
-    const response = await authenticatedFetch(`${API_BASE}/narrative/seasons${queryString ? `?${queryString}` : ''}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons${queryString ? `?${queryString}` : ''}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch seasons' }));
@@ -126,7 +126,7 @@ export const seasonApi = {
 
   async get(id: string, includeEpisodes = false): Promise<SeasonWithEpisodes> {
     const query = includeEpisodes ? '?include_episodes=true' : '';
-    const response = await authenticatedFetch(`${API_BASE}/narrative/seasons/${id}${query}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons/${id}${query}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch season' }));
@@ -137,7 +137,7 @@ export const seasonApi = {
   },
 
   async create(data: CreateSeasonRequest): Promise<Season> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/seasons`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -151,7 +151,7 @@ export const seasonApi = {
   },
 
   async update(id: string, data: UpdateSeasonRequest): Promise<Season> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/seasons/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -165,7 +165,7 @@ export const seasonApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/seasons/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons/${id}`, {
       method: 'DELETE',
     });
 
@@ -177,7 +177,7 @@ export const seasonApi = {
 
   async getCurrent(): Promise<Season | null> {
     try {
-      const response = await authenticatedFetch(`${API_BASE}/narrative/seasons/current`);
+      const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons/current`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -197,7 +197,7 @@ export const seasonApi = {
   },
 
   async generateRecap(id: string): Promise<SeasonRecapResponse> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/seasons/${id}/recap`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/seasons/${id}/recap`, {
       method: 'POST',
     });
 
@@ -227,7 +227,7 @@ export const episodeApi = {
     if (params?.date_to) searchParams.set('date_to', params.date_to);
 
     const queryString = searchParams.toString();
-    const response = await authenticatedFetch(`${API_BASE}/narrative/episodes${queryString ? `?${queryString}` : ''}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/episodes${queryString ? `?${queryString}` : ''}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch episodes' }));
@@ -238,7 +238,7 @@ export const episodeApi = {
   },
 
   async get(id: string): Promise<Episode> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/episodes/${id}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/episodes/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch episode' }));
@@ -249,7 +249,7 @@ export const episodeApi = {
   },
 
   async create(data: CreateEpisodeRequest): Promise<Episode> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/episodes`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/episodes`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -263,7 +263,7 @@ export const episodeApi = {
   },
 
   async update(id: string, data: UpdateEpisodeRequest): Promise<Episode> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/episodes/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/episodes/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -277,7 +277,7 @@ export const episodeApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/narrative/episodes/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/narrative/episodes/${id}`, {
       method: 'DELETE',
     });
 

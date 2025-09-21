@@ -38,7 +38,7 @@ export interface RunningTimerResponse {
 export const timeTrackingApi = {
   // Timer operations
   async start(taskId: string, options?: { autoSwitch?: boolean }): Promise<{ entry: TimeEntry }> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${taskId}/timer/start`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${taskId}/timer/start`, {
       method: 'POST',
       body: JSON.stringify(options || {}),
     });
@@ -52,7 +52,7 @@ export const timeTrackingApi = {
   },
 
   async stop(taskId: string, options?: { overrideEndAt?: string }): Promise<{ entry: TimeEntry }> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${taskId}/timer/stop`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${taskId}/timer/stop`, {
       method: 'POST',
       body: JSON.stringify(options || {}),
     });
@@ -66,7 +66,7 @@ export const timeTrackingApi = {
   },
 
   async getRunning(): Promise<RunningTimerResponse> {
-    const response = await authenticatedFetch(`${API_BASE}/time-entries/running`);
+    const response = await authenticatedFetch(`${API_BASE}/api/time-entries/running`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to get running timer' }));
@@ -96,7 +96,7 @@ export const timeTrackingApi = {
     }
 
     const endpoint = `/time-entries${searchParams.toString() ? `?${searchParams}` : ''}`;
-    const response = await authenticatedFetch(`${API_BASE}${endpoint}`);
+    const response = await authenticatedFetch(`${API_BASE}/api${endpoint}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch time entries' }));
@@ -108,7 +108,7 @@ export const timeTrackingApi = {
   },
 
   async getTimeEntry(id: string): Promise<TimeEntry> {
-    const response = await authenticatedFetch(`${API_BASE}/time-entries/${id}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/time-entries/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch time entry' }));
@@ -119,7 +119,7 @@ export const timeTrackingApi = {
   },
 
   async createTimeEntry(data: TimeEntryCreateRequest): Promise<TimeEntry> {
-    const response = await authenticatedFetch(`${API_BASE}/time-entries`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/time-entries`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -133,7 +133,7 @@ export const timeTrackingApi = {
   },
 
   async updateTimeEntry(id: string, data: TimeEntryUpdateRequest): Promise<TimeEntry> {
-    const response = await authenticatedFetch(`${API_BASE}/time-entries/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/time-entries/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -147,7 +147,7 @@ export const timeTrackingApi = {
   },
 
   async deleteTimeEntry(id: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/time-entries/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/time-entries/${id}`, {
       method: 'DELETE',
     });
 
@@ -169,7 +169,7 @@ export const timeTrackingApi = {
 
   // Activity timer operations
   async startActivity(activityId: string): Promise<TimeEntry> {
-    const response = await authenticatedFetch(`${API_BASE}/timeline-items/${activityId}/time-entries`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/timeline-items/${activityId}/time-entries`, {
       method: 'POST',
       body: JSON.stringify({
         start_at: new Date().toISOString(),
@@ -186,7 +186,7 @@ export const timeTrackingApi = {
   },
 
   async stopActivity(timeEntryId: string): Promise<TimeEntry> {
-    const response = await authenticatedFetch(`${API_BASE}/time-entries/${timeEntryId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/time-entries/${timeEntryId}`, {
       method: 'PUT',
       body: JSON.stringify({
         end_at: new Date().toISOString()

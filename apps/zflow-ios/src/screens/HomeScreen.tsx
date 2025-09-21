@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,9 +8,13 @@ import StatisticsCards, { ViewKey } from '../components/StatisticsCards';
 import FilterControls from '../components/FilterControls';
 import TaskEditor from '../components/TaskEditor';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
+// import { useTaskTimer } from '../hooks/useZMemoryApi';
 import CurrentView from '../components/views/CurrentView';
 import FutureView from '../components/views/FutureView';
 import ArchiveView from '../components/views/ArchiveView';
+import TimelineView from '../components/views/TimelineView';
+import TimelineStats, { TimelineDetailedStats } from '../components/TimelineStats';
+import DateSelector from '../components/DateSelector';
 import MobileCategorySheet from '../components/MobileCategorySheet';
 import {
   useTasks,
@@ -20,6 +24,7 @@ import {
   useDeleteTask,
   useCreateCategory
 } from '../hooks/useZMemoryApi';
+import { useTimeline, TimelineItem } from '../hooks/useTimeline';
 
 interface HomeScreenProps {
   onScroll?: (event: any) => void;
@@ -33,8 +38,11 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
   const theme = useTheme();
   const [activeView, setActiveView] = useState<ViewKey>('current');
   const [mainViewMode, setMainViewMode] = useState<MainViewMode>('tasks');
+  const [timelineViewMode, setTimelineViewMode] = useState<'timeline' | 'stats'>('timeline');
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [displayMode, setDisplayMode] = useState<'list' | 'grid'>('list');
   const [showTaskEditor, setShowTaskEditor] = useState(false);
+  
   const [editingTask, setEditingTask] = useState<TaskMemory | null>(null);
   const [showMobileCategorySheet, setShowMobileCategorySheet] = useState(false);
 
@@ -63,6 +71,18 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
   const { deleteTask } = useDeleteTask();
   const { createCategory } = useCreateCategory();
 
+  // Timer functionality (TODO: Implement timer state management)
+  // const { startTimer, stopTimer } = useTaskTimer();
+
+  // Timeline data
+  const { timelineData, isLoading: timelineLoading, refetch: refetchTimeline } = useTimeline(selectedDate);
+
+  // CRUD Operations
+  const handleCreateTask = useCallback(() => {
+    setEditingTask(null);
+    setShowTaskEditor(true);
+  }, []);
+
   // Show error alert if tasks fail to load
   useEffect(() => {
     if (tasksError) {
@@ -75,7 +95,7 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
     if (onRegisterAddTask) {
       onRegisterAddTask(handleCreateTask);
     }
-  }, [onRegisterAddTask]);
+  }, [onRegisterAddTask, handleCreateTask]);
 
   // Apply filtering with proper task categorization
   const {
@@ -89,6 +109,7 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
     search,
     filterPriority,
     sortMode,
+    timerRunningTaskId: undefined, // TODO: Add timer state management
   });
 
   // Calculate category counts like the web version
@@ -146,18 +167,10 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
     archive: taskStats?.archive || 0,
   };
 
-
-
-  // CRUD Operations
-  const handleCreateTask = () => {
-    setEditingTask(null);
-    setShowTaskEditor(true);
-  };
-
-  const handleEditTask = (task: TaskMemory) => {
+  const handleEditTask = useCallback((task: TaskMemory) => {
     setEditingTask(task);
     setShowTaskEditor(true);
-  };
+  }, []);
 
   const handleSaveTask = async (taskId: string | null, data: any) => {
     try {
@@ -176,7 +189,7 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
     }
   };
 
-  const handleDeleteTask = (task: TaskMemory) => {
+  const handleDeleteTask = useCallback((task: TaskMemory) => {
     Alert.alert(
       'Delete Task',
       `Are you sure you want to delete "${task.content.title}"?`,
@@ -197,9 +210,9 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
         }
       ]
     );
-  };
+  }, [deleteTask, refetchTasks]);
 
-  const handleToggleComplete = async (task: TaskMemory) => {
+  const handleToggleComplete = useCallback(async (task: TaskMemory) => {
     try {
       const newStatus = task.content.status === 'completed' ? 'pending' : 'completed';
       await updateTask(task.id, {
@@ -210,7 +223,47 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
       console.error('❌ Error updating task status:', error);
       Alert.alert('Error', 'Failed to update task status. Please try again.');
     }
-  };
+  }, [updateTask, refetchTasks]);
+
+  // Timeline event handlers
+  const handleTimelineItemClick = useCallback((item: TimelineItem) => {
+    // TODO: Implement navigation to detailed view
+    console.log('Timeline item clicked:', item);
+  }, []);
+
+  const handleEditTimelineItem = useCallback((item: TimelineItem) => {
+    // TODO: Implement timeline item editing
+    console.log('Edit timeline item:', item);
+  }, []);
+
+  const handleDeleteTimelineItem = useCallback((item: TimelineItem) => {
+    // TODO: Implement timeline item deletion
+    console.log('Delete timeline item:', item);
+  }, []);
+
+  // Additional callback handlers
+  const handleOpenMobileCategorySelector = useCallback(() => {
+    setShowMobileCategorySheet(true);
+  }, []);
+
+  const handleOpenFocus = useCallback(() => {
+    console.log('Navigate to Focus');
+    // TODO: Implement focus navigation
+  }, []);
+
+  const handleOpenTimeModal = useCallback(() => {
+    console.log('Open Time Modal');
+    // TODO: Implement time modal
+  }, []);
+
+  const handleCloseTaskEditor = useCallback(() => {
+    setShowTaskEditor(false);
+    setEditingTask(null);
+  }, []);
+
+  const handleDismissMobileCategorySheet = useCallback(() => {
+    setShowMobileCategorySheet(false);
+  }, []);
 
   // Get priority icon based on web version
   const getPriorityIcon = (priority: string) => {
@@ -316,12 +369,12 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return '#10B981';
-      case 'in_progress': return '#3B82F6';
-      case 'pending': return '#F59E0B';
-      case 'cancelled': return '#EF4444';
-      case 'on_hold': return '#6B7280';
-      default: return '#6B7280';
+      case 'completed': return '#059669'; // green-600 to match zflow
+      case 'in_progress': return '#2563eb'; // blue-600 to match zflow
+      case 'pending': return '#6b7280'; // gray-500 to match zflow
+      case 'cancelled': return '#dc2626'; // red-600 to match zflow
+      case 'on_hold': return '#d97706'; // amber-600 to match zflow
+      default: return '#6b7280';
     }
   };
 
@@ -392,9 +445,102 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
 
           {/* Content based on view mode */}
           {mainViewMode === 'timeline' ? (
-            <View style={styles.timelineContainer}>
-              <Text style={styles.comingSoonText}>Timeline view coming soon...</Text>
-            </View>
+            <>
+              {/* Timeline View Mode Toggle */}
+              <View style={styles.timelineViewToggle}>
+                <View style={styles.timelineToggleContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.timelineToggleButton,
+                      timelineViewMode === 'timeline' && styles.timelineToggleButtonActive
+                    ]}
+                    onPress={() => setTimelineViewMode('timeline')}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={16}
+                      color={timelineViewMode === 'timeline' ? '#fff' : '#6b7280'}
+                    />
+                    <Text style={[
+                      styles.timelineToggleButtonText,
+                      timelineViewMode === 'timeline' && styles.timelineToggleButtonTextActive
+                    ]}>
+                      Timeline
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.timelineToggleButton,
+                      timelineViewMode === 'stats' && styles.timelineToggleButtonActive
+                    ]}
+                    onPress={() => setTimelineViewMode('stats')}
+                  >
+                    <Ionicons
+                      name="bar-chart-outline"
+                      size={16}
+                      color={timelineViewMode === 'stats' ? '#fff' : '#6b7280'}
+                    />
+                    <Text style={[
+                      styles.timelineToggleButtonText,
+                      timelineViewMode === 'stats' && styles.timelineToggleButtonTextActive
+                    ]}>
+                      Statistics
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Date Selector */}
+              <DateSelector
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+              />
+
+              {/* Timeline Stats */}
+              <TimelineStats
+                timelineData={timelineData}
+                t={{
+                  ui: {
+                    recorded: 'Total Duration',
+                    statistics: 'Statistics',
+                    categories: 'Categories',
+                  },
+                  task: {
+                    tags: 'Tags',
+                  }
+                }}
+              />
+
+              {/* Timeline Content */}
+              {timelineViewMode === 'timeline' ? (
+                <TimelineView
+                  selectedDate={selectedDate}
+                  timelineItems={timelineData.items}
+                  loading={timelineLoading}
+                  onItemClick={handleTimelineItemClick}
+                  onEditItem={handleEditTimelineItem}
+                  onDeleteItem={handleDeleteTimelineItem}
+                  refetchTimeline={refetchTimeline}
+                  t={{
+                    common: {
+                      loading: 'Loading...',
+                    }
+                  }}
+                />
+              ) : (
+                <TimelineDetailedStats
+                  timelineData={timelineData}
+                  t={{
+                    ui: {
+                      statistics: 'Record Type Breakdown',
+                      task: 'Task',
+                      activity: 'Activity',
+                      noData: 'No data',
+                    }
+                  }}
+                />
+              )}
+            </>
           ) : (
             <>
               {/* Statistics Cards */}
@@ -422,15 +568,9 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
                 onCategoryChange={setSelectedCategory}
                 onSortModeChange={setSortMode}
                 onDisplayModeChange={setDisplayMode}
-                onOpenMobileCategorySelector={() => setShowMobileCategorySheet(true)}
-                onOpenFocus={() => {
-                  console.log('Navigate to Focus');
-                  // TODO: Implement focus navigation
-                }}
-                onOpenTimeModal={() => {
-                  console.log('Open Time Modal');
-                  // TODO: Implement time modal
-                }}
+                onOpenMobileCategorySelector={handleOpenMobileCategorySelector}
+                onOpenFocus={handleOpenFocus}
+                onOpenTimeModal={handleOpenTimeModal}
                 categories={categories}
               />
 
@@ -477,10 +617,7 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
       {/* Task Editor Modal */}
       <TaskEditor
         isOpen={showTaskEditor}
-        onClose={() => {
-          setShowTaskEditor(false);
-          setEditingTask(null);
-        }}
+        onClose={handleCloseTaskEditor}
         task={editingTask}
         onSave={handleSaveTask}
         title={editingTask ? 'Edit Task' : 'Create Task'}
@@ -489,7 +626,7 @@ export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenPr
       {/* Mobile Category Sheet */}
       <MobileCategorySheet
         visible={showMobileCategorySheet}
-        onDismiss={() => setShowMobileCategorySheet(false)}
+        onDismiss={handleDismissMobileCategorySheet}
         categories={categories}
         counts={categoryCounts}
         selected={selectedCategory}
@@ -695,5 +832,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
     fontWeight: '500',
+  },
+  timelineViewToggle: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  timelineToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 25,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  timelineToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    gap: 8,
+  },
+  timelineToggleButtonActive: {
+    backgroundColor: '#0284c7',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  timelineToggleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  timelineToggleButtonTextActive: {
+    color: '#fff',
   },
 });

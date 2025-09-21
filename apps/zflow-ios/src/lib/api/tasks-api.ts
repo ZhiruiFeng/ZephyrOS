@@ -28,7 +28,7 @@ export const tasksApi = {
     }
 
     const endpoint = `/tasks${searchParams.toString() ? `?${searchParams}` : ''}`;
-    const response = await authenticatedFetch(`${API_BASE}${endpoint}`);
+    const response = await authenticatedFetch(`${API_BASE}/api${endpoint}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch tasks' }));
@@ -40,7 +40,7 @@ export const tasksApi = {
   },
 
   async get(id: string): Promise<TaskMemory> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${id}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch task' }));
@@ -70,7 +70,7 @@ export const tasksApi = {
       tags: task.tags || [],
     };
 
-    const response = await authenticatedFetch(`${API_BASE}/tasks`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks`, {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -104,7 +104,7 @@ export const tasksApi = {
       updateData.tags = updates.tags;
     }
 
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -118,7 +118,7 @@ export const tasksApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${id}`, {
       method: 'DELETE',
     });
 
@@ -136,7 +136,7 @@ export const tasksApi = {
   },
 
   async getUpdatedToday(): Promise<TaskMemory[]> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/updated-today`);
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/updated-today`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch updated tasks' }));
@@ -148,7 +148,7 @@ export const tasksApi = {
   },
 
   async getTree(id: string): Promise<TaskMemory[]> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${id}/tree`);
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${id}/tree`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch task tree' }));

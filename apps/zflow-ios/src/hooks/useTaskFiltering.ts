@@ -9,6 +9,7 @@ interface UseTaskFilteringProps {
   search: string;
   filterPriority: 'all' | 'low' | 'medium' | 'high' | 'urgent';
   sortMode: SortMode;
+  timerRunningTaskId?: string;
 }
 
 interface UseTaskFilteringReturn {
@@ -31,6 +32,7 @@ export function useTaskFiltering({
   search,
   filterPriority,
   sortMode,
+  timerRunningTaskId,
 }: UseTaskFilteringProps): UseTaskFilteringReturn {
   const now = Date.now();
   const windowMs = 24 * 60 * 60 * 1000; // 24 hours
@@ -92,8 +94,35 @@ export function useTaskFiltering({
       }
       return false;
     });
-    return sortTasks(list, sortMode);
-  }, [filteredByCommon, sortMode, now, windowMs]);
+    
+    // Sort with timing tasks first, then in_progress, then pending, then completed last
+    const sorted = sortTasks(list, sortMode);
+    return sorted.sort((a, b) => {
+      const aStatus = a.content.status;
+      const bStatus = b.content.status;
+      const aIsTiming = timerRunningTaskId === a.id;
+      const bIsTiming = timerRunningTaskId === b.id;
+      
+      // Timing tasks always come first
+      if (aIsTiming && !bIsTiming) return -1;
+      if (bIsTiming && !aIsTiming) return 1;
+      
+      // Then in_progress tasks come second
+      if (aStatus === 'in_progress' && bStatus !== 'in_progress') return -1;
+      if (bStatus === 'in_progress' && aStatus !== 'in_progress') return 1;
+      
+      // Then pending tasks come third
+      if (aStatus === 'pending' && bStatus === 'completed') return -1;
+      if (bStatus === 'pending' && aStatus === 'completed') return 1;
+      
+      // Completed tasks come last
+      if (aStatus === 'completed' && bStatus !== 'completed') return 1;
+      if (bStatus === 'completed' && aStatus !== 'completed') return -1;
+      
+      // Keep original order for same status
+      return 0;
+    });
+  }, [filteredByCommon, sortMode, timerRunningTaskId, now, windowMs]);
 
   // Future: on_hold
   const futureList = useMemo(() => {

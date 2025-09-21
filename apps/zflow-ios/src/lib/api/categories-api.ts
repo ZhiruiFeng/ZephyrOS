@@ -3,7 +3,7 @@ import { Category } from '../../types/task';
 
 export const categoriesApi = {
   async list(): Promise<Category[]> {
-    const response = await authenticatedFetch(`${API_BASE}/categories`);
+    const response = await authenticatedFetch(`${API_BASE}/api/categories`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch categories' }));
@@ -16,7 +16,7 @@ export const categoriesApi = {
   },
 
   async get(id: string): Promise<Category> {
-    const response = await authenticatedFetch(`${API_BASE}/categories/${id}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/categories/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch category' }));
@@ -33,7 +33,7 @@ export const categoriesApi = {
     color?: string;
     icon?: string;
   }): Promise<Category> {
-    const response = await authenticatedFetch(`${API_BASE}/categories`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/categories`, {
       method: 'POST',
       body: JSON.stringify(category),
     });
@@ -48,7 +48,7 @@ export const categoriesApi = {
   },
 
   async update(id: string, updates: Partial<Category>): Promise<Category> {
-    const response = await authenticatedFetch(`${API_BASE}/categories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
@@ -63,7 +63,7 @@ export const categoriesApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/categories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/categories/${id}`, {
       method: 'DELETE',
     });
 

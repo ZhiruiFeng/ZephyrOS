@@ -206,12 +206,12 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return '#10B981';
-      case 'in_progress': return '#3B82F6';
-      case 'pending': return '#F59E0B';
-      case 'cancelled': return '#EF4444';
-      case 'on_hold': return '#6B7280';
-      default: return '#6B7280';
+      case 'completed': return '#059669'; // green-600 to match zflow
+      case 'in_progress': return '#2563eb'; // blue-600 to match zflow
+      case 'pending': return '#6b7280'; // gray-500 to match zflow
+      case 'cancelled': return '#dc2626'; // red-600 to match zflow
+      case 'on_hold': return '#d97706'; // amber-600 to match zflow
+      default: return '#6b7280';
     }
   };
 

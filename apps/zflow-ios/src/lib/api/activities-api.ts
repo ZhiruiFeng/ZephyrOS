@@ -107,7 +107,7 @@ export const activitiesApi = {
     }
 
     const endpoint = `/activities${searchParams.toString() ? `?${searchParams}` : ''}`;
-    const response = await authenticatedFetch(`${API_BASE}${endpoint}`);
+    const response = await authenticatedFetch(`${API_BASE}/api${endpoint}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch activities' }));
@@ -119,7 +119,7 @@ export const activitiesApi = {
   },
 
   async get(id: string): Promise<Activity> {
-    const response = await authenticatedFetch(`${API_BASE}/activities/${id}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/activities/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch activity' }));
@@ -139,7 +139,7 @@ export const activitiesApi = {
       completion_percentage: data.completion_percentage || 0,
     };
 
-    const response = await authenticatedFetch(`${API_BASE}/activities`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/activities`, {
       method: 'POST',
       body: JSON.stringify(activityData),
     });
@@ -153,7 +153,7 @@ export const activitiesApi = {
   },
 
   async update(id: string, data: ActivityUpdateRequest): Promise<Activity> {
-    const response = await authenticatedFetch(`${API_BASE}/activities/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/activities/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -167,7 +167,7 @@ export const activitiesApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/activities/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/activities/${id}`, {
       method: 'DELETE',
     });
 
@@ -300,7 +300,7 @@ export const activitiesApi = {
   },
 
   async createRecurringInstance(parentId: string, instanceDate: string): Promise<Activity> {
-    const response = await authenticatedFetch(`${API_BASE}/activities/${parentId}/instances`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/activities/${parentId}/instances`, {
       method: 'POST',
       body: JSON.stringify({ instance_date: instanceDate }),
     });
@@ -321,7 +321,7 @@ export const activitiesApi = {
 
   // Time tracking integration
   async startTimer(id: string): Promise<any> {
-    const response = await authenticatedFetch(`${API_BASE}/activities/${id}/timer/start`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/activities/${id}/timer/start`, {
       method: 'POST',
     });
 
@@ -334,7 +334,7 @@ export const activitiesApi = {
   },
 
   async stopTimer(id: string): Promise<any> {
-    const response = await authenticatedFetch(`${API_BASE}/activities/${id}/timer/stop`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/activities/${id}/timer/stop`, {
       method: 'POST',
     });
 
@@ -376,7 +376,7 @@ export const activitiesApi = {
     }
 
     const endpoint = `/activities/stats${searchParams.toString() ? `?${searchParams}` : ''}`;
-    const response = await authenticatedFetch(`${API_BASE}${endpoint}`);
+    const response = await authenticatedFetch(`${API_BASE}/api${endpoint}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch activity stats' }));

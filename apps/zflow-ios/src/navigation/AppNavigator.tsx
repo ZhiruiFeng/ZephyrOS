@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -6,7 +6,6 @@ import { Surface, Text, useTheme } from 'react-native-paper';
 
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
-import TasksScreen from '../screens/TasksScreen';
 import FocusScreen from '../screens/FocusScreen';
 import NarrativeScreen from '../screens/NarrativeScreen';
 import { useAuth } from '../contexts/AuthContext';
@@ -71,22 +70,26 @@ function MainTabs() {
     { key: 'Narrative', label: 'Narrative', icon: 'book-outline' as const, iconFocused: 'book' as const },
   ];
 
-  const handleTabPress = (tab: string) => {
+  const handleTabPress = useCallback((tab: string) => {
     setActiveTab(tab);
-  };
+  }, []);
 
-  const handleAddPress = () => {
+  const handleAddPress = useCallback(() => {
     if (addTaskCallback) {
       addTaskCallback();
     } else {
       console.log('Add button pressed - no callback registered');
     }
-  };
+  }, [addTaskCallback]);
+
+  const handleRegisterAddTask = useCallback((callback: () => void) => {
+    setAddTaskCallback(() => callback);
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview':
-        return <HomeScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
+        return <HomeScreen onScroll={handleScroll} onRegisterAddTask={handleRegisterAddTask} />;
       case 'Focus':
         return <FocusScreen />;
       case 'Agents':
@@ -94,7 +97,7 @@ function MainTabs() {
       case 'Narrative':
         return <NarrativeScreen onScroll={handleScroll} />;
       default:
-        return <HomeScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
+        return <HomeScreen onScroll={handleScroll} onRegisterAddTask={handleRegisterAddTask} />;
     }
   };
 

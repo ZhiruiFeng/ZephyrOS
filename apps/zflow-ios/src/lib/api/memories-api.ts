@@ -105,7 +105,7 @@ export interface MemoryAnchor {
 
 export const memoriesApi = {
   async create(data: MemoryCreateInput): Promise<Memory> {
-    const response = await authenticatedFetch(`${API_BASE}/memories`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -119,7 +119,7 @@ export const memoriesApi = {
   },
 
   async getById(id: string): Promise<Memory> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${id}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${id}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch memory' }));
@@ -130,7 +130,7 @@ export const memoriesApi = {
   },
 
   async update(id: string, data: MemoryUpdateInput): Promise<Memory> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -144,7 +144,7 @@ export const memoriesApi = {
   },
 
   async delete(id: string): Promise<{ message: string }> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${id}`, {
       method: 'DELETE',
     });
 
@@ -187,7 +187,7 @@ export const memoriesApi = {
     const endpoint = queryString ? `?${queryString}` : '';
 
     try {
-      const response = await authenticatedFetch(`${API_BASE}/memories${endpoint}`);
+      const response = await authenticatedFetch(`${API_BASE}/api/memories${endpoint}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to search memories' }));
@@ -221,7 +221,7 @@ export const memoriesApi = {
   },
 
   async autoEnhance(memoryId: string): Promise<Memory> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/auto-enhance`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${memoryId}/auto-enhance`, {
       method: 'POST',
     });
 
@@ -241,7 +241,7 @@ export const memoriesApi = {
     suggested_tags?: string[];
     salience_score?: number;
   }> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/analyze`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/analyze`, {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
@@ -255,7 +255,7 @@ export const memoriesApi = {
   },
 
   async getWeeklyReview(weekStart: string): Promise<WeeklyReview> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/reviews/weekly?week_start=${weekStart}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/reviews/weekly?week_start=${weekStart}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to get weekly review' }));
@@ -270,7 +270,7 @@ export const memoriesApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/assets`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${memoryId}/assets`, {
       method: 'POST',
       body: formData,
       headers: {} // Don't set Content-Type for FormData
@@ -285,7 +285,7 @@ export const memoriesApi = {
   },
 
   async deleteAsset(memoryId: string, assetId: string): Promise<{ message: string }> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/assets/${assetId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${memoryId}/assets/${assetId}`, {
       method: 'DELETE',
     });
 
@@ -313,7 +313,7 @@ export const memoriesApi = {
     if (typeof params?.offset === 'number') searchParams.set('offset', String(params.offset));
     const qs = searchParams.toString();
 
-    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/anchors${qs ? `?${qs}` : ''}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${memoryId}/anchors${qs ? `?${qs}` : ''}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to get memory anchors' }));
@@ -330,7 +330,7 @@ export const memoriesApi = {
     weight?: number;
     notes?: string;
   }): Promise<{ memory_id: string; anchor_item_id: string; relation_type: string }> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/anchors`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${memoryId}/anchors`, {
       method: 'POST',
       body: JSON.stringify(anchor),
     });
@@ -344,7 +344,7 @@ export const memoriesApi = {
   },
 
   async deleteAnchor(memoryId: string, anchorId: string): Promise<{ message: string }> {
-    const response = await authenticatedFetch(`${API_BASE}/memories/${memoryId}/anchors/${anchorId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/memories/${memoryId}/anchors/${anchorId}`, {
       method: 'DELETE',
     });
 

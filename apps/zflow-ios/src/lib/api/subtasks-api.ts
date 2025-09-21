@@ -38,7 +38,7 @@ export const subtasksApi = {
     }
 
     const endpoint = `/tasks?${searchParams.toString()}`;
-    const response = await authenticatedFetch(`${API_BASE}${endpoint}`);
+    const response = await authenticatedFetch(`${API_BASE}/api${endpoint}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch subtasks' }));
@@ -51,7 +51,7 @@ export const subtasksApi = {
 
   // Get task hierarchy/tree
   async getTaskTree(rootTaskId: string): Promise<TaskMemory[]> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${rootTaskId}/tree`);
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${rootTaskId}/tree`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch task tree' }));
@@ -81,7 +81,7 @@ export const subtasksApi = {
       tags: [],
     };
 
-    const response = await authenticatedFetch(`${API_BASE}/tasks`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks`, {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -112,7 +112,7 @@ export const subtasksApi = {
       });
     }
 
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${subtaskId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${subtaskId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -127,7 +127,7 @@ export const subtasksApi = {
 
   // Delete a subtask
   async delete(subtaskId: string): Promise<void> {
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${subtaskId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${subtaskId}`, {
       method: 'DELETE',
     });
 
@@ -150,7 +150,7 @@ export const subtasksApi = {
       }
     };
 
-    const response = await authenticatedFetch(`${API_BASE}/tasks/${subtaskId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/tasks/${subtaskId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
