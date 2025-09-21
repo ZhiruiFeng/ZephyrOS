@@ -10,6 +10,8 @@ import TasksScreen from '../screens/TasksScreen';
 import NarrativeScreen from '../screens/NarrativeScreen';
 import { useAuth } from '../contexts/AuthContext';
 import CustomBottomNav from '../components/navigation/CustomBottomNav';
+import GlobalHeader from '../components/navigation/GlobalHeader';
+import { useScrollToHideNav } from '../hooks/useScrollToHideNav';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -58,9 +60,11 @@ function PlaceholderScreen({ title, subtitle }: { title: string; subtitle: strin
 
 function MainTabs() {
   const [activeTab, setActiveTab] = useState('Overview');
+  const { isNavVisible, handleScroll } = useScrollToHideNav();
+  const [addTaskCallback, setAddTaskCallback] = useState<(() => void) | null>(null);
 
   const tabs = [
-    { key: 'Overview', label: 'Overview', icon: 'checkbox-outline' as const, iconFocused: 'checkbox' as const },
+    { key: 'Overview', label: 'Overview', icon: 'list-outline' as const, iconFocused: 'list' as const },
     { key: 'Focus', label: 'Focus', icon: 'locate-outline' as const, iconFocused: 'locate' as const },
     { key: 'Agents', label: 'Agents', icon: 'chatbox-ellipses-outline' as const, iconFocused: 'chatbox-ellipses' as const },
     { key: 'Narrative', label: 'Narrative', icon: 'book-outline' as const, iconFocused: 'book' as const },
@@ -71,33 +75,40 @@ function MainTabs() {
   };
 
   const handleAddPress = () => {
-    console.log('Add button pressed');
-    // TODO: Navigate to add task screen
+    if (addTaskCallback) {
+      addTaskCallback();
+    } else {
+      console.log('Add button pressed - no callback registered');
+    }
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview':
-        return <HomeScreen />;
+        return <HomeScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
       case 'Focus':
-        return <TasksScreen />;
+        return <TasksScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
       case 'Agents':
         return <PlaceholderScreen title="Agents" subtitle="AI assistants and automation" />;
       case 'Narrative':
-        return <NarrativeScreen />;
+        return <NarrativeScreen onScroll={handleScroll} />;
       default:
-        return <HomeScreen />;
+        return <HomeScreen onScroll={handleScroll} onRegisterAddTask={setAddTaskCallback} />;
     }
   };
 
   return (
     <View style={{ flex: 1 }}>
-      {renderContent()}
+      <GlobalHeader />
+      <View style={{ flex: 1 }}>
+        {renderContent()}
+      </View>
       <CustomBottomNav
         tabs={tabs}
         activeTab={activeTab}
         onTabPress={handleTabPress}
         onAddPress={handleAddPress}
+        isVisible={isNavVisible}
       />
     </View>
   );

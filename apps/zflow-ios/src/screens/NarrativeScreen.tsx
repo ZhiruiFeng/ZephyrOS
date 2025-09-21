@@ -3,7 +3,11 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Surface, Text, Button, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function NarrativeScreen() {
+interface NarrativeScreenProps {
+  onScroll?: (event: any) => void;
+}
+
+export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
   const theme = useTheme();
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
 
@@ -108,7 +112,12 @@ export default function NarrativeScreen() {
         </Text>
       </Surface>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
         <View style={styles.content}>
           {/* Welcome Card */}
           <View style={styles.welcomeCard}>

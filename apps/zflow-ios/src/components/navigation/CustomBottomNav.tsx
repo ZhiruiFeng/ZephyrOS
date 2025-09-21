@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TabItem {
   key: string;
@@ -14,9 +15,20 @@ interface CustomBottomNavProps {
   activeTab: string;
   onTabPress: (tab: string) => void;
   onAddPress: () => void;
+  isVisible?: boolean;
 }
 
-export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPress }: CustomBottomNavProps) {
+export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPress, isVisible = true }: CustomBottomNavProps) {
+  const insets = useSafeAreaInsets();
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(translateY, {
+      toValue: isVisible ? 0 : 100,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isVisible, translateY]);
 
   const renderTab = (tab: TabItem) => {
     const isActive = activeTab === tab.key;
@@ -30,7 +42,7 @@ export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPres
       >
         <Ionicons
           name={isActive ? tab.iconFocused : tab.icon}
-          size={20}
+          size={18}
           color={isActive ? '#0284c7' : '#6b7280'}
         />
         <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
@@ -41,7 +53,13 @@ export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPres
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[
+      styles.container, 
+      { 
+        paddingBottom: insets.bottom,
+        transform: [{ translateY }]
+      }
+    ]}>
       <View style={styles.innerContainer}>
         {/* First two tabs */}
         {tabs.slice(0, 2).map((tab) => renderTab(tab))}
@@ -53,14 +71,14 @@ export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPres
             onPress={onAddPress}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={24} color="#ffffff" />
+            <Ionicons name="add" size={18} color="#ffffff" />
           </TouchableOpacity>
         </View>
 
         {/* Last two tabs */}
         {tabs.slice(2).map((tab) => renderTab(tab))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -74,7 +92,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     zIndex: 40,
-    paddingTop: 12, // Add padding to accommodate FAB overlap
+    paddingTop: 2, // Minimized padding
+    // Add safe area bottom padding for iOS devices
+    paddingBottom: 0, // Will be handled by safe area
   },
   innerContainer: {
     maxWidth: 1280, // max-w-7xl equivalent
@@ -89,19 +109,19 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8, // py-2 equivalent
-    gap: 4, // gap-1 equivalent
-    minHeight: 44, // iOS minimum touch target
+    paddingVertical: 2, // Minimized padding
+    gap: 1, // Minimized gap
+    minHeight: 28, // Minimized minimum height
   },
   tabLabel: {
-    fontSize: 11,
-    lineHeight: 11,
+    fontSize: 10, // Smaller to match web mobile
+    lineHeight: 10,
     color: '#6b7280',
     fontWeight: '400',
     textAlign: 'center',
   },
   tabLabelActive: {
-    color: '#0284c7',
+    color: '#0284c7', // primary-600 color
   },
   fabContainer: {
     flex: 1, // Takes equal space like the tabs
@@ -111,21 +131,21 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    top: -28, // Lift it higher so border goes under it like web app
-    width: 56, // w-14 equivalent
-    height: 56, // h-14 equivalent
-    borderRadius: 28,
-    backgroundColor: '#0284c7',
+    top: -16, // Adjusted for minimized nav bar height
+    width: 48, // Smaller FAB
+    height: 48, // Smaller FAB
+    borderRadius: 22,
+    backgroundColor: '#0284c7', // primary-600 color
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 10,
+      height: 2, // Reduced shadow to match web
     },
     shadowOpacity: 0.1,
-    shadowRadius: 15,
-    elevation: 8, // Android shadow
+    shadowRadius: 4, // Reduced shadow radius
+    elevation: 4, // Android shadow
     zIndex: 50,
   },
 });

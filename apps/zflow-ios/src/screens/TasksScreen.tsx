@@ -9,7 +9,12 @@ import FilterControls from '../components/FilterControls';
 import SwipeableTaskItem from '../components/SwipeableTaskItem';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 
-export default function TasksScreen() {
+interface TasksScreenProps {
+  onScroll?: (event: any) => void;
+  onRegisterAddTask?: (callback: () => void) => void;
+}
+
+export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreenProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskMemory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +68,13 @@ export default function TasksScreen() {
       fetchTasks();
     }
   }, [user]);
+
+  // Register the add task callback with the parent navigator
+  useEffect(() => {
+    if (onRegisterAddTask) {
+      onRegisterAddTask(handleCreateTask);
+    }
+  }, [onRegisterAddTask]);
 
   const onRefresh = () => {
     setRefreshing(true);

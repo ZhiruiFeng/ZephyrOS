@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Searchbar, Menu, Button, useTheme } from 'react-native-paper';
+import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-native';
+import { Menu, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 
 export type SortMode = 'none' | 'priority' | 'due_date';
@@ -73,13 +73,16 @@ export default function FilterControls({
   return (
     <View style={styles.container}>
       {/* Search Bar */}
-      <Searchbar
-        placeholder="Search tasks..."
-        onChangeText={onSearchChange}
-        value={search}
-        style={styles.searchBar}
-        inputStyle={styles.searchInput}
-      />
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={16} color="#6b7280" style={styles.searchIcon} />
+        <TextInput
+          placeholder="Search tasks..."
+          onChangeText={onSearchChange}
+          value={search}
+          style={styles.searchInput}
+          placeholderTextColor="#9ca3af"
+        />
+      </View>
 
       {/* Filter Row */}
       <View style={styles.filterRow}>
@@ -88,20 +91,15 @@ export default function FilterControls({
           visible={priorityMenuVisible}
           onDismiss={() => setPriorityMenuVisible(false)}
           anchor={
-            <Button
-              mode="outlined"
-              onPress={() => setPriorityMenuVisible(true)}
+            <TouchableOpacity
               style={styles.filterButton}
-              contentStyle={styles.filterButtonContent}
-              labelStyle={styles.filterButtonLabel}
+              onPress={() => setPriorityMenuVisible(true)}
             >
-              <View style={styles.filterButtonInner}>
-                <Ionicons name="flag" size={16} color={theme.colors.primary} />
-                <View style={styles.filterButtonText}>
-                  {getCurrentPriorityLabel()}
-                </View>
-              </View>
-            </Button>
+              <Ionicons name="flag" size={16} color="#0284c7" />
+              <Text style={styles.filterButtonText}>
+                {getCurrentPriorityLabel()}
+              </Text>
+            </TouchableOpacity>
           }
         >
           {priorityOptions.map((option) => (
@@ -122,20 +120,15 @@ export default function FilterControls({
           visible={categoryMenuVisible}
           onDismiss={() => setCategoryMenuVisible(false)}
           anchor={
-            <Button
-              mode="outlined"
-              onPress={() => setCategoryMenuVisible(true)}
+            <TouchableOpacity
               style={styles.filterButton}
-              contentStyle={styles.filterButtonContent}
-              labelStyle={styles.filterButtonLabel}
+              onPress={() => setCategoryMenuVisible(true)}
             >
-              <View style={styles.filterButtonInner}>
-                <Ionicons name="folder" size={16} color={theme.colors.primary} />
-                <View style={styles.filterButtonText}>
-                  {getCurrentCategoryLabel()}
-                </View>
-              </View>
-            </Button>
+              <Ionicons name="folder" size={16} color="#0284c7" />
+              <Text style={styles.filterButtonText}>
+                {getCurrentCategoryLabel()}
+              </Text>
+            </TouchableOpacity>
           }
         >
           {categoryOptions.map((option) => (
@@ -156,20 +149,15 @@ export default function FilterControls({
           visible={sortMenuVisible}
           onDismiss={() => setSortMenuVisible(false)}
           anchor={
-            <Button
-              mode="outlined"
-              onPress={() => setSortMenuVisible(true)}
+            <TouchableOpacity
               style={styles.filterButton}
-              contentStyle={styles.filterButtonContent}
-              labelStyle={styles.filterButtonLabel}
+              onPress={() => setSortMenuVisible(true)}
             >
-              <View style={styles.filterButtonInner}>
-                <Ionicons name="swap-vertical" size={16} color={theme.colors.primary} />
-                <View style={styles.filterButtonText}>
-                  {getCurrentSortLabel()}
-                </View>
-              </View>
-            </Button>
+              <Ionicons name="swap-vertical" size={16} color="#0284c7" />
+              <Text style={styles.filterButtonText}>
+                {getCurrentSortLabel()}
+              </Text>
+            </TouchableOpacity>
           }
         >
           {sortOptions.map((option) => (
@@ -192,22 +180,34 @@ export default function FilterControls({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'transparent',
-    padding: 16,
     marginBottom: 16,
   },
-  searchBar: {
-    marginBottom: 16,
-    elevation: 2,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)', // glass effect
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   searchInput: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
   },
   filterRow: {
     flexDirection: 'row',
@@ -216,24 +216,29 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     flex: 1,
-    borderRadius: 8,
-  },
-  filterButtonContent: {
-    height: 40,
-  },
-  filterButtonLabel: {
-    fontSize: 14,
-  },
-  filterButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)', // glass effect
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   filterButtonText: {
-    marginLeft: 8,
-    fontSize: 14,
+    marginLeft: 6,
+    fontSize: 12,
     fontWeight: '500',
+    color: '#374151',
     flex: 1,
     textAlign: 'center',
   },

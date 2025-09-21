@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
 import { TaskService } from '../services/taskService';
 import { TaskMemory } from '../types/task';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,7 +10,12 @@ import SwipeableTaskItem from '../components/SwipeableTaskItem';
 import TaskEditor from '../components/TaskEditor';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 
-export default function HomeScreen() {
+interface HomeScreenProps {
+  onScroll?: (event: any) => void;
+  onRegisterAddTask?: (callback: () => void) => void;
+}
+
+export default function HomeScreen({ onScroll, onRegisterAddTask }: HomeScreenProps) {
   const { user } = useAuth();
   const theme = useTheme();
   const [tasks, setTasks] = useState<TaskMemory[]>([]);
@@ -54,6 +58,13 @@ export default function HomeScreen() {
       fetchTasks();
     }
   }, [user]);
+
+  // Register the add task callback with the parent navigator
+  useEffect(() => {
+    if (onRegisterAddTask) {
+      onRegisterAddTask(handleCreateTask);
+    }
+  }, [onRegisterAddTask]);
 
   // Calculate statistics based on current view logic
   const calculateStats = () => {
@@ -230,17 +241,13 @@ export default function HomeScreen() {
   }
 
   return (
-    <Surface style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Surface style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outline }]}>
-        <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
-          Overview
-        </Text>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          Your productivity dashboard
-        </Text>
-      </Surface>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
         <View style={styles.content}>
           {/* Statistics Cards */}
           <StatisticsCards
@@ -262,24 +269,6 @@ export default function HomeScreen() {
             categories={categories}
           />
 
-          {/* Quick Actions */}
-          <View style={styles.quickActions}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleCreateTask}>
-                <Ionicons name="add-circle" size={24} color="#0284c7" />
-                <Text style={styles.actionButtonText}>Add Task</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="time" size={24} color="#0284c7" />
-                <Text style={styles.actionButtonText}>Start Timer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="calendar" size={24} color="#0284c7" />
-                <Text style={styles.actionButtonText}>Today's Plan</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           {/* Recent Tasks */}
           <View style={styles.recentTasks}>
@@ -326,61 +315,27 @@ export default function HomeScreen() {
         onSave={handleSaveTask}
         title={editingTask ? 'Edit Task' : 'Create Task'}
       />
-    </Surface>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    elevation: 2,
+    backgroundColor: '#f0f9ff', // primary-50 background
   },
   scrollView: {
     flex: 1,
   },
   content: {
     padding: 16,
-  },
-  quickActions: {
-    marginBottom: 24,
+    paddingBottom: 100, // Add padding for bottom navigation
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
     marginBottom: 12,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#374151',
-    marginTop: 8,
-    textAlign: 'center',
   },
   recentTasks: {
     marginBottom: 24,
@@ -421,18 +376,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   taskCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)', // glass effect
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
   },
   taskContent: {
     padding: 16,
