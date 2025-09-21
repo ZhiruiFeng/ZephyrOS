@@ -2,19 +2,26 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-native';
 import { Menu, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import { Category } from '../types/task';
 
 export type SortMode = 'none' | 'priority' | 'due_date';
+export type DisplayMode = 'list' | 'grid';
 
 interface FilterControlsProps {
   search: string;
   filterPriority: 'all' | 'low' | 'medium' | 'high' | 'urgent';
   selectedCategory: 'all' | 'uncategorized' | string;
   sortMode: SortMode;
+  displayMode?: DisplayMode;
   onSearchChange: (value: string) => void;
   onPriorityChange: (value: 'all' | 'low' | 'medium' | 'high' | 'urgent') => void;
   onCategoryChange: (value: 'all' | 'uncategorized' | string) => void;
   onSortModeChange: (mode: SortMode) => void;
-  categories: Array<{ id: string; name: string }>;
+  onDisplayModeChange?: (mode: DisplayMode) => void;
+  onOpenMobileCategorySelector?: () => void;
+  onOpenFocus?: () => void;
+  onOpenTimeModal?: () => void;
+  categories: Category[];
 }
 
 export default function FilterControls({
@@ -22,10 +29,15 @@ export default function FilterControls({
   filterPriority,
   selectedCategory,
   sortMode,
+  displayMode = 'list',
   onSearchChange,
   onPriorityChange,
   onCategoryChange,
   onSortModeChange,
+  onDisplayModeChange,
+  onOpenMobileCategorySelector,
+  onOpenFocus,
+  onOpenTimeModal,
   categories,
 }: FilterControlsProps) {
   const theme = useTheme();
@@ -116,33 +128,15 @@ export default function FilterControls({
         </Menu>
 
         {/* Category Filter */}
-        <Menu
-          visible={categoryMenuVisible}
-          onDismiss={() => setCategoryMenuVisible(false)}
-          anchor={
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setCategoryMenuVisible(true)}
-            >
-              <Ionicons name="folder" size={16} color="#0284c7" />
-              <Text style={styles.filterButtonText}>
-                {getCurrentCategoryLabel()}
-              </Text>
-            </TouchableOpacity>
-          }
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={onOpenMobileCategorySelector}
         >
-          {categoryOptions.map((option) => (
-            <Menu.Item
-              key={option.value}
-              onPress={() => {
-                onCategoryChange(option.value as any);
-                setCategoryMenuVisible(false);
-              }}
-              title={option.label}
-              leadingIcon="folder"
-            />
-          ))}
-        </Menu>
+          <Ionicons name="folder" size={16} color="#0284c7" />
+          <Text style={styles.filterButtonText}>
+            {getCurrentCategoryLabel()}
+          </Text>
+        </TouchableOpacity>
 
         {/* Sort Filter */}
         <Menu
@@ -172,6 +166,65 @@ export default function FilterControls({
             />
           ))}
         </Menu>
+      </View>
+
+      {/* Action Buttons Row */}
+      <View style={styles.actionRow}>
+        {/* Display Mode Toggle */}
+        {onDisplayModeChange && (
+          <View style={styles.displayModeToggle}>
+            <TouchableOpacity
+              style={[
+                styles.displayModeButton,
+                displayMode === 'list' && styles.displayModeButtonActive
+              ]}
+              onPress={() => onDisplayModeChange('list')}
+            >
+              <Text style={[
+                styles.displayModeButtonText,
+                displayMode === 'list' && styles.displayModeButtonTextActive
+              ]}>
+                List
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.displayModeButton,
+                displayMode === 'grid' && styles.displayModeButtonActive
+              ]}
+              onPress={() => onDisplayModeChange('grid')}
+            >
+              <Ionicons
+                name="grid-outline"
+                size={14}
+                color={displayMode === 'grid' ? '#fff' : '#6b7280'}
+              />
+              <Text style={[
+                styles.displayModeButtonText,
+                displayMode === 'grid' && styles.displayModeButtonTextActive
+              ]}>
+                Grid
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          {onOpenFocus && (
+            <TouchableOpacity style={styles.focusButton} onPress={onOpenFocus}>
+              <Ionicons name="flash" size={16} color="#fff" />
+              <Text style={styles.focusButtonText}>Focus</Text>
+            </TouchableOpacity>
+          )}
+
+          {onOpenTimeModal && (
+            <TouchableOpacity style={styles.timeButton} onPress={onOpenTimeModal}>
+              <Ionicons name="time" size={16} color="#0284c7" />
+              <Text style={styles.timeButtonText}>Time</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -241,5 +294,104 @@ const styles = StyleSheet.create({
     color: '#374151',
     flex: 1,
     textAlign: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  displayModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)', // glass effect
+    borderRadius: 20,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  displayModeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  displayModeButtonActive: {
+    backgroundColor: '#0284c7', // primary-600
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  displayModeButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  displayModeButtonTextActive: {
+    color: '#fff',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  focusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0284c7', // primary-600
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  focusButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)', // glass effect
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  timeButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#0284c7',
   },
 });

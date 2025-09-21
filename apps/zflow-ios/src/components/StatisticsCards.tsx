@@ -13,13 +13,15 @@ interface StatisticsCardsProps {
   };
   activeView: ViewKey;
   onViewChange: (view: ViewKey) => void;
+  t?: any; // translations
 }
 
-export default function StatisticsCards({ stats, activeView, onViewChange }: StatisticsCardsProps) {
+export default function StatisticsCards({ stats, activeView, onViewChange, t }: StatisticsCardsProps) {
   const cards: Array<{
     key: ViewKey;
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
+    description: string;
     count: number;
     iconBgColor: string;
     iconColor: string;
@@ -30,6 +32,7 @@ export default function StatisticsCards({ stats, activeView, onViewChange }: Sta
       key: 'current' as ViewKey,
       icon: 'hourglass-outline',
       title: 'Current',
+      description: `${t?.ui?.inProgress || 'In Progress'} + Completed within 24h`,
       count: stats.current,
       iconBgColor: '#dbeafe', // primary-100
       iconColor: '#0284c7', // primary-600
@@ -40,6 +43,7 @@ export default function StatisticsCards({ stats, activeView, onViewChange }: Sta
       key: 'future' as ViewKey,
       icon: 'list-outline',
       title: 'Future',
+      description: t?.ui?.backlogItems || 'Backlog Items',
       count: stats.future,
       iconBgColor: '#bfdbfe', // primary-200
       iconColor: '#1d4ed8', // primary-700
@@ -50,6 +54,7 @@ export default function StatisticsCards({ stats, activeView, onViewChange }: Sta
       key: 'archive' as ViewKey,
       icon: 'archive-outline',
       title: 'Archive',
+      description: 'Archived + Cancelled',
       count: stats.archive,
       iconBgColor: '#93c5fd', // primary-300
       iconColor: '#1e3a8a', // primary-800
@@ -79,12 +84,20 @@ export default function StatisticsCards({ stats, activeView, onViewChange }: Sta
             activeOpacity={0.8}
           >
             <View style={styles.cardContent}>
-              <View style={[styles.iconContainer, { backgroundColor: card.iconBgColor }]}>
-                <Ionicons
-                  name={card.icon}
-                  size={24}
-                  color={card.iconColor}
-                />
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconContainer, { backgroundColor: card.iconBgColor }]}>
+                  <Ionicons
+                    name={card.icon}
+                    size={20}
+                    color={card.iconColor}
+                  />
+                </View>
+                <View style={styles.cardTextContainer}>
+                  <Text style={styles.cardTitle}>{card.title}</Text>
+                  <Text style={styles.cardDescription} numberOfLines={2}>
+                    {card.description}
+                  </Text>
+                </View>
               </View>
               <Text style={[styles.cardCount, { color: card.countColor }]}>
                 {card.count}
@@ -120,22 +133,41 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardContent: {
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 12,
+    justifyContent: 'space-between',
+    minHeight: 100,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginRight: 8,
+  },
+  cardTextContainer: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 2,
+  },
+  cardDescription: {
+    fontSize: 10,
+    color: '#9ca3af',
+    lineHeight: 14,
   },
   cardCount: {
     fontSize: 20,
     fontWeight: '700',
-    textAlign: 'center',
+    textAlign: 'left',
   },
 });
 

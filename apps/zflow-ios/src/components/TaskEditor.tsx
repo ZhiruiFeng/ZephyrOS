@@ -73,7 +73,7 @@ export default function TaskEditor({
         progress: task.content.progress || 0,
         assignee: task.content.assignee || '',
         notes: task.content.notes || '',
-        tags: task.content.tags || '',
+        tags: task.tags ? task.tags.join(', ') : '',
       });
     } else {
       setForm({
@@ -126,8 +126,8 @@ export default function TaskEditor({
           progress: form.progress,
           assignee: form.assignee || null,
           notes: form.notes || null,
-          tags: form.tags || null,
-        }
+        },
+        tags: form.tags ? form.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
       });
       onClose();
     } catch (error) {
