@@ -3,13 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getUserIdFromRequest } from '../../../lib/auth'
 import { AITaskCreateSchema, AITasksQuerySchema } from '../../../lib/validators'
-
-function addCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  return response
-}
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -17,13 +11,19 @@ const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabase
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP)) {
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500);
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
     const { searchParams } = new URL(request.url)
@@ -58,28 +58,35 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
     if (error) {
       console.error('Error fetching ai_tasks:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to fetch ai_tasks' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to fetch ai_tasks' }, 500);
     }
 
-    return addCorsHeaders(NextResponse.json({ ai_tasks: data || [] }))
+    return jsonWithCors(request, { ai_tasks: data || [] });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid query params', details: error.errors }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Invalid query params', details: error.errors }, 400);
     }
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) { // Stricter limit for POST
+      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+    }
+
     if (!supabase) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Database not configured' }, 500);
     }
 
     const userId = await getUserIdFromRequest(request)
     if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
     const body = await request.json()
@@ -97,28 +104,22 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating ai_task:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to create ai_task' }, { status: 500 }))
+      return jsonWithCors(request, { error: 'Failed to create ai_task' }, 500);
     }
 
-    return addCorsHeaders(NextResponse.json({ ai_task: created }, { status: 201 }))
+    return jsonWithCors(request, { ai_task: created }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
+      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400);
     }
     console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    const errorMessage = sanitizeErrorMessage(error);
+    return jsonWithCors(request, { error: errorMessage }, 500);
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
+export async function OPTIONS(request: NextRequest) {
+  return createOptionsResponse(request);
 }
 
 

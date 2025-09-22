@@ -247,6 +247,24 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
     }
   }, [selectedTask?.id, selectedTask?.content, notes, originalNotes])
 
+  // Load notes when selectedSubtask changes
+  useEffect(() => {
+    if (!selectedSubtask) {
+      // If no subtask is selected, show the parent task's notes
+      if (selectedTask) {
+        const taskNotes = selectedTask.content?.notes || ''
+        setNotes(taskNotes)
+        setOriginalNotes(taskNotes)
+      }
+      return
+    }
+
+    // Show subtask's notes when a subtask is selected
+    const subtaskNotes = selectedSubtask.content?.notes || ''
+    setNotes(subtaskNotes)
+    setOriginalNotes(subtaskNotes)
+  }, [selectedSubtask?.id, selectedSubtask?.content, selectedTask])
+
   // Auto-open subtasks panel for direct subtask links
   useEffect(() => {
     if (lastSubtaskIdRef.current !== subtaskIdParam) {

@@ -95,7 +95,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
       })
       setUseGuardrails(false)
     }
-  }, [initial])
+  }, [initial?.id, initial?.task_id, initial?.agent_id, initial?.task_type, initial?.mode, initial?.status])
 
   React.useEffect(() => {
     if (!isOpen) return
