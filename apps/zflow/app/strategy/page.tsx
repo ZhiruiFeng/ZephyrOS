@@ -141,8 +141,17 @@ export default function StrategyPage() {
     if (!scratch.trim()) return
 
     try {
+      // Get the first initiative as a fallback
+      const defaultInitiative = initiatives?.[0]
+
+      if (!defaultInitiative) {
+        alert('No initiatives found. Please create an initiative first to add tasks.')
+        return
+      }
+
       await createTask({
         type: 'task',
+        initiativeId: defaultInitiative.id,
         content: {
           title: scratch.trim(),
           description: 'Created from strategy scratchpad',
@@ -156,7 +165,7 @@ export default function StrategyPage() {
       refetch() // Refresh dashboard data
     } catch (error) {
       console.error('Error promoting to task:', error)
-      alert('Failed to create task. Please try again.')
+      alert(`Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -164,9 +173,18 @@ export default function StrategyPage() {
     if (!scratch.trim()) return
 
     try {
+      // Get the first initiative as a fallback
+      const defaultInitiative = initiatives?.[0]
+
+      if (!defaultInitiative) {
+        alert('No initiatives found. Please create an initiative first to add tasks.')
+        return
+      }
+
       // First create the task
       const newTask = await createTask({
         type: 'task',
+        initiativeId: defaultInitiative.id,
         content: {
           title: scratch.trim(),
           description: 'Delegated from strategy scratchpad',
@@ -183,7 +201,7 @@ export default function StrategyPage() {
       refetch() // Refresh dashboard data
     } catch (error) {
       console.error('Error delegating to agent:', error)
-      alert('Failed to delegate task to agent. Please try again.')
+      alert(`Failed to delegate task to agent: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

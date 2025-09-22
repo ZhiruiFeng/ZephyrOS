@@ -1,11 +1,28 @@
 import { Agent, AgentProvider } from './types'
+import { ensureMCPReady } from './mcp-bridge'
 
 export class AgentRegistry {
   private agents: Map<string, Agent> = new Map()
   private providers: Map<string, AgentProvider> = new Map()
+  private mcpInitialized = false
 
   constructor() {
     this.initializeDefaultAgents()
+    this.initializeMCP()
+  }
+
+  private async initializeMCP(): Promise<void> {
+    if (this.mcpInitialized) return
+
+    try {
+      console.log('🔧 Initializing MCP integration in AgentRegistry...')
+      await ensureMCPReady()
+      this.mcpInitialized = true
+      console.log('✅ MCP integration initialized in AgentRegistry')
+    } catch (error) {
+      console.warn('⚠️ MCP initialization failed in AgentRegistry:', error)
+      // Continue without MCP - agents will work without tools
+    }
   }
 
   private initializeDefaultAgents(): void {

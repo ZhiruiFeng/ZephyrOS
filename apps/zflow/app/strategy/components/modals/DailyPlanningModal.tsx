@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react'
 import { Sun, CheckCircle, Target, Zap, Plus, Calendar } from 'lucide-react'
 import { FullscreenModal } from './FullscreenModal'
 import { Card, CardHeader, CardTitle, CardContent, Button, Textarea, Badge } from '../ui'
-import { useStrategyTasks, useStrategyMemories } from '../../../../lib/hooks/strategy'
+import { useStrategyTasks, useStrategyMemories, useStrategyDashboard } from '../../../../lib/hooks/strategy'
 import type { StrategyTask } from '../../../../lib/types/strategy'
 
 interface DailyPlanningModalProps {
@@ -14,6 +14,7 @@ interface DailyPlanningModalProps {
 }
 
 export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningModalProps) {
+  const { dashboard } = useStrategyDashboard()
   const { myTasks, createTask } = useStrategyTasks(seasonId)
   const { createReflection } = useStrategyMemories(seasonId)
 
@@ -58,8 +59,17 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
     if (!newTaskTitle.trim()) return
 
     try {
+      // Get the first initiative as a fallback
+      const defaultInitiative = dashboard?.initiatives?.[0]
+
+      if (!defaultInitiative) {
+        alert('No initiatives found. Please create an initiative first to add tasks.')
+        return
+      }
+
       await createTask({
         type: 'task',
+        initiativeId: defaultInitiative.id,
         content: {
           title: newTaskTitle.trim(),
           description: 'Created during daily planning',
@@ -71,6 +81,7 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
       setNewTaskTitle('')
     } catch (error) {
       console.error('Error creating quick task:', error)
+      alert(`Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

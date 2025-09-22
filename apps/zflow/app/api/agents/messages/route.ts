@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sessionManager } from '../../../lib/agents/session-manager'
 import { agentRegistry } from '../../../lib/agents/registry'
 import { StreamingService } from '../../../lib/agents/streaming'
-import { openAIProvider, anthropicProvider } from '../../../lib/agents/init'
+import { openAIProvider, anthropicProvider, ensureAgentSystemReady } from '../../../lib/agents/init'
 import { AgentMessage } from '../../../lib/agents/types'
 
 // 禁用静态生成，因为需要运行时环境变量
@@ -10,6 +10,9 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure agent system is ready with MCP integration
+    await ensureAgentSystemReady()
+
     const { sessionId, message, userId, contextMessages } = await request.json()
 
     if (!sessionId || !message || !userId) {

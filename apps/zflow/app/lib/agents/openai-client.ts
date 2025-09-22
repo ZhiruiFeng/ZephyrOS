@@ -25,7 +25,7 @@ async function resolveUserOpenAIKey(authToken?: string, service: string = 'opena
 export class OpenAIProvider implements AgentProvider {
   id = 'openai'
   name = 'OpenAI'
-  
+
   private client: OpenAI | null = null
   private tools: ZFlowTool[] = []
 

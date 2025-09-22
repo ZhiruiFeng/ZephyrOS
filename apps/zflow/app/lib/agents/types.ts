@@ -49,6 +49,7 @@ export interface AgentProvider {
   name: string
   sendMessage: (message: string, context: ChatContext) => AsyncGenerator<StreamingResponse>
   getAvailableModels: () => string[]
+  registerTool: (tool: ZFlowTool) => void
 }
 
 export interface ChatContext {

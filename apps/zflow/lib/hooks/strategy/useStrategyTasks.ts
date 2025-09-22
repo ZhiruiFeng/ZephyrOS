@@ -84,16 +84,22 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
 
   const createTask = async (data: any) => {
     try {
+      // Validate required initiative_id
+      if (!data.initiativeId) {
+        throw new Error('Task creation requires a valid initiative. Please create an initiative first or select an existing one.')
+      }
+
       // Transform the legacy task creation format to strategic task format
       const strategyTaskData = {
-        initiative_id: data.initiativeId || 'default-initiative', // TODO: Handle this better
+        initiative_id: data.initiativeId,
         title: data.content?.title || data.title,
         description: data.content?.description || data.description,
         status: data.content?.status || data.status || 'pending',
         priority: data.content?.priority || data.priority || 'medium',
         progress: data.content?.progress || data.progress || 0,
         assignee: data.content?.assignee || data.assignee,
-        tags: data.tags || ['strategy', 'from-scratchpad']
+        tags: data.tags || ['strategy', 'from-scratchpad'],
+        strategic_importance: 'medium' as 'medium'
       }
 
       const newTask = await strategyApi.createStrategyTask(strategyTaskData)
