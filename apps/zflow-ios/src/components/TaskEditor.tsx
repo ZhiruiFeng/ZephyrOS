@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { 
   Modal, 
@@ -13,6 +13,7 @@ import {
   Chip
 } from 'react-native-paper';
 import { TaskMemory } from '../types/task';
+import VoiceInputController from './VoiceInputController';
 
 interface TaskForm {
   title: string;
@@ -153,26 +154,38 @@ export default function TaskEditor({
             <Card.Title title={title} titleStyle={{ color: theme.colors.onSurface }} />
             <Card.Content style={styles.content}>
               {/* Title */}
-              <TextInput
-                label="Title"
-                value={form.title}
-                onChangeText={(text) => setForm(prev => ({ ...prev, title: text }))}
-                style={styles.input}
-                mode="outlined"
-                placeholder="Enter task title"
-              />
+              <View style={styles.inputWithVoice}>
+                <TextInput
+                  label="Title"
+                  value={form.title}
+                  onChangeText={(text) => setForm(prev => ({ ...prev, title: text }))}
+                  style={[styles.input, styles.inputWithVoiceField]}
+                  mode="outlined"
+                  placeholder="Enter task title"
+                />
+                <VoiceInputController
+                  onTranscriptionReceived={(text) => setForm(prev => ({ ...prev, title: prev.title + text }))}
+                  style={styles.voiceButtonContainer}
+                />
+              </View>
 
               {/* Description */}
-              <TextInput
-                label="Description"
-                value={form.description}
-                onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
-                style={styles.input}
-                mode="outlined"
-                placeholder="Enter task description"
-                multiline
-                numberOfLines={3}
-              />
+              <View style={styles.inputWithVoice}>
+                <TextInput
+                  label="Description"
+                  value={form.description}
+                  onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
+                  style={[styles.input, styles.inputWithVoiceField]}
+                  mode="outlined"
+                  placeholder="Enter task description"
+                  multiline
+                  numberOfLines={3}
+                />
+                <VoiceInputController
+                  onTranscriptionReceived={(text) => setForm(prev => ({ ...prev, description: prev.description + text }))}
+                  style={styles.voiceButtonContainer}
+                />
+              </View>
 
               {/* Status */}
               <View style={styles.section}>
@@ -249,36 +262,54 @@ export default function TaskEditor({
               </View>
 
               {/* Assignee */}
-              <TextInput
-                label="Assignee"
-                value={form.assignee}
-                onChangeText={(text) => setForm(prev => ({ ...prev, assignee: text }))}
-                style={styles.input}
-                mode="outlined"
-                placeholder="Who is responsible?"
-              />
+              <View style={styles.inputWithVoice}>
+                <TextInput
+                  label="Assignee"
+                  value={form.assignee}
+                  onChangeText={(text) => setForm(prev => ({ ...prev, assignee: text }))}
+                  style={[styles.input, styles.inputWithVoiceField]}
+                  mode="outlined"
+                  placeholder="Who is responsible?"
+                />
+                <VoiceInputController
+                  onTranscriptionReceived={(text) => setForm(prev => ({ ...prev, assignee: prev.assignee + text }))}
+                  style={styles.voiceButtonContainer}
+                />
+              </View>
 
               {/* Notes */}
-              <TextInput
-                label="Notes"
-                value={form.notes}
-                onChangeText={(text) => setForm(prev => ({ ...prev, notes: text }))}
-                style={styles.input}
-                mode="outlined"
-                placeholder="Additional notes"
-                multiline
-                numberOfLines={3}
-              />
+              <View style={styles.inputWithVoice}>
+                <TextInput
+                  label="Notes"
+                  value={form.notes}
+                  onChangeText={(text) => setForm(prev => ({ ...prev, notes: text }))}
+                  style={[styles.input, styles.inputWithVoiceField]}
+                  mode="outlined"
+                  placeholder="Additional notes"
+                  multiline
+                  numberOfLines={3}
+                />
+                <VoiceInputController
+                  onTranscriptionReceived={(text) => setForm(prev => ({ ...prev, notes: prev.notes + text }))}
+                  style={styles.voiceButtonContainer}
+                />
+              </View>
 
               {/* Tags */}
-              <TextInput
-                label="Tags (comma-separated)"
-                value={form.tags}
-                onChangeText={(text) => setForm(prev => ({ ...prev, tags: text }))}
-                style={styles.input}
-                mode="outlined"
-                placeholder="work, urgent, project"
-              />
+              <View style={styles.inputWithVoice}>
+                <TextInput
+                  label="Tags (comma-separated)"
+                  value={form.tags}
+                  onChangeText={(text) => setForm(prev => ({ ...prev, tags: text }))}
+                  style={[styles.input, styles.inputWithVoiceField]}
+                  mode="outlined"
+                  placeholder="work, urgent, project"
+                />
+                <VoiceInputController
+                  onTranscriptionReceived={(text) => setForm(prev => ({ ...prev, tags: prev.tags + text }))}
+                  style={styles.voiceButtonContainer}
+                />
+              </View>
             </Card.Content>
 
             <Card.Actions style={styles.actions}>
@@ -346,5 +377,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  inputWithVoice: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  inputWithVoiceField: {
+    marginBottom: 0,
+    paddingRight: 48,
+  },
+  voiceButtonContainer: {
+    position: 'absolute',
+    right: 8,
+    top: 20,
+    zIndex: 1,
   },
 });

@@ -3,6 +3,7 @@ import { View, StyleSheet, TextInput, TouchableOpacity, Text } from 'react-nativ
 import { Menu, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { Category } from '../types/task';
+import VoiceInputController from './VoiceInputController';
 
 export type SortMode = 'none' | 'priority' | 'due_date';
 export type DisplayMode = 'list' | 'grid';
@@ -93,6 +94,12 @@ export default function FilterControls({
           value={search}
           style={styles.searchInput}
           placeholderTextColor="#9ca3af"
+        />
+        <VoiceInputController
+          onTranscriptionReceived={(text) => onSearchChange(search + text)}
+          style={styles.voiceButtonInSearch}
+          iconSize={16}
+          iconColor="#6b7280"
         />
       </View>
 
@@ -393,5 +400,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#0284c7',
+  },
+  voiceButtonInSearch: {
+    position: 'absolute',
+    right: 8,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+    zIndex: 1,
   },
 });

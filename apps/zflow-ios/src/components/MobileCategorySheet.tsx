@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Modal, Portal, Text, Button, TextInput, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { Category } from '../types/task';
+import VoiceInputController from './VoiceInputController';
 
 interface CategoryCounts {
   byId: Record<string, number>;
@@ -148,14 +149,20 @@ export default function MobileCategorySheet({
           {/* Create New Category */}
           {isCreating ? (
             <View style={styles.createForm}>
-              <TextInput
-                label="Category Name"
-                value={newName}
-                onChangeText={setNewName}
-                style={styles.nameInput}
-                mode="outlined"
-                placeholder="Enter category name"
-              />
+              <View style={styles.inputWithVoice}>
+                <TextInput
+                  label="Category Name"
+                  value={newName}
+                  onChangeText={setNewName}
+                  style={[styles.nameInput, styles.inputWithVoiceField]}
+                  mode="outlined"
+                  placeholder="Enter category name"
+                />
+                <VoiceInputController
+                  onTranscriptionReceived={(text) => setNewName(prev => prev + text)}
+                  style={styles.voiceButtonContainer}
+                />
+              </View>
 
               <View style={styles.colorPicker}>
                 <Text style={styles.colorPickerLabel}>Color</Text>
@@ -291,6 +298,20 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     marginBottom: 16,
+  },
+  inputWithVoice: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  inputWithVoiceField: {
+    marginBottom: 0,
+    paddingRight: 48,
+  },
+  voiceButtonContainer: {
+    position: 'absolute',
+    right: 8,
+    top: 20,
+    zIndex: 1,
   },
   colorPicker: {
     marginBottom: 16,

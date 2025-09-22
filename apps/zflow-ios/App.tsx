@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
 import ThemeProvider from './src/theme/ThemeProvider';
+import { STTConfigProvider } from './src/contexts/STTConfigContext';
 
 export default function App() {
   useEffect(() => {
@@ -38,8 +39,10 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppNavigator />
-          <StatusBar style="auto" />
+          <STTConfigProvider>
+            <AppNavigator />
+            <StatusBar style="auto" />
+          </STTConfigProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

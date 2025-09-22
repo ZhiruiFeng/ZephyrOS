@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TaskMemory } from '../types/task';
 import { useAuth } from '../contexts/AuthContext';
 import { useTasks, useUpdateTask } from '../hooks/useZMemoryApi';
+import VoiceInputController from '../components/VoiceInputController';
 
 export default function FocusScreen() {
   const { user } = useAuth();
@@ -338,14 +339,20 @@ export default function FocusScreen() {
                   </View>
                 </View>
 
-                <TextInput
-                  style={styles.notesInput}
-                  multiline
-                  placeholder="Take notes while you focus on this task..."
-                  value={notes}
-                  onChangeText={setNotes}
-                  textAlignVertical="top"
-                />
+                <View style={styles.notesInputContainer}>
+                  <TextInput
+                    style={styles.notesInput}
+                    multiline
+                    placeholder="Take notes while you focus on this task..."
+                    value={notes}
+                    onChangeText={setNotes}
+                    textAlignVertical="top"
+                  />
+                  <VoiceInputController
+                    onTranscriptionReceived={(text) => setNotes(prev => prev + text)}
+                    style={styles.voiceButtonInNotes}
+                  />
+                </View>
               </Card.Content>
             </Card>
 
@@ -588,5 +595,14 @@ const styles = StyleSheet.create({
   saveButton: {
     borderRadius: 12,
     borderColor: '#3B82F6',
+  },
+  notesInputContainer: {
+    position: 'relative',
+  },
+  voiceButtonInNotes: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    zIndex: 1,
   },
 });
