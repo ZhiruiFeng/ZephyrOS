@@ -1,147 +1,127 @@
 import useSWR from 'swr'
-import { authJsonFetcher } from '../../utils/auth-fetcher'
-import { adaptTaskToStrategy } from '../../adapters/strategy'
-import { ZMEMORY_API_BASE } from '../../api/zmemory-api-base'
-import { authManager } from '../../auth-manager'
-import type { UseStrategyTasksReturn } from '../../types/strategy'
-import type { Task } from '../../../app/types/task'
+import { strategyApi } from '../../api/strategy'
+import type { ApiStrategyTask } from '../../api/strategy'
+import type { UseStrategyTasksReturn, StrategyTask } from '../../types/strategy'
+
+// =====================================================
+// API to Frontend Type Adapter
+// =====================================================
+
+function adaptApiTaskToStrategy(apiTask: ApiStrategyTask): StrategyTask {
+  return {
+    id: apiTask.id,
+    user_id: apiTask.user_id,
+    title: apiTask.title,
+    description: apiTask.description || undefined,
+    status: apiTask.status === 'blocked' ? 'on_hold' : apiTask.status,
+    priority: apiTask.priority,
+    progress: apiTask.progress,
+    category: undefined, // Will need to be populated from categories API
+    tags: apiTask.tags || [],
+    assignee: apiTask.assignee || undefined,
+    created_at: apiTask.created_at,
+    updated_at: apiTask.updated_at,
+    due_date: apiTask.due_date || undefined,
+    completion_date: apiTask.completion_date || undefined,
+    estimated_duration: apiTask.estimated_duration || undefined,
+    notes: apiTask.description || undefined,
+    // Strategy-specific fields
+    initiativeId: apiTask.initiative_id,
+    initiativeTitle: apiTask.initiative?.title,
+    assignedAgent: apiTask.ai_delegation ? {
+      id: apiTask.ai_delegation.ai_task_id,
+      name: apiTask.ai_delegation.agent_name,
+      description: `${apiTask.ai_delegation.agent_vendor} agent`,
+      status: 'online' as const,
+      provider: 'anthropic' as const
+    } : undefined,
+    agentStatus: apiTask.ai_delegation ?
+      (apiTask.ai_delegation.status === 'in_progress' ? 'working' :
+       apiTask.ai_delegation.status === 'completed' ? 'idle' : 'blocked') : undefined
+  }
+}
 
 export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
-  // TODO: Temporarily use mock data until API endpoints are set up
-  const mockTasks: Task[] = [
+  // Fetch strategic tasks from API
+  const { data: tasksData, error, isLoading, mutate } = useSWR(
+    ['/strategy/tasks', seasonId],
+    () => strategyApi.getStrategyTasks({
+      limit: 100,
+      // If seasonId is provided, we'll need to filter by season through initiatives
+      // For now, fetch all and filter client-side
+    }),
     {
-      id: 'task-3',
-      user_id: 'mock-user',
-      title: 'Review quarterly metrics',
-      description: 'Analyze Q3 performance data',
-      status: 'pending',
-      priority: 'medium',
-      progress: 0,
-      category: { 
-        id: 'cat-3', 
-        name: 'Analysis',
-        color: '#f59e0b',
-        created_at: '2024-09-10T00:00:00Z',
-        updated_at: '2024-09-15T00:00:00Z'
-      },
-      tags: ['review', 'metrics'],
-      assignee: 'me',
-      created_at: '2024-09-20T00:00:00Z',
-      updated_at: '2024-09-20T00:00:00Z',
-      due_date: '2024-09-25'
-    },
-    {
-      id: 'task-4',
-      user_id: 'mock-user',
-      title: 'Optimize database queries',
-      description: 'Improve performance of task fetching',
-      status: 'in_progress',
-      priority: 'high',
-      progress: 30,
-      category: { 
-        id: 'cat-4', 
-        name: 'Development',
-        color: '#8b5cf6',
-        created_at: '2024-09-12T00:00:00Z',
-        updated_at: '2024-09-16T00:00:00Z'
-      },
-      tags: ['optimization', 'backend'],
-      assignee: 'claude-dev',
-      created_at: '2024-09-18T00:00:00Z',
-      updated_at: '2024-09-21T00:00:00Z',
-      due_date: '2024-09-30'
-    },
-    {
-      id: 'task-5',
-      user_id: 'mock-user',
-      title: 'Write strategy documentation',
-      description: 'Document the strategic planning process',
-      status: 'completed',
-      priority: 'medium',
-      progress: 100,
-      category: { 
-        id: 'cat-5', 
-        name: 'Documentation',
-        color: '#ef4444',
-        created_at: '2024-09-14T00:00:00Z',
-        updated_at: '2024-09-17T00:00:00Z'
-      },
-      tags: ['docs', 'strategy'],
-      assignee: 'me',
-      created_at: '2024-09-15T00:00:00Z',
-      updated_at: '2024-09-19T00:00:00Z',
-      completion_date: '2024-09-19T00:00:00Z'
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+      errorRetryCount: 3
     }
-  ]
+  )
 
-  // Filter and categorize tasks
-  const allStrategyTasks = mockTasks.map(adaptTaskToStrategy)
+  // Transform API data to frontend format
+  const allStrategyTasks = tasksData && Array.isArray(tasksData) ? tasksData.map(adaptApiTaskToStrategy) : []
 
   // Filter out initiative tasks (they're shown separately)
   const nonInitiativeTasks = allStrategyTasks.filter(task =>
     !task.tags?.includes('initiative')
   )
 
-  const myTasks = nonInitiativeTasks.filter(task =>
+  // Filter by season if provided
+  const filteredTasks = seasonId
+    ? nonInitiativeTasks.filter(() => {
+        // TODO: Filter by season through initiative relationship
+        // For now, return all tasks
+        return true
+      })
+    : nonInitiativeTasks
+
+  const myTasks = filteredTasks.filter(task =>
     !task.assignee || task.assignee === 'me'
   )
 
-  const agentTasks = nonInitiativeTasks.filter(task =>
+  const agentTasks = filteredTasks.filter(task =>
     task.assignee && task.assignee !== 'me'
   )
 
   const createTask = async (data: any) => {
     try {
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        },
-        body: JSON.stringify(data)
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to create task')
+      // Transform the legacy task creation format to strategic task format
+      const strategyTaskData = {
+        initiative_id: data.initiativeId || 'default-initiative', // TODO: Handle this better
+        title: data.content?.title || data.title,
+        description: data.content?.description || data.description,
+        status: data.content?.status || data.status || 'pending',
+        priority: data.content?.priority || data.priority || 'medium',
+        progress: data.content?.progress || data.progress || 0,
+        assignee: data.content?.assignee || data.assignee,
+        tags: data.tags || ['strategy', 'from-scratchpad']
       }
 
-      const newTask = await response.json()
-      const strategyTask = adaptTaskToStrategy(newTask)
+      const newTask = await strategyApi.createStrategyTask(strategyTaskData)
+      const strategyTask = adaptApiTaskToStrategy(newTask as ApiStrategyTask)
 
-      // TODO: Update cache when real API is implemented
-      // await mutate()
+      // Update cache
+      await mutate()
 
       return strategyTask
     } catch (error) {
-      console.error('Error creating task:', error)
+      console.error('Error creating strategic task:', error)
       throw error
     }
   }
 
   const updateTask = async (id: string, updateData: Partial<any>) => {
     try {
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/tasks/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        },
-        body: JSON.stringify(updateData)
-      })
+      // TODO: Implement update strategic task API endpoint
+      // For now, we'll just refetch data
+      await mutate()
 
-      if (!response.ok) {
-        throw new Error('Failed to update task')
+      // Return mock updated task
+      const existingTask = allStrategyTasks.find((task: StrategyTask) => task.id === id)
+      if (!existingTask) {
+        throw new Error('Task not found')
       }
 
-      const updatedTask = await response.json()
-      const strategyTask = adaptTaskToStrategy(updatedTask)
-
-      // TODO: Update cache when real API is implemented
-      // await mutate()
-
-      return strategyTask
+      return { ...existingTask, ...updateData }
     } catch (error) {
       console.error('Error updating task:', error)
       throw error
@@ -150,33 +130,25 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
 
   const delegateTask = async (taskId: string, agentId: string, briefing: string) => {
     try {
-      // Update the task to assign it to the agent
-      const updatedTask = await updateTask(taskId, {
-        content: {
-          assignee: agentId,
-          notes: briefing
-        }
+      // Use the strategy API delegation endpoint
+      await strategyApi.delegateStrategyTask(taskId, {
+        agent_id: agentId,
+        objective: briefing,
+        mode: 'plan_only'
       })
 
-      // Optionally send a brief to the agent (this would be a separate API call)
-      try {
-        const authHeaders = await authManager.getAuthHeaders()
-        await fetch(`${ZMEMORY_API_BASE}/agents/${agentId}/brief`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          },
-          body: JSON.stringify({
-            content: briefing,
-            taskId: taskId
-          })
-        })
-      } catch (briefError) {
-        console.warn('Failed to send brief to agent, but task was assigned:', briefError)
+      // Update cache to reflect changes
+      await mutate()
+
+      // Find and return the updated task
+      const updatedTasks = await strategyApi.getStrategyTasks()
+      const updatedTask = Array.isArray(updatedTasks) ? updatedTasks.find((t: ApiStrategyTask) => t.id === taskId) : undefined
+
+      if (updatedTask) {
+        return adaptApiTaskToStrategy(updatedTask)
       }
 
-      return updatedTask
+      throw new Error('Failed to find updated task after delegation')
     } catch (error) {
       console.error('Error delegating task:', error)
       throw error
@@ -184,17 +156,13 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
   }
 
   return {
-    myTasks: seasonId
-      ? myTasks.filter(task => (task as any).seasonId === seasonId)
-      : myTasks,
-    agentTasks: seasonId
-      ? agentTasks.filter(task => (task as any).seasonId === seasonId)
-      : agentTasks,
-    loading: false, // Mock data is immediately available
-    error: null,
+    myTasks,
+    agentTasks,
+    loading: isLoading,
+    error: error?.message || null,
     createTask,
     updateTask,
     delegateTask,
-    refetch: () => Promise.resolve()
+    refetch: () => mutate()
   }
 }

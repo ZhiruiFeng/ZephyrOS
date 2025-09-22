@@ -311,10 +311,8 @@ export async function GET(request: NextRequest) {
             assigned_at,
             started_at,
             completed_at,
-            agent:ai_agents!inner(
-              name,
-              vendor:vendors!inner(name)
-            )
+            agent_id,
+            vendor_id
           `)
           .eq('task_id', task.task_id)
           .eq('user_id', userId)
@@ -323,13 +321,38 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (aiTaskData) {
-          const agent = Array.isArray(aiTaskData.agent) ? aiTaskData.agent[0] : aiTaskData.agent
-          const vendor = Array.isArray(agent?.vendor) ? agent.vendor[0] : agent?.vendor
+          // Fetch agent and vendor info separately to avoid GROUP BY issues
+          let agentName = 'Unknown Agent'
+          let vendorName = 'Unknown Vendor'
+
+          if (aiTaskData.agent_id) {
+            const { data: agentData } = await client
+              .from('ai_agents')
+              .select('name, vendor_id')
+              .eq('id', aiTaskData.agent_id)
+              .single()
+
+            if (agentData) {
+              agentName = agentData.name
+
+              if (agentData.vendor_id) {
+                const { data: vendorData } = await client
+                  .from('vendors')
+                  .select('name')
+                  .eq('id', agentData.vendor_id)
+                  .single()
+
+                if (vendorData) {
+                  vendorName = vendorData.name
+                }
+              }
+            }
+          }
 
           aiDelegation = {
             ai_task_id: aiTaskData.id,
-            agent_name: agent?.name || 'Unknown Agent',
-            agent_vendor: vendor?.name || 'Unknown Vendor',
+            agent_name: agentName,
+            agent_vendor: vendorName,
             status: aiTaskData.status,
             mode: aiTaskData.mode,
             assigned_at: aiTaskData.assigned_at,

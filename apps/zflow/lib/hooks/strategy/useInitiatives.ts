@@ -1,182 +1,98 @@
 import useSWR from 'swr'
-import { authJsonFetcher } from '../../utils/auth-fetcher'
-import { adaptTasksToInitiatives, adaptTaskToInitiative } from '../../adapters/strategy'
-import { ZMEMORY_API_BASE } from '../../api/zmemory-api-base'
-import { authManager } from '../../auth-manager'
-import type { UseInitiativesReturn, CreateInitiativeForm } from '../../types/strategy'
-import type { Task } from '../../../app/types/task'
+import { strategyApi } from '../../api/strategy'
+import type { ApiInitiative } from '../../api/strategy'
+import type { UseInitiativesReturn, Initiative, CreateInitiativeForm } from '../../types/strategy'
+
+// =====================================================
+// API to Frontend Type Adapter
+// =====================================================
+
+function adaptApiInitiativeToFrontend(apiInitiative: ApiInitiative): Initiative {
+  return {
+    id: apiInitiative.id,
+    seasonId: apiInitiative.season_id || '',
+    title: apiInitiative.title,
+    description: apiInitiative.description || undefined,
+    progress: apiInitiative.progress,
+    category: apiInitiative.category?.name,
+    priority: apiInitiative.priority === 'critical' ? 'urgent' : apiInitiative.priority,
+    status: apiInitiative.status === 'paused' ? 'on_hold' :
+            apiInitiative.status === 'active' ? 'in_progress' :
+            apiInitiative.status === 'planning' ? 'pending' : apiInitiative.status,
+    due_date: apiInitiative.due_date || undefined,
+    tasks: [], // Will need to be fetched separately or enhanced
+    tags: apiInitiative.tags || [],
+    created_at: apiInitiative.created_at,
+    updated_at: apiInitiative.updated_at
+  }
+}
 
 export function useInitiatives(seasonId?: string): UseInitiativesReturn {
-  // TODO: Temporarily use mock data until API endpoints are set up
-  const mockTasks: Task[] = [
+  // Fetch initiatives from API
+  const { data: initiativesData, error, isLoading, mutate } = useSWR(
+    ['/strategy/initiatives', seasonId],
+    () => strategyApi.getInitiatives({
+      season_id: seasonId,
+      limit: 50,
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    }),
     {
-      id: 'init-1',
-      user_id: 'mock-user',
-      title: 'Implement Strategic Planning System',
-      description: 'Build comprehensive strategy dashboard and planning tools',
-      status: 'in_progress',
-      priority: 'high',
-      progress: 65,
-      category: { 
-        id: 'cat-1', 
-        name: 'Strategic Projects',
-        color: '#3b82f6',
-        created_at: '2024-09-01T00:00:00Z',
-        updated_at: '2024-09-20T00:00:00Z'
-      },
-      tags: ['initiative', 'strategic', 'system'],
-      created_at: '2024-09-01T00:00:00Z',
-      updated_at: '2024-09-19T00:00:00Z',
-      due_date: '2024-12-31'
-    },
-    {
-      id: 'init-2',
-      user_id: 'mock-user',
-      title: 'Optimize Workflow Efficiency',
-      description: 'Streamline task management and automation processes',
-      status: 'in_progress',
-      priority: 'high',
-      progress: 40,
-      category: { 
-        id: 'cat-2', 
-        name: 'Process Improvement',
-        color: '#10b981',
-        created_at: '2024-09-05T00:00:00Z',
-        updated_at: '2024-09-18T00:00:00Z'
-      },
-      tags: ['initiative', 'strategic', 'workflow'],
-      created_at: '2024-09-05T00:00:00Z',
-      updated_at: '2024-09-20T00:00:00Z',
-      due_date: '2024-11-30'
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+      errorRetryCount: 3
     }
-  ]
+  )
 
-  const mockAllTasks: Task[] = [
-    ...mockTasks,
-    {
-      id: 'task-1',
-      user_id: 'mock-user',
-      title: 'Design strategy dashboard UI',
-      description: 'Create mockups and wireframes',
-      status: 'completed',
-      priority: 'medium',
-      progress: 100,
-      category: { 
-        id: 'cat-1', 
-        name: 'Strategic Projects',
-        color: '#3b82f6',
-        created_at: '2024-09-01T00:00:00Z',
-        updated_at: '2024-09-20T00:00:00Z'
-      },
-      tags: ['design', 'ui'],
-      created_at: '2024-09-01T00:00:00Z',
-      updated_at: '2024-09-10T00:00:00Z'
-    },
-    {
-      id: 'task-2',
-      user_id: 'mock-user',
-      title: 'Implement data hooks',
-      description: 'Create strategy data fetching hooks',
-      status: 'in_progress',
-      priority: 'high',
-      progress: 80,
-      category: { 
-        id: 'cat-1', 
-        name: 'Strategic Projects',
-        color: '#3b82f6',
-        created_at: '2024-09-01T00:00:00Z',
-        updated_at: '2024-09-20T00:00:00Z'
-      },
-      tags: ['development', 'hooks'],
-      created_at: '2024-09-05T00:00:00Z',
-      updated_at: '2024-09-19T00:00:00Z'
-    }
-  ]
-
-  const initiatives = adaptTasksToInitiatives(mockTasks).map(init => {
-    // Enhance with related tasks from all tasks
-    const relatedTasks = mockAllTasks.filter(task =>
-      task.category?.id === mockTasks.find(t => t.id === init.id)?.category?.id ||
-      task.tags?.some(tag => init.tags.includes(tag))
-    )
-    return {
-      ...init,
-      tasks: relatedTasks.map(t => ({ ...t, initiativeId: init.id, initiativeTitle: init.title }))
-    }
-  })
+  // Transform API data to frontend format
+  const initiatives = initiativesData && Array.isArray(initiativesData) ? initiativesData.map(adaptApiInitiativeToFrontend) : []
 
   const createInitiative = async (data: CreateInitiativeForm) => {
     try {
-      const taskData = {
-        type: 'task',
-        content: {
-          title: data.title,
-          description: data.description,
-          status: 'pending',
-          priority: data.priority,
-          category: 'Initiative', // Special category for initiatives
-          due_date: data.due_date,
-          progress: 0
-        },
-        tags: ['initiative', 'strategic', ...data.tags],
-        metadata: {
-          seasonId: data.seasonId
-        }
+      const initiativeData = {
+        season_id: data.seasonId,
+        title: data.title,
+        description: data.description,
+        priority: (data.priority === 'urgent' ? 'critical' : data.priority) as 'low' | 'medium' | 'high' | 'critical',
+        status: 'planning' as const,
+        progress: 0,
+        due_date: data.due_date,
+        tags: data.tags
       }
 
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        },
-        body: JSON.stringify(taskData)
-      })
+      const newInitiative = await strategyApi.createInitiative(initiativeData)
+      const adaptedInitiative = adaptApiInitiativeToFrontend(newInitiative as ApiInitiative)
 
-      if (!response.ok) {
-        throw new Error('Failed to create initiative')
-      }
+      // Update cache
+      await mutate()
 
-      const newTask = await response.json()
-      const newInitiative = adaptTaskToInitiative(newTask, mockAllTasks || [])
-
-      // TODO: Update cache when real API is implemented
-      // await mutate()
-
-      return newInitiative
+      return adaptedInitiative
     } catch (error) {
       console.error('Error creating initiative:', error)
       throw error
     }
   }
 
-  const updateInitiative = async (id: string, updateData: Partial<any>) => {
+  const updateInitiative = async (id: string, updateData: Partial<Initiative>) => {
     try {
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/tasks/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        },
-        body: JSON.stringify({
-          content: updateData,
-          tags: updateData.tags
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update initiative')
+      // Transform frontend types to API types
+      const apiUpdateData = {
+        ...updateData,
+        status: updateData.status === 'pending' ? 'planning' as const :
+                updateData.status === 'in_progress' ? 'active' as const :
+                updateData.status === 'on_hold' ? 'paused' as const :
+                updateData.status as 'completed' | 'cancelled' | 'paused' | 'active' | 'planning' | undefined,
+        priority: updateData.priority === 'urgent' ? 'critical' as const :
+                 updateData.priority as 'low' | 'medium' | 'high' | 'critical' | undefined
       }
 
-      const updatedTask = await response.json()
-      const updatedInitiative = adaptTaskToInitiative(updatedTask, mockAllTasks || [])
+      const updatedInitiative = await strategyApi.updateInitiative(id, apiUpdateData)
+      const adaptedInitiative = adaptApiInitiativeToFrontend(updatedInitiative as ApiInitiative)
 
-      // TODO: Update cache when real API is implemented
-      // await mutate()
+      // Update cache
+      await mutate()
 
-      return updatedInitiative
+      return adaptedInitiative
     } catch (error) {
       console.error('Error updating initiative:', error)
       throw error
@@ -185,18 +101,10 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
 
   const deleteInitiative = async (id: string) => {
     try {
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/tasks/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders
-      })
+      await strategyApi.deleteInitiative(id)
 
-      if (!response.ok) {
-        throw new Error('Failed to delete initiative')
-      }
-
-      // TODO: Update cache when real API is implemented
-      // await mutate()
+      // Update cache
+      await mutate()
     } catch (error) {
       console.error('Error deleting initiative:', error)
       throw error
@@ -207,11 +115,11 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
     initiatives: seasonId
       ? initiatives.filter(init => init.seasonId === seasonId)
       : initiatives,
-    loading: false, // Mock data is immediately available
-    error: null,
+    loading: isLoading,
+    error: error?.message || null,
     createInitiative,
     updateInitiative,
     deleteInitiative,
-    refetch: () => Promise.resolve()
+    refetch: () => mutate()
   }
 }

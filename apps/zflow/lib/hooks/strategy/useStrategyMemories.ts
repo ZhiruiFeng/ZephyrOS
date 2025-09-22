@@ -1,108 +1,83 @@
 import useSWR from 'swr'
-import { authJsonFetcher } from '../../utils/auth-fetcher'
-import { adaptMemoryToStrategy } from '../../adapters/strategy'
-import { ZMEMORY_API_BASE } from '../../api/zmemory-api-base'
-import { authManager } from '../../auth-manager'
-import type { UseStrategyMemoriesReturn, StrategyReflectionForm } from '../../types/strategy'
-import type { Memory } from '../../../app/types/memory'
+import { strategyApi } from '../../api/strategy'
+import type { ApiStrategyMemory } from '../../api/strategy'
+import type { UseStrategyMemoriesReturn, StrategyReflectionForm, StrategyMemory } from '../../types/strategy'
+
+// =====================================================
+// API to Frontend Type Adapter
+// =====================================================
+
+function adaptApiMemoryToStrategy(apiMemory: ApiStrategyMemory): StrategyMemory {
+  return {
+    id: apiMemory.id,
+    user_id: apiMemory.user_id,
+    title: apiMemory.title,
+    note: apiMemory.content,
+    memory_type: 'thought' as const,
+    captured_at: apiMemory.created_at,
+    is_highlight: apiMemory.is_highlight,
+    source: 'manual' as const,
+    importance_level: apiMemory.importance_level === 'critical' ? 'high' : apiMemory.importance_level,
+    related_to: [],
+    tags: apiMemory.tags || [],
+    status: 'active' as const,
+    created_at: apiMemory.created_at,
+    updated_at: apiMemory.updated_at,
+    // Strategy-specific fields
+    strategyType: apiMemory.memory_type as any,
+    seasonId: apiMemory.season_id || undefined,
+    initiativeId: apiMemory.initiative_id || undefined,
+    impact: apiMemory.importance_level as any,
+    actionable: apiMemory.memory_type === 'planning_note' || apiMemory.memory_type === 'insight'
+  }
+}
 
 export function useStrategyMemories(seasonId?: string, initiativeId?: string): UseStrategyMemoriesReturn {
-  // TODO: Temporarily use mock data until API endpoints are set up
-  const mockMemories: Memory[] = [
+  // Fetch strategic memories from API
+  const { data: memoriesData, error, isLoading, mutate } = useSWR(
+    ['/strategy/memories', seasonId, initiativeId],
+    () => strategyApi.getStrategyMemories({
+      season_id: seasonId,
+      initiative_id: initiativeId,
+      limit: 50,
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    }),
     {
-      id: 'memory-1',
-      user_id: 'mock-user',
-      title: 'Strategic Planning Insight',
-      note: 'Realized that breaking down initiatives into smaller tasks improves completion rate by 40%',
-      memory_type: 'insight',
-      captured_at: '2024-09-19T00:00:00Z',
-      source: 'manual',
-      related_to: [],
-      is_highlight: true,
-      importance_level: 'high',
-      tags: ['strategy', 'insight', 'planning'],
-      status: 'active',
-      created_at: '2024-09-19T00:00:00Z',
-      updated_at: '2024-09-19T00:00:00Z'
-    },
-    {
-      id: 'memory-2',
-      user_id: 'mock-user',
-      title: 'Workflow Reflection',
-      note: 'Need to improve task delegation process - agents perform better with detailed context',
-      memory_type: 'thought',
-      captured_at: '2024-09-18T00:00:00Z',
-      source: 'manual',
-      related_to: [],
-      is_highlight: false,
-      importance_level: 'medium',
-      tags: ['workflow', 'reflection', 'agents'],
-      status: 'active',
-      created_at: '2024-09-18T00:00:00Z',
-      updated_at: '2024-09-18T00:00:00Z'
-    },
-    {
-      id: 'memory-3',
-      user_id: 'mock-user',
-      title: 'Goal Achievement',
-      note: 'Successfully completed the strategic planning system implementation milestone',
-      memory_type: 'insight',
-      captured_at: '2024-09-20T00:00:00Z',
-      source: 'manual',
-      related_to: [],
-      is_highlight: true,
-      importance_level: 'high',
-      tags: ['goal', 'achievement', 'milestone'],
-      status: 'active',
-      created_at: '2024-09-20T00:00:00Z',
-      updated_at: '2024-09-20T00:00:00Z'
+      refreshInterval: 60000, // Refresh every minute
+      revalidateOnFocus: true,
+      errorRetryCount: 3
     }
-  ]
+  )
 
-  const strategyMemories = mockMemories.map(adaptMemoryToStrategy)
+  // Transform API data to frontend format
+  const strategyMemories = memoriesData && Array.isArray(memoriesData) ? memoriesData.map(adaptApiMemoryToStrategy) : []
 
   const createReflection = async (data: StrategyReflectionForm) => {
     try {
       const tags = [...data.tags, 'strategy', data.strategyType]
 
-      // Add season and initiative tags if provided
-      if (data.seasonId) {
-        tags.push(`season:${data.seasonId}`)
-      }
-      if (data.initiativeId) {
-        tags.push(`initiative:${data.initiativeId}`)
-      }
-
       const memoryData = {
-        title: `Strategic ${data.strategyType}`,
-        note: data.content,
-        memory_type: data.strategyType === 'insight' ? 'insight' : 'thought',
-        tags,
+        title: data.content.slice(0, 50) + (data.content.length > 50 ? '...' : ''), // Auto-generate title
+        content: data.content,
+        memory_type: data.strategyType as any,
         importance_level: data.impact,
         is_highlight: data.impact === 'high',
-        context: data.actionable ? 'actionable' : undefined,
-        source: 'manual'
+        is_shareable: false, // Default to private
+        tags,
+        season_id: data.seasonId,
+        initiative_id: data.initiativeId,
+        context_data: {
+          actionable: data.actionable,
+          source: 'manual_reflection'
+        }
       }
 
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/memories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        },
-        body: JSON.stringify(memoryData)
-      })
+      const newMemory = await strategyApi.createStrategyMemory(memoryData)
+      const strategyMemory = adaptApiMemoryToStrategy(newMemory as ApiStrategyMemory)
 
-      if (!response.ok) {
-        throw new Error('Failed to create strategic reflection')
-      }
-
-      const newMemory = await response.json()
-      const strategyMemory = adaptMemoryToStrategy(newMemory)
-
-      // TODO: Update cache when real API is implemented
-      // await mutate()
+      // Update cache
+      await mutate()
 
       return strategyMemory
     } catch (error) {
@@ -113,20 +88,27 @@ export function useStrategyMemories(seasonId?: string, initiativeId?: string): U
 
   return {
     memories: strategyMemories,
-    loading: false, // Mock data is immediately available
-    error: null,
+    loading: isLoading,
+    error: error?.message || null,
     createReflection,
-    refetch: () => Promise.resolve()
+    refetch: () => mutate()
   }
 }
 
 // Hook for weekly strategic review
 export function useWeeklyReview() {
-  const { data, error, mutate } = useSWR<any>(
-    `${ZMEMORY_API_BASE}/memories/reviews/weekly`,
-    authJsonFetcher,
+  const { data, error, isLoading, mutate } = useSWR(
+    '/strategy/memories/weekly-review',
+    () => strategyApi.getStrategyMemories({
+      memory_type: 'retrospective',
+      tags: 'weekly-review',
+      limit: 5,
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    }),
     {
-      revalidateOnFocus: false
+      revalidateOnFocus: false,
+      refreshInterval: 300000 // 5 minutes
     }
   )
 
@@ -134,31 +116,21 @@ export function useWeeklyReview() {
     try {
       const reflection = {
         title: `Weekly Strategic Review - ${new Date().toLocaleDateString()}`,
-        note: content,
-        memory_type: 'thought',
-        tags: ['strategy', 'weekly-review', 'reflection'],
-        importance_level: 'high',
+        content,
+        memory_type: 'retrospective' as const,
+        importance_level: 'high' as const,
         is_highlight: true,
-        source: 'manual'
+        is_shareable: false,
+        tags: ['strategy', 'weekly-review', 'reflection'],
+        context_data: {
+          review_type: 'weekly',
+          generated_at: new Date().toISOString()
+        }
       }
 
-      const authHeaders = await authManager.getAuthHeaders()
-      const response = await fetch(`${ZMEMORY_API_BASE}/memories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        },
-        body: JSON.stringify(reflection)
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save weekly reflection')
-      }
-
-      const saved = await response.json()
+      const saved = await strategyApi.createStrategyMemory(reflection)
       await mutate()
-      return saved
+      return adaptApiMemoryToStrategy(saved as ApiStrategyMemory)
     } catch (error) {
       console.error('Error saving weekly reflection:', error)
       throw error
@@ -166,8 +138,8 @@ export function useWeeklyReview() {
   }
 
   return {
-    weeklyReview: data,
-    loading: !data && !error,
+    weeklyReview: data && Array.isArray(data) ? data.map(adaptApiMemoryToStrategy) : [],
+    loading: isLoading,
     error: error?.message || null,
     saveWeeklyReflection,
     refetch: () => mutate()

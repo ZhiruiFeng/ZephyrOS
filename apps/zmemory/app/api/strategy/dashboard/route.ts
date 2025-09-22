@@ -175,21 +175,141 @@ export async function GET(request: NextRequest) {
 
     const client = createClientForRequest(request) || supabase
 
-    // Call the stored procedure to get dashboard data
-    const { data, error } = await client
-      .rpc('get_strategy_dashboard', { user_uuid: userId })
-
-    if (error) {
-      console.error('Database error:', error)
-      return jsonWithCors(request, { error: 'Failed to fetch dashboard data' }, 500)
-    }
-
-    // The stored procedure returns JSON, so we can use it directly
-    const dashboardData: StrategyDashboard = data || {
+    // Fetch dashboard data using direct queries
+    let dashboardData: StrategyDashboard = {
       active_season: null,
       active_initiatives: [],
       recent_memories: [],
       agent_workload: []
+    }
+
+    try {
+      // 1. Get active season
+      const { data: seasonData } = await client
+        .from('seasons')
+        .select('id, title, intention, theme')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (seasonData) {
+        // Calculate season progress from initiatives
+        const { data: initiativeProgress } = await client
+          .from('core_strategy_initiatives')
+          .select('progress')
+          .eq('season_id', seasonData.id)
+          .eq('user_id', userId)
+
+        const avgProgress = initiativeProgress && initiativeProgress.length > 0
+          ? Math.round(initiativeProgress.reduce((sum, init) => sum + (init.progress || 0), 0) / initiativeProgress.length)
+          : 0
+
+        dashboardData.active_season = {
+          id: seasonData.id,
+          title: seasonData.title,
+          intention: seasonData.intention,
+          theme: seasonData.theme,
+          progress: avgProgress
+        }
+      }
+
+      // 2. Get active initiatives
+      const { data: initiativesData } = await client
+        .from('core_strategy_initiatives')
+        .select('*')
+        .eq('user_id', userId)
+        .in('status', ['planning', 'active'])
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (initiativesData) {
+        for (const initiative of initiativesData) {
+          // Get task counts for each initiative
+          const { count: taskCount } = await client
+            .from('core_strategy_tasks')
+            .select('*', { count: 'exact' })
+            .eq('initiative_id', initiative.id)
+
+          const { count: completedTaskCount } = await client
+            .from('core_strategy_tasks')
+            .select('*', { count: 'exact' })
+            .eq('initiative_id', initiative.id)
+            .eq('status', 'completed')
+
+          dashboardData.active_initiatives.push({
+            id: initiative.id,
+            title: initiative.title,
+            description: initiative.description || '',
+            status: initiative.status,
+            priority: initiative.priority,
+            progress: initiative.progress,
+            due_date: initiative.due_date,
+            task_count: taskCount || 0,
+            completed_task_count: completedTaskCount || 0
+          })
+        }
+      }
+
+      // 3. Get recent memories (fallback to empty array if table doesn't exist)
+      try {
+        const { data: memoriesData } = await client
+          .from('core_strategy_memories')
+          .select('id, title, content, memory_type, importance_level, is_highlight, created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (memoriesData) {
+          dashboardData.recent_memories = memoriesData
+        }
+      } catch (memoryError) {
+        console.log('Strategy memories table not available, using empty array')
+        dashboardData.recent_memories = []
+      }
+
+      // 4. Get agent workload (fallback to empty array if issues)
+      try {
+        const { data: agentsData } = await client
+          .from('ai_agents')
+          .select('id, name')
+          .eq('user_id', userId)
+
+        if (agentsData) {
+          for (const agent of agentsData) {
+            const { count: activeCount } = await client
+              .from('ai_tasks')
+              .select('*', { count: 'exact' })
+              .eq('agent_id', agent.id)
+              .eq('user_id', userId)
+              .in('status', ['assigned', 'in_progress'])
+
+            const { count: completedCount } = await client
+              .from('ai_tasks')
+              .select('*', { count: 'exact' })
+              .eq('agent_id', agent.id)
+              .eq('user_id', userId)
+              .eq('status', 'completed')
+
+            dashboardData.agent_workload.push({
+              agent_id: agent.id,
+              agent_name: agent.name,
+              active_assignments: activeCount || 0,
+              completed_assignments: completedCount || 0,
+              avg_satisfaction: null
+            })
+          }
+        }
+      } catch (agentError) {
+        console.log('Agent workload data not available, using empty array')
+        dashboardData.agent_workload = []
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      // Return partial data instead of failing completely
     }
 
     return jsonWithCors(request, dashboardData)
