@@ -159,3 +159,4 @@ temp/
 .env.production.local 
 
 .plan/
+.cursor/
