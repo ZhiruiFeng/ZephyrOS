@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TabItem {
   key: string;
@@ -19,7 +19,8 @@ interface CustomBottomNavProps {
 }
 
 export default function CustomBottomNav({ tabs, activeTab, onTabPress, onAddPress, isVisible = true }: CustomBottomNavProps) {
-  const insets = useSafeAreaInsets();
+  // const insets = useSafeAreaInsets();
+  const insets = { top: 0, bottom: 34, left: 0, right: 0 }; // Fixed safe area for now
   const translateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {

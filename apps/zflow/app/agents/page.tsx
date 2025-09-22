@@ -10,6 +10,7 @@ import { Agent } from '../lib/agents/types'
 import { ConversationSummary } from '../lib/conversation-history/types'
 import { useSessionManager } from '../lib/conversation-history/session-manager'
 import BatchTranscriber from '../speech/components/BatchTranscriber'
+import MCPStatusIndicator from '../components/agents/MCPStatusIndicator'
 
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -587,6 +588,9 @@ export default function AgentsPage() {
             </div>
             
             <div className="flex space-x-2 sm:space-x-3">
+              {/* MCP Status Indicator */}
+              <MCPStatusIndicator className="hidden sm:block" />
+
               {/* Interface Mode Toggle */}
               <div className="inline-flex items-center bg-white/80 backdrop-blur-sm border border-primary-100 rounded-lg sm:rounded-xl p-1">
                 <button

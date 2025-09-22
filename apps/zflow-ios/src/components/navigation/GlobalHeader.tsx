@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface GlobalHeaderProps {
@@ -17,7 +17,8 @@ export default function GlobalHeader({
   onBackPress,
   rightActions 
 }: GlobalHeaderProps) {
-  const insets = useSafeAreaInsets();
+  // const insets = useSafeAreaInsets();
+  const insets = { top: 44, bottom: 0, left: 0, right: 0 }; // Fixed safe area for now
   const { user } = useAuth();
 
   const defaultRightActions = (
