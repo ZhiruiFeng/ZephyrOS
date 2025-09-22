@@ -7,22 +7,75 @@ import type { UseStrategyTasksReturn } from '../../types/strategy'
 import type { Task } from '../../../app/types/task'
 
 export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
-  // Fetch all tasks, then filter and adapt on the frontend
-  const { data: tasks, error, mutate } = useSWR<Task[]>(
-    `${ZMEMORY_API_BASE}/tasks?limit=100&sort_by=updated_at&sort_order=desc`,
-    authJsonFetcher,
+  // TODO: Temporarily use mock data until API endpoints are set up
+  const mockTasks: Task[] = [
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 10000, // 10 seconds for more frequent updates
-      onError: (error) => {
-        console.error('Error fetching tasks:', error)
-      }
+      id: 'task-3',
+      user_id: 'mock-user',
+      title: 'Review quarterly metrics',
+      description: 'Analyze Q3 performance data',
+      status: 'pending',
+      priority: 'medium',
+      progress: 0,
+      category: { 
+        id: 'cat-3', 
+        name: 'Analysis',
+        color: '#f59e0b',
+        created_at: '2024-09-10T00:00:00Z',
+        updated_at: '2024-09-15T00:00:00Z'
+      },
+      tags: ['review', 'metrics'],
+      assignee: 'me',
+      created_at: '2024-09-20T00:00:00Z',
+      updated_at: '2024-09-20T00:00:00Z',
+      due_date: '2024-09-25'
+    },
+    {
+      id: 'task-4',
+      user_id: 'mock-user',
+      title: 'Optimize database queries',
+      description: 'Improve performance of task fetching',
+      status: 'in_progress',
+      priority: 'high',
+      progress: 30,
+      category: { 
+        id: 'cat-4', 
+        name: 'Development',
+        color: '#8b5cf6',
+        created_at: '2024-09-12T00:00:00Z',
+        updated_at: '2024-09-16T00:00:00Z'
+      },
+      tags: ['optimization', 'backend'],
+      assignee: 'claude-dev',
+      created_at: '2024-09-18T00:00:00Z',
+      updated_at: '2024-09-21T00:00:00Z',
+      due_date: '2024-09-30'
+    },
+    {
+      id: 'task-5',
+      user_id: 'mock-user',
+      title: 'Write strategy documentation',
+      description: 'Document the strategic planning process',
+      status: 'completed',
+      priority: 'medium',
+      progress: 100,
+      category: { 
+        id: 'cat-5', 
+        name: 'Documentation',
+        color: '#ef4444',
+        created_at: '2024-09-14T00:00:00Z',
+        updated_at: '2024-09-17T00:00:00Z'
+      },
+      tags: ['docs', 'strategy'],
+      assignee: 'me',
+      created_at: '2024-09-15T00:00:00Z',
+      updated_at: '2024-09-19T00:00:00Z',
+      completion_date: '2024-09-19T00:00:00Z'
     }
-  )
+  ]
 
   // Filter and categorize tasks
-  const allStrategyTasks = tasks?.map(adaptTaskToStrategy) || []
+  const allStrategyTasks = mockTasks.map(adaptTaskToStrategy)
 
   // Filter out initiative tasks (they're shown separately)
   const nonInitiativeTasks = allStrategyTasks.filter(task =>
@@ -56,8 +109,8 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
       const newTask = await response.json()
       const strategyTask = adaptTaskToStrategy(newTask)
 
-      // Optimistically update the cache
-      await mutate()
+      // TODO: Update cache when real API is implemented
+      // await mutate()
 
       return strategyTask
     } catch (error) {
@@ -85,8 +138,8 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
       const updatedTask = await response.json()
       const strategyTask = adaptTaskToStrategy(updatedTask)
 
-      // Optimistically update the cache
-      await mutate()
+      // TODO: Update cache when real API is implemented
+      // await mutate()
 
       return strategyTask
     } catch (error) {
@@ -137,11 +190,11 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
     agentTasks: seasonId
       ? agentTasks.filter(task => (task as any).seasonId === seasonId)
       : agentTasks,
-    loading: !tasks && !error,
-    error: error?.message || null,
+    loading: false, // Mock data is immediately available
+    error: null,
     createTask,
     updateTask,
     delegateTask,
-    refetch: () => mutate()
+    refetch: () => Promise.resolve()
   }
 }

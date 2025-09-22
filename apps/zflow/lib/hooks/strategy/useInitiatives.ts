@@ -7,44 +7,103 @@ import type { UseInitiativesReturn, CreateInitiativeForm } from '../../types/str
 import type { Task } from '../../../app/types/task'
 
 export function useInitiatives(seasonId?: string): UseInitiativesReturn {
-  // Fetch tasks that represent initiatives
-  const { data: tasks, error, mutate } = useSWR<Task[]>(
-    `${ZMEMORY_API_BASE}/tasks?tags=initiative,strategic&limit=50`,
-    authJsonFetcher,
+  // TODO: Temporarily use mock data until API endpoints are set up
+  const mockTasks: Task[] = [
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 15000, // 15 seconds
-      onError: (error) => {
-        console.error('Error fetching initiative tasks:', error)
+      id: 'init-1',
+      user_id: 'mock-user',
+      title: 'Implement Strategic Planning System',
+      description: 'Build comprehensive strategy dashboard and planning tools',
+      status: 'in_progress',
+      priority: 'high',
+      progress: 65,
+      category: { 
+        id: 'cat-1', 
+        name: 'Strategic Projects',
+        color: '#3b82f6',
+        created_at: '2024-09-01T00:00:00Z',
+        updated_at: '2024-09-20T00:00:00Z'
       },
-      fallbackData: []
-    }
-  )
-
-  // Also fetch all tasks for computing initiative progress
-  const { data: allTasks } = useSWR<Task[]>(
-    `${ZMEMORY_API_BASE}/tasks?limit=200`,
-    authJsonFetcher,
+      tags: ['initiative', 'strategic', 'system'],
+      created_at: '2024-09-01T00:00:00Z',
+      updated_at: '2024-09-19T00:00:00Z',
+      due_date: '2024-12-31'
+    },
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 30000
+      id: 'init-2',
+      user_id: 'mock-user',
+      title: 'Optimize Workflow Efficiency',
+      description: 'Streamline task management and automation processes',
+      status: 'in_progress',
+      priority: 'high',
+      progress: 40,
+      category: { 
+        id: 'cat-2', 
+        name: 'Process Improvement',
+        color: '#10b981',
+        created_at: '2024-09-05T00:00:00Z',
+        updated_at: '2024-09-18T00:00:00Z'
+      },
+      tags: ['initiative', 'strategic', 'workflow'],
+      created_at: '2024-09-05T00:00:00Z',
+      updated_at: '2024-09-20T00:00:00Z',
+      due_date: '2024-11-30'
     }
-  )
+  ]
 
-  const initiatives = tasks && allTasks
-    ? adaptTasksToInitiatives(tasks).map(init => {
-        // Enhance with related tasks from all tasks
-        const relatedTasks = allTasks.filter(task =>
-          task.category_id === tasks.find(t => t.id === init.id)?.category_id ||
-          task.tags?.some(tag => init.tags.includes(tag))
-        )
-        return {
-          ...init,
-          tasks: relatedTasks.map(t => ({ ...t, initiativeId: init.id, initiativeTitle: init.title }))
-        }
-      })
-    : []
+  const mockAllTasks: Task[] = [
+    ...mockTasks,
+    {
+      id: 'task-1',
+      user_id: 'mock-user',
+      title: 'Design strategy dashboard UI',
+      description: 'Create mockups and wireframes',
+      status: 'completed',
+      priority: 'medium',
+      progress: 100,
+      category: { 
+        id: 'cat-1', 
+        name: 'Strategic Projects',
+        color: '#3b82f6',
+        created_at: '2024-09-01T00:00:00Z',
+        updated_at: '2024-09-20T00:00:00Z'
+      },
+      tags: ['design', 'ui'],
+      created_at: '2024-09-01T00:00:00Z',
+      updated_at: '2024-09-10T00:00:00Z'
+    },
+    {
+      id: 'task-2',
+      user_id: 'mock-user',
+      title: 'Implement data hooks',
+      description: 'Create strategy data fetching hooks',
+      status: 'in_progress',
+      priority: 'high',
+      progress: 80,
+      category: { 
+        id: 'cat-1', 
+        name: 'Strategic Projects',
+        color: '#3b82f6',
+        created_at: '2024-09-01T00:00:00Z',
+        updated_at: '2024-09-20T00:00:00Z'
+      },
+      tags: ['development', 'hooks'],
+      created_at: '2024-09-05T00:00:00Z',
+      updated_at: '2024-09-19T00:00:00Z'
+    }
+  ]
+
+  const initiatives = adaptTasksToInitiatives(mockTasks).map(init => {
+    // Enhance with related tasks from all tasks
+    const relatedTasks = mockAllTasks.filter(task =>
+      task.category?.id === mockTasks.find(t => t.id === init.id)?.category?.id ||
+      task.tags?.some(tag => init.tags.includes(tag))
+    )
+    return {
+      ...init,
+      tasks: relatedTasks.map(t => ({ ...t, initiativeId: init.id, initiativeTitle: init.title }))
+    }
+  })
 
   const createInitiative = async (data: CreateInitiativeForm) => {
     try {
@@ -80,10 +139,10 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
       }
 
       const newTask = await response.json()
-      const newInitiative = adaptTaskToInitiative(newTask, allTasks || [])
+      const newInitiative = adaptTaskToInitiative(newTask, mockAllTasks || [])
 
-      // Optimistically update the cache
-      await mutate()
+      // TODO: Update cache when real API is implemented
+      // await mutate()
 
       return newInitiative
     } catch (error) {
@@ -112,10 +171,10 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
       }
 
       const updatedTask = await response.json()
-      const updatedInitiative = adaptTaskToInitiative(updatedTask, allTasks || [])
+      const updatedInitiative = adaptTaskToInitiative(updatedTask, mockAllTasks || [])
 
-      // Optimistically update the cache
-      await mutate()
+      // TODO: Update cache when real API is implemented
+      // await mutate()
 
       return updatedInitiative
     } catch (error) {
@@ -136,8 +195,8 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
         throw new Error('Failed to delete initiative')
       }
 
-      // Optimistically update the cache
-      await mutate()
+      // TODO: Update cache when real API is implemented
+      // await mutate()
     } catch (error) {
       console.error('Error deleting initiative:', error)
       throw error
@@ -148,11 +207,11 @@ export function useInitiatives(seasonId?: string): UseInitiativesReturn {
     initiatives: seasonId
       ? initiatives.filter(init => init.seasonId === seasonId)
       : initiatives,
-    loading: !tasks && !error,
-    error: error?.message || null,
+    loading: false, // Mock data is immediately available
+    error: null,
     createInitiative,
     updateInitiative,
     deleteInitiative,
-    refetch: () => mutate()
+    refetch: () => Promise.resolve()
   }
 }

@@ -7,45 +7,59 @@ import type { UseStrategyMemoriesReturn, StrategyReflectionForm } from '../../ty
 import type { Memory } from '../../../app/types/memory'
 
 export function useStrategyMemories(seasonId?: string, initiativeId?: string): UseStrategyMemoriesReturn {
-  // Fetch all memories and filter on frontend since we don't have strategic tags yet
-  const queryParams = new URLSearchParams({
-    limit: '50'
-  })
-
-  const { data: memories, error, mutate } = useSWR<Memory[]>(
-    `${ZMEMORY_API_BASE}/memories?${queryParams.toString()}`,
-    authJsonFetcher,
+  // TODO: Temporarily use mock data until API endpoints are set up
+  const mockMemories: Memory[] = [
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 15000, // 15 seconds
-      onError: (error) => {
-        console.error('Error fetching memories for strategy:', error)
-        console.error('Query URL:', `${ZMEMORY_API_BASE}/memories?${queryParams.toString()}`)
-      },
-      // Add fallback data on error
-      fallbackData: []
+      id: 'memory-1',
+      user_id: 'mock-user',
+      title: 'Strategic Planning Insight',
+      note: 'Realized that breaking down initiatives into smaller tasks improves completion rate by 40%',
+      memory_type: 'insight',
+      captured_at: '2024-09-19T00:00:00Z',
+      source: 'manual',
+      related_to: [],
+      is_highlight: true,
+      importance_level: 'high',
+      tags: ['strategy', 'insight', 'planning'],
+      status: 'active',
+      created_at: '2024-09-19T00:00:00Z',
+      updated_at: '2024-09-19T00:00:00Z'
+    },
+    {
+      id: 'memory-2',
+      user_id: 'mock-user',
+      title: 'Workflow Reflection',
+      note: 'Need to improve task delegation process - agents perform better with detailed context',
+      memory_type: 'thought',
+      captured_at: '2024-09-18T00:00:00Z',
+      source: 'manual',
+      related_to: [],
+      is_highlight: false,
+      importance_level: 'medium',
+      tags: ['workflow', 'reflection', 'agents'],
+      status: 'active',
+      created_at: '2024-09-18T00:00:00Z',
+      updated_at: '2024-09-18T00:00:00Z'
+    },
+    {
+      id: 'memory-3',
+      user_id: 'mock-user',
+      title: 'Goal Achievement',
+      note: 'Successfully completed the strategic planning system implementation milestone',
+      memory_type: 'insight',
+      captured_at: '2024-09-20T00:00:00Z',
+      source: 'manual',
+      related_to: [],
+      is_highlight: true,
+      importance_level: 'high',
+      tags: ['goal', 'achievement', 'milestone'],
+      status: 'active',
+      created_at: '2024-09-20T00:00:00Z',
+      updated_at: '2024-09-20T00:00:00Z'
     }
-  )
+  ]
 
-  // For now, adapt all memories as potential strategic content
-  // In production, we'd have proper strategic tagging
-  const strategyMemories = memories
-    ?.filter(memory => {
-      // Include memories that could be strategic in nature
-      const content = memory.note?.toLowerCase() || ''
-      const title = memory.title?.toLowerCase() || ''
-
-      // Look for strategic keywords or important memories
-      const strategicKeywords = ['goal', 'plan', 'strategy', 'learn', 'insight', 'reflect', 'habit', 'improve']
-      const hasStrategicContent = strategicKeywords.some(keyword =>
-        content.includes(keyword) || title.includes(keyword)
-      )
-
-      // Include highlights and important memories
-      return hasStrategicContent || memory.is_highlight || memory.memory_type === 'insight'
-    })
-    ?.map(adaptMemoryToStrategy) || []
+  const strategyMemories = mockMemories.map(adaptMemoryToStrategy)
 
   const createReflection = async (data: StrategyReflectionForm) => {
     try {
@@ -87,8 +101,8 @@ export function useStrategyMemories(seasonId?: string, initiativeId?: string): U
       const newMemory = await response.json()
       const strategyMemory = adaptMemoryToStrategy(newMemory)
 
-      // Optimistically update the cache
-      await mutate()
+      // TODO: Update cache when real API is implemented
+      // await mutate()
 
       return strategyMemory
     } catch (error) {
@@ -99,10 +113,10 @@ export function useStrategyMemories(seasonId?: string, initiativeId?: string): U
 
   return {
     memories: strategyMemories,
-    loading: !memories && !error,
-    error: error?.message || null,
+    loading: false, // Mock data is immediately available
+    error: null,
     createReflection,
-    refetch: () => mutate()
+    refetch: () => Promise.resolve()
   }
 }
 

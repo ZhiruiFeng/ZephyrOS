@@ -5,6 +5,8 @@ export interface Category {
   description?: string;
   color: string;
   icon?: string;
+  user_id?: string;
+  task_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +31,7 @@ export interface Task {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category_id?: string;
   category?: Category;
+  user_id?: string;
   created_at: string;
   updated_at: string;
   due_date?: string;

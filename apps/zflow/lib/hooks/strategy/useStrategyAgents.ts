@@ -9,34 +9,50 @@ import type { Task } from '../../../app/types/task'
 const ZFLOW_API_BASE = '/api'
 
 export function useStrategyAgents(): UseStrategyAgentsReturn {
-  // Fetch agents from zflow
-  const { data: agents, error: agentsError, mutate: mutateAgents } = useSWR<{ agents: Agent[] }>(
-    `${ZFLOW_API_BASE}/agents/registry`,
-    authJsonFetcher,
+  // TODO: Temporarily use mock data until API endpoints are set up
+  const mockAgents: Agent[] = [
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      refreshInterval: 30000, // Refresh every 30 seconds for agent status
-      onError: (error) => {
-        console.error('Error fetching agents:', error)
-      }
-    }
-  )
-
-  // Fetch tasks to compute agent workloads
-  const { data: tasks, error: tasksError } = useSWR<Task[]>(
-    `${ZMEMORY_API_BASE}/tasks?limit=200`,
-    authJsonFetcher,
+      id: 'claude-dev',
+      name: 'Claude Dev',
+      description: 'Development and coding specialist',
+      status: 'online',
+      provider: 'anthropic'
+    },
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 30000
+      id: 'research-assistant',
+      name: 'Research Assistant',
+      description: 'Research and analysis specialist',
+      status: 'online',
+      provider: 'openai'
+    },
+    {
+      id: 'content-writer',
+      name: 'Content Writer',
+      description: 'Content creation and writing specialist',
+      status: 'busy',
+      provider: 'anthropic'
     }
-  )
+  ]
 
-  const strategyAgents = agents?.agents?.map(agent => {
-    const assignedTasks = tasks?.filter(task => task.assignee === agent.id) || []
+  const mockTasks: Task[] = [
+    {
+      id: 'task-4',
+      user_id: 'mock-user',
+      title: 'Optimize database queries',
+      description: 'Improve performance of task fetching',
+      status: 'in_progress',
+      priority: 'high',
+      progress: 30,
+      assignee: 'claude-dev',
+      created_at: '2024-09-18T00:00:00Z',
+      updated_at: '2024-09-21T00:00:00Z'
+    }
+  ]
+
+  const strategyAgents = mockAgents.map(agent => {
+    const assignedTasks = mockTasks.filter(task => task.assignee === agent.id) || []
     return adaptAgentToStrategy(agent, assignedTasks)
-  }) || []
+  })
 
   const sendBrief = async (agentId: string, content: string) => {
     try {
@@ -78,8 +94,8 @@ export function useStrategyAgents(): UseStrategyAgentsReturn {
         console.warn('Failed to create memory for agent brief:', memoryError)
       }
 
-      // Refresh agent data
-      await mutateAgents()
+      // TODO: Refresh agent data when real API is implemented
+      // await mutateAgents()
     } catch (error) {
       console.error('Error sending brief to agent:', error)
       throw error
@@ -88,33 +104,47 @@ export function useStrategyAgents(): UseStrategyAgentsReturn {
 
   return {
     agents: strategyAgents,
-    loading: (!agents && !agentsError) || (!tasks && !tasksError),
-    error: agentsError?.message || tasksError?.message || null,
+    loading: false, // Mock data is immediately available
+    error: null,
     sendBrief,
-    refetch: () => {
-      mutateAgents()
-    }
+    refetch: () => Promise.resolve()
   }
 }
 
 // Hook for polling agent status more frequently
 export function useAgentStatus(agentId?: string) {
-  const { data, error } = useSWR<{ agents: Agent[] }>(
-    agentId ? `${ZFLOW_API_BASE}/agents/registry` : null,
-    authJsonFetcher,
+  // TODO: Temporarily use mock data until API endpoints are set up
+  const mockAgents: Agent[] = [
     {
-      refreshInterval: 5000, // Poll every 5 seconds
-      revalidateOnFocus: false
+      id: 'claude-dev',
+      name: 'Claude Dev',
+      description: 'Development and coding specialist',
+      status: 'online',
+      provider: 'anthropic'
+    },
+    {
+      id: 'research-assistant',
+      name: 'Research Assistant',
+      description: 'Research and analysis specialist',
+      status: 'online',
+      provider: 'openai'
+    },
+    {
+      id: 'content-writer',
+      name: 'Content Writer',
+      description: 'Content creation and writing specialist',
+      status: 'busy',
+      provider: 'anthropic'
     }
-  )
+  ]
 
   const agent = agentId
-    ? data?.agents?.find(a => a.id === agentId)
+    ? mockAgents.find(a => a.id === agentId)
     : null
 
   return {
     agent,
-    loading: !data && !error,
-    error: error?.message || null
+    loading: false, // Mock data is immediately available
+    error: null
   }
 }

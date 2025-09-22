@@ -287,8 +287,6 @@ export async function POST(request: NextRequest) {
       progress_calculation: subtaskData.task_data.content.progress_calculation || 'manual',
     };
 
-    console.log('Creating subtask with payload:', JSON.stringify(insertPayload, null, 2));
-
     const { data, error } = await client
       .from('tasks')
       .insert(insertPayload)
