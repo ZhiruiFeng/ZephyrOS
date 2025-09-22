@@ -213,7 +213,11 @@ export default function StrategyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/20 to-gray-100">
       {/* Page Header */}
-      <PageHeader onRefresh={refetch} />
+      <PageHeader 
+        onRefresh={refetch} 
+        onInitiativeCreated={() => refetch()} 
+        seasonId={season?.id}
+      />
 
       {/* Search & Filter Bar */}
       <SearchFilterBar
