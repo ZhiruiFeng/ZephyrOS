@@ -37,6 +37,10 @@ import {
   CreateTimelineItemParamsSchema,
   GetTimelineInsightsParamsSchema,
   SearchAcrossTimelineParamsSchema,
+  GetAITasksParamsSchema,
+  GetAITaskParamsSchema,
+  UpdateAITaskParamsSchema,
+  AcceptAITaskParamsSchema,
   ZMemoryError,
   OAuthError,
 } from './types.js';
@@ -166,6 +170,24 @@ export class ZMemoryMCPServer {
             return await this.handleGetCategory(args);
           case 'update_category':
             return await this.handleUpdateCategory(args);
+          
+          // AI Tasks tools
+          case 'get_ai_tasks':
+            return await this.handleGetAITasks(args);
+          case 'get_queued_tasks_for_agent':
+            return await this.handleGetQueuedTasksForAgent(args);
+          case 'get_ai_task':
+            return await this.handleGetAITask(args);
+          case 'accept_ai_task':
+            return await this.handleAcceptAITask(args);
+          case 'update_ai_task':
+            return await this.handleUpdateAITask(args);
+          case 'complete_ai_task':
+            return await this.handleCompleteAITask(args);
+          case 'fail_ai_task':
+            return await this.handleFailAITask(args);
+          case 'get_ai_task_stats':
+            return await this.handleGetAITaskStats(args);
           
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -970,6 +992,172 @@ export class ZMemoryMCPServer {
             icon: { type: 'string', description: '分类图标' },
           },
           required: ['id'],
+        },
+      },
+
+      // AI Tasks Tools
+      {
+        name: 'get_ai_tasks',
+        description: 'Get AI tasks assigned to agents, with filtering options for status, agent, mode, etc.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            agent_id: { type: 'string', description: 'Filter by agent ID' },
+            agent_name: { type: 'string', description: 'Filter by agent name (e.g., "claude", "gpt-4")' },
+            status: { 
+              type: 'string', 
+              enum: ['pending', 'assigned', 'in_progress', 'paused', 'completed', 'failed', 'cancelled'],
+              description: 'Filter by task status' 
+            },
+            mode: { 
+              type: 'string', 
+              enum: ['plan_only', 'dry_run', 'execute'],
+              description: 'Filter by execution mode' 
+            },
+            task_type: { type: 'string', description: 'Filter by task type (e.g., "coding", "research")' },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: 'Number of tasks to return' },
+            offset: { type: 'number', minimum: 0, default: 0, description: 'Pagination offset' },
+            sort_by: { 
+              type: 'string', 
+              enum: ['assigned_at', 'due_at', 'priority', 'updated_at'],
+              default: 'assigned_at',
+              description: 'Sort field' 
+            },
+            sort_order: { 
+              type: 'string', 
+              enum: ['asc', 'desc'],
+              default: 'desc',
+              description: 'Sort order' 
+            },
+          },
+          required: [],
+        },
+      },
+      {
+        name: 'get_queued_tasks_for_agent',
+        description: 'Get AI tasks queued for a specific agent (e.g., "claude" or "gpt-4")',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            agent_name: { type: 'string', description: 'Agent name to get queued tasks for' },
+          },
+          required: ['agent_name'],
+        },
+      },
+      {
+        name: 'get_ai_task',
+        description: 'Get detailed information about a specific AI task',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'AI task ID' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'accept_ai_task',
+        description: 'Accept an AI task assignment and optionally provide estimates',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'AI task ID to accept' },
+            estimated_cost_usd: { type: 'number', minimum: 0, description: 'Estimated cost in USD' },
+            estimated_duration_min: { type: 'number', minimum: 0, description: 'Estimated duration in minutes' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'update_ai_task',
+        description: 'Update AI task status, progress, or results',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'AI task ID' },
+            status: { 
+              type: 'string', 
+              enum: ['in_progress', 'completed', 'failed', 'paused'],
+              description: 'Updated status' 
+            },
+            progress_message: { type: 'string', description: 'Progress update message' },
+            error_message: { type: 'string', description: 'Error message if task failed' },
+            execution_result: {
+              type: 'object',
+              properties: {
+                output: { type: 'string', description: 'Task output/result text' },
+                artifacts: { 
+                  type: 'array', 
+                  items: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string', description: 'Artifact type (file, url, etc)' },
+                      name: { type: 'string', description: 'Artifact name' },
+                      content: { description: 'Artifact content or reference' },
+                    },
+                    required: ['type', 'name'],
+                  },
+                  description: 'Generated artifacts' 
+                },
+                logs: { type: 'array', items: { type: 'string' }, description: 'Execution logs' },
+                metrics: { type: 'object', description: 'Execution metrics' },
+              },
+              description: 'Task execution results',
+            },
+            actual_cost_usd: { type: 'number', minimum: 0, description: 'Actual cost incurred' },
+            actual_duration_min: { type: 'number', minimum: 0, description: 'Actual duration in minutes' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'complete_ai_task',
+        description: 'Mark an AI task as completed with results',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'AI task ID' },
+            output: { type: 'string', description: 'Task output/result text' },
+            artifacts: { 
+              type: 'array', 
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', description: 'Artifact type' },
+                  name: { type: 'string', description: 'Artifact name' },
+                  content: { description: 'Artifact content' },
+                },
+                required: ['type', 'name'],
+              },
+              description: 'Generated artifacts' 
+            },
+            logs: { type: 'array', items: { type: 'string' }, description: 'Execution logs' },
+            metrics: { type: 'object', description: 'Execution metrics' },
+            actual_cost_usd: { type: 'number', minimum: 0, description: 'Actual cost' },
+            actual_duration_min: { type: 'number', minimum: 0, description: 'Actual duration' },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'fail_ai_task',
+        description: 'Mark an AI task as failed with an error message',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'AI task ID' },
+            error_message: { type: 'string', description: 'Error message explaining the failure' },
+          },
+          required: ['id', 'error_message'],
+        },
+      },
+      {
+        name: 'get_ai_task_stats',
+        description: 'Get statistics about AI tasks (total, by status, by mode, etc.)',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
         },
       },
     ];
@@ -2038,6 +2226,241 @@ ${category.icon ? `图标: ${category.icon}` : ''}
         {
           type: 'text',
           text: `更新时间: ${category.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  // AI Tasks handlers
+  private async handleGetAITasks(args: any) {
+    const params = GetAITasksParamsSchema.parse(args);
+    const tasks = await this.zmemoryClient.getAITasks(params);
+
+    if (tasks.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'No AI tasks found matching the criteria',
+          },
+        ],
+      };
+    }
+
+    const taskList = tasks
+      .map((task: any) => {
+        const objective = task.objective || 'No objective';
+        const status = task.status || 'unknown';
+        const mode = task.mode || 'unknown';
+        const priority = task.metadata?.priority || 'medium';
+        const taskType = task.task_type || 'general';
+        const agent = task.agent_name || task.agent_id?.substring(0, 8) || 'unassigned';
+        const due = task.due_at ? ` (Due: ${new Date(task.due_at).toLocaleDateString()})` : '';
+        return `• [${status}] ${objective} - Type: ${taskType}, Mode: ${mode}, Priority: ${priority}, Agent: ${agent}${due} (ID: ${task.id})`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Found ${tasks.length} AI tasks:\n\n${taskList}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetQueuedTasksForAgent(args: any) {
+    const { agent_name } = args;
+    if (!agent_name) {
+      throw new Error('agent_name is required');
+    }
+
+    const tasks = await this.zmemoryClient.getQueuedTasksForAgent(agent_name);
+
+    if (tasks.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `No queued tasks for agent "${agent_name}"`,
+          },
+        ],
+      };
+    }
+
+    const taskList = tasks
+      .map((task: any) => {
+        const objective = task.objective || 'No objective';
+        const taskType = task.task_type || 'general';
+        const mode = task.mode || 'plan_only';
+        const priority = task.metadata?.priority || 'medium';
+        const due = task.due_at ? ` (Due: ${new Date(task.due_at).toLocaleDateString()})` : '';
+        return `• ${objective} - Type: ${taskType}, Mode: ${mode}, Priority: ${priority}${due} (ID: ${task.id})`;
+      })
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `${tasks.length} queued tasks for agent "${agent_name}":\n\n${taskList}\n\nUse "accept_ai_task" with the task ID to start working on a task.`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetAITask(args: any) {
+    const params = GetAITaskParamsSchema.parse(args);
+    const task = await this.zmemoryClient.getAITask(params.id);
+
+    const dependencies = task.dependencies?.length > 0 ? task.dependencies.join(', ') : 'None';
+    const guardrails = task.guardrails ? `\nGuardrails:\n- Cost cap: ${task.guardrails.costCapUSD ? `$${task.guardrails.costCapUSD}` : 'None'}\n- Time cap: ${task.guardrails.timeCapMin ? `${task.guardrails.timeCapMin} min` : 'None'}\n- Requires approval: ${task.guardrails.requiresHumanApproval ? 'Yes' : 'No'}\n- Data scopes: ${task.guardrails.dataScopes?.join(', ') || 'None'}` : '';
+    const result = task.execution_result ? `\n\nExecution Result:\nOutput: ${task.execution_result.output || 'None'}\nArtifacts: ${task.execution_result.artifacts?.length || 0}\nLogs: ${task.execution_result.logs?.length || 0} entries` : '';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `AI Task Details:
+ID: ${task.id}
+Task ID: ${task.task_id}
+Agent: ${task.agent_name || task.agent_id}
+Objective: ${task.objective}
+${task.deliverables ? `Deliverables: ${task.deliverables}` : ''}
+${task.context ? `Context: ${task.context}` : ''}
+${task.acceptance_criteria ? `Acceptance Criteria: ${task.acceptance_criteria}` : ''}
+Type: ${task.task_type}
+Mode: ${task.mode}
+Status: ${task.status}
+Priority: ${task.metadata?.priority || 'medium'}
+Tags: ${task.metadata?.tags?.join(', ') || 'None'}
+Dependencies: ${dependencies}${guardrails}
+
+Estimated cost: ${task.estimated_cost_usd ? `$${task.estimated_cost_usd}` : 'Not estimated'}
+Actual cost: ${task.actual_cost_usd ? `$${task.actual_cost_usd}` : 'Not recorded'}
+Estimated duration: ${task.estimated_duration_min ? `${task.estimated_duration_min} min` : 'Not estimated'}
+Actual duration: ${task.actual_duration_min ? `${task.actual_duration_min} min` : 'Not recorded'}
+
+Assigned at: ${task.assigned_at}
+${task.started_at ? `Started at: ${task.started_at}` : ''}
+${task.completed_at ? `Completed at: ${task.completed_at}` : ''}
+${task.due_at ? `Due at: ${task.due_at}` : ''}${result}`,
+        },
+      ],
+    };
+  }
+
+  private async handleAcceptAITask(args: any) {
+    const params = AcceptAITaskParamsSchema.parse(args);
+    const task = await this.zmemoryClient.acceptAITask(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Successfully accepted AI task: ${task.objective}\nStatus: ${task.status}\n${params.estimated_cost_usd ? `Estimated cost: $${params.estimated_cost_usd}` : ''}\n${params.estimated_duration_min ? `Estimated duration: ${params.estimated_duration_min} minutes` : ''}\n\nThe task is now in progress. Use "update_ai_task" to report progress or "complete_ai_task" when finished.`,
+        },
+      ],
+    };
+  }
+
+  private async handleUpdateAITask(args: any) {
+    const params = UpdateAITaskParamsSchema.parse(args);
+    const task = await this.zmemoryClient.updateAITask(params);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Successfully updated AI task: ${task.objective}\nStatus: ${task.status}\n${params.progress_message ? `Progress: ${params.progress_message}` : ''}\n${params.error_message ? `Error: ${params.error_message}` : ''}\nUpdated at: ${task.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleCompleteAITask(args: any) {
+    const { id, output, artifacts, logs, metrics, actual_cost_usd, actual_duration_min } = args;
+    
+    if (!id) {
+      throw new Error('Task ID is required');
+    }
+
+    const task = await this.zmemoryClient.completeAITask(id, {
+      output,
+      artifacts,
+      logs,
+      metrics,
+      actual_cost_usd,
+      actual_duration_min,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Successfully completed AI task: ${task.objective}\nStatus: ${task.status}\n${output ? `Output: ${output}` : ''}\n${artifacts?.length ? `Artifacts: ${artifacts.length} generated` : ''}\n${actual_cost_usd ? `Actual cost: $${actual_cost_usd}` : ''}\n${actual_duration_min ? `Actual duration: ${actual_duration_min} minutes` : ''}\nCompleted at: ${task.completed_at || task.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleFailAITask(args: any) {
+    const { id, error_message } = args;
+    
+    if (!id || !error_message) {
+      throw new Error('Task ID and error message are required');
+    }
+
+    const task = await this.zmemoryClient.failAITask(id, error_message);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `AI task marked as failed: ${task.objective}\nStatus: ${task.status}\nError: ${error_message}\nFailed at: ${task.completed_at || task.updated_at}`,
+        },
+      ],
+    };
+  }
+
+  private async handleGetAITaskStats(args: any) {
+    const stats = await this.zmemoryClient.getAITaskStats();
+
+    const statusStats = Object.entries(stats.by_status || {})
+      .map(([status, count]) => `  ${status}: ${count}`)
+      .join('\n');
+
+    const modeStats = Object.entries(stats.by_mode || {})
+      .map(([mode, count]) => `  ${mode}: ${count}`)
+      .join('\n');
+
+    const typeStats = Object.entries(stats.by_task_type || {})
+      .map(([type, count]) => `  ${type}: ${count}`)
+      .join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `AI Task Statistics:
+
+Total tasks: ${stats.total || 0}
+Pending for agents: ${stats.pending_for_agent || 0}
+In progress: ${stats.in_progress || 0}
+Completed today: ${stats.completed_today || 0}
+Failed today: ${stats.failed_today || 0}
+${stats.avg_completion_time ? `Avg completion time: ${Math.round(stats.avg_completion_time)} minutes` : ''}
+${stats.total_cost_today ? `Total cost today: $${stats.total_cost_today.toFixed(2)}` : ''}
+
+By Status:
+${statusStats || '  No data'}
+
+By Mode:
+${modeStats || '  No data'}
+
+By Task Type:
+${typeStats || '  No data'}`,
         },
       ],
     };

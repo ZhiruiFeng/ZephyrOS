@@ -531,3 +531,120 @@ export class OAuthError extends Error {
     this.name = 'OAuthError';
   }
 }
+
+// ===== AI Tasks Types =====
+// AI task guardrails
+export const AITaskGuardrailsSchema = z.object({
+  costCapUSD: z.number().nonnegative().nullable().optional().describe('Cost cap in USD'),
+  timeCapMin: z.number().int().nonnegative().nullable().optional().describe('Time cap in minutes'),
+  requiresHumanApproval: z.boolean().default(true).describe('Requires human approval before execution'),
+  dataScopes: z.array(z.string()).default([]).describe('Data access scopes allowed'),
+});
+
+// AI task metadata
+export const AITaskMetadataSchema = z.object({
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium').describe('Task priority'),
+  tags: z.array(z.string()).default([]).describe('Task tags'),
+});
+
+// AI task execution result
+export const AITaskExecutionResultSchema = z.object({
+  output: z.string().optional().describe('Task output/result text'),
+  artifacts: z.array(z.object({
+    type: z.string().describe('Artifact type (file, url, etc)'),
+    name: z.string().describe('Artifact name'),
+    content: z.any().describe('Artifact content or reference'),
+  })).optional().describe('Generated artifacts'),
+  logs: z.array(z.string()).optional().describe('Execution logs'),
+  metrics: z.record(z.any()).optional().describe('Execution metrics'),
+});
+
+// Get AI tasks params (for fetching queued tasks)
+export const GetAITasksParamsSchema = z.object({
+  agent_id: z.string().optional().describe('Filter by agent ID'),
+  agent_name: z.string().optional().describe('Filter by agent name (e.g., "claude", "gpt-4")'),
+  status: z.enum(['pending', 'assigned', 'in_progress', 'paused', 'completed', 'failed', 'cancelled']).optional().describe('Filter by status'),
+  mode: z.enum(['plan_only', 'dry_run', 'execute']).optional().describe('Filter by execution mode'),
+  task_type: z.string().optional().describe('Filter by task type (e.g., "coding", "research")'),
+  limit: z.number().min(1).max(100).default(20).describe('Number of tasks to return'),
+  offset: z.number().min(0).default(0).describe('Pagination offset'),
+  sort_by: z.enum(['assigned_at', 'due_at', 'priority', 'updated_at']).default('assigned_at').describe('Sort field'),
+  sort_order: z.enum(['asc', 'desc']).default('desc').describe('Sort order'),
+}).default({});
+
+// Get single AI task params
+export const GetAITaskParamsSchema = z.object({
+  id: z.string().describe('AI task ID'),
+});
+
+// Update AI task params (for agents to report progress/results)
+export const UpdateAITaskParamsSchema = z.object({
+  id: z.string().describe('AI task ID'),
+  status: z.enum(['in_progress', 'completed', 'failed', 'paused']).optional().describe('Update task status'),
+  execution_result: AITaskExecutionResultSchema.optional().describe('Task execution results'),
+  actual_cost_usd: z.number().nonnegative().optional().describe('Actual cost incurred'),
+  actual_duration_min: z.number().int().nonnegative().optional().describe('Actual duration in minutes'),
+  progress_message: z.string().optional().describe('Progress update message'),
+  error_message: z.string().optional().describe('Error message if failed'),
+});
+
+// Accept AI task params (for agents to accept assignment)
+export const AcceptAITaskParamsSchema = z.object({
+  id: z.string().describe('AI task ID to accept'),
+  estimated_cost_usd: z.number().nonnegative().optional().describe('Estimated cost'),
+  estimated_duration_min: z.number().int().nonnegative().optional().describe('Estimated duration'),
+});
+
+// AI Task type
+export interface AITask {
+  id: string;
+  task_id: string;
+  agent_id: string;
+  objective: string;
+  deliverables?: string;
+  context?: string;
+  acceptance_criteria?: string;
+  task_type: string;
+  dependencies: string[];
+  mode: 'plan_only' | 'dry_run' | 'execute';
+  guardrails: z.infer<typeof AITaskGuardrailsSchema>;
+  metadata: z.infer<typeof AITaskMetadataSchema>;
+  status: 'pending' | 'assigned' | 'in_progress' | 'paused' | 'completed' | 'failed' | 'cancelled';
+  execution_result?: z.infer<typeof AITaskExecutionResultSchema>;
+  estimated_cost_usd?: number;
+  actual_cost_usd?: number;
+  estimated_duration_min?: number;
+  actual_duration_min?: number;
+  assigned_at: string;
+  started_at?: string;
+  completed_at?: string;
+  due_at?: string;
+  created_at: string;
+  updated_at: string;
+  // Related task info (from join)
+  task_title?: string;
+  task_status?: string;
+  // Agent info (from join)
+  agent_name?: string;
+  agent_vendor?: string;
+}
+
+// AI Tasks statistics
+export interface AITaskStats {
+  total: number;
+  by_status: Record<string, number>;
+  by_mode: Record<string, number>;
+  by_task_type: Record<string, number>;
+  pending_for_agent: number;
+  in_progress: number;
+  completed_today: number;
+  failed_today: number;
+  avg_completion_time: number;
+  total_cost_today: number;
+}
+
+// Export param types
+export type GetAITasksParams = z.infer<typeof GetAITasksParamsSchema>;
+export type GetAITaskParams = z.infer<typeof GetAITaskParamsSchema>;
+export type UpdateAITaskParams = z.infer<typeof UpdateAITaskParamsSchema>;
+export type AcceptAITaskParams = z.infer<typeof AcceptAITaskParamsSchema>;

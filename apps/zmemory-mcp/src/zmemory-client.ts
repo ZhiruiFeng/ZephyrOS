@@ -24,6 +24,11 @@ import {
   UserInfo,
   AuthState,
   AuthenticateParams,
+  AITask,
+  AITaskStats,
+  GetAITasksParams,
+  UpdateAITaskParams,
+  AcceptAITaskParams,
 } from './types.js';
 import { AuthModule } from './modules/auth/auth-module.js';
 import { MemoryModule } from './modules/memory/memory-module.js';
@@ -34,6 +39,7 @@ import { TimeModule } from './modules/time/time-module.js';
 import { CategoryModule } from './modules/category/category-module.js';
 import { ActivityModule } from './modules/activity/activity-module.js';
 import { TimelineModule } from './modules/timeline/timeline-module.js';
+import { AITasksModule } from './modules/ai-tasks/ai-tasks-module.js';
 import { setupResponseInterceptor, setupRequestInterceptor } from './modules/utils/http-utils.js';
 
 export class ZMemoryClient {
@@ -48,6 +54,7 @@ export class ZMemoryClient {
   private categoryModule: CategoryModule;
   private activityModule: ActivityModule;
   private timelineModule: TimelineModule;
+  private aiTasksModule: AITasksModule;
 
   constructor(private config: ZMemoryConfig) {
     this.client = axios.create({
@@ -80,6 +87,7 @@ export class ZMemoryClient {
     this.categoryModule = new CategoryModule(this.client, this.authState);
     this.activityModule = new ActivityModule(this.client, this.authState);
     this.timelineModule = new TimelineModule(this.client, this.authState);
+    this.aiTasksModule = new AITasksModule(this.client, this.authState);
   }
 
   // Authentication methods - delegated to AuthModule
@@ -249,5 +257,48 @@ export class ZMemoryClient {
 
   async searchAcrossTimeline(params: SearchAcrossTimelineParams): Promise<any[]> {
     return this.timelineModule.searchAcrossTimeline(params);
+  }
+
+  // AI Tasks methods - delegated to AITasksModule
+  async getAITasks(params: Partial<GetAITasksParams> = {}): Promise<AITask[]> {
+    return this.aiTasksModule.getAITasks(params);
+  }
+
+  async getQueuedTasksForAgent(agentName: string): Promise<AITask[]> {
+    return this.aiTasksModule.getQueuedTasksForAgent(agentName);
+  }
+
+  async getAITask(id: string): Promise<AITask> {
+    return this.aiTasksModule.getAITask(id);
+  }
+
+  async acceptAITask(params: AcceptAITaskParams): Promise<AITask> {
+    return this.aiTasksModule.acceptAITask(params);
+  }
+
+  async updateAITask(params: UpdateAITaskParams): Promise<AITask> {
+    return this.aiTasksModule.updateAITask(params);
+  }
+
+  async completeAITask(
+    id: string,
+    result: {
+      output?: string;
+      artifacts?: Array<{type: string; name: string; content: any}>;
+      logs?: string[];
+      metrics?: Record<string, any>;
+      actual_cost_usd?: number;
+      actual_duration_min?: number;
+    }
+  ): Promise<AITask> {
+    return this.aiTasksModule.completeAITask(id, result);
+  }
+
+  async failAITask(id: string, errorMessage: string): Promise<AITask> {
+    return this.aiTasksModule.failAITask(id, errorMessage);
+  }
+
+  async getAITaskStats(): Promise<AITaskStats> {
+    return this.aiTasksModule.getAITaskStats();
   }
 }
