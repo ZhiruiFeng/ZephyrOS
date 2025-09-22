@@ -2,6 +2,25 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that exposes ZMemory's memory management functionality to AI agents.
 
+## 📚 Documentation
+
+- **🚀 [Quick Start Guide](./QUICK_START.md)** - 30-second setup for Claude Code
+- **🔧 [Claude Code Integration](./CLAUDE_CODE_INTEGRATION.md)** - Complete integration guide
+- **📖 [Full Documentation](#)** - This file (comprehensive reference)
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Claude Code Integration](#4-claude-code-integration)
+- [ZFlow Agent Integration](#zflow-agent-integration)
+- [Vercel Deployment](#-vercel-deployment)
+- [Available MCP Tools](#-available-mcp-tools)
+- [Usage Examples](#-usage-examples)
+- [Testing](#-testing)
+- [Security Notes](#-security-notes)
+- [Development](#-development)
+
 ## 🎯 Features
 
 - **Memory Management**: Complete CRUD operations for memories, tasks, and notes
@@ -58,33 +77,42 @@ OAUTH_CLIENTS='[
 ]'
 ```
 
-### 4. Claude Desktop Integration
+### 4. Claude Code Integration
 
-#### Automatic Setup
-```bash
-npm run setup:claude YOUR_CLIENT_SECRET_HERE
-```
+**📖 Complete Integration Guide**: See [CLAUDE_CODE_INTEGRATION.md](./CLAUDE_CODE_INTEGRATION.md) for detailed setup instructions.
 
-#### Manual Setup
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+#### Quick Setup
+Add to your Claude Code MCP configuration:
 
 ```json
 {
-  "mcpServers": {
-    "zmemory": {
-      "command": "node",
-      "args": ["/path/to/zmemory-mcp/dist/index.js"],
-      "env": {
-        "ZMEMORY_API_URL": "https://your-zmemory-api.vercel.app",
-        "OAUTH_CLIENT_ID": "zmemory-mcp",
-        "OAUTH_CLIENT_SECRET": "your-secret-here",
-        "OAUTH_REDIRECT_URI": "http://localhost:3000/callback",
-        "OAUTH_SCOPE": "tasks.write"
+  "mcp": {
+    "servers": {
+      "zmemory": {
+        "command": "tsx",
+        "args": ["/Users/zhiruifeng/Workspace/dev/ZephyrOS/apps/zmemory-mcp/src/index.ts"],
+        "env": {
+          "ZMEMORY_API_URL": "http://localhost:3001",
+          "OAUTH_CLIENT_ID": "zmemory-mcp",
+          "OAUTH_CLIENT_SECRET": "your-secret-here",
+          "OAUTH_REDIRECT_URI": "http://localhost:3001/oauth/callback",
+          "OAUTH_SCOPE": "tasks.write,tasks.read"
+        }
       }
     }
   }
 }
 ```
+
+#### ZFlow Agent Integration
+
+The MCP server is automatically integrated with ZFlow agents:
+- ✅ **46 tools** auto-discovered and registered
+- ✅ **Service-level authentication** handled automatically
+- ✅ **Real-time tool calling** in conversations
+- ✅ **Full ZephyrOS ecosystem access**
+
+See [ZFlow Integration Details](../zflow/app/lib/agents/) for implementation details.
 
 ## 🌐 Vercel Deployment
 
