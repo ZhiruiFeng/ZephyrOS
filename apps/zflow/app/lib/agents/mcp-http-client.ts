@@ -33,6 +33,9 @@ export class MCPHttpClient {
         throw new Error(`MCP server health check failed: ${healthResponse.status}`)
       }
 
+      // Initialize MCP session
+      await this.initializeMCPSession()
+
       // Load available tools
       await this.loadTools()
       this.connected = true
@@ -61,6 +64,7 @@ export class MCPHttpClient {
     const url = `${this.config.baseUrl.replace(/\/$/, '')}${endpoint}`
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
       'User-Agent': 'ZFlow-MCP-Client/1.0'
     }
 
@@ -81,18 +85,82 @@ export class MCPHttpClient {
     return fetch(url, requestOptions)
   }
 
+  private sessionId: string | null = null
+
+  private async initializeMCPSession(): Promise<void> {
+    const initRequest = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: {
+          name: 'zflow-http-client',
+          version: '1.0.0'
+        }
+      }
+    }
+
+    const response = await this.makeRequest('/api/mcp', 'POST', initRequest)
+    if (!response.ok) {
+      throw new Error(`MCP initialization failed: ${response.status}`)
+    }
+
+    const sessionId = response.headers.get('mcp-session-id')
+    if (sessionId) {
+      this.sessionId = sessionId
+    }
+
+    const result = await response.json()
+    if (result.error) {
+      throw new Error(`MCP initialization error: ${result.error.message}`)
+    }
+  }
+
+  private async sendMCPRequest(method: string, params?: any): Promise<any> {
+    const request = {
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method,
+      params: params || {}
+    }
+
+    const headers: Record<string, string> = {}
+    if (this.sessionId) {
+      headers['mcp-session-id'] = this.sessionId
+    }
+
+    const response = await fetch(`${this.config.baseUrl.replace(/\/$/, '')}/api/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'User-Agent': 'ZFlow-MCP-Client/1.0',
+        ...headers
+      },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(this.config.timeout!)
+    })
+
+    if (!response.ok) {
+      throw new Error(`MCP request failed: ${response.status}`)
+    }
+
+    const result = await response.json()
+    if (result.error) {
+      throw new Error(`MCP error: ${result.error.message}`)
+    }
+
+    return result.result
+  }
+
   private async loadTools(): Promise<void> {
     try {
-      const response = await this.makeRequest('/mcp/tools', 'GET')
+      const result = await this.sendMCPRequest('tools/list')
 
-      if (!response.ok) {
-        throw new Error(`Failed to load tools: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (data.tools && Array.isArray(data.tools)) {
-        this.availableTools = data.tools.map((tool: any) => ({
+      if (result.tools && Array.isArray(result.tools)) {
+        this.availableTools = result.tools.map((tool: any) => ({
           name: tool.name,
           description: tool.description || '',
           inputSchema: tool.inputSchema || {}
@@ -178,27 +246,18 @@ export class MCPHttpClient {
     try {
       console.log(`🔧 Calling HTTP MCP tool: ${name}`, arguments_)
 
-      const requestBody = {
-        tool: name,
-        arguments: arguments_,
-        authToken: userAuthToken
-      }
+      const result = await this.sendMCPRequest('tools/call', {
+        name,
+        arguments: arguments_
+      })
 
-      const response = await this.makeRequest('/mcp/call', 'POST', requestBody)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP MCP tool call failed: ${response.status} ${errorText}`)
-      }
-
-      const result = await response.json()
       console.log(`✅ HTTP MCP tool ${name} completed:`, result)
 
       // Transform response to match MCP format
       return {
         content: result.content || [{
           type: 'text',
-          text: result.result || result.message || 'Tool executed successfully'
+          text: result.text || result.message || 'Tool executed successfully'
         }],
         isError: result.isError || false
       }

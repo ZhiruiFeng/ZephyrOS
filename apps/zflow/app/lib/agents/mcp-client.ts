@@ -281,7 +281,7 @@ export function getMCPClient(): MCPClient | MCPHttpClient {
     if (isProduction || isVercel || httpMcpUrl) {
       console.log('🌐 Using HTTP MCP client for production/Vercel environment')
       const httpClient = new MCPHttpClient({
-        baseUrl: httpMcpUrl || process.env.ZMEMORY_API_URL || 'http://localhost:3001',
+        baseUrl: httpMcpUrl || 'https://zmemory-mcp.vercel.app',
         apiKey: process.env.ZMEMORY_API_KEY,
         timeout: isBuildTime ? 5000 : 15000
       })
