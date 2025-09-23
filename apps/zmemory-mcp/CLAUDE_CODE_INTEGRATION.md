@@ -48,7 +48,7 @@ Add this to your Claude Code MCP configuration:
         "env": {
           "ZMEMORY_API_URL": "http://localhost:3001",
           "OAUTH_CLIENT_ID": "zmemory-mcp",
-          "OAUTH_CLIENT_SECRET": "a93ca3fbba42481cd18606208476c5bfc7e592aff66560443c08b7b8545eebb6",
+"OAUTH_CLIENT_SECRET": "{{OAUTH_CLIENT_SECRET}}",
           "OAUTH_REDIRECT_URI": "http://localhost:3001/oauth/callback",
           "OAUTH_SCOPE": "tasks.write,tasks.read"
         }
@@ -70,7 +70,7 @@ Add this to your Claude Code MCP configuration:
         "env": {
           "ZMEMORY_API_URL": "http://localhost:3001",
           "OAUTH_CLIENT_ID": "zmemory-mcp",
-          "OAUTH_CLIENT_SECRET": "a93ca3fbba42481cd18606208476c5bfc7e592aff66560443c08b7b8545eebb6",
+"OAUTH_CLIENT_SECRET": "{{OAUTH_CLIENT_SECRET}}",
           "OAUTH_REDIRECT_URI": "http://localhost:3001/oauth/callback",
           "OAUTH_SCOPE": "tasks.write,tasks.read"
         }
@@ -129,7 +129,7 @@ The MCP configuration goes in your Claude Code settings file:
         "env": {
           "ZMEMORY_API_URL": "http://localhost:3001",
           "OAUTH_CLIENT_ID": "zmemory-mcp",
-          "OAUTH_CLIENT_SECRET": "a93ca3fbba42481cd18606208476c5bfc7e592aff66560443c08b7b8545eebb6",
+"OAUTH_CLIENT_SECRET": "{{OAUTH_CLIENT_SECRET}}",
           "OAUTH_REDIRECT_URI": "http://localhost:3001/oauth/callback",
           "OAUTH_SCOPE": "tasks.write,tasks.read",
           "LOG_LEVEL": "info",

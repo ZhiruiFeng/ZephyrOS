@@ -75,6 +75,11 @@ export class ZMemoryClient {
 
     // Initialize modules
     this.authModule = new AuthModule(this.client, this.config, this.authState);
+
+    // If API key is provided, set up authentication state automatically
+    if (this.config.apiKey) {
+      this.authModule.setAccessToken(this.config.apiKey);
+    }
     this.memoryModule = new MemoryModule(this.client, this.authState);
     this.searchModule = new SearchModule(this.client, this.authState);
     this.statsModule = new StatsModule(

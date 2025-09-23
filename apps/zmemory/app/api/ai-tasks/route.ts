@@ -5,6 +5,8 @@ import { getUserIdFromRequest } from '../../../lib/auth'
 import { AITaskCreateSchema, AITasksQuerySchema } from '../../../lib/validators'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security'
 
+export const runtime = 'nodejs'
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null

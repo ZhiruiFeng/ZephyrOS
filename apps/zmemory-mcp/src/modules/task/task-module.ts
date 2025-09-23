@@ -31,7 +31,7 @@ export class TaskModule {
 
   async createTask(params: CreateTaskParams): Promise<TaskMemory> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     // Handle category name to ID mapping
@@ -88,7 +88,7 @@ export class TaskModule {
 
   async searchTasks(params: SearchTasksParams): Promise<TaskMemory[]> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     const searchParams = new URLSearchParams();
@@ -123,7 +123,7 @@ export class TaskModule {
 
   async getTask(id: string): Promise<TaskMemory> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     const response = await this.client.get(`/api/tasks/${id}`);
@@ -132,7 +132,7 @@ export class TaskModule {
 
   async updateTask(params: UpdateTaskParams): Promise<TaskMemory> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     const updateData: any = { type: 'task' };
@@ -173,7 +173,7 @@ export class TaskModule {
 
   async getTaskStats(): Promise<TaskStats> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     const response = await this.client.get('/api/tasks/stats');
@@ -182,7 +182,7 @@ export class TaskModule {
 
   async getTaskUpdatesForToday(timezone?: string): Promise<{ tasks: TaskMemory[], total: number, date_range: { start: string, end: string } }> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     // Use provided timezone or detect server timezone
@@ -196,7 +196,7 @@ export class TaskModule {
 
   async getTaskUpdatesForDate(date: string, timezone?: string): Promise<{ tasks: TaskMemory[], total: number, date_range: { start: string, end: string } }> {
     if (!this.isAuthenticated()) {
-      throw new OAuthError('需要认证', 'authentication_required', '请先进行OAuth认证');
+      throw new OAuthError('需要认证', 'authentication_required', '请先进行认证（OAuth或API密钥）');
     }
 
     // Validate date format

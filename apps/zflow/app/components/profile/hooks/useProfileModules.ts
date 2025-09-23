@@ -87,8 +87,8 @@ const AVAILABLE_MODULES: ProfileModule[] = [
   },
   {
     id: 'api-keys',
-    name: 'API Keys',
-    description: 'Manage your AI service API keys',
+    name: 'External API Keys',
+    description: 'Manage your AI service API keys (OpenAI, Anthropic, etc.)',
     icon: 'Key',
     category: 'tools',
     defaultEnabled: false,
@@ -97,6 +97,19 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       groupByVendor: true
     },
     fullScreenPath: '/profile/modules/api-keys'
+  },
+  {
+    id: 'zmemory-api-keys',
+    name: 'ZMemory API Keys',
+    description: 'Generate API keys for MCP and integrations',
+    icon: 'Shield',
+    category: 'tools',
+    defaultEnabled: false,
+    defaultConfig: {
+      showExpiredKeys: false,
+      defaultScopes: ['tasks.read', 'tasks.write', 'memories.read', 'memories.write']
+    },
+    fullScreenPath: '/profile/modules/zmemory-api-keys'
   },
   {
     id: 'stt-config',

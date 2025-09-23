@@ -11,6 +11,7 @@ import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
+import { ZMemoryApiKeysModule } from './modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from './modules/STTConfigModule'
 import { ZRelationsModule } from './modules/ZRelationsModule'
 import AITaskGrantorModule from './modules/AITaskGrantorModule'
@@ -151,11 +152,23 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
         )
       case 'api-keys':
         return (
-          <ApiKeysModule 
+          <ApiKeysModule
             key={moduleConfig.id}
             config={moduleConfig}
             onConfigChange={(newConfig) => {
               console.log('API keys config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'zmemory-api-keys':
+        return (
+          <ZMemoryApiKeysModule
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('ZMemory API keys config changed:', newConfig)
             }}
             isFullscreen={isFullscreen}
             onToggleFullscreen={handleToggleFullscreenForModule}

@@ -242,7 +242,7 @@ Ensure these environment variables are set in `apps/zflow/.env.local`:
 ZMEMORY_API_URL=http://localhost:3001
 ZMEMORY_API_KEY=  # Optional for local testing
 OAUTH_CLIENT_ID=zmemory-mcp
-OAUTH_CLIENT_SECRET=a93ca3fbba42481cd18606208476c5bfc7e592aff66560443c08b7b8545eebb6
+OAUTH_CLIENT_SECRET={{OAUTH_CLIENT_SECRET}}
 OAUTH_REDIRECT_URI=http://localhost:3001/oauth/callback
 OAUTH_SCOPE=tasks.write,tasks.read
 

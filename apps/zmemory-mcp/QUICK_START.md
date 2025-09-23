@@ -26,7 +26,7 @@ Add this to your Claude Code MCP settings:
         "env": {
           "ZMEMORY_API_URL": "http://localhost:3001",
           "OAUTH_CLIENT_ID": "zmemory-mcp",
-          "OAUTH_CLIENT_SECRET": "a93ca3fbba42481cd18606208476c5bfc7e592aff66560443c08b7b8545eebb6"
+"OAUTH_CLIENT_SECRET": "{{OAUTH_CLIENT_SECRET}}"
         }
       }
     }

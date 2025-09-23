@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "zmemory-mcp": {
+      "command": "node",
+      "args": ["/Users/zhiruifeng/Workspace/dev/ZephyrOS/apps/zmemory-mcp/src/index.js"],
+      "env": {
+        "ZMEMORY_API_URL": "http://localhost:3001",
+        "ZMEMORY_API_KEY": "REPLACE_WITH_YOUR_ZMEMORY_API_KEY"
+      }
+    }
+  }
+}

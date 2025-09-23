@@ -7,6 +7,7 @@ import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
+import { ZMemoryApiKeysModule } from './modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from './modules/STTConfigModule'
 import { ZRelationsModule } from './modules/ZRelationsModule'
 import type { ProfileModule, ProfileModuleConfig } from './types'
@@ -48,6 +49,8 @@ export function ProfileModuleRenderer({
       return <MemoriesModule {...sharedProps} />
     case 'api-keys':
       return <ApiKeysModule {...sharedProps} />
+    case 'zmemory-api-keys':
+      return <ZMemoryApiKeysModule {...sharedProps} />
     case 'stt-config':
       return <STTConfigModule {...sharedProps} />
     case 'zrelations':
