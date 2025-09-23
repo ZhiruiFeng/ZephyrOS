@@ -4,15 +4,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } fro
 import { FullscreenModal, useFullscreenModal } from '../modals/FullscreenModal'
 import { DailyPlanningModal } from '../modals/DailyPlanningModal'
 import { DayReflectionModal } from '../modals/DayReflectionModal'
+import { TaskPromotionModal } from '../modals/TaskPromotionModal'
 
 export const QuickActions = () => {
   const fullscreen = useFullscreenModal()
   const [showPlanningModal, setShowPlanningModal] = useState(false)
   const [showReflectionModal, setShowReflectionModal] = useState(false)
+  const [showPromotionModal, setShowPromotionModal] = useState(false)
 
   const quickActions = [
     { title: 'Start Daily Planning', description: 'Set intentions and priorities for the day ahead', category: 'Daily Rhythm', action: () => setShowPlanningModal(true), icon: Sun },
     { title: 'End Day Reflection', description: 'Review progress and capture insights from today', category: 'Daily Rhythm', action: () => setShowReflectionModal(true), icon: Moon },
+    { title: 'Promote Timeline Tasks', description: 'Convert existing timeline tasks to strategic initiatives', category: 'Integration', action: () => setShowPromotionModal(true) },
     { title: 'Break down selected goal', description: 'Decompose high-level goals into actionable initiatives', category: 'Planning' },
     { title: 'Draft OKRs for season', description: 'Create Objectives and Key Results for the current season', category: 'Goal Setting' },
     { title: 'Create weekly cadence', description: 'Establish recurring meetings and check-ins', category: 'Operations' },
@@ -80,7 +83,7 @@ export const QuickActions = () => {
           </div>
 
           <div className="space-y-6">
-            {['Daily Rhythm', 'Planning', 'Goal Setting', 'Operations', 'Research', 'Resource Management', 'Communication', 'Review', 'Development'].map(category => {
+            {['Daily Rhythm', 'Integration', 'Planning', 'Goal Setting', 'Operations', 'Research', 'Resource Management', 'Communication', 'Review', 'Development'].map(category => {
               const categoryActions = quickActions.filter(action => action.category === category)
               if (categoryActions.length === 0) return null
 
@@ -137,6 +140,12 @@ export const QuickActions = () => {
       <DayReflectionModal
         isOpen={showReflectionModal}
         onClose={() => setShowReflectionModal(false)}
+      />
+
+      {/* Task Promotion Modal */}
+      <TaskPromotionModal
+        isOpen={showPromotionModal}
+        onClose={() => setShowPromotionModal(false)}
       />
     </>
   )

@@ -1,5 +1,6 @@
 import useSWR from 'swr'
 import { strategyApi } from '../../api/strategy'
+import { useAITaskSync } from './useAITaskSync'
 import type { ApiStrategyDashboard } from '../../api/strategy'
 import type { StrategyDashboard, StrategySeason, Initiative, StrategyTask, StrategyAgent, StrategyMemory } from '../../types/strategy'
 
@@ -168,6 +169,16 @@ export function useStrategyDashboardWithTasks(): {
       .filter((task: any) => task.assignee && task.assignee !== 'me')
       .map(adaptApiTaskToStrategy)
   } : baseDashboard
+
+  // Set up AI task synchronization
+  const allTasks = dashboard ? [...dashboard.myTasks, ...dashboard.agentTasks] : []
+  useAITaskSync({
+    strategyTasks: allTasks,
+    onTaskUpdate: (taskId, updates) => {
+      // This will trigger a refetch when AI task status changes
+      mutateTasks()
+    }
+  })
 
   const refetch = () => {
     refetchDashboard()

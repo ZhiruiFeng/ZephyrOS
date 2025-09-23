@@ -10,6 +10,8 @@ export class MCPBridge {
   async initialize(): Promise<void> {
     if (this.initialized) return
 
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+
     try {
       console.log('🚀 Initializing MCP bridge...')
 
@@ -26,6 +28,11 @@ export class MCPBridge {
       this.initialized = true
       console.log('✅ MCP bridge initialized successfully')
     } catch (error) {
+      if (isBuildTime) {
+        console.warn('⚠️ MCP bridge initialization skipped during build time')
+        this.initialized = true
+        return
+      }
       console.error('❌ Failed to initialize MCP bridge:', error)
       throw error
     }

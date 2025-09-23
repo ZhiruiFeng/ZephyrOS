@@ -89,8 +89,8 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
     () => timelineItemsApi.listTimeEntries(activityId, { from, to, limit: 500, offset: 0 })
   )
 
-  const entries: any[] = data?.entries || []
   const grouped = React.useMemo(() => {
+    const entries: any[] = data?.entries || []
     // Convert timeline item entries to TimeEntry format for splitCrossDayEntries
     const convertedEntries = entries.map((entry: any) => ({
       id: entry.id,
@@ -105,7 +105,7 @@ export default function ActivityTimeModal({ isOpen, onClose, activityId, activit
       category_color: entry.category_color
     }))
     return splitCrossDayEntries(convertedEntries)
-  }, [entries, activityTitle])
+  }, [data?.entries, activityTitle])
 
   const days = getDaysInMonth(month)
   const firstWeekday = startOfMonth(month).getDay() // 0-6

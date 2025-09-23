@@ -93,7 +93,7 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
   const idxForX = (x: number) => Math.max(0, Math.min(71, Math.round(((x - pad.left) / Math.max(plotW, 1)) * 71)))
 
   const hourMarks = React.useMemo(() => Array.from({ length: 25 }, (_, h) => h), [])
-  const points = React.useMemo(() => energyData.curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [energyData.curve, dims])
+  const points = React.useMemo(() => energyData.curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [energyData.curve, xForIdx, yForEnergy])
   const smoothPath = React.useMemo(() => buildSmoothPath(points, 0.8), [points])
 
   React.useEffect(() => {
@@ -276,7 +276,7 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
   }
 
   // Validate time inputs in real-time
-  const validateTimes = () => {
+  const validateTimes = React.useCallback(() => {
     if (startTime && endTime) {
       const startDate = new Date(startTime)
       const endDate = new Date(endTime)
@@ -288,14 +288,14 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
     }
     setTimeError('')
     return true
-  }
+  }, [startTime, endTime, t.ui.endTimeMustBeAfterStart])
 
   // Update validation when times change
   React.useEffect(() => {
     if (isEditingTime) {
       validateTimes()
     }
-  }, [startTime, endTime, isEditingTime])
+  }, [startTime, endTime, isEditingTime, validateTimes])
 
   if (!isVisible) {
     return null

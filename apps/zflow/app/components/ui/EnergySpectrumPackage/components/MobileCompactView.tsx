@@ -64,7 +64,7 @@ export function MobileCompactView({
     setFocusedTimeEntry(null)
     setHoveredTimeEntry(null)
     setInteractiveTooltip(null)
-  }, [curve, timeEntries, categorySummary])
+  }, [curve, timeEntries, categorySummary, setFocusedTimeEntry, setHoveredTimeEntry, setInteractiveTooltip])
   
   const zoomIn = () => setZoomLevel(prev => Math.min(3, prev + 0.5))
   const zoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.5))

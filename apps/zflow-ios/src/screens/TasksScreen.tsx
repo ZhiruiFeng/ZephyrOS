@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
-import { Surface, useTheme } from 'react-native-paper';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, SafeAreaView, StatusBar } from 'react-native';
 import { tasksApi } from '../lib/api';
 import { TaskMemory } from '../types/task';
 import { useAuth } from '../contexts/AuthContext';
@@ -217,16 +216,18 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
 
   if (!user) {
     return (
-      <Surface style={styles.container}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
         <View style={styles.content}>
           <Text style={styles.title}>Please sign in to view tasks</Text>
         </View>
-      </Surface>
+      </SafeAreaView>
     );
   }
 
   return (
-    <Surface style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Tasks</Text>
@@ -295,7 +296,7 @@ export default function TasksScreen({ onScroll, onRegisterAddTask }: TasksScreen
         onSave={handleSaveTask}
         title={editingTask ? 'Edit Task' : 'Create Task'}
       />
-    </Surface>
+    </SafeAreaView>
   );
 }
 
@@ -305,27 +306,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   addButton: {
-    backgroundColor: '#0284c7',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
@@ -334,120 +348,130 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 4,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#0f172a',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#64748b',
+    fontWeight: '500',
   },
   loadingText: {
     fontSize: 16,
     color: '#64748b',
   },
   listContainer: {
-    padding: 16,
+    padding: 20,
+    paddingTop: 16,
   },
   taskCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#f1f5f9',
   },
   taskContent: {
-    padding: 16,
+    padding: 20,
   },
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   taskTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 12,
+    marginRight: 16,
   },
   completeButton: {
-    marginRight: 12,
-    width: 24,
-    height: 24,
+    marginRight: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
   },
   completeButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  taskTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+  },
+  taskTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#0f172a',
     flex: 1,
+    lineHeight: 24,
   },
   completedTaskTitle: {
     textDecorationLine: 'line-through',
     color: '#64748b',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#fff',
     textTransform: 'capitalize',
+    letterSpacing: 0.5,
   },
   taskDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#64748b',
-    lineHeight: 20,
-    marginBottom: 12,
+    lineHeight: 22,
+    marginBottom: 16,
   },
   taskFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 4,
   },
   taskMeta: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#94a3b8',
     textTransform: 'capitalize',
+    fontWeight: '500',
   },
   taskDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#94a3b8',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 80,
+    paddingHorizontal: 20,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#64748b',
-    marginBottom: 8,
+    color: '#475569',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#94a3b8',
     textAlign: 'center',
+    lineHeight: 24,
   },
   taskActions: {
     flexDirection: 'row',

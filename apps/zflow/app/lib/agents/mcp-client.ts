@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { ChatContext, ZFlowTool } from './types'
+import { MCPHttpClient } from './mcp-http-client'
 
 export interface MCPTool {
   name: string
@@ -267,11 +268,28 @@ export class MCPClient {
 }
 
 // Singleton MCP client instance
-let mcpClientInstance: MCPClient | null = null
+let mcpClientInstance: MCPClient | MCPHttpClient | null = null
 
-export function getMCPClient(): MCPClient {
+export function getMCPClient(): MCPClient | MCPHttpClient {
   if (!mcpClientInstance) {
-    // Try to use zmemory-mcp from the monorepo
+    const isProduction = process.env.NODE_ENV === 'production'
+    const isVercel = process.env.VERCEL === '1'
+    const httpMcpUrl = process.env.MCP_HTTP_URL
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+
+    // Use HTTP client in production or when MCP_HTTP_URL is specified
+    if (isProduction || isVercel || httpMcpUrl) {
+      console.log('🌐 Using HTTP MCP client for production/Vercel environment')
+      const httpClient = new MCPHttpClient({
+        baseUrl: httpMcpUrl || process.env.ZMEMORY_API_URL || 'http://localhost:3001',
+        apiKey: process.env.ZMEMORY_API_KEY,
+        timeout: isBuildTime ? 5000 : 15000
+      })
+      mcpClientInstance = httpClient as any // Store HTTP client as singleton
+      return httpClient
+    }
+
+    // Use local stdio client in development
     const isDevelopment = process.env.NODE_ENV === 'development'
 
     // In development, try to use tsx to run the TypeScript source directly
@@ -279,7 +297,7 @@ export function getMCPClient(): MCPClient {
       const serverPath = '/Users/zhiruifeng/Workspace/dev/ZephyrOS/apps/zmemory-mcp/src/index.ts'
       mcpClientInstance = new MCPClient('tsx', [serverPath])
     } else {
-      // In production, try to use the built version
+      // Fallback: try to use the built version
       const serverPath = '/Users/zhiruifeng/Workspace/dev/ZephyrOS/apps/zmemory-mcp/dist/index.js'
       mcpClientInstance = new MCPClient('node', [serverPath])
     }
@@ -287,7 +305,7 @@ export function getMCPClient(): MCPClient {
   return mcpClientInstance
 }
 
-export async function initializeMCPConnection(): Promise<MCPClient> {
+export async function initializeMCPConnection(): Promise<MCPClient | MCPHttpClient> {
   const client = getMCPClient()
   if (!client.isConnected()) {
     await client.connect()

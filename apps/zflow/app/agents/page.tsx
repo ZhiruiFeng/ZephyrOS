@@ -390,7 +390,7 @@ export default function AgentsPage() {
       setSseReady(false)
       sseReadyRef.current = false
     }
-  }, [sessionManager.currentSessionId, user, sessionManager.isActive])
+  }, [sessionManager.currentSessionId, user, sessionManager.isActive, eventSource, selectedAgent, sessionManager, streamEndedNormally])
 
   // Send message handler
   const handleSendMessage = async (message: string) => {

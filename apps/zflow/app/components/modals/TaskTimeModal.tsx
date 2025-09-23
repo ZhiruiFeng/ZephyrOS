@@ -86,10 +86,10 @@ export default function TaskTimeModal({ isOpen, onClose, taskId, taskTitle }: Ta
   const to = formatISO(endOfMonth(month))
   const { data, isLoading, error, mutate } = useSWR(isOpen ? ['time-entries', taskId, from, to] : null, () => timeTrackingApi.list(taskId, { from, to, limit: 500, offset: 0 }))
 
-  const entries: TimeEntry[] = data?.entries || []
   const grouped = React.useMemo(() => {
+    const entries: TimeEntry[] = data?.entries || []
     return splitCrossDayEntries(entries)
-  }, [entries])
+  }, [data?.entries])
 
   const days = getDaysInMonth(month)
   const firstWeekday = startOfMonth(month).getDay() // 0-6

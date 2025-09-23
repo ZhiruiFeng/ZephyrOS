@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '../../hooks/useMemories'
@@ -211,7 +211,7 @@ export default function KanbanView() {
     e.preventDefault()
   }
 
-  const onGlobalPointerUp = async () => {
+  const onGlobalPointerUp = useCallback(async () => {
     if (!isLongPressActiveRef.current) return cancelTouchDrag()
     const currentId = touchDraggingId
     const targetStatus = hoveredStatus
@@ -227,7 +227,7 @@ export default function KanbanView() {
       console.error('Failed to move task (touch):', err)
       alert(t.messages.taskUpdateFailed)
     }
-  }
+  }, [touchDraggingId, hoveredStatus, tasks, updateTask, t.messages.taskUpdateFailed])
 
   useEffect(() => {
     // Attach global listeners while dragging
@@ -244,7 +244,7 @@ export default function KanbanView() {
       window.removeEventListener('pointercancel', up as any)
     }
     // It's okay to re-run when state toggles via ref flag
-  }, [touchDraggingId])
+  }, [touchDraggingId, onGlobalPointerUp])
 
   const openEditor = (taskMemory: TaskMemory) => {
     // Convert TaskMemory to Task format expected by TaskEditor

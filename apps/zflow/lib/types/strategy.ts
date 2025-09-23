@@ -57,9 +57,13 @@ export interface StrategyTask extends Task {
   initiativeId?: string
   initiativeTitle?: string
 
+  // Timeline task integration
+  timelineTaskId?: string
+
   // Agent assignment for delegation
   assignedAgent?: Agent
   agentStatus?: 'idle' | 'working' | 'blocked'
+  aiTaskId?: string
 }
 
 // Strategic Memory for reflections and insights
@@ -212,6 +216,7 @@ export interface UseStrategyTasksReturn {
   createTask: (data: any) => Promise<StrategyTask>
   updateTask: (id: string, data: Partial<StrategyTask>) => Promise<StrategyTask>
   delegateTask: (taskId: string, agentId: string, briefing: string) => Promise<StrategyTask>
+  promoteTimelineTaskToStrategy: (timelineTaskId: string, initiativeId: string) => Promise<StrategyTask>
   refetch: () => void
 }
 

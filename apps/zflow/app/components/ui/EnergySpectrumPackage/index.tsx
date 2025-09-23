@@ -80,7 +80,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
   const yForEnergy = (e: number) => pad.top + (1 - (e - 1) / 9) * plotH
 
   const hourMarks = React.useMemo(() => Array.from({ length: 25 }, (_, h) => h), [])
-  const points = React.useMemo(() => energyData.curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [energyData.curve, dims])
+  const points = React.useMemo(() => energyData.curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [energyData.curve, xForIdx, yForEnergy])
   const smoothPath = React.useMemo(() => buildSmoothPath(points, 0.8), [points])
 
   // Helper functions

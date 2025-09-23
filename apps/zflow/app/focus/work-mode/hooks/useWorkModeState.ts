@@ -245,7 +245,7 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
         tags: selectedTask.tags || []
       })
     }
-  }, [selectedTask?.id, selectedTask?.content, notes, originalNotes])
+  }, [selectedTask?.id, selectedTask?.content, selectedTask, notes, originalNotes])
 
   // Load notes when selectedSubtask changes
   useEffect(() => {
@@ -263,7 +263,7 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
     const subtaskNotes = selectedSubtask.content?.notes || ''
     setNotes(subtaskNotes)
     setOriginalNotes(subtaskNotes)
-  }, [selectedSubtask?.id, selectedSubtask?.content, selectedTask])
+  }, [selectedSubtask?.id, selectedSubtask?.content, selectedSubtask, selectedTask])
 
   // Auto-open subtasks panel for direct subtask links
   useEffect(() => {

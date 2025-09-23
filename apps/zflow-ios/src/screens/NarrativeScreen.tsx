@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Surface, Text, Button, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useSeasons } from '../hooks/useSeasons';
@@ -25,21 +25,20 @@ function SeasonChip({ season, isSelected, onPress, theme }: SeasonChipProps) {
 
   return (
     <TouchableOpacity
-      style={[
-        styles.seasonChip,
-        {
-          backgroundColor: isSelected ? seasonTheme.colors.primary : theme.colors.surface,
-          borderColor: seasonTheme.colors.primary,
-        }
-      ]}
+      className={`flex-row items-center px-3 py-2 rounded-full mr-3 border ${
+        isSelected ? 'bg-primary-600' : 'bg-white'
+      }`}
+      style={{
+        borderColor: seasonTheme.colors.primary,
+        backgroundColor: isSelected ? seasonTheme.colors.primary : theme.colors.surface,
+      }}
       onPress={onPress}
     >
-      <Text style={styles.seasonChipEmoji}>{seasonTheme.emoji}</Text>
+      <Text className="text-base mr-1.5">{seasonTheme.emoji}</Text>
       <Text
-        style={[
-          styles.seasonChipText,
-          { color: isSelected ? '#fff' : theme.colors.onSurface }
-        ]}
+        className={`text-sm font-medium ${
+          isSelected ? 'text-white' : 'text-gray-900'
+        }`}
       >
         {season.title}
       </Text>
@@ -115,10 +114,10 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
   // Loading state
   if (loading && seasons.length === 0) {
     return (
-      <Surface style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
+      <Surface className="flex-1">
+        <View className="flex-1 justify-center items-center p-10">
           <Ionicons name="book" size={48} color={theme.colors.primary} />
-          <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, marginTop: 16 }}>
+          <Text variant="headlineSmall" className="text-gray-900 mt-4">
             Loading your narrative...
           </Text>
         </View>
@@ -129,16 +128,16 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
   // Error state
   if (error) {
     return (
-      <Surface style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
+      <Surface className="flex-1">
+        <View className="flex-1 justify-center items-center p-10">
           <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
-          <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, marginTop: 16 }}>
+          <Text variant="headlineSmall" className="text-gray-900 mt-4">
             Something went wrong
           </Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 8, textAlign: 'center' }}>
+          <Text className="text-gray-600 mt-2 text-center leading-5">
             {error}
           </Text>
-          <Button mode="contained" onPress={onRefresh} style={{ marginTop: 16 }}>
+          <Button mode="contained" onPress={onRefresh} className="mt-4">
             Try Again
           </Button>
         </View>
@@ -149,19 +148,19 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
   // Empty state - no seasons
   if (seasons.length === 0) {
     return (
-      <Surface style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.emptyStateContainer}>
+      <Surface className="flex-1">
+        <View className="flex-1 justify-center items-center p-10">
           <Ionicons name="book" size={72} color={theme.colors.onSurfaceVariant} />
-          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, marginTop: 24 }}>
+          <Text variant="headlineMedium" className="text-gray-900 mt-6">
             Start Your Life Narrative
           </Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+          <Text className="text-gray-600 mt-2 text-center leading-5">
             Your life story begins with seasons - chapters that give meaning and structure to your experiences.
           </Text>
           <Button
             mode="contained"
             onPress={() => setShowCreateSeason(true)}
-            style={{ marginTop: 24 }}
+            className="mt-6"
             icon="plus"
           >
             Create Your First Season
@@ -172,18 +171,18 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
   }
 
   return (
-    <Surface style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Surface style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outline }]}>
-        <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, marginBottom: 4 }}>
+    <Surface className="flex-1 bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <Surface className="p-5 border-b border-gray-200 shadow-sm bg-white/80">
+        <Text variant="headlineLarge" className="text-gray-900 mb-1">
           Narrative
         </Text>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+        <Text variant="bodyMedium" className="text-gray-600">
           Your personal story and insights
         </Text>
       </Surface>
 
       <ScrollView
-        style={styles.scrollView}
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -191,32 +190,33 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
           <RefreshControl refreshing={loading} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.content}>
+        <View className="p-4">
           {/* Current Season Cover */}
           {currentSeason && (
-            <View style={[
-              styles.seasonCover,
-              { backgroundColor: currentTheme.colors.background, borderColor: currentTheme.colors.primary }
-            ]}>
-              <View style={styles.seasonCoverHeader}>
-                <Text style={styles.seasonCoverEmoji}>{currentTheme.emoji}</Text>
-                <View style={styles.seasonCoverText}>
-                  <Text style={[styles.seasonCoverTitle, { color: currentTheme.colors.text }]}>
+            <View className="rounded-2xl p-5 mb-6 border-2 shadow-lg bg-white/90 backdrop-blur-sm"
+              style={{
+                backgroundColor: currentTheme.colors.background,
+                borderColor: currentTheme.colors.primary,
+              }}>
+              <View className="flex-row items-start">
+                <Text className="text-4xl mr-4">{currentTheme.emoji}</Text>
+                <View className="flex-1">
+                  <Text className="text-2xl font-bold mb-1" style={{ color: currentTheme.colors.text }}>
                     {currentSeason.title}
                   </Text>
-                  <Text style={[styles.seasonCoverDescription, { color: currentTheme.colors.text }]}>
+                  <Text className="text-base mb-2" style={{ color: currentTheme.colors.text }}>
                     {currentTheme.description}
                   </Text>
                   {currentSeason.intention && (
-                    <Text style={[styles.seasonCoverIntention, { color: currentTheme.colors.text }]}>
+                    <Text className="text-sm italic" style={{ color: currentTheme.colors.text }}>
                       "{currentSeason.intention}"
                     </Text>
                   )}
                 </View>
-                <View style={styles.seasonCoverBadges}>
+                <View className="items-end">
                   {currentSeason.status === 'active' && (
-                    <View style={[styles.activeBadge, { backgroundColor: currentTheme.colors.primary }]}>
-                      <Text style={styles.activeBadgeText}>Active</Text>
+                    <View className="px-2 py-1 rounded-md" style={{ backgroundColor: currentTheme.colors.primary }}>
+                      <Text className="text-xs font-medium text-white">Active</Text>
                     </View>
                   )}
                 </View>
@@ -225,18 +225,18 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
           )}
 
           {/* Season Selector */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Seasons</Text>
+          <View className="mb-6">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-semibold text-gray-900">Seasons</Text>
               <TouchableOpacity
-                style={styles.addButton}
+                className="bg-primary-600 w-8 h-8 rounded-full justify-center items-center"
                 onPress={() => setShowCreateSeason(true)}
               >
                 <Ionicons name="add" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.seasonsScroll}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
               {seasons.map((season) => (
                 <SeasonChip
                   key={season.id}
@@ -250,13 +250,14 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
           </View>
 
           {/* Episodes Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
+          <View className="mb-6">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-semibold text-gray-900">
                 Episodes {currentSeason && `(${currentSeason.title})`}
               </Text>
               <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: currentTheme.colors.primary }]}
+                className="w-8 h-8 rounded-full justify-center items-center"
+                style={{ backgroundColor: currentTheme.colors.primary }}
                 onPress={() => setShowCreateEpisode(true)}
                 disabled={!currentSeason}
               >
@@ -265,12 +266,12 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
             </View>
 
             {episodes.length === 0 ? (
-              <View style={styles.emptyContainer}>
+              <View className="items-center p-10 bg-white rounded-xl border border-gray-200">
                 <Ionicons name="document-text-outline" size={48} color={theme.colors.onSurfaceVariant} />
-                <Text style={[styles.emptyText, { color: theme.colors.onSurface }]}>
+                <Text className="text-base font-semibold mt-3 mb-2 text-gray-900">
                   {currentSeason ? 'No episodes yet' : 'Select a season first'}
                 </Text>
-                <Text style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+                <Text className="text-sm text-center leading-5 text-gray-600">
                   {currentSeason
                     ? 'Add episodes to capture important moments in this season'
                     : 'Create or select a season to start adding episodes'
@@ -278,25 +279,26 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
                 </Text>
               </View>
             ) : (
-              <View style={styles.episodesList}>
+              <View className="space-y-3">
                 {episodes.map((episode) => (
                   <View
                     key={episode.id}
-                    style={[
-                      styles.episodeCard,
-                      { backgroundColor: currentTheme.colors.background, borderColor: currentTheme.colors.secondary }
-                    ]}
+                    className="rounded-xl p-4 shadow-sm border bg-white/90 backdrop-blur-sm"
+                    style={{
+                      backgroundColor: currentTheme.colors.background,
+                      borderColor: currentTheme.colors.secondary
+                    }}
                   >
-                    <View style={styles.episodeHeader}>
-                      <View style={styles.episodeTitleContainer}>
+                    <View className="flex-row justify-between items-start mb-2">
+                      <View className="flex-row items-center flex-1">
                         {episode.mood_emoji && (
-                          <Text style={styles.episodeMood}>{episode.mood_emoji}</Text>
+                          <Text className="text-xl mr-3">{episode.mood_emoji}</Text>
                         )}
-                        <Text style={[styles.episodeTitle, { color: currentTheme.colors.text }]}>
+                        <Text className="text-base font-semibold flex-1" style={{ color: currentTheme.colors.text }}>
                           {episode.title}
                         </Text>
                       </View>
-                      <Text style={[styles.episodeDate, { color: currentTheme.colors.text }]}>
+                      <Text className="text-xs opacity-80" style={{ color: currentTheme.colors.text }}>
                         {episode.date_range_start === episode.date_range_end
                           ? episode.date_range_end
                           : `${episode.date_range_start} - ${episode.date_range_end}`
@@ -304,7 +306,7 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
                       </Text>
                     </View>
                     {episode.reflection && (
-                      <Text style={[styles.episodeDescription, { color: currentTheme.colors.text }]}>
+                      <Text className="text-sm leading-5 opacity-90" style={{ color: currentTheme.colors.text }}>
                         {episode.reflection}
                       </Text>
                     )}
@@ -315,23 +317,23 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
           </View>
 
           {/* Quick Stats */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Stats</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
+          <View className="mb-6">
+            <Text className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</Text>
+            <View className="flex-row space-x-3">
+              <View className="flex-1 bg-white rounded-xl p-4 items-center shadow-sm border border-gray-200">
                 <Ionicons name="layers" size={24} color={currentTheme.colors.primary} />
-                <Text style={styles.statNumber}>{seasons.length}</Text>
-                <Text style={styles.statLabel}>Seasons</Text>
+                <Text className="text-2xl font-bold text-gray-900 mt-2 mb-1">{seasons.length}</Text>
+                <Text className="text-xs text-gray-600 text-center">Seasons</Text>
               </View>
-              <View style={styles.statCard}>
+              <View className="flex-1 bg-white rounded-xl p-4 items-center shadow-sm border border-gray-200">
                 <Ionicons name="document-text" size={24} color={currentTheme.colors.primary} />
-                <Text style={styles.statNumber}>{episodes.length}</Text>
-                <Text style={styles.statLabel}>Episodes</Text>
+                <Text className="text-2xl font-bold text-gray-900 mt-2 mb-1">{episodes.length}</Text>
+                <Text className="text-xs text-gray-600 text-center">Episodes</Text>
               </View>
-              <View style={styles.statCard}>
+              <View className="flex-1 bg-white rounded-xl p-4 items-center shadow-sm border border-gray-200">
                 <Ionicons name="calendar" size={24} color={currentTheme.colors.primary} />
-                <Text style={styles.statNumber}>{new Date().getFullYear()}</Text>
-                <Text style={styles.statLabel}>Current Year</Text>
+                <Text className="text-2xl font-bold text-gray-900 mt-2 mb-1">{new Date().getFullYear()}</Text>
+                <Text className="text-xs text-gray-600 text-center">Current Year</Text>
               </View>
             </View>
           </View>
@@ -358,228 +360,4 @@ export default function NarrativeScreen({ onScroll }: NarrativeScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    elevation: 2,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  seasonCover: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  seasonCoverHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  seasonCoverEmoji: {
-    fontSize: 40,
-    marginRight: 16,
-  },
-  seasonCoverText: {
-    flex: 1,
-  },
-  seasonCoverTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  seasonCoverDescription: {
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  seasonCoverIntention: {
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
-  seasonCoverBadges: {
-    alignItems: 'flex-end',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  addButton: {
-    backgroundColor: '#0284c7',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  seasonsScroll: {
-    marginBottom: 8,
-  },
-  seasonChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 1,
-  },
-  seasonChipEmoji: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  seasonChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  episodesList: {
-    gap: 12,
-  },
-  episodeCard: {
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-  },
-  episodeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  episodeTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  episodeMood: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  episodeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-  },
-  episodeDate: {
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  episodeDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    opacity: 0.9,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  activeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  activeBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#fff',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#64748b',
-    textAlign: 'center',
-  },
-});
 

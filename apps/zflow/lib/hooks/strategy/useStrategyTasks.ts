@@ -1,11 +1,28 @@
 import useSWR from 'swr'
 import { strategyApi } from '../../api/strategy'
+import { tasksApi, aiTasksApi } from '../../api'
 import type { ApiStrategyTask } from '../../api/strategy'
 import type { UseStrategyTasksReturn, StrategyTask } from '../../types/strategy'
+import type { Task } from '../../../app/types/task'
 
 // =====================================================
 // API to Frontend Type Adapter
 // =====================================================
+
+// Status mapping between timeline tasks and strategy tasks
+function mapTimelineStatusToStrategy(status: Task['status']): 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'blocked' {
+  switch (status) {
+    case 'on_hold':
+      return 'blocked'
+    case 'pending':
+    case 'in_progress':
+    case 'completed':
+    case 'cancelled':
+      return status
+    default:
+      return 'pending'
+  }
+}
 
 function adaptApiTaskToStrategy(apiTask: ApiStrategyTask): StrategyTask {
   return {
@@ -28,6 +45,7 @@ function adaptApiTaskToStrategy(apiTask: ApiStrategyTask): StrategyTask {
     // Strategy-specific fields
     initiativeId: apiTask.initiative_id,
     initiativeTitle: apiTask.initiative?.title,
+    timelineTaskId: apiTask.task_id || undefined,
     assignedAgent: apiTask.ai_delegation ? {
       id: apiTask.ai_delegation.ai_task_id,
       name: apiTask.ai_delegation.agent_name,
@@ -89,21 +107,35 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
         throw new Error('Task creation requires a valid initiative. Please create an initiative first or select an existing one.')
       }
 
-      // Transform the legacy task creation format to strategic task format
-      const strategyTaskData = {
-        initiative_id: data.initiativeId,
+      // Step 1: Create timeline task first (source of truth)
+      const timelineTaskData = {
         title: data.content?.title || data.title,
         description: data.content?.description || data.description,
         status: data.content?.status || data.status || 'pending',
         priority: data.content?.priority || data.priority || 'medium',
         progress: data.content?.progress || data.progress || 0,
         assignee: data.content?.assignee || data.assignee,
+        tags: [...(data.tags || []), 'strategy-linked']
+      }
+
+      const timelineTask = await tasksApi.create(timelineTaskData)
+
+      // Step 2: Create strategy task linked to timeline task
+      const strategyTaskData = {
+        initiative_id: data.initiativeId,
+        task_id: timelineTask.id, // Link to timeline task
+        title: timelineTask.content.title,
+        description: timelineTask.content.description,
+        status: mapTimelineStatusToStrategy(timelineTask.content.status),
+        priority: timelineTask.content.priority,
+        progress: timelineTask.content.progress || 0,
+        assignee: timelineTask.content.assignee,
         tags: data.tags || ['strategy', 'from-scratchpad'],
         strategic_importance: 'medium' as 'medium'
       }
 
-      const newTask = await strategyApi.createStrategyTask(strategyTaskData)
-      const strategyTask = adaptApiTaskToStrategy(newTask as ApiStrategyTask)
+      const newStrategyTask = await strategyApi.createStrategyTask(strategyTaskData)
+      const strategyTask = adaptApiTaskToStrategy(newStrategyTask as ApiStrategyTask)
 
       // Update cache
       await mutate()
@@ -111,21 +143,43 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
       return strategyTask
     } catch (error) {
       console.error('Error creating strategic task:', error)
+      // If strategy task creation fails but timeline task was created, we might want to handle cleanup
       throw error
     }
   }
 
   const updateTask = async (id: string, updateData: Partial<any>) => {
     try {
+      // Find the strategy task to get linked timeline task
+      const existingTask = allStrategyTasks.find((task: StrategyTask) => task.id === id)
+      if (!existingTask) {
+        throw new Error('Strategy task not found')
+      }
+
+      // If there's a linked timeline task, update it first
+      if (existingTask.timelineTaskId && updateData.content) {
+        const timelineUpdateData = {
+          title: updateData.content.title,
+          description: updateData.content.description,
+          status: updateData.content.status,
+          priority: updateData.content.priority,
+          progress: updateData.content.progress,
+          assignee: updateData.content.assignee
+        }
+
+        // Remove undefined values
+        const cleanedData = Object.fromEntries(
+          Object.entries(timelineUpdateData).filter(([_, value]) => value !== undefined)
+        )
+
+        if (Object.keys(cleanedData).length > 0) {
+          await tasksApi.update(existingTask.timelineTaskId, cleanedData)
+        }
+      }
+
       // TODO: Implement update strategic task API endpoint
       // For now, we'll just refetch data
       await mutate()
-
-      // Return mock updated task
-      const existingTask = allStrategyTasks.find((task: StrategyTask) => task.id === id)
-      if (!existingTask) {
-        throw new Error('Task not found')
-      }
 
       return { ...existingTask, ...updateData }
     } catch (error) {
@@ -134,9 +188,75 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
     }
   }
 
+  const promoteTimelineTaskToStrategy = async (timelineTaskId: string, initiativeId: string) => {
+    try {
+      // Get the timeline task
+      const timelineTask = await tasksApi.getById(timelineTaskId)
+
+      // Create strategy task linked to existing timeline task
+      const strategyTaskData = {
+        initiative_id: initiativeId,
+        task_id: timelineTask.id,
+        title: timelineTask.content.title || '',
+        description: timelineTask.content.description,
+        status: mapTimelineStatusToStrategy(timelineTask.content.status || 'pending'),
+        priority: timelineTask.content.priority || 'medium',
+        progress: timelineTask.content.progress || 0,
+        assignee: timelineTask.content.assignee,
+        tags: ['strategy', 'promoted-from-timeline'],
+        strategic_importance: 'medium' as 'medium'
+      }
+
+      const newStrategyTask = await strategyApi.createStrategyTask(strategyTaskData)
+
+      // Update timeline task to mark as strategy-linked
+      await tasksApi.update(timelineTaskId, {
+        tags: [...(timelineTask.tags || []), 'strategy-linked']
+      })
+
+      // Update cache
+      await mutate()
+
+      return adaptApiTaskToStrategy(newStrategyTask as ApiStrategyTask)
+    } catch (error) {
+      console.error('Error promoting timeline task to strategy:', error)
+      throw error
+    }
+  }
+
   const delegateTask = async (taskId: string, agentId: string, briefing: string) => {
     try {
-      // Use the strategy API delegation endpoint
+      // Find the strategy task to get timeline task ID
+      const strategyTask = allStrategyTasks.find((task: StrategyTask) => task.id === taskId)
+      if (!strategyTask) {
+        throw new Error('Strategy task not found')
+      }
+
+      // Step 1: Create AI Task linked to timeline task
+      const aiTaskData = {
+        task_id: strategyTask.timelineTaskId || strategyTask.id, // Use timeline task ID if available
+        agent_id: agentId,
+        objective: briefing,
+        task_type: 'general', // Default task type
+        mode: 'plan_only' as const,
+        metadata: {
+          priority: strategyTask.priority,
+          tags: ['strategy-delegated', 'from-strategy-task']
+        },
+        status: 'pending' as const
+      }
+
+      const aiTask = await aiTasksApi.create(aiTaskData)
+
+      // Step 2: Update timeline task to mark as AI-assigned
+      if (strategyTask.timelineTaskId) {
+        await tasksApi.update(strategyTask.timelineTaskId, {
+          assignee: `ai:${agentId}`,
+          tags: [...(strategyTask.tags || []), 'ai-assigned']
+        })
+      }
+
+      // Step 3: Use the strategy API delegation endpoint
       await strategyApi.delegateStrategyTask(taskId, {
         agent_id: agentId,
         objective: briefing,
@@ -151,7 +271,10 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
       const updatedTask = Array.isArray(updatedTasks) ? updatedTasks.find((t: ApiStrategyTask) => t.id === taskId) : undefined
 
       if (updatedTask) {
-        return adaptApiTaskToStrategy(updatedTask)
+        const adapted = adaptApiTaskToStrategy(updatedTask)
+        // Add AI task reference
+        adapted.aiTaskId = aiTask.id
+        return adapted
       }
 
       throw new Error('Failed to find updated task after delegation')
@@ -169,6 +292,7 @@ export function useStrategyTasks(seasonId?: string): UseStrategyTasksReturn {
     createTask,
     updateTask,
     delegateTask,
+    promoteTimelineTaskToStrategy,
     refetch: () => mutate()
   }
 }

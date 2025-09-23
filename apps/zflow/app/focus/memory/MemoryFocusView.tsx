@@ -149,7 +149,7 @@ export default function MemoryFocusView() {
     } finally {
       setIsSaving(false)
     }
-  }, [memory, memoryId, title, note, memoryType, status, emotionValence, emotionArousal, energyDelta, placeName, latitude, longitude, capturedAt, salience, categoryId, tags])
+  }, [memory, memoryId, title, note, description, memoryType, status, emotionValence, emotionArousal, energyDelta, placeName, latitude, longitude, capturedAt, salience, categoryId, tags])
 
   // Determine if there are meaningful changes to save
   const hasMeaningfulChanges = useCallback(() => {
@@ -227,12 +227,12 @@ export default function MemoryFocusView() {
   // Trigger auto-save when inputs change
   useEffect(() => {
     autoSave.triggerAutoSave()
-  }, [title, note, description, placeName, tags, emotionValence, emotionArousal, energyDelta, latitude, longitude, memoryType, status, categoryId, salience, capturedAt])
+  }, [title, note, description, placeName, tags, emotionValence, emotionArousal, energyDelta, latitude, longitude, memoryType, status, categoryId, salience, capturedAt, autoSave])
 
   // Reset auto-save state when switching memory
   useEffect(() => {
     autoSave.resetAutoSave()
-  }, [memoryId])
+  }, [memoryId, autoSave])
 
   const displayTitle = useMemo(() => {
     const base = title?.trim() || memory?.title_override || (memory?.note?.split('\n')[0] || '')
