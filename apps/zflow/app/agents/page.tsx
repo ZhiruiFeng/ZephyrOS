@@ -589,7 +589,7 @@ export default function AgentsPage() {
             
             <div className="flex space-x-2 sm:space-x-3">
               {/* MCP Status Indicator */}
-              <MCPStatusIndicator className="hidden sm:block" />
+              <MCPStatusIndicator />
 
               {/* Interface Mode Toggle */}
               <div className="inline-flex items-center bg-white/80 backdrop-blur-sm border border-primary-100 rounded-lg sm:rounded-xl p-1">

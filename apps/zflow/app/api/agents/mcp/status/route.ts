@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
     // Get MCP bridge status
     const mcpBridge = getMCPBridge()
     const bridgeInitialized = mcpBridge.isInitialized()
-    const registeredProviders = mcpBridge.getRegisteredProviders().map(p => p.id)
+    const registeredProviders = mcpBridge.getRegisteredProviders().map(p =>
+      p.constructor.name.replace('Provider', '').toLowerCase()
+    )
 
     return NextResponse.json({
       success: true,
