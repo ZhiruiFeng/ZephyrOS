@@ -36,6 +36,7 @@ interface UseTaskOperationsProps {
   updateFocusUrl: (updates: Record<string, string | null | undefined>) => void
   setShowSubtasks: (show: boolean) => void
   autoSave: ReturnType<typeof useAutoSave>
+  onTaskCompleted?: () => void
 }
 
 export function useTaskOperations({
@@ -53,7 +54,8 @@ export function useTaskOperations({
   setEditingTaskInfo,
   updateFocusUrl,
   setShowSubtasks,
-  autoSave
+  autoSave,
+  onTaskCompleted
 }: UseTaskOperationsProps) {
   const { t } = useTranslation()
   const { updateTask, updateTaskSilent } = useUpdateTask()
@@ -269,12 +271,15 @@ export function useTaskOperations({
       if (timer.isRunning && timer.runningTaskId === selectedTask.id) {
         timer.stop(selectedTask.id)
       }
+
+      // Trigger celebration animation
+      onTaskCompleted?.()
     } catch (error) {
       console.error('Failed to complete task:', error)
     } finally {
       setIsSaving(false)
     }
-  }, [selectedTask, updateTask, setIsSaving, setSelectedTask, setTaskInfo, timer])
+  }, [selectedTask, updateTask, setIsSaving, setSelectedTask, setTaskInfo, timer, onTaskCompleted])
 
   // OPTIMIZED: Single effect for task/subtask changes with proper cleanup
   useEffect(() => {

@@ -45,6 +45,7 @@ interface SubtaskSectionProps {
   onSubtaskSelect?: (subtask: TaskMemory) => void
   selectedSubtaskId?: string
   autoSelectSubtaskId?: string | null
+  onSubtaskCompleted?: () => void
 }
 
 interface SubtaskItemProps {
@@ -540,7 +541,7 @@ const CreateSubtaskForm: React.FC<{
   )
 }
 
-export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtaskId, autoSelectSubtaskId }: SubtaskSectionProps) {
+export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtaskId, autoSelectSubtaskId, onSubtaskCompleted }: SubtaskSectionProps) {
   const { t } = useTranslation()
   const { data, isLoading, error, refresh } = useSubtasks(taskId, { 
     format: 'flat', 
@@ -633,6 +634,12 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   const handleStatusToggle = async (subtaskId: string, newStatus: Task['status']) => {
     try {
       await updateSubtask(subtaskId, { status: newStatus })
+
+      // Trigger celebration animation when subtask is completed
+      if (newStatus === 'completed') {
+        onSubtaskCompleted?.()
+      }
+
       // 立即刷新数据以确保UI更新
       setTimeout(() => refresh(), 100)
     } catch (error) {

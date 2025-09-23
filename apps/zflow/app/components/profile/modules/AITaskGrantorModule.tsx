@@ -22,7 +22,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
   const [aiTasks, setAiTasks] = React.useState<AITask[]>([])
   const [drafts, setDrafts] = React.useState<any[]>([])
   const [selectedTask, setSelectedTask] = React.useState<AITask | null>(null)
-  const [activeTab, setActiveTab] = React.useState<'tasks' | 'history'>('tasks')
+  const [activeTab, setActiveTab] = React.useState<'pending' | 'history'>('pending')
   const [runHistory, setRunHistory] = React.useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [tasks, setTasks] = React.useState<any[]>([])
@@ -44,17 +44,47 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
 
   const load = React.useCallback(async () => {
     setLoading(true)
+    setLoadingHistory(true)
     try {
-      const [aiTaskItems, taskItems, agentItems] = await Promise.all([
-        aiTasksApi.list({ limit: 20, sort_by: 'assigned_at', sort_order: 'desc' }),
+      const [allAiTaskItems, taskItems, agentItems] = await Promise.all([
+        aiTasksApi.list({ limit: 100, sort_by: 'assigned_at', sort_order: 'desc' }),
         tasksApi.getAll({ limit: 100, sort_by: 'created_at', sort_order: 'desc' }),
         import('../../../../lib/api').then(api => api.aiAgentsApi.list({ limit: 100 }))
       ])
-      setAiTasks(aiTaskItems)
+
+      // Separate pending and completed tasks
+      const pendingTasks = allAiTaskItems.filter(task =>
+        task.status !== 'completed' && task.status !== 'failed'
+      )
+      const completedTasks = allAiTaskItems.filter(task =>
+        task.status === 'completed' || task.status === 'failed'
+      )
+
+      setAiTasks(pendingTasks)
       setTasks(taskItems)
       setAgents(agentItems)
+
+      // Populate run history with completed and failed tasks
+      const historyItems = completedTasks.map(task => {
+        // Find the linked task to get the title
+        const linkedTask = taskItems.find(t => t.id === task.task_id)
+        return {
+          task_objective: linkedTask?.content?.title || task.objective,
+          status: task.status,
+          started_at: task.assigned_at,
+          completed_at: task.completed_at,
+          duration: task.completed_at && task.assigned_at ?
+            Math.round((new Date(task.completed_at).getTime() - new Date(task.assigned_at).getTime()) / 1000) : null,
+          mode: task.mode,
+          task_id: task.id,
+          agent_id: task.agent_id,
+          original_task: task
+        }
+      })
+      setRunHistory(historyItems)
     } finally {
       setLoading(false)
+      setLoadingHistory(false)
     }
   }, [])
 
@@ -81,7 +111,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <h4 className="text-base font-semibold text-slate-900">Task Workspace</h4>
         <span className="text-xs text-slate-500 sm:text-sm">
-          {loading ? 'Loading...' : `${aiTasks.length} ${aiTasks.length === 1 ? 'task' : 'tasks'}`}
+          {loading ? 'Loading...' : `${aiTasks.length} pending ${aiTasks.length === 1 ? 'task' : 'tasks'}`}
         </span>
       </div>
 
@@ -89,13 +119,13 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
       <div className="mb-4 flex gap-1 rounded-full border border-slate-200 bg-white/80 p-1 shadow-sm">
         <button
           className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-all ${
-            activeTab === 'tasks'
+            activeTab === 'pending'
               ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow'
               : 'text-slate-600 hover:bg-slate-100/60 hover:text-slate-900'
           }`}
-          onClick={() => setActiveTab('tasks')}
+          onClick={() => setActiveTab('pending')}
         >
-          <FileText className="mr-1 inline h-4 w-4" /> Tasks
+          <FileText className="mr-1 inline h-4 w-4" /> Pending
         </button>
         <button
           className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-all ${
@@ -109,8 +139,8 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
         </button>
       </div>
 
-      {/* Task List */}
-      {activeTab === 'tasks' && (
+      {/* Pending Task List */}
+      {activeTab === 'pending' && (
         <div className="space-y-3">
           {loading ? (
             <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white/80 px-4 py-6 text-sm text-slate-600">
@@ -119,7 +149,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
           ) : aiTasks.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-8 text-center text-slate-500">
               <FileText className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-              <p className="text-sm font-medium text-slate-600">No tasks yet</p>
+              <p className="text-sm font-medium text-slate-600">No pending tasks</p>
               <p className="text-xs text-slate-500">Create your first AI task to get started</p>
             </div>
           ) : (
@@ -219,14 +249,25 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
           ) : runHistory.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-8 text-center text-slate-500">
               <History className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-              <p className="text-sm font-medium text-slate-600">No execution history</p>
-              <p className="text-xs text-slate-500">Task runs will appear here</p>
+              <p className="text-sm font-medium text-slate-600">No completed tasks yet</p>
+              <p className="text-xs text-slate-500">Completed and failed tasks will appear here</p>
             </div>
           ) : (
             runHistory.map((run, index) => (
-              <div key={index} className="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm">
+              <div
+                key={index}
+                className="group cursor-pointer rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                onClick={() => {
+                  // Find the original task and select it for viewing
+                  const originalTask = run.original_task
+                  if (originalTask) {
+                    handleSelectTask(originalTask)
+                    setActiveTab('pending')
+                  }
+                }}
+              >
                 <div className="mb-2 flex items-start justify-between gap-2">
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
                     {run.task_objective || 'Task Run'}
                   </span>
                   <span
@@ -246,14 +287,35 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
                 <div className="space-y-1 text-xs text-slate-500">
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    <span>{run.started_at ? new Date(run.started_at).toLocaleString() : 'Unknown time'}</span>
+                    <span>Started: {run.started_at ? new Date(run.started_at).toLocaleString() : 'Unknown time'}</span>
                   </div>
+                  {run.completed_at && (
+                    <div className="flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Completed: {new Date(run.completed_at).toLocaleString()}</span>
+                    </div>
+                  )}
                   {run.duration && (
-                    <div>Duration: {run.duration}s</div>
+                    <div className="flex items-center gap-1">
+                      <span>⏱️</span>
+                      <span>Duration: {run.duration}s</span>
+                    </div>
                   )}
                   {run.mode && (
-                    <div>Mode: {run.mode}</div>
+                    <div className="flex items-center gap-1">
+                      <span>🔧</span>
+                      <span>Mode: {run.mode}</span>
+                    </div>
                   )}
+                  {(() => {
+                    const agent = agents.find(a => a.id === run.agent_id)
+                    return agent && (
+                      <div className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
+                        <span>Agent: {agent.name}</span>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             ))
@@ -303,7 +365,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
         <div className="flex flex-col">
           <span className="text-sm font-medium text-slate-900">Task Workspace</span>
           <span className="text-xs text-slate-500">
-            {loading ? 'Loading tasks…' : `${aiTasks.length} active ${aiTasks.length === 1 ? 'task' : 'tasks'}`}
+            {loading ? 'Loading tasks…' : `${aiTasks.length} pending ${aiTasks.length === 1 ? 'task' : 'tasks'}`}
           </span>
         </div>
         <button
@@ -752,6 +814,55 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
                       >
                         <CheckCircle2 className="h-4 w-4" /> Execute
                       </button>
+
+                      {/* Manual Status Update Buttons */}
+                      {selectedTask?.status !== 'completed' && selectedTask?.status !== 'failed' && (
+                        <div className="mt-3 pt-3 border-t border-slate-300 space-y-2">
+                          <button
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700"
+                            onClick={async () => {
+                              if (!selectedTask) return
+                              try {
+                                await aiTasksApi.update(selectedTask.id, {
+                                  status: 'completed',
+                                  completed_at: new Date().toISOString()
+                                })
+                                // Refresh the data to update the UI
+                                await load()
+                                // Move to history tab to show the completed task
+                                setActiveTab('history')
+                              } catch (error) {
+                                console.error('Failed to mark task as completed:', error)
+                                alert('Failed to mark task as completed. Please try again.')
+                              }
+                            }}
+                          >
+                            <CheckCircle2 className="h-4 w-4" /> Mark as Completed
+                          </button>
+                          <button
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+                            onClick={async () => {
+                              if (!selectedTask) return
+                              if (!confirm('Are you sure you want to mark this task as failed? This action cannot be undone.')) return
+                              try {
+                                await aiTasksApi.update(selectedTask.id, {
+                                  status: 'failed',
+                                  completed_at: new Date().toISOString()
+                                })
+                                // Refresh the data to update the UI
+                                await load()
+                                // Move to history tab to show the failed task
+                                setActiveTab('history')
+                              } catch (error) {
+                                console.error('Failed to mark task as failed:', error)
+                                alert('Failed to mark task as failed. Please try again.')
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4" /> Mark as Failed
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {selectedTask?.status === 'in_progress' && (
@@ -793,7 +904,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
               <div>
                 <p className="text-sm font-semibold text-slate-900">Task Workspace</p>
                 <p className="text-xs text-slate-500">
-                  {loading ? 'Loading tasks…' : `${aiTasks.length} available ${aiTasks.length === 1 ? 'task' : 'tasks'}`}
+                  {loading ? 'Loading tasks…' : `${aiTasks.length} pending ${aiTasks.length === 1 ? 'task' : 'tasks'}`}
                 </p>
               </div>
               <button

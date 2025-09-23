@@ -22,6 +22,8 @@ import {
 } from '../utils/taskUtils'
 import { useTranslation } from '../../contexts/LanguageContext'
 import EnergyReviewModal from '../components/modals/EnergyReviewModal'
+import { CelebrationAnimation } from '../components/ui/CelebrationAnimation'
+import { useCelebration } from '../../hooks/useCelebration'
 
 type StatusKey = TaskContent['status']
 
@@ -49,6 +51,9 @@ export default function KanbanView() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
   const router = useRouter()
+
+  // Celebration state
+  const { isVisible: celebrationVisible, triggerCelebration, hideCelebration } = useCelebration()
 
   // Mobile long-press drag state
   const [touchDraggingId, setTouchDraggingId] = useState<string | null>(null)
@@ -153,6 +158,11 @@ export default function KanbanView() {
     if (current === status) return
     try {
       await updateTask(id, { content: { status } })
+
+      // Trigger celebration animation when task is completed
+      if (status === 'completed') {
+        triggerCelebration()
+      }
     } catch (err) {
       console.error('Failed to move task:', err)
       alert(t.messages.taskUpdateFailed)
@@ -223,11 +233,16 @@ export default function KanbanView() {
     if (current === targetStatus) return
     try {
       await updateTask(currentId, { content: { status: targetStatus } })
+
+      // Trigger celebration animation when task is completed
+      if (targetStatus === 'completed') {
+        triggerCelebration()
+      }
     } catch (err) {
       console.error('Failed to move task (touch):', err)
       alert(t.messages.taskUpdateFailed)
     }
-  }, [touchDraggingId, hoveredStatus, tasks, updateTask, t.messages.taskUpdateFailed])
+  }, [touchDraggingId, hoveredStatus, tasks, updateTask, t.messages.taskUpdateFailed, triggerCelebration])
 
   useEffect(() => {
     // Attach global listeners while dragging
@@ -818,6 +833,11 @@ export default function KanbanView() {
       open={energyReviewOpen}
       entry={energyReviewEntry}
       onClose={() => setEnergyReviewOpen(false)}
+    />
+
+    <CelebrationAnimation
+      isVisible={celebrationVisible}
+      onComplete={hideCelebration}
     />
     </>
   )

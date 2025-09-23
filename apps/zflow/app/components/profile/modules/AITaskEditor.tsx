@@ -56,8 +56,10 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
     status: initial?.status || 'pending'
   })
 
-  // Update form when initial data changes (for editing)
+  // Update form when initial data changes (for editing) - only when modal opens or task ID changes
   React.useEffect(() => {
+    if (!isOpen) return
+
     if (initial) {
       setForm({
         task_id: initial.task_id,
@@ -95,7 +97,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
       })
       setUseGuardrails(false)
     }
-  }, [initial?.id, initial?.task_id, initial?.agent_id, initial?.task_type, initial?.mode, initial?.status, initial])
+  }, [isOpen, initial?.id])
 
   React.useEffect(() => {
     if (!isOpen) return
@@ -121,7 +123,27 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
     }).finally(() => setLoading(false))
   }, [isOpen, initial])
 
-  const handleChange = (patch: Partial<AITaskForm>) => setForm(prev => ({ ...prev, ...patch }))
+  const handleChange = React.useCallback((patch: Partial<AITaskForm>) => {
+    setForm(prev => {
+      const updated = { ...prev }
+
+      // Deep merge for nested objects
+      Object.keys(patch).forEach(key => {
+        const typedKey = key as keyof AITaskForm
+        const value = patch[typedKey]
+
+        if (typedKey === 'metadata' && value && typeof value === 'object') {
+          updated.metadata = { ...prev.metadata, ...value }
+        } else if (typedKey === 'guardrails' && value && typeof value === 'object') {
+          updated.guardrails = { ...prev.guardrails, ...value }
+        } else {
+          updated[typedKey] = value as any
+        }
+      })
+
+      return updated
+    })
+  }, [])
 
   React.useEffect(() => {
     if (!taskMenuOpen) return

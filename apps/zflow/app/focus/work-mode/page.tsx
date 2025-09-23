@@ -13,6 +13,8 @@ import MemoryManagementModal from '../../components/memory/MemoryManagementModal
 import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/useMemoryAnchors'
 import eventBus from '../../core/events/event-bus'
 import { useTranslation } from '../../../contexts/LanguageContext'
+import { CelebrationAnimation } from '../../components/ui/CelebrationAnimation'
+import { useCelebration } from '../../../hooks/useCelebration'
 
 // Import modular components
 import TaskSidebar from './components/TaskSidebar'
@@ -224,7 +226,7 @@ function useTaskOperationsWithAutoSave({
     }))
   }, [setTaskInfo])
 
-  const handleCompleteTask = useCallback(async () => {
+  const handleCompleteTask = useCallback(async (onTaskCompleted?: () => void) => {
     if (!selectedTask) return
 
     setIsSaving(true)
@@ -253,6 +255,9 @@ function useTaskOperationsWithAutoSave({
       if (timer.isRunning && timer.runningTaskId === selectedTask.id) {
         timer.stop(selectedTask.id)
       }
+
+      // Trigger celebration animation
+      onTaskCompleted?.()
     } catch (error) {
       console.error('Failed to complete task:', error)
     } finally {
@@ -324,6 +329,9 @@ function WorkModeViewInner() {
   } : null)
   const { categories } = useCategories()
 
+  // Celebration state
+  const { isVisible: celebrationVisible, triggerCelebration, hideCelebration } = useCelebration()
+
   // Use custom hooks for state management
   const workModeState = useWorkModeState(tasks, categories)
   const {
@@ -383,6 +391,11 @@ function WorkModeViewInner() {
     updateFocusUrl: workModeState.updateFocusUrl,
     setShowSubtasks,
   })
+
+  // Create task completion handler with celebration
+  const handleCompleteTaskWithCelebration = useCallback(async () => {
+    await taskOperations.handleCompleteTask(triggerCelebration)
+  }, [taskOperations, triggerCelebration])
 
   const { handleStatusChange } = taskOperations
 
@@ -514,7 +527,7 @@ function WorkModeViewInner() {
             setShowSubtasks={setShowSubtasks}
             subtaskPanelTaskId={subtaskPanelTaskId}
             subtaskPanelTitle={subtaskPanelTitle}
-            handleCompleteTask={taskOperations.handleCompleteTask}
+            handleCompleteTask={handleCompleteTaskWithCelebration}
             handleSaveNotes={taskOperations.handleSaveNotes}
             isSaving={isSaving}
             autoSave={taskOperations.autoSave}
@@ -578,6 +591,7 @@ function WorkModeViewInner() {
                   onSubtaskSelect={taskOperations.handleSubtaskSelect}
                   selectedSubtaskId={selectedSubtask?.id}
                   autoSelectSubtaskId={subtaskPanelAutoSelectId}
+                  onSubtaskCompleted={triggerCelebration}
                 />
               </div>
 
@@ -605,6 +619,7 @@ function WorkModeViewInner() {
                       onSubtaskSelect={taskOperations.handleSubtaskSelect}
                       selectedSubtaskId={selectedSubtask?.id}
                       autoSelectSubtaskId={subtaskPanelAutoSelectId}
+                      onSubtaskCompleted={triggerCelebration}
                     />
                   </div>
                 </div>
@@ -637,6 +652,11 @@ function WorkModeViewInner() {
         open={energyReviewOpen}
         entry={energyReviewEntry}
         onClose={() => setEnergyReviewOpen(false)}
+      />
+
+      <CelebrationAnimation
+        isVisible={celebrationVisible}
+        onComplete={hideCelebration}
       />
     </>
   )
