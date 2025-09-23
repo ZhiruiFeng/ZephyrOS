@@ -24,6 +24,14 @@ async function main() {
     },
   };
 
+  // Locale from env
+  const envLocale = (process.env.ZMEMORY_MCP_LOCALE || 'auto').toLowerCase();
+  if (envLocale === 'en' || envLocale === 'zh' || envLocale === 'auto') {
+    config.locale = envLocale as any;
+  } else {
+    config.locale = 'auto';
+  }
+
   // 输出配置信息（不包含敏感信息）
   console.error(`ZMemory MCP Server 配置:`);
   console.error(`  API URL: ${config.apiUrl}`);
@@ -32,6 +40,7 @@ async function main() {
   console.error(`  OAuth 客户端ID: ${config.oauth?.clientId}`);
   console.error(`  OAuth 重定向URI: ${config.oauth?.redirectUri}`);
   console.error(`  OAuth 权限范围: ${config.oauth?.scope}`);
+  console.error(`  Locale: ${config.locale}`);
   console.error('');
 
   try {

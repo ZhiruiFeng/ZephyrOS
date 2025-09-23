@@ -498,6 +498,8 @@ export interface ZMemoryConfig {
     redirectUri?: string;
     scope?: string;
   };
+  // Preferred server locale for responses. 'auto' attempts to detect from tool arguments.
+  locale?: 'en' | 'zh' | 'auto';
 }
 
 // 认证状态

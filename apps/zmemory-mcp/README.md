@@ -9,9 +9,18 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 
 ## 📚 Documentation
 
-- **🚀 [Quick Start Guide](./QUICK_START.md)** - 30-second setup for Claude Code
-- **🔧 [Claude Code Integration](./CLAUDE_CODE_INTEGRATION.md)** - Complete integration guide
-- **📖 [Full Documentation](#)** - This file (comprehensive reference)
+- New consolidated guidance (recommended):
+  - guidance/README.md
+  - guidance/01-Overview.md
+  - guidance/02-Setup.md
+  - guidance/03-Tools.md
+  - guidance/04-Scenarios.md
+  - guidance/05-Development-Rules.md
+
+- Legacy docs (superseded, kept for reference):
+  - 🚀 QUICK_START.md
+  - 🔧 CLAUDE_CODE_INTEGRATION.md
+  - 🔐 README_API_KEY_SETUP.md
 
 ## 📋 Table of Contents
 
@@ -163,6 +172,8 @@ npx vercel --prod
 ```
 
 ## 🔧 Available MCP Tools
+
+See guidance/03-Tools.md for an up-to-date, bilingual reference with API mappings and Chinese aliases.
 
 ### Authentication Tools
 - `authenticate` - Start OAuth flow
