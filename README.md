@@ -1,5 +1,10 @@
 # ZephyrOS - Personal AI Operating System
 
+> Security note
+> - Never commit secrets (API keys, OAuth client secrets, Supabase keys) to version control.
+> - Use .env.local (ignored) for local dev and provider secret stores for production.
+> - CI secret scanning runs on push/PR (.github/workflows/secret-scan.yml). Rotate any exposed secret immediately.
+
 * **Core Vision**: ZephyrOS is designed as a personal AI-powered operating system that integrates deeply into daily life. It emphasizes **task management, knowledge reuse, and intelligent coaching** to enhance productivity and personal growth.
 * **Purpose**: ZFlow is the **workflow layer** of ZephyrOS, connecting tasks, notes, and knowledge into a structured system that can be acted upon by AI agents.
 

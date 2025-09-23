@@ -1,5 +1,9 @@
 # 🚀 ZMemory MCP Quick Start
 
+> Security note
+> - Do not paste real secrets into this guide. Use placeholders and environment variables.
+> - CI will scan for secrets on push/PR; rotate any exposed secrets immediately.
+
 ## 30-Second Setup for Claude Code
 
 ### 1. Prerequisites

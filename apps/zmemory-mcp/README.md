@@ -1,5 +1,10 @@
 # ZMemory MCP Server
 
+> Security note
+> - Never commit secrets (API keys, OAuth client secrets) to version control.
+> - Use environment variables or secret managers. In documentation, use placeholders like {{OAUTH_CLIENT_SECRET}}.
+> - This repository runs automated secret scanning on push/PR (.github/workflows/secret-scan.yml). If a secret is ever committed, rotate it immediately and update references.
+
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that exposes ZMemory's memory management functionality to AI agents.
 
 ## 📚 Documentation

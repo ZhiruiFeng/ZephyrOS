@@ -121,6 +121,27 @@ Default rate limits:
 4. **Don't trust client-side validation alone**
 5. **Don't store secrets in client-side code**
 
+## CI Secret Scanning
+
+This repository runs automated secret scanning with Gitleaks on every push and pull request. See .github/workflows/secret-scan.yml.
+
+Run locally:
+
+```bash
+# Using Homebrew
+brew install gitleaks
+
+# Scan the repo (redacted output)
+gitleaks detect --redact
+
+# Or using Docker
+docker run --rm -v $(pwd):/path zricethezav/gitleaks:latest detect -v --redact -s /path
+```
+
+If a potential secret is flagged:
+- Verify whether it’s a real secret. If so, rotate it immediately and force-push a commit that removes it.
+- Replace occurrences in docs with placeholders (e.g., {{OAUTH_CLIENT_SECRET}}) and reference environment variables instead.
+
 ## Security Updates
 
 - Regularly update dependencies: `npm audit fix`

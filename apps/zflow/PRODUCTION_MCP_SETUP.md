@@ -1,5 +1,9 @@
 # Production MCP Setup Guide
 
+> Security note
+> - Configure secrets using your deployment provider's secret manager (Vercel env, GitHub Secrets), not in code or docs.
+> - This repository runs secret scanning in CI. If a secret is exposed, rotate it immediately.
+
 This guide explains how to configure the MCP (Model Context Protocol) services for production deployment on Vercel.
 
 ## 🚀 Environment Variables

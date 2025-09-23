@@ -1,0 +1,13 @@
+# Gitleaks configuration (optional)
+# For more configuration options, see https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+  description = "Ignore common build outputs"
+  paths = [
+    "node_modules/",
+    "dist/",
+    ".next/",
+    "build/",
+    "coverage/",
+    "package-lock.json"
+  ]

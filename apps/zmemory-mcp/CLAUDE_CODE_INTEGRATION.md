@@ -1,5 +1,9 @@
 # Claude Code + ZMemory MCP Integration Guide
 
+> Security note
+> - Never hard-code secrets in configuration examples. Use placeholders like {{OAUTH_CLIENT_SECRET}} and set real values via environment variables.
+> - This repo includes CI secret scanning to help catch accidental exposures.
+
 Complete guide for connecting ZMemory MCP Server with Claude Code to access your ZephyrOS data directly in Claude Code conversations.
 
 ## 🎯 Overview
