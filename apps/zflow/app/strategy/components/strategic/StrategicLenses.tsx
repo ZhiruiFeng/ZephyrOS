@@ -24,6 +24,7 @@ interface StrategicLensesProps {
   statusFilter: string
   priorityFilter: string
   categoryFilter: string
+  onInitiativeUpdated?: (initiative: any) => void
 }
 
 export const StrategicLenses = ({
@@ -41,7 +42,8 @@ export const StrategicLenses = ({
   searchQuery,
   statusFilter,
   priorityFilter,
-  categoryFilter
+  categoryFilter,
+  onInitiativeUpdated
 }: StrategicLensesProps) => {
   const fullscreen = useFullscreenModal()
 
@@ -62,6 +64,7 @@ export const StrategicLenses = ({
             filteredInitiatives={filteredInitiatives}
             progressIntentCallback={progressIntentCallback}
             hasActiveFilters={hasActiveFilters}
+            onInitiativeUpdated={onInitiativeUpdated}
           />
         )
       case 'execution':

@@ -92,6 +92,12 @@ export default function StrategyPage() {
   // Memoized functions for performance
   const progressIntentCallback = useCallback(progressIntent, [])
 
+  // Handle initiative updates
+  const handleInitiativeUpdated = useCallback((updatedInitiative: any) => {
+    // Refresh the dashboard to get the latest data
+    refetch()
+  }, [refetch])
+
   // Loading states
   // TODO: Temporarily bypass authentication for testing
   // if (authLoading) {
@@ -280,6 +286,7 @@ export default function StrategyPage() {
             statusFilter={statusFilter}
             priorityFilter={priorityFilter}
             categoryFilter={categoryFilter}
+            onInitiativeUpdated={handleInitiativeUpdated}
           />
 
           {/* Strategic Map */}

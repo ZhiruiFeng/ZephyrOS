@@ -5,12 +5,14 @@ interface VisionLensProps {
   filteredInitiatives: any[]
   progressIntentCallback: (p: number) => string
   hasActiveFilters: boolean
+  onInitiativeUpdated?: (initiative: any) => void
 }
 
 export const VisionLens = ({
   filteredInitiatives,
   progressIntentCallback,
-  hasActiveFilters
+  hasActiveFilters,
+  onInitiativeUpdated
 }: VisionLensProps) => {
   return (
     <div className="space-y-3">
@@ -23,6 +25,7 @@ export const VisionLens = ({
             key={initiative.id}
             initiative={initiative}
             progressIntent={progressIntentCallback}
+            onInitiativeUpdated={onInitiativeUpdated}
           />
         ))}
         {filteredInitiatives.length === 0 && (
