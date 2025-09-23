@@ -66,6 +66,25 @@ export class StreamingService {
     const subscriber = getRedisSubscriber()
     const channel = `agent_stream:${sessionId}`
 
+    try {
+      // Ensure connection before subscribing (lazyConnect is enabled)
+      // ioredis connect() returns a promise; ignore if already connected
+      // @ts-ignore
+      if (typeof (subscriber as any).connect === 'function') {
+        // @ts-ignore
+        await (subscriber as any).connect()
+      }
+    } catch (connectErr) {
+      console.error('Failed to connect Redis subscriber:', connectErr)
+    }
+
+    subscriber.on('error', (err: any) => {
+      console.error('Redis subscriber error during stream:', err)
+    })
+    subscriber.on('end', () => {
+      console.log('Redis subscriber ended')
+    })
+
     subscriber.subscribe(channel, (err, count) => {
       if (err) {
         console.error('Failed to subscribe:', err)
@@ -87,8 +106,16 @@ export class StreamingService {
 
     // Return unsubscribe function
     return () => {
-      subscriber.unsubscribe(channel)
-      subscriber.disconnect()
+      try {
+        subscriber.unsubscribe(channel)
+      } catch (e) {
+        console.warn('Error during Redis unsubscribe:', e)
+      }
+      try {
+        subscriber.disconnect()
+      } catch (e) {
+        console.warn('Error during Redis subscriber disconnect:', e)
+      }
     }
   }
 
