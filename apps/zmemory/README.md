@@ -74,6 +74,77 @@ npm run build
 npm start
 ```
 
+### Next.js 15 Dynamic Route Parameters
+
+⚠️ **Important**: This project uses Next.js 15, which has breaking changes for dynamic route parameters.
+
+#### The Problem
+In Next.js 15, route parameters (`params`) are now **async** and must be awaited before use. Directly accessing `params.id` will cause runtime errors:
+
+```typescript
+// ❌ WRONG (will cause error in Next.js 15)
+export async function GET(request: NextRequest, { params }: any) {
+  const id = params.id // Error: params should be awaited first
+}
+```
+
+#### The Solution
+Always await params before accessing properties:
+
+```typescript
+// ✅ CORRECT (Next.js 15 compatible)
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params
+  const { id } = params // Safe to use now
+}
+```
+
+#### When Working with MCP
+
+When using this API through MCP (Model Context Protocol), the async params pattern is especially important because:
+
+1. **MCP relies on HTTP APIs**: All MCP tools ultimately make HTTP requests to these API routes
+2. **Error propagation**: Async params errors will surface as tool execution failures in MCP clients (like Claude)
+3. **JSON parsing errors**: Improperly handled params can cause response malformation
+
+#### Migration Checklist
+
+When adding new dynamic routes (`[id]`, `[slug]`, etc.):
+
+- [ ] Use proper TypeScript types: `context: { params: Promise<{ id: string }> }`
+- [ ] Await params: `const params = await context.params`
+- [ ] Extract needed properties: `const { id } = params`
+- [ ] Test both direct HTTP calls and MCP tool usage
+
+#### Common Patterns
+
+**Single dynamic parameter:**
+```typescript
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params
+  const { id } = params
+  // Use id safely...
+}
+```
+
+**Multiple dynamic parameters:**
+```typescript
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ categoryId: string; itemId: string }> }
+) {
+  const params = await context.params
+  const { categoryId, itemId } = params
+  // Use both parameters safely...
+}
+```
+
 ## Data Model
 
 ### Memory Table Structure

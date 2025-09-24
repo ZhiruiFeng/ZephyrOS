@@ -15,7 +15,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
-export async function GET(request: NextRequest, { params }: any) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params
   try {
     if (!supabase) {
       return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
@@ -26,10 +30,12 @@ export async function GET(request: NextRequest, { params }: any) {
       return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const { id } = params
+
     const { data, error } = await supabase
       .from('ai_tasks')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId)
       .single()
 
@@ -44,7 +50,11 @@ export async function GET(request: NextRequest, { params }: any) {
   }
 }
 
-export async function PUT(request: NextRequest, { params }: any) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params
   try {
     if (!supabase) {
       return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
@@ -55,13 +65,14 @@ export async function PUT(request: NextRequest, { params }: any) {
       return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const { id } = params
     const body = await request.json()
     const updates = AITaskUpdateSchema.parse(body)
 
     const { data, error } = await supabase
       .from('ai_tasks')
       .update({ ...updates })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId)
       .select('*')
       .single()
@@ -81,7 +92,11 @@ export async function PUT(request: NextRequest, { params }: any) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: any) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params
   try {
     if (!supabase) {
       return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
@@ -92,10 +107,12 @@ export async function DELETE(request: NextRequest, { params }: any) {
       return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const { id } = params
+
     const { error } = await supabase
       .from('ai_tasks')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', userId)
 
     if (error) {

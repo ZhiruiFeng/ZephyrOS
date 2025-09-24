@@ -290,7 +290,7 @@ ID: ${category.id}
     const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.log('ZMemory MCP Server (Modular) started');
+    console.error('ZMemory MCP服务器已启动');
   }
 
   async close() {
