@@ -50,6 +50,8 @@ export interface TaskMemory {
   hierarchy_path?: string
   subtask_count?: number
   completed_subtask_count?: number
+  // AI task flag
+  is_ai_task?: boolean
 }
 
 export interface CreateTaskRequest {

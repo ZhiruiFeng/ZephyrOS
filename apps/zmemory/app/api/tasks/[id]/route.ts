@@ -100,6 +100,7 @@ export async function GET(
       .from('tasks')
       .select(`
         *,
+        is_ai_task,
         category:categories(id, name, color, icon)
       `)
       .eq('id', id)
@@ -329,6 +330,7 @@ export async function PUT(
       .eq('user_id', userId)
       .select(`
         *,
+        is_ai_task,
         category:categories(id, name, color, icon)
       `)
       .single();

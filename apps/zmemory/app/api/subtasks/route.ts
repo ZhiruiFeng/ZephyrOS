@@ -292,6 +292,7 @@ export async function POST(request: NextRequest) {
       .insert(insertPayload)
       .select(`
         *,
+        is_ai_task,
         category:categories(id, name, color, icon)
       `)
       .single();
@@ -328,6 +329,7 @@ export async function POST(request: NextRequest) {
       hierarchy_path: data.hierarchy_path,
       subtask_count: data.subtask_count || 0,
       completed_subtask_count: data.completed_subtask_count || 0,
+      is_ai_task: data.is_ai_task,
     } as any;
     
     console.log('Returning created subtask:', JSON.stringify(mapped, null, 2));

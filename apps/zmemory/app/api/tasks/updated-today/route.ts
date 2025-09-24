@@ -340,6 +340,7 @@ export async function GET(request: NextRequest) {
       .from('tasks')
       .select(`
         *,
+        is_ai_task,
         category:categories(id, name, color, icon)
       `)
       .eq('user_id', userId)
@@ -418,6 +419,7 @@ export async function GET(request: NextRequest) {
       updated_at: row.updated_at,
       // surface category_id for frontend filtering
       category_id: row.category_id,
+      is_ai_task: row.is_ai_task,
     }));
 
     return jsonWithCors(request, {

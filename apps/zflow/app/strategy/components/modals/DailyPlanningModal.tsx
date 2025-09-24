@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { Sun, CheckCircle, Target, Zap, Plus, Calendar } from 'lucide-react'
+import { Sun, CheckCircle, Target, Zap, Plus, Calendar, Star, BookOpen } from 'lucide-react'
 import { FullscreenModal } from './FullscreenModal'
 import { Card, CardHeader, CardTitle, CardContent, Button, Textarea, Badge } from '../ui'
 import { useStrategyTasks, useStrategyMemories, useStrategyDashboard } from '../../../../lib/hooks/strategy'
+import { memoriesApi } from '../../../../lib/api/memories-api'
 import type { StrategyTask } from '../../../../lib/types/strategy'
 
 interface DailyPlanningModalProps {
@@ -23,6 +24,10 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
   const [energyLevel, setEnergyLevel] = useState<'low' | 'medium' | 'high'>('medium')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Daily Adventure Memory
+  const [dailyAdventure, setDailyAdventure] = useState('')
+  const [createAdventureMemory, setCreateAdventureMemory] = useState(false)
 
   // Calculate yesterday's completed tasks
   const yesterdaysCompletedTasks = useMemo(() => {
@@ -89,8 +94,10 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
     setIsLoading(true)
     try {
       const priorityTasks = availableTasks.filter((task: StrategyTask) => topPriorities.includes(task.id))
+      const today = new Date().toLocaleDateString()
 
-      const planContent = `Daily Plan - ${new Date().toLocaleDateString()}
+      // Create daily plan memory
+      const planContent = `Daily Plan - ${today}
 
 DAILY INTENTION:
 ${dailyIntention}
@@ -104,16 +111,59 @@ YESTERDAY'S WINS:
 ${yesterdaysCompletedTasks.length > 0
   ? yesterdaysCompletedTasks.map((task: StrategyTask) => `✅ ${task.title}`).join('\n')
   : 'No completed tasks from yesterday'
-}`
+}${dailyAdventure ? `\n\nDAILY ADVENTURE:\n${dailyAdventure}` : ''}`
 
-      await createReflection({
+      // Create the daily plan strategic memory
+      const dailyPlanMemory = await createReflection({
         content: planContent,
-        strategyType: 'goal',
+        strategyType: 'reflection',
         seasonId,
         impact: 'medium',
         actionable: true,
-        tags: ['daily-planning', 'morning-ritual']
+        tags: ['daily-planning', 'morning-ritual', ...(createAdventureMemory ? ['daily-adventure'] : [])]
       })
+
+      // Create memory anchors for priority tasks
+      if (priorityTasks.length > 0 && dailyPlanMemory.id) {
+        for (const task of priorityTasks) {
+          try {
+            await memoriesApi.addAnchor(dailyPlanMemory.id, {
+              anchor_item_id: task.id,
+              relation_type: 'about',
+              weight: 2.0, // Higher weight for priority tasks
+              notes: `Priority task for ${today}`
+            })
+          } catch (anchorError) {
+            console.warn('Failed to create anchor for task:', task.id, anchorError)
+          }
+        }
+      }
+
+      // Create separate adventure memory if requested
+      if (createAdventureMemory && dailyAdventure.trim()) {
+        try {
+          const adventureMemory = await memoriesApi.create({
+            title: `Daily Adventure - ${today}`,
+            note: dailyAdventure,
+            memory_type: 'insight',
+            importance_level: 'high',
+            is_highlight: true,
+            tags: ['daily-adventure', 'goal', 'intention'],
+          })
+
+          // Link adventure memory to plan memory
+          if (adventureMemory.id && dailyPlanMemory.id) {
+            await memoriesApi.addAnchor(adventureMemory.id, {
+              anchor_item_id: dailyPlanMemory.id,
+              relation_type: 'context_of',
+              weight: 3.0,
+              notes: `Main adventure goal for ${today}`
+            })
+          }
+        } catch (adventureError) {
+          console.warn('Failed to create adventure memory:', adventureError)
+        }
+      }
 
       onClose()
     } catch (error) {
@@ -258,6 +308,42 @@ ${yesterdaysCompletedTasks.length > 0
               </CardContent>
             </Card>
 
+            {/* Daily Adventure */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-600" />
+                  Daily Adventure
+                  <Badge variant="secondary">Optional</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="create-adventure"
+                    checked={createAdventureMemory}
+                    onChange={(e) => setCreateAdventureMemory(e.target.checked)}
+                    className="rounded"
+                  />
+                  <label htmlFor="create-adventure" className="text-sm font-medium">
+                    Create a daily adventure memory
+                  </label>
+                </div>
+                {createAdventureMemory && (
+                  <Textarea
+                    placeholder="What's your main adventure/goal for today? (e.g., 'Complete the strategy review with full focus and energy')"
+                    value={dailyAdventure}
+                    onChange={(e) => setDailyAdventure(e.target.value)}
+                    className="w-full min-h-[80px]"
+                  />
+                )}
+                <p className="text-xs text-gray-500">
+                  A daily adventure is your main story for the day - what you want to remember about today.
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Quick Task Creation */}
             <Card>
               <CardHeader>
@@ -292,7 +378,7 @@ ${yesterdaysCompletedTasks.length > 0
           </Button>
           <Button
             onClick={handleSavePlan}
-            disabled={isLoading || !dailyIntention.trim()}
+            disabled={isLoading || !dailyIntention.trim() || (createAdventureMemory && !dailyAdventure.trim())}
             className="px-8"
           >
             {isLoading ? 'Saving...' : 'Save Daily Plan'}

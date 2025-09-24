@@ -1,10 +1,15 @@
 'use client'
 
 import React from 'react'
-import { Folder, FileText, ChevronRight, ChevronDown, Clock, Calendar, X } from 'lucide-react'
+import { Folder, FileText, ChevronRight, ChevronDown, Clock, Calendar, X, Bot } from 'lucide-react'
 import { Category } from '../../../types/task'
 import { TaskMemory } from '../../../../lib/api'
 import { useTranslation } from '../../../../contexts/LanguageContext'
+
+// Helper function to detect if a task is an AI task
+const isAITask = (task: TaskMemory): boolean => {
+  return task.is_ai_task === true
+}
 
 export interface TaskWithCategory extends TaskMemory {
   category?: Category
@@ -144,6 +149,9 @@ export default function TaskSidebar({
                     >
                       <FileText className="w-4 h-4" />
                       <span className="truncate">{task.content.title}</span>
+                      {isAITask(task) && (
+                        <Bot className="w-3 h-3 text-blue-600 ml-auto" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -188,6 +196,9 @@ export default function TaskSidebar({
                       >
                         <FileText className="w-4 h-4" />
                         <span className="truncate">{task.content.title}</span>
+                        {isAITask(task) && (
+                          <Bot className="w-3 h-3 text-blue-600 ml-auto" />
+                        )}
                       </button>
                     ))}
                   </div>

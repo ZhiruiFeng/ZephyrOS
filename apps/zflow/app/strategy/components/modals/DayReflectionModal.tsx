@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
-import { Moon, CheckCircle, AlertCircle, Lightbulb, TrendingUp, Star } from 'lucide-react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { Moon, CheckCircle, AlertCircle, Lightbulb, TrendingUp, Star, Target, BookOpen } from 'lucide-react'
 import { FullscreenModal } from './FullscreenModal'
 import { Card, CardHeader, CardTitle, CardContent, Button, Textarea, Badge } from '../ui'
 import { useStrategyTasks, useStrategyMemories } from '../../../../lib/hooks/strategy'
+import { memoriesApi } from '../../../../lib/api/memories-api'
 import type { StrategyTask } from '../../../../lib/types/strategy'
 
 interface DayReflectionModalProps {
@@ -23,6 +24,10 @@ export function DayReflectionModal({ isOpen, onClose, seasonId }: DayReflectionM
   const [winRating, setWinRating] = useState<1 | 2 | 3 | 4 | 5>(3)
   const [challengeHighlight, setChallengeHighlight] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Daily planning memory and anchored tasks
+  const [todaysPlanning, setTodaysPlanning] = useState<any>(null)
+  const [priorityTasks, setPriorityTasks] = useState<StrategyTask[]>([])
 
   // Calculate today's task performance
   const todaysTaskPerformance = useMemo(() => {
@@ -61,8 +66,44 @@ export function DayReflectionModal({ isOpen, onClose, seasonId }: DayReflectionM
     }
   }, [myTasks])
 
-  // Get today's planning memory if it exists
-  const [todaysPlanning, setTodaysPlanning] = useState<string | null>(null)
+  // Load today's planning and priority tasks
+  useEffect(() => {
+    const loadTodaysPlanning = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0]
+
+        // Get today's planning memories
+        const planningMemories = await memoriesApi.search({
+          tags: ['daily-planning'],
+          date_from: today,
+          date_to: today,
+          limit: 1
+        })
+
+        if (planningMemories.memories.length > 0) {
+          const planMemory = planningMemories.memories[0]
+          setTodaysPlanning(planMemory)
+
+          // Get anchored priority tasks
+          const anchors = await memoriesApi.getAnchors(planMemory.id, {
+            relation_type: 'about',
+            anchor_item_type: 'task'
+          })
+
+          // Get task details for anchored tasks
+          const anchoredTaskIds = anchors.map(anchor => anchor.anchor_item_id)
+          const anchoredTasks = myTasks.filter(task => anchoredTaskIds.includes(task.id))
+          setPriorityTasks(anchoredTasks)
+        }
+      } catch (error) {
+        console.warn('Failed to load today\'s planning:', error)
+      }
+    }
+
+    if (myTasks.length > 0) {
+      loadTodaysPlanning()
+    }
+  }, [myTasks])
 
   const handleSaveReflection = async () => {
     setIsLoading(true)
@@ -83,6 +124,14 @@ export function DayReflectionModal({ isOpen, onClose, seasonId }: DayReflectionM
 ${completed.length > 0
   ? completed.map((task: StrategyTask) => `• ${task.title}`).join('\n')
   : '• No tasks completed today'
+}
+
+🎯 PRIORITY TASKS REVIEW:
+${priorityTasks.length > 0
+  ? priorityTasks.map((task: StrategyTask, index: number) =>
+      `${index + 1}. ${task.title} - ${task.status === 'completed' ? '✅ COMPLETED' : task.status.toUpperCase()}`
+    ).join('\n')
+  : 'No priority tasks were set for today'
 }
 
 💡 LESSONS LEARNED:
@@ -131,6 +180,69 @@ ${tomorrowPreparation || 'None captured'}`
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column */}
           <div className="space-y-6">
+            {/* Today's Priority Tasks */}
+            {priorityTasks.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-600" />
+                    Today&apos;s Priority Tasks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {priorityTasks.map((task: StrategyTask, index: number) => (
+                      <div key={task.id} className={`p-3 border rounded-lg ${
+                        task.status === 'completed'
+                          ? 'border-green-300 bg-green-50'
+                          : task.status === 'in_progress'
+                          ? 'border-orange-300 bg-orange-50'
+                          : 'border-gray-200 bg-gray-50'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{index + 1}.</span>
+                          {task.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-600" />}
+                          <span className={`text-sm font-medium ${
+                            task.status === 'completed' ? 'text-green-700 line-through' : 'text-gray-700'
+                          }`}>
+                            {task.title}
+                          </span>
+                          <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                            {task.status}
+                          </Badge>
+                        </div>
+                        {task.description && (
+                          <p className="text-xs text-gray-500 mt-1 ml-6">{task.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      <strong>Priority Completion:</strong> {priorityTasks.filter(t => t.status === 'completed').length} of {priorityTasks.length} completed
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Today's Planning Context */}
+            {todaysPlanning && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-purple-600" />
+                    Today&apos;s Plan Context
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg max-h-32 overflow-y-auto">
+                    {todaysPlanning.note || todaysPlanning.content}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Task Performance */}
             <Card>
               <CardHeader>

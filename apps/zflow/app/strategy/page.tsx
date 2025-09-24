@@ -21,7 +21,8 @@ import { PageHeader, SearchFilterBar } from './components'
 import { StrategicLenses } from './components'
 import { SeasonGoalCard, StrategicInsightsCard, StrategicMapCard } from './components'
 import { Scratchpad, WhatIfSimulator, QuickActions } from './components'
-import { KeyboardShortcutsModal, AgentSelectionModal } from './components'
+import { DailyTrackingCard } from './components/DailyTrackingCard'
+import { KeyboardShortcutsModal, AgentSelectionModal, DailyPlanningModal, DayReflectionModal } from './components'
 import { useStrategyFilters, useKeyboardShortcuts } from './hooks'
 import { progressIntent } from './utils/progressIntent'
 
@@ -43,6 +44,8 @@ export default function StrategyPage() {
   const [showAgentModal, setShowAgentModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
+  const [showPlanningModal, setShowPlanningModal] = useState(false)
+  const [showReflectionModal, setShowReflectionModal] = useState(false)
 
   // Extract data
   const { season, initiatives, myTasks, agentTasks, agents, recentMemories } = dashboard || {}
@@ -295,6 +298,12 @@ export default function StrategyPage() {
 
         {/* Right Rail */}
         <div className="space-y-4">
+          {/* Daily Tracking */}
+          <DailyTrackingCard
+            onOpenPlanning={() => setShowPlanningModal(true)}
+            onOpenReflection={() => setShowReflectionModal(true)}
+          />
+
           {/* Scratchpad */}
           <Scratchpad
             scratch={scratch}
@@ -328,6 +337,19 @@ export default function StrategyPage() {
         onClose={() => setShowAgentModal(false)}
         agents={agents || []}
         onAgentSelect={sendToAgent}
+      />
+
+      {/* Daily Planning and Reflection Modals - controlled by DailyTrackingCard */}
+      <DailyPlanningModal
+        isOpen={showPlanningModal}
+        onClose={() => setShowPlanningModal(false)}
+        seasonId={season?.id}
+      />
+
+      <DayReflectionModal
+        isOpen={showReflectionModal}
+        onClose={() => setShowReflectionModal(false)}
+        seasonId={season?.id}
       />
     </div>
   )

@@ -181,6 +181,7 @@ export async function GET(
       .from('tasks')
       .select(`
         *,
+        is_ai_task,
         category:categories(id, name, color, icon)
       `)
       .in('id', taskIds)
@@ -220,6 +221,7 @@ export async function GET(
       hierarchy_path: row.hierarchy_path,
       subtask_count: row.subtask_count || 0,
       completed_subtask_count: row.completed_subtask_count || 0,
+      is_ai_task: row.is_ai_task,
     }));
 
     // Filter out completed tasks if requested

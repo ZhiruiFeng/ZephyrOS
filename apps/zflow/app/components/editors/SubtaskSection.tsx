@@ -1,19 +1,21 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { 
-  Plus, 
-  ChevronRight, 
-  ChevronDown, 
-  Circle, 
-  CheckCircle, 
-  Clock, 
+import {
+  Plus,
+  ChevronRight,
+  ChevronDown,
+  Circle,
+  CheckCircle,
+  Clock,
   AlertCircle,
   MoreVertical,
   Edit,
   Trash2,
   GripVertical,
-  Info
+  Info,
+  Bot,
+  X
 } from 'lucide-react'
 import {
   DndContext,
@@ -40,6 +42,11 @@ import { Task } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { StatusBadge } from '../shared/StatusBadge'
 
+// Helper function to detect if a task is an AI task
+const isAITask = (task: TaskMemory): boolean => {
+  return task.is_ai_task === true
+}
+
 interface SubtaskSectionProps {
   taskId: string
   onSubtaskSelect?: (subtask: TaskMemory) => void
@@ -60,7 +67,7 @@ interface SubtaskItemProps {
   isCollapsed?: boolean
   onToggleCollapse?: (taskId: string) => void
   isRoot?: boolean
-  
+  onAITaskClick?: (task: TaskMemory) => void
 }
 
 interface SortableSubtaskItemProps extends SubtaskItemProps {
@@ -79,7 +86,8 @@ const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
   onAddChild,
   isCollapsed,
   onToggleCollapse,
-  isRoot
+  isRoot,
+  onAITaskClick
 }) => {
   const {
     attributes,
@@ -112,6 +120,7 @@ const SortableSubtaskItem: React.FC<SortableSubtaskItemProps> = ({
         onAddChild={onAddChild}
         isCollapsed={isCollapsed}
         onToggleCollapse={onToggleCollapse}
+        onAITaskClick={onAITaskClick}
         isRoot={isRoot}
         dragHandleProps={{ attributes, listeners }}
       />
@@ -130,6 +139,7 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
   onAddChild,
   isCollapsed,
   onToggleCollapse,
+  onAITaskClick,
   isRoot,
   dragHandleProps
 }) => {
@@ -229,6 +239,18 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
             }`}>
               {subtask.content.title}
             </span>
+            {isAITask(subtask) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAITaskClick?.(subtask)
+                }}
+                className="flex items-center justify-center p-1 hover:bg-blue-100 rounded transition-colors"
+                title="View AI Task Details"
+              >
+                <Bot className="w-3 h-3 text-blue-600" />
+              </button>
+            )}
             {subtask.content.description && (
               <button
                 onClick={(e) => {
@@ -552,6 +574,13 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   const [creatingForParentId, setCreatingForParentId] = useState<string | null>(null)
   const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set())
   const [autoSelectedId, setAutoSelectedId] = useState<string | null>(null)
+  const [showAITaskDetails, setShowAITaskDetails] = useState(false)
+  const [selectedAITask, setSelectedAITask] = useState<TaskMemory | null>(null)
+
+  const handleAITaskClick = (task: TaskMemory) => {
+    setSelectedAITask(task)
+    setShowAITaskDetails(true)
+  }
   
 
   // 设置拖拽传感器
@@ -582,6 +611,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
 
   // Safe access to tree stats
   const treeStats = data?.tree_stats
+
 
   // Root task item (displayed like a subtask) and visibility calculations
   const rootTask = data?.task
@@ -770,6 +800,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
             onAddChild={handleAddChildSubtask}
             isCollapsed={collapsedTaskIds.has(rootItem.id)}
             onToggleCollapse={handleToggleCollapse}
+            onAITaskClick={handleAITaskClick}
             isRoot
           />
           {creatingForParentId === rootItem.id && (
@@ -817,6 +848,7 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
                     onAddChild={handleAddChildSubtask}
                     isCollapsed={collapsedTaskIds.has(subtask.id)}
                     onToggleCollapse={handleToggleCollapse}
+                    onAITaskClick={handleAITaskClick}
                     isRoot={false}
                   />
                   {creatingForParentId === subtask.id && (
@@ -834,6 +866,132 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
             </div>
           </SortableContext>
         </DndContext>
+      )}
+
+      {/* AI Task Details Floating Window */}
+      {showAITaskDetails && selectedAITask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAITaskDetails(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">AI Task Details</h3>
+              </div>
+              <button
+                onClick={() => setShowAITaskDetails(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Task Title */}
+              <div>
+                <h4 className="text-base font-medium text-gray-900 mb-2">{selectedAITask.content.title}</h4>
+                <div className="flex items-center gap-2 mb-3">
+                  <StatusBadge status={selectedAITask.content.status} />
+                  <span className="text-sm text-gray-600 capitalize">Priority: {selectedAITask.content.priority}</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedAITask.content.description && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Description</h5>
+                  <p className="text-sm text-gray-600">{selectedAITask.content.description}</p>
+                </div>
+              )}
+
+              {/* Progress */}
+              {selectedAITask.content.progress !== undefined && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Progress</h5>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${selectedAITask.content.progress}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm text-gray-600">{selectedAITask.content.progress}%</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Due Date */}
+              {selectedAITask.content.due_date && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Due Date</h5>
+                  <p className="text-sm text-gray-600">{new Date(selectedAITask.content.due_date).toLocaleDateString()}</p>
+                </div>
+              )}
+
+              {/* Estimated Duration */}
+              {selectedAITask.content.estimated_duration && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Estimated Duration</h5>
+                  <p className="text-sm text-gray-600">{selectedAITask.content.estimated_duration} minutes</p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedAITask.content.notes && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Notes</h5>
+                  <p className="text-sm text-gray-600">{selectedAITask.content.notes}</p>
+                </div>
+              )}
+
+              {/* Tags */}
+              {selectedAITask.tags && selectedAITask.tags.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Tags</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedAITask.tags.map((tag, index) => (
+                      <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="pt-2 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                  <div>
+                    <span className="font-medium">Created:</span><br />
+                    {new Date(selectedAITask.created_at).toLocaleString()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Updated:</span><br />
+                    {new Date(selectedAITask.updated_at).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    onSubtaskSelect?.(selectedAITask)
+                    setShowAITaskDetails(false)
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Select Task
+                </button>
+                <button
+                  onClick={() => setShowAITaskDetails(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
