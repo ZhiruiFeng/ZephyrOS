@@ -184,6 +184,9 @@ See guidance/03-Tools.md for an up-to-date, bilingual reference with API mapping
 - `get_user_info` - Get current user info
 - `clear_auth` - Clear authentication
 
+### Debugging Tools
+- `get_system_status` - **NEW!** Comprehensive system diagnostics with authentication status, API connectivity tests, configuration validation, and troubleshooting suggestions
+
 ### Memory Management Tools
 - `add_memory` - Create new memory/task/note
 - `search_memories` - Search and filter memories
