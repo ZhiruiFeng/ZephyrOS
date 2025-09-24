@@ -174,8 +174,8 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
     const taskItems: TimelineItem[] = (tasksResult.tasks || [])
       .filter((task: any) => {
         const status = task.content.status
-        // Include only unfinished tasks
-        return status === 'pending' || status === 'in_progress' || status === 'on_hold'
+        // Include both unfinished and finished tasks
+        return status === 'pending' || status === 'in_progress' || status === 'on_hold' || status === 'completed'
       })
       .map((task: any) => {
         const createdAt = new Date(task.created_at)
@@ -205,7 +205,8 @@ async function fetchTimelineData(selectedDate: Date): Promise<TimelineData> {
             assignee: task.content.assignee,
             dueDate: task.content.due_date,
             isOldTask: isOldTask,
-            createdAt: task.created_at
+            createdAt: task.created_at,
+            taskStatus: task.content.status
           }
         }
       })

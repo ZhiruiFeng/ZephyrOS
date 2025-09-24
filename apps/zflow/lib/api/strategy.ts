@@ -15,7 +15,8 @@ export class APIError extends Error {
 export class StrategyApiClient {
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount = 0
   ): Promise<T> {
     const response = await authenticatedFetch(`${API_BASE}${endpoint}`, {
       ...options,
@@ -27,6 +28,15 @@ export class StrategyApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+
+      // Handle rate limiting with exponential backoff
+      if (response.status === 429 && retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000 // 1s, 2s, 4s + jitter
+        console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1})`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return this.request(endpoint, options, retryCount + 1)
+      }
+
       throw new APIError(response.status, errorData.error || errorData.message || `API Error: ${response.status}`)
     }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Sun, Heart, Target, Calendar, ChevronLeft, ChevronRight, Edit3, Check, X } from 'lucide-react'
+import { Sun, Heart, Target, Calendar, ChevronLeft, ChevronRight, Edit3, Check, X, ExternalLink } from 'lucide-react'
 import { FullscreenModal } from './FullscreenModal'
 import { Card, CardHeader, CardTitle, CardContent, Button, Textarea, Badge } from '../ui'
 import { useDailyStrategy } from '../../../../hooks/useDailyStrategy'
@@ -236,9 +236,24 @@ export function SimpleDailyPlanningModal({ isOpen, onClose, seasonId }: SimpleDa
             </div>
           ) : hasContent ? (
             <div className="space-y-2">
-              <h3 className="font-medium text-gray-900">{item.title}</h3>
-              {item.description && (
-                <p className="text-gray-600 text-sm whitespace-pre-wrap">{item.description}</p>
+              <div className="flex items-center gap-2">
+                <h3
+                  className={`font-medium text-gray-900 flex-1 ${item.timeline_item_id ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
+                  onClick={() => {
+                    if (item.timeline_item_id) {
+                      window.open(`/focus/work-mode?taskId=${item.timeline_item_id}&from=strategy`, '_blank')
+                    }
+                  }}
+                  title={item.timeline_item_id ? 'Click to open task in focus mode' : ''}
+                >
+                  {item.timeline_item?.title || item.title}
+                </h3>
+                {item.timeline_item_id && (
+                  <ExternalLink className="h-4 w-4 text-gray-400 hover:text-blue-600 cursor-pointer" />
+                )}
+              </div>
+              {(item.timeline_item?.description || item.description) && (
+                <p className="text-gray-600 text-sm whitespace-pre-wrap">{item.timeline_item?.description || item.description}</p>
               )}
               {item.status !== 'completed' && (
                 <Button

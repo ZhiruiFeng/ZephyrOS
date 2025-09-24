@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Calendar, Target, CheckCircle, Star, TrendingUp, Clock, Sun, Moon } from 'lucide-react'
+import { Calendar, Target, CheckCircle, Star, TrendingUp, Clock, Sun, Moon, ExternalLink } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from './ui'
 import { useDailyStrategy } from '../../../hooks/useDailyStrategy'
 import { useDayReflection } from '../../../hooks/useDayReflection'
@@ -7,9 +7,10 @@ import { useDayReflection } from '../../../hooks/useDayReflection'
 interface DailyTrackingCardProps {
   onOpenPlanning: () => void
   onOpenReflection: () => void
+  refreshTrigger?: number // Optional prop to trigger data refresh
 }
 
-export function DailyTrackingCard({ onOpenPlanning, onOpenReflection }: DailyTrackingCardProps) {
+export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTrigger }: DailyTrackingCardProps) {
   const today = new Date().toISOString().split('T')[0]
   
   // Determine if it's morning/planning time (before 6 PM) or evening/reflection time (after 6 PM)
@@ -22,8 +23,15 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection }: DailyTra
     }
   }, [])
 
-  const { data: planningData, loading: planningLoading } = useDailyStrategy(today)
+  const { data: planningData, loading: planningLoading, error: planningError, loadData } = useDailyStrategy(today)
   const { data: reflectionData, loading: reflectionLoading } = useDayReflection(today)
+
+  // Trigger refresh when refreshTrigger changes
+  React.useEffect(() => {
+    if (refreshTrigger) {
+      loadData()
+    }
+  }, [refreshTrigger, loadData])
 
   const loading = planningLoading || reflectionLoading
 
@@ -49,6 +57,11 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection }: DailyTra
   const hasIntention = !!planningData.intention
   const hasAdventure = !!planningData.adventure
   const priorities = planningData.priorities || []
+
+  // Show error state if there are errors
+  if (planningError) {
+    console.error('Daily strategy error:', planningError)
+  }
   const completionRate = reflectionData.completionRate || 0
   const hasReflections = reflectionData.reflections.length > 0
 
@@ -111,8 +124,16 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection }: DailyTra
                       <Target className="h-3 w-3" />
                       Today&apos;s Intention
                     </h5>
-                    <p className="text-sm text-blue-700 line-clamp-2">
-                      {planningData.intention?.title}
+                    <p
+                      className={`text-sm text-blue-700 line-clamp-2 ${planningData.intention?.timeline_item_id ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
+                      onClick={() => {
+                        if (planningData.intention?.timeline_item_id) {
+                          window.open(`/focus/work-mode?taskId=${planningData.intention.timeline_item_id}&from=strategy`, '_blank')
+                        }
+                      }}
+                      title={planningData.intention?.timeline_item_id ? 'Click to open intention in focus mode' : ''}
+                    >
+                      {planningData.intention?.timeline_item?.title || planningData.intention?.title || 'Untitled Intention'}
                     </p>
                   </div>
                 )}
@@ -124,27 +145,79 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection }: DailyTra
                       <Star className="h-3 w-3" />
                       Today&apos;s Adventure
                     </h5>
-                    <p className="text-sm text-yellow-700 line-clamp-2">
-                      {planningData.adventure?.title}
+                    <p
+                      className={`text-sm text-yellow-700 line-clamp-2 ${planningData.adventure?.timeline_item_id ? 'cursor-pointer hover:text-yellow-600 hover:underline' : ''}`}
+                      onClick={() => {
+                        if (planningData.adventure?.timeline_item_id) {
+                          window.open(`/focus/work-mode?taskId=${planningData.adventure.timeline_item_id}&from=strategy`, '_blank')
+                        }
+                      }}
+                      title={planningData.adventure?.timeline_item_id ? 'Click to open adventure in focus mode' : ''}
+                    >
+                      {planningData.adventure?.timeline_item?.title || planningData.adventure?.title || 'Untitled Adventure'}
                     </p>
                   </div>
                 )}
 
                 {/* Priority Tasks */}
                 {priorities.length > 0 && (
-                  <div>
-                    <h5 className="font-medium text-gray-900 text-sm mb-2 flex items-center gap-1">
+                  <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                    <h5 className="font-medium text-orange-900 text-sm mb-2 flex items-center gap-1">
                       <Target className="h-3 w-3" />
                       Priority Tasks ({priorities.length}/3)
                     </h5>
-                    <div className="space-y-1">
-                      {priorities.map((task, index) => (
-                        <div key={task.id} className="flex items-center gap-2 text-xs text-gray-600">
-                          <span className="font-medium">{index + 1}.</span>
-                          <span className="truncate">{task.title}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-2">
+                      {priorities.map((task, index) => {
+                        // Prioritize timeline item title (the actual task title) over daily strategy title
+                        const taskTitle = task.timeline_item?.title || task.title || 'Untitled Task'
+                        const isCompleted = task.status === 'completed'
+                        const timelineItemId = task.timeline_item_id
+
+                        const handleTaskClick = () => {
+                          if (timelineItemId) {
+                            // Navigate to focus mode with the timeline item ID
+                            window.open(`/focus/work-mode?taskId=${timelineItemId}&from=strategy`, '_blank')
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={task.id}
+                            className={`group flex items-center gap-2 ${timelineItemId ? 'cursor-pointer hover:bg-orange-100 rounded px-1 py-0.5 transition-colors' : ''}`}
+                            onClick={timelineItemId ? handleTaskClick : undefined}
+                            title={timelineItemId ? `Click to open task in focus mode: ${taskTitle}` : taskTitle}
+                          >
+                            <span className="font-medium text-orange-800 text-xs bg-orange-200 rounded-full w-5 h-5 flex items-center justify-center">
+                              {index + 1}
+                            </span>
+                            <span className={`text-xs flex-1 ${isCompleted ? 'line-through text-green-600' : 'text-orange-700'}`}>
+                              {taskTitle}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {timelineItemId && (
+                                <ExternalLink className="h-3 w-3 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              )}
+                              {isCompleted && (
+                                <CheckCircle className="h-3 w-3 text-green-600" />
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
+                  </div>
+                )}
+
+                {/* Empty Priority Tasks Prompt */}
+                {priorities.length === 0 && (hasIntention || hasAdventure) && (
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <h5 className="font-medium text-gray-700 text-sm mb-1 flex items-center gap-1">
+                      <Target className="h-3 w-3" />
+                      Priority Tasks (0/3)
+                    </h5>
+                    <p className="text-xs text-gray-500 italic">
+                      Add priority tasks to complete your daily plan
+                    </p>
                   </div>
                 )}
 

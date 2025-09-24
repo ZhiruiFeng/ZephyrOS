@@ -48,6 +48,7 @@ export default function StrategyPage() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
   const [showPlanningModal, setShowPlanningModal] = useState(false)
   const [showReflectionModal, setShowReflectionModal] = useState(false)
+  const [dailyTrackingRefresh, setDailyTrackingRefresh] = useState(0)
 
   // Extract data
   const { season, initiatives, myTasks, agentTasks, agents, recentMemories } = dashboard || {}
@@ -304,6 +305,7 @@ export default function StrategyPage() {
           <DailyTrackingCard
             onOpenPlanning={() => setShowPlanningModal(true)}
             onOpenReflection={() => setShowReflectionModal(true)}
+            refreshTrigger={dailyTrackingRefresh}
           />
 
           {/* Scratchpad */}
@@ -344,7 +346,10 @@ export default function StrategyPage() {
       {/* Daily Planning and Reflection Modals - controlled by DailyTrackingCard */}
       <SimpleDailyPlanningModal
         isOpen={showPlanningModal}
-        onClose={() => setShowPlanningModal(false)}
+        onClose={() => {
+          setShowPlanningModal(false)
+          setDailyTrackingRefresh(prev => prev + 1) // Trigger refresh
+        }}
         seasonId={season?.id}
       />
 

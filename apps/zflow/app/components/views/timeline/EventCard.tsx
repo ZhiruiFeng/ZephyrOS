@@ -28,6 +28,7 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
   const isTimeEntry = ev.meta?.originalType === 'time_entry'
   const isOldTask = ev.type === 'task' && ev.meta?.isOldTask
   const isCreationOnly = (ev.type === 'task' && !isTimeEntry) || ev.meta?.isCreationEvent
+  const isCompletedTask = ev.type === 'task' && ev.meta?.taskStatus === 'completed'
 
   const handleSaveEdit = async () => {
     const startTime = new Date(editStart)
@@ -107,7 +108,7 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
             <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-medium" style={{ background: isCreationOnly ? 'rgba(139, 92, 246, 0.12)' : typeProps.bgColor, color: typeProps.color }}>
               <span className="text-[9px] sm:text-[10px]">{isCreationOnly ? '🆕' : typeProps.icon}</span>
-              <span>{isCreationOnly ? 'New Task' : (isOldTask ? `⏰ ${typeProps.label}` : typeProps.label)}</span>
+              <span>{isCreationOnly ? 'New Task' : (isCompletedTask ? `✅ ${typeProps.label}` : (isOldTask ? `⏰ ${typeProps.label}` : typeProps.label))}</span>
             </span>
             <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-medium" style={{ background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}44` }}>
               <i className="h-2 w-2 rounded-full" style={{ background: cat.color }} />
@@ -143,7 +144,9 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
         <div className="px-4 pb-4 pt-1">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
             <h3 className="text-[15px] sm:text-[16px] font-semibold flex-1 truncate">
-              <span className="line-clamp-2">{isCreationOnly ? ev.title : ev.title}</span>
+              <span className={`line-clamp-2 ${isCompletedTask ? 'line-through opacity-75' : ''}`}>
+                {isCompletedTask ? '✅ ' : ''}{isCreationOnly ? ev.title : ev.title}
+              </span>
             </h3>
             <div className="hidden sm:flex items-center gap-1">
               {ev.meta?.originalType === 'time_entry' && (

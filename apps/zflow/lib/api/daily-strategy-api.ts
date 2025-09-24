@@ -218,17 +218,46 @@ export async function getDailyStrategyOverview(date?: string, timezone?: string)
  * Create a new daily strategy item
  */
 export async function createDailyStrategyItem(request: CreateDailyStrategyRequest): Promise<DailyStrategyItemWithDetails> {
+  // Add timezone if not provided
+  const tz = request.tz || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+
+  // Filter out fields that the backend doesn't expect (title, description)
+  // The backend gets these from the timeline item directly
+  const backendRequest = {
+    timeline_item_id: request.timeline_item_id,
+    strategy_type: request.strategy_type,
+    local_date: request.local_date,
+    tz: tz,
+    importance_level: request.importance_level,
+    priority_order: request.priority_order,
+    planned_time_of_day: request.planned_time_of_day,
+    planned_duration_minutes: request.planned_duration_minutes,
+    required_energy_level: request.required_energy_level,
+    season_id: request.season_id,
+    initiative_id: request.initiative_id,
+    tags: [], // Default empty tags
+    metadata: {} // Default empty metadata
+  }
+
+  console.log('Sending request to create daily strategy item:', backendRequest)
+
   const response = await authenticatedFetch(`${API_BASE}/daily-strategy`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(request),
+    body: JSON.stringify(backendRequest),
   })
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-    throw new Error(errorData.error || `Failed to create daily strategy item: ${response.status}`)
+    console.error('Failed to create daily strategy item:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorData,
+      request: backendRequest
+    })
+    throw new Error(errorData.error || `Failed to create daily strategy item: ${response.status} ${response.statusText}`)
   }
 
   const data = await response.json()
@@ -419,20 +448,34 @@ export async function createPriorityTask(
  * Link an existing task to daily priority
  */
 export async function linkExistingTaskToPriority(
-  existingTaskId: string,
+  existingTask: { id: string; content: { title: string; description?: string } },
   date: string,
   priorityOrder: number,
   importanceLevel: ImportanceLevel = 'high',
   seasonId?: string
 ): Promise<DailyStrategyItemWithDetails> {
-  // Get the existing task details first
-  const task = await tasksApi.getById(existingTaskId)
-  
+  // Validate that we have a valid UUID for the task ID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(existingTask.id)) {
+    throw new Error(`Invalid task ID format: ${existingTask.id}. Task ID must be a valid UUID.`);
+  }
+
+  console.log('Linking existing task to priority:', {
+    taskId: existingTask.id,
+    title: existingTask.content.title,
+    date,
+    priorityOrder,
+    importanceLevel,
+    seasonId
+  });
+
+  // Use the task data passed in directly to avoid CORS issues
+  // Note: title and description are not sent to backend - they're retrieved from timeline_item
   return createDailyStrategyItem({
-    timeline_item_id: existingTaskId,
+    timeline_item_id: existingTask.id,
     strategy_type: 'priority',
-    title: task.content.title,
-    description: task.content.description || '',
+    title: existingTask.content.title, // This field will be filtered out in createDailyStrategyItem
+    description: existingTask.content.description || '', // This field will be filtered out in createDailyStrategyItem
     local_date: date,
     importance_level: importanceLevel,
     priority_order: priorityOrder,
@@ -444,12 +487,27 @@ export async function linkExistingTaskToPriority(
  * Get daily strategy items grouped by type for a specific date
  */
 export async function getDailyStrategyByType(date: string, timezone?: string) {
-  const overview = await getDailyStrategyOverview(date, timezone)
-  
+  // Use the detailed items endpoint instead of overview to ensure we get timeline item details
+  const items = await getDailyStrategyItems({
+    date: date,
+    timezone: timezone,
+    include_timeline_item: true,
+    include_season: false,
+    include_initiative: false
+  })
+
+  // Group items by strategy type
+  const priorities = items.filter(item => item.strategy_type === 'priority')
+    .sort((a, b) => (a.priority_order || 0) - (b.priority_order || 0))
+    .slice(0, 3)
+
+  const planningItems = items.filter(item => item.strategy_type === 'planning')
+  const adventures = items.filter(item => item.strategy_type === 'adventure')
+
   return {
-    intention: overview.planning_items[0] || null, // Only one planning item allowed
-    adventure: overview.adventures[0] || null,     // Only one adventure allowed
-    priorities: overview.priorities.slice(0, 3),   // Max 3 priorities
+    intention: planningItems[0] || null,
+    adventure: adventures[0] || null,
+    priorities: priorities,
   }
 }
 

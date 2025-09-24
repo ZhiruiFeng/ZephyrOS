@@ -177,16 +177,16 @@ export function useDailyStrategy(selectedDate: string, seasonId?: string) {
   ): Promise<void> => {
     if (!selectedDate) throw new Error('No date selected')
     if (index < 0 || index > 2) throw new Error('Priority index must be 0-2')
-    
+
     try {
       const priority = await dailyStrategyApi.linkExistingTaskToPriority(
-        existingTask.id,
+        existingTask,
         selectedDate,
         index + 1,
         'high',
         seasonId
       )
-      
+
       setData(prev => {
         const newPriorities = [...prev.priorities]
         newPriorities[index] = priority

@@ -95,7 +95,7 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
+    if (isRateLimited(clientIP, 15 * 60 * 1000, 300)) { // 300 requests per 15 minutes
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 

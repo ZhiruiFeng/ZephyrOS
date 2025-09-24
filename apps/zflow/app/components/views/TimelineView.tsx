@@ -71,7 +71,9 @@ const transformTimelineItems = (items: TimelineItem[]): TimelineEvent[] => {
         isOldTask: item.metadata?.isOldTask,
         createdAt: item.metadata?.createdAt,
         // Mark creation-only task events (no explicit time entry)
-        isCreationEvent: isCreationTask
+        isCreationEvent: isCreationTask,
+        // Add task status for completed task styling
+        taskStatus: item.status || item.metadata?.taskStatus
       }
     }
   })
