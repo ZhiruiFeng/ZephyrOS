@@ -1751,3 +1751,250 @@ COMMENT ON COLUMN tasks.is_ai_task IS 'Indicates whether this task is assigned t
 -- =====================================================
 -- SCHEMA VERSION 2.1.0 COMPLETE
 -- =====================================================
+
+-- =====================================================
+-- 9. SEASONS & EPISODES (FROM MIGRATIONS 2025-09-14)
+-- =====================================================
+
+-- Seasons table
+CREATE TABLE IF NOT EXISTS seasons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL DEFAULT auth.uid(),
+  title TEXT NOT NULL,
+  intention TEXT,
+  theme TEXT NOT NULL CHECK (theme IN ('spring', 'summer', 'autumn', 'winter')),
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused')),
+  start_date DATE,
+  end_date DATE,
+  opening_ritual JSONB DEFAULT '{}',
+  closing_ritual JSONB DEFAULT '{}',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  CONSTRAINT seasons_date_range_valid CHECK (end_date IS NULL OR start_date <= end_date)
+);
+
+-- Episodes table
+CREATE TABLE IF NOT EXISTS episodes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL DEFAULT auth.uid(),
+  title TEXT NOT NULL,
+  date_range_start DATE NOT NULL,
+  date_range_end DATE NOT NULL,
+  mood_emoji TEXT,
+  reflection TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  CONSTRAINT episodes_date_range_valid CHECK (date_range_start <= date_range_end),
+  CONSTRAINT episodes_mood_emoji_length CHECK (char_length(mood_emoji) <= 4)
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_seasons_user_id ON seasons(user_id);
+CREATE INDEX IF NOT EXISTS idx_seasons_status ON seasons(status);
+CREATE INDEX IF NOT EXISTS idx_seasons_theme ON seasons(theme);
+CREATE INDEX IF NOT EXISTS idx_seasons_created_at ON seasons(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_episodes_season_id ON episodes(season_id);
+CREATE INDEX IF NOT EXISTS idx_episodes_user_id ON episodes(user_id);
+CREATE INDEX IF NOT EXISTS idx_episodes_date_range ON episodes(date_range_start, date_range_end);
+CREATE INDEX IF NOT EXISTS idx_episodes_created_at ON episodes(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_episodes_season_date ON episodes(season_id, date_range_start DESC);
+
+-- Updated_at triggers
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_seasons_updated_at
+  BEFORE UPDATE ON seasons
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER trigger_episodes_updated_at
+  BEFORE UPDATE ON episodes
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
+-- Row Level Security
+ALTER TABLE seasons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE episodes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own seasons"
+ON seasons FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own seasons"
+ON seasons FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own seasons"
+ON seasons FOR UPDATE
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own seasons"
+ON seasons FOR DELETE
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own episodes"
+ON episodes FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create episodes in their own seasons"
+ON episodes FOR INSERT
+WITH CHECK (
+  auth.uid() = user_id AND
+  EXISTS (
+    SELECT 1 FROM seasons
+    WHERE seasons.id = episodes.season_id
+    AND seasons.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can update their own episodes"
+ON episodes FOR UPDATE
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own episodes"
+ON episodes FOR DELETE
+USING (auth.uid() = user_id);
+
+-- Helper functions
+CREATE OR REPLACE FUNCTION get_current_season(user_uuid UUID DEFAULT auth.uid())
+RETURNS TABLE (
+  id UUID,
+  title TEXT,
+  intention TEXT,
+  theme TEXT,
+  start_date DATE,
+  end_date DATE,
+  created_at TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    s.id,
+    s.title,
+    s.intention,
+    s.theme,
+    s.start_date,
+    s.end_date,
+    s.created_at
+  FROM seasons s
+  WHERE s.user_id = user_uuid
+    AND s.status = 'active'
+  ORDER BY s.created_at DESC
+  LIMIT 1;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_season_episode_count(season_uuid UUID)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  episode_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO episode_count
+  FROM episodes
+  WHERE season_id = season_uuid;
+
+  RETURN COALESCE(episode_count, 0);
+END;
+$$;
+
+-- Optional seed data for development
+INSERT INTO seasons (title, intention, theme, status, start_date, metadata)
+VALUES
+  ('New Beginnings', 'Focus on personal growth and learning new skills', 'spring', 'active', CURRENT_DATE, '{"color": "emerald"}')
+ON CONFLICT DO NOTHING;
+
+COMMENT ON TABLE seasons IS 'Life seasons/chapters with themes and intentions';
+COMMENT ON TABLE episodes IS 'Highlights/reflections within seasons';
+COMMENT ON COLUMN seasons.theme IS 'Visual theme: spring, summer, autumn, winter';
+COMMENT ON COLUMN seasons.status IS 'Season lifecycle: active, completed, paused';
+COMMENT ON COLUMN episodes.mood_emoji IS 'Single emoji representing episode mood';
+
+-- =====================================================
+-- 10. MEMORY ↔ EPISODE ANCHORS (FROM MIGRATIONS 2025-09-18)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS memory_episode_anchors (
+  memory_id UUID NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+  episode_id UUID NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+
+  relation_type TEXT NOT NULL CHECK (relation_type IN (
+    'context_of',
+    'result_of',
+    'insight_from',
+    'about',
+    'co_occurred',
+    'triggered_by',
+    'reflects_on'
+  )),
+
+  local_time_range tstzrange,
+  weight REAL DEFAULT 1.0 CHECK (weight BETWEEN 0.0 AND 10.0),
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  notes TEXT,
+
+  PRIMARY KEY (memory_id, episode_id, relation_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_me_anchors_memory_id ON memory_episode_anchors(memory_id);
+CREATE INDEX IF NOT EXISTS idx_me_anchors_episode_id ON memory_episode_anchors(episode_id);
+CREATE INDEX IF NOT EXISTS idx_me_anchors_relation_type ON memory_episode_anchors(relation_type);
+CREATE INDEX IF NOT EXISTS idx_me_anchors_weight ON memory_episode_anchors(weight DESC) WHERE weight > 1.0;
+CREATE INDEX IF NOT EXISTS idx_me_anchors_local_time_range ON memory_episode_anchors USING GIST(local_time_range);
+
+ALTER TABLE memory_episode_anchors ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own memory episode anchors"
+ON memory_episode_anchors FOR SELECT
+USING (
+  memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+);
+
+CREATE POLICY "Users can insert their own memory episode anchors"
+ON memory_episode_anchors FOR INSERT
+WITH CHECK (
+  memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  AND episode_id IN (SELECT id FROM episodes WHERE user_id = auth.uid())
+);
+
+CREATE POLICY "Users can update their own memory episode anchors"
+ON memory_episode_anchors FOR UPDATE
+USING (
+  memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+)
+WITH CHECK (
+  memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+  AND episode_id IN (SELECT id FROM episodes WHERE user_id = auth.uid())
+);
+
+CREATE POLICY "Users can delete their own memory episode anchors"
+ON memory_episode_anchors FOR DELETE
+USING (
+  memory_id IN (SELECT id FROM memories WHERE user_id = auth.uid())
+);
+
+GRANT ALL ON memory_episode_anchors TO authenticated;
+
+COMMENT ON TABLE memory_episode_anchors IS 'Anchors linking memories to episodes (seasons narrative)';
+COMMENT ON COLUMN memory_episode_anchors.relation_type IS 'Semantics of the memory↔episode relationship';
+COMMENT ON COLUMN memory_episode_anchors.local_time_range IS 'Optional time slice within the episode''s duration';
