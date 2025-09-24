@@ -22,8 +22,9 @@ import { StrategicLenses } from './components'
 import { SeasonGoalCard, StrategicInsightsCard, StrategicMapCard } from './components'
 import { Scratchpad, WhatIfSimulator, QuickActions } from './components'
 import { DailyTrackingCard } from './components/DailyTrackingCard'
-import { KeyboardShortcutsModal, AgentSelectionModal, DayReflectionModal } from './components'
+import { KeyboardShortcutsModal, AgentSelectionModal } from './components'
 import { SimpleDailyPlanningModal } from './components/modals/SimpleDailyPlanningModal'
+import { SimpleDayReflectionModal } from './components/modals/SimpleDayReflectionModal'
 import { useStrategyFilters, useKeyboardShortcuts } from './hooks'
 import { progressIntent } from './utils/progressIntent'
 
@@ -347,7 +348,7 @@ export default function StrategyPage() {
         seasonId={season?.id}
       />
 
-      <DayReflectionModal
+      <SimpleDayReflectionModal
         isOpen={showReflectionModal}
         onClose={() => setShowReflectionModal(false)}
         seasonId={season?.id}

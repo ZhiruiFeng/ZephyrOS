@@ -361,6 +361,37 @@ export async function createDailyAdventure(
 }
 
 /**
+ * Create a daily reflection item
+ */
+export async function createDailyReflection(
+  timelineItemId: string,
+  title: string,
+  description: string,
+  date: string,
+  reflectionType: 'learning' | 'milestone' | 'insight' | 'reflection' | 'gratitude',
+  seasonId?: string
+): Promise<DailyStrategyItemWithDetails> {
+  // Map reflection types to strategy types
+  const strategyTypeMap = {
+    'learning': 'learning' as StrategyType,
+    'milestone': 'milestone' as StrategyType,
+    'insight': 'insight' as StrategyType,
+    'reflection': 'reflection' as StrategyType,
+    'gratitude': 'reflection' as StrategyType, // Use reflection strategy type for gratitude
+  }
+
+  return createDailyStrategyItem({
+    timeline_item_id: timelineItemId,
+    strategy_type: strategyTypeMap[reflectionType],
+    title,
+    description,
+    local_date: date,
+    importance_level: 'medium',
+    season_id: seasonId,
+  })
+}
+
+/**
  * Create a priority task
  */
 export async function createPriorityTask(
@@ -434,6 +465,7 @@ export const dailyStrategyApi = {
   deleteDailyStrategyItem,
   createDailyIntention,
   createDailyAdventure,
+  createDailyReflection,
   createPriorityTask,
   linkExistingTaskToPriority,
   getDailyStrategyByType,
