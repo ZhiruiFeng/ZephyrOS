@@ -4,6 +4,7 @@ import {
   DailyStrategyItemWithDetails,
 } from '../lib/api/daily-strategy-api'
 import { memoriesApi } from '../lib/api/memories-api'
+import { tasksApi } from '../lib/api'
 import { ReflectionType } from '../app/strategy/components/modals/ReflectionTypeSelector'
 
 export interface DayReflectionData {
@@ -101,19 +102,32 @@ export function useDayReflection(date: string, seasonId?: string) {
     content: string
   ): Promise<void> => {
     try {
+      const reflection = data.reflections.find(r => r.id === id)
+      const timelineItemId = reflection?.timeline_item?.id || reflection?.timeline_item_id
+      const timelineItemType = reflection?.timeline_item?.type
+
+      if (timelineItemId) {
+        try {
+          if (timelineItemType === 'task') {
+            await tasksApi.update(timelineItemId, {
+              title,
+              description: content,
+            })
+          } else {
+            await memoriesApi.update(timelineItemId, {
+              title,
+              note: content,
+            })
+          }
+        } catch (err) {
+          throw new Error(err instanceof Error ? err.message : 'Failed to update timeline item for reflection')
+        }
+      }
+
       const updated = await dailyStrategyApi.updateDailyStrategyItem(id, {
         title,
         description: content
       })
-
-      // Also update the underlying memory
-      const reflection = data.reflections.find(r => r.id === id)
-      if (reflection) {
-        await memoriesApi.update(reflection.timeline_item_id, { 
-          title, 
-          note: content 
-        })
-      }
 
       setData(prev => ({
         ...prev,
@@ -175,10 +189,20 @@ export function useDayReflection(date: string, seasonId?: string) {
     return grouped
   }, [data.reflections])
 
-  // Load data when date changes
+  // Memoize key to prevent unnecessary re-renders
+  const stableKey = useMemo(() =>
+    `${date}-${seasonId || 'no-season'}`,
+    [date, seasonId]
+  )
+
+  // Load data when date changes, with debouncing to prevent rapid calls
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    const timeoutId = setTimeout(() => {
+      loadData()
+    }, 100) // 100ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [stableKey, loadData])
 
   return {
     data,

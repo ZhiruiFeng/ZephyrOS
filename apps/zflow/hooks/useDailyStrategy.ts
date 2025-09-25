@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { 
   dailyStrategyApi, 
   DailyStrategyItemWithDetails, 
@@ -23,7 +23,7 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load data for the selected date
+  // Load data for the selected date with debouncing
   const loadData = useCallback(async () => {
     if (!selectedDate) return
 
@@ -31,9 +31,25 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
     setError(null)
 
     try {
-      const strategyData = await dailyStrategyApi.getDailyStrategyByType(selectedDate, timezone, {
-        seasonId,
-      })
+      // Always try with seasonId first if available, but don't make double calls
+      let strategyData = await dailyStrategyApi.getDailyStrategyByType(
+        selectedDate,
+        timezone,
+        seasonId ? { seasonId } : undefined
+      )
+
+      // Only make fallback call if seasonId was provided but no results found
+      const hasResults = Boolean(
+        strategyData.intention ||
+        strategyData.adventure ||
+        (strategyData.priorities && strategyData.priorities.length > 0)
+      )
+
+      if (!hasResults && seasonId) {
+        // Fallback to unfiltered results if nothing is linked to this season
+        strategyData = await dailyStrategyApi.getDailyStrategyByType(selectedDate, timezone)
+      }
+
       setData(strategyData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load daily strategy data')
@@ -131,11 +147,22 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
       
       if (existingPriority) {
         // Update existing priority
+        try {
+          if (existingPriority.timeline_item_id) {
+            await tasksApi.update(existingPriority.timeline_item_id, {
+              title,
+              description,
+            })
+          }
+        } catch (err) {
+          throw new Error(err instanceof Error ? err.message : 'Failed to update priority task details')
+        }
+
         const updated = await dailyStrategyApi.updateDailyStrategyItem(existingPriority.id, {
           title,
           description,
         })
-        
+
         setData(prev => {
           const newPriorities = [...prev.priorities]
           newPriorities[index] = updated
@@ -252,10 +279,20 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
     }
   }, [])
 
-  // Load data when date changes
+  // Memoize key dependencies to prevent unnecessary re-renders
+  const stableKey = useMemo(() =>
+    `${selectedDate}-${timezone}-${seasonId || 'no-season'}`,
+    [selectedDate, timezone, seasonId]
+  )
+
+  // Load data when key dependencies change, with debouncing
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    const timeoutId = setTimeout(() => {
+      loadData()
+    }, 100) // 100ms debounce to prevent rapid consecutive calls
+
+    return () => clearTimeout(timeoutId)
+  }, [stableKey, loadData])
 
   return {
     data,

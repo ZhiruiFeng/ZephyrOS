@@ -1,11 +1,13 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
 
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/auth/LoginPage'
 import { useStrategyDashboard, useStrategyTasks, useStrategyMemories } from '../../lib/hooks/strategy'
+import { useDailyStrategy } from '../../hooks/useDailyStrategy'
+import { useDayReflection } from '../../hooks/useDayReflection'
 import { generateWhatIfScenarios, generateStrategicInsights } from '../../lib/mocks/strategy'
 import type { StrategyLens, WhatIfScenario } from '../../lib/types/strategy'
 
@@ -23,8 +25,7 @@ import { SeasonGoalCard, StrategicInsightsCard, StrategicMapCard } from './compo
 import { Scratchpad, WhatIfSimulator, QuickActions } from './components'
 import { DailyTrackingCard } from './components/DailyTrackingCard'
 import { KeyboardShortcutsModal, AgentSelectionModal } from './components'
-import { DailyPlanningModal } from './components/modals/DailyPlanningModal'
-import { DailyReflectionModal } from './components/modals/DailyReflectionModal'
+import { DailyRhythmModal } from './components/modals/DailyPlanningModal'
 import { useStrategyFilters, useKeyboardShortcuts } from './hooks'
 import { progressIntent } from './utils/progressIntent'
 
@@ -46,9 +47,32 @@ export default function StrategyPage() {
   const [showAgentModal, setShowAgentModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
-  const [showPlanningModal, setShowPlanningModal] = useState(false)
-  const [showReflectionModal, setShowReflectionModal] = useState(false)
+  const [showDailyModal, setShowDailyModal] = useState(false)
+  const [dailyModalView, setDailyModalView] = useState<'planning' | 'reflection'>('planning')
   const [dailyTrackingRefresh, setDailyTrackingRefresh] = useState(0)
+  // More stable memoization to prevent unnecessary re-renders
+  const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, [])
+  const today = useMemo(() => {
+    const now = new Date()
+    return now.toLocaleDateString('en-CA') // YYYY-MM-DD format
+  }, []) // Only update when component mounts, not on every render
+
+  const planningState = useDailyStrategy(today, timezone, dashboard?.season?.id)
+  const reflectionState = useDayReflection(today, dashboard?.season?.id)
+  const planningReload = planningState.loadData
+  const reflectionReload = reflectionState.loadData
+
+  useEffect(() => {
+    if (dailyTrackingRefresh > 0) {
+      // Debounce the refresh to avoid rapid consecutive calls
+      const timeoutId = setTimeout(() => {
+        planningReload()
+        reflectionReload()
+      }, 200) // 200ms delay
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [dailyTrackingRefresh, planningReload, reflectionReload])
 
   // Extract data
   const { season, initiatives, myTasks, agentTasks, agents, recentMemories } = dashboard || {}
@@ -303,9 +327,20 @@ export default function StrategyPage() {
         <div className="space-y-4">
           {/* Daily Tracking */}
           <DailyTrackingCard
-            onOpenPlanning={() => setShowPlanningModal(true)}
-            onOpenReflection={() => setShowReflectionModal(true)}
-            refreshTrigger={dailyTrackingRefresh}
+            onOpenDailyModal={(view) => {
+              setDailyModalView(view)
+              setShowDailyModal(true)
+            }}
+            planning={{
+              data: planningState.data,
+              loading: planningState.loading,
+              error: planningState.error,
+            }}
+            reflection={{
+              data: reflectionState.data,
+              loading: reflectionState.loading,
+              error: reflectionState.error,
+            }}
           />
 
           {/* Scratchpad */}
@@ -344,18 +379,13 @@ export default function StrategyPage() {
       />
 
       {/* Daily Planning and Reflection Modals - controlled by DailyTrackingCard */}
-      <DailyPlanningModal
-        isOpen={showPlanningModal}
+      <DailyRhythmModal
+        isOpen={showDailyModal}
+        initialView={dailyModalView}
         onClose={() => {
-          setShowPlanningModal(false)
-          setDailyTrackingRefresh(prev => prev + 1) // Trigger refresh
+          setShowDailyModal(false)
+          setDailyTrackingRefresh(prev => prev + 1)
         }}
-        seasonId={season?.id}
-      />
-
-      <DailyReflectionModal
-        isOpen={showReflectionModal}
-        onClose={() => setShowReflectionModal(false)}
         seasonId={season?.id}
       />
     </div>

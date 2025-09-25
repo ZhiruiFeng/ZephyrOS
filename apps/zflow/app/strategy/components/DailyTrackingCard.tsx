@@ -1,16 +1,24 @@
 import React, { useMemo } from 'react'
 import { Calendar, Target, CheckCircle, Star, TrendingUp, Clock, Sun, Moon, ExternalLink } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from './ui'
-import { useDailyStrategy } from '../../../hooks/useDailyStrategy'
-import { useDayReflection } from '../../../hooks/useDayReflection'
+import type { DailyStrategyData } from '../../../hooks/useDailyStrategy'
+import type { DayReflectionData } from '../../../hooks/useDayReflection'
 
 interface DailyTrackingCardProps {
-  onOpenPlanning: () => void
-  onOpenReflection: () => void
-  refreshTrigger?: number // Optional prop to trigger data refresh
+  onOpenDailyModal: (view: 'planning' | 'reflection') => void
+  planning: {
+    data: DailyStrategyData
+    loading: boolean
+    error: string | null
+  }
+  reflection: {
+    data: DayReflectionData
+    loading: boolean
+    error: string | null
+  }
 }
 
-export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTrigger }: DailyTrackingCardProps) {
+export function DailyTrackingCard({ onOpenDailyModal, planning, reflection }: DailyTrackingCardProps) {
   // Get local date and timezone info
   const { today, timezone } = useMemo(() => {
     const now = new Date()
@@ -33,15 +41,11 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
     }
   }, [])
 
-  const { data: planningData, loading: planningLoading, error: planningError, loadData } = useDailyStrategy(today, timezone)
-  const { data: reflectionData, loading: reflectionLoading } = useDayReflection(today)
-
-  // Trigger refresh when refreshTrigger changes
-  React.useEffect(() => {
-    if (refreshTrigger) {
-      loadData()
-    }
-  }, [refreshTrigger, loadData])
+  const planningData = planning.data
+  const reflectionData = reflection.data
+  const planningLoading = planning.loading
+  const reflectionLoading = reflection.loading
+  const planningError = planning.error
 
   const loading = planningLoading || reflectionLoading
 
@@ -69,9 +73,7 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
   const priorities = planningData.priorities || []
 
   // Show error state if there are errors
-  if (planningError) {
-    console.error('Daily strategy error:', planningError)
-  }
+  // Surface errors via UI without noisy console output
   const completionRate = reflectionData.completionRate || 0
   const hasReflections = reflectionData.reflections.length > 0
 
@@ -119,7 +121,7 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
                 <p className="text-sm text-gray-600 mb-4">
                   Set your daily intention, adventure, and priority tasks
                 </p>
-                <Button onClick={onOpenPlanning} className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={() => onOpenDailyModal('planning')} className="bg-blue-600 hover:bg-blue-700">
                   <Sun className="h-4 w-4 mr-2" />
                   Start Daily Planning
                 </Button>
@@ -233,26 +235,26 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
 
                 {/* Planning Actions */}
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onOpenPlanning}
-                    className="flex-1"
-                  >
-                    <Sun className="h-4 w-4 mr-1" />
-                    Edit Plan
-                  </Button>
-                  {isReflectionTime && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onOpenReflection}
-                      className="flex-1"
-                    >
-                      <Moon className="h-4 w-4 mr-1" />
-                      Reflect
-                    </Button>
-                  )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenDailyModal('planning')}
+                className="flex-1"
+              >
+                <Sun className="h-4 w-4 mr-1" />
+                Edit Plan
+              </Button>
+              {isReflectionTime && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenDailyModal('reflection')}
+                  className="flex-1"
+                >
+                  <Moon className="h-4 w-4 mr-1" />
+                  Reflect
+                </Button>
+              )}
                 </div>
               </div>
             )}
@@ -312,7 +314,7 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onOpenReflection}
+                onClick={() => onOpenDailyModal('reflection')}
                 className="flex-1"
               >
                 <Moon className="h-4 w-4 mr-1" />
@@ -321,7 +323,7 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onOpenPlanning}
+                onClick={() => onOpenDailyModal('planning')}
                 className="flex-1"
               >
                 <Sun className="h-4 w-4 mr-1" />

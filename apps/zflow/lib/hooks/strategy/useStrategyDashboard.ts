@@ -104,9 +104,10 @@ export function useStrategyDashboard(): {
     '/strategy/dashboard',
     () => strategyApi.getDashboard(),
     {
-      refreshInterval: 30000, // Refresh every 30 seconds
-      revalidateOnFocus: true,
-      errorRetryCount: 3
+      refreshInterval: 60000, // Refresh every 60 seconds (reduced from 30)
+      revalidateOnFocus: false, // Disable focus revalidation to reduce calls
+      errorRetryCount: 2, // Reduce retry attempts
+      dedupingInterval: 10000 // Dedupe requests within 10 seconds
     }
   )
 
@@ -151,8 +152,9 @@ export function useStrategyDashboardWithTasks(): {
     '/strategy/tasks',
     () => strategyApi.getStrategyTasks({ limit: 50 }),
     {
-      refreshInterval: 30000,
-      revalidateOnFocus: true
+      refreshInterval: 60000, // Reduced from 30 seconds
+      revalidateOnFocus: false, // Disable focus revalidation
+      dedupingInterval: 10000 // Dedupe requests within 10 seconds
     }
   )
 

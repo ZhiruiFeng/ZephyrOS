@@ -400,7 +400,7 @@ const RecordingPanel: React.FC<{
       role="dialog"
       aria-modal="true"
       aria-label="Voice recording panel"
-      className="bg-white border border-gray-200 p-6 z-[70]"
+      className="bg-white border border-gray-200 p-6 z-[110]"
       style={panelStyle}
     >
       {recorderState.error && (
@@ -763,7 +763,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
       <button
         data-mic-button
         onClick={handleMicClick}
-        className="fixed z-[70] w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+        className="fixed z-[110] w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
         style={{
           top: micPosition.top + micPosition.height / 2 - 16,
           left: micPosition.left,
@@ -790,7 +790,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
       </div>
 
       {isTranscribing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>

@@ -1,20 +1,14 @@
 import React, { useState } from 'react'
-import { Wand2, Maximize2, Sun, Moon } from 'lucide-react'
+import { Wand2, Maximize2 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '../ui'
 import { FullscreenModal, useFullscreenModal } from '../modals/FullscreenModal'
-import { DailyPlanningModal } from '../modals/DailyPlanningModal'
-import { DailyReflectionModal } from '../modals/DailyReflectionModal'
 import { TaskPromotionModal } from '../modals/TaskPromotionModal'
 
 export const QuickActions = () => {
   const fullscreen = useFullscreenModal()
-  const [showPlanningModal, setShowPlanningModal] = useState(false)
-  const [showReflectionModal, setShowReflectionModal] = useState(false)
   const [showPromotionModal, setShowPromotionModal] = useState(false)
 
   const quickActions = [
-    { title: 'Start Daily Planning', description: 'Set intentions and priorities for the day ahead', category: 'Daily Rhythm', action: () => setShowPlanningModal(true), icon: Sun },
-    { title: 'End Day Reflection', description: 'Review progress and capture insights from today', category: 'Daily Rhythm', action: () => setShowReflectionModal(true), icon: Moon },
     { title: 'Promote Timeline Tasks', description: 'Convert existing timeline tasks to strategic initiatives', category: 'Integration', action: () => setShowPromotionModal(true) },
     { title: 'Break down selected goal', description: 'Decompose high-level goals into actionable initiatives', category: 'Planning' },
     { title: 'Draft OKRs for season', description: 'Create Objectives and Key Results for the current season', category: 'Goal Setting' },
@@ -49,22 +43,6 @@ export const QuickActions = () => {
           </div>
         </CardHeader>
         <CardContent className="grid gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setShowPlanningModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Sun className="h-4 w-4" />
-            Start Daily Planning
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowReflectionModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Moon className="h-4 w-4" />
-            End Day Reflection
-          </Button>
           <Button variant="secondary">Break down selected goal</Button>
           <Button variant="secondary">Draft OKRs for season</Button>
         </CardContent>
@@ -98,8 +76,7 @@ export const QuickActions = () => {
                           onClick={action.action}
                           className="w-full h-auto p-4 text-left flex flex-col items-start justify-start hover:bg-orange-50 hover:border-orange-200 transition-all"
                         >
-                          <div className="font-medium text-gray-900 group-hover:text-orange-700 flex items-center gap-2">
-                            {action.icon && <action.icon className="h-4 w-4" />}
+                          <div className="font-medium text-gray-900 group-hover:text-orange-700">
                             {action.title}
                           </div>
                           <div className="text-sm text-gray-600 mt-1 group-hover:text-orange-600">
@@ -129,18 +106,6 @@ export const QuickActions = () => {
           </div>
         </div>
       </FullscreenModal>
-
-      {/* Daily Planning Modal */}
-      <DailyPlanningModal
-        isOpen={showPlanningModal}
-        onClose={() => setShowPlanningModal(false)}
-      />
-
-      {/* Day Reflection Modal */}
-      <DailyReflectionModal
-        isOpen={showReflectionModal}
-        onClose={() => setShowReflectionModal(false)}
-      />
 
       {/* Task Promotion Modal */}
       <TaskPromotionModal

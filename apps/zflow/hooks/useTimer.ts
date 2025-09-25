@@ -28,6 +28,8 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
     return res.json()
   }, {
     refreshInterval: pollMs,
+    dedupingInterval: 3000, // Dedupe requests within 3 seconds
+    revalidateOnFocus: false, // Disable focus revalidation to reduce calls
   })
   const [now, setNow] = useState<number>(() => Date.now())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
