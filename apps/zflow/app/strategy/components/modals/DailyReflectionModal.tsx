@@ -8,7 +8,7 @@ import { ReflectionTypeSelector, ReflectionType, REFLECTION_TYPES } from './Refl
 import { useDayReflection } from '../../../../hooks/useDayReflection'
 import { DailyStrategyItemWithDetails } from '../../../../lib/api/daily-strategy-api'
 
-interface SimpleDayReflectionModalProps {
+interface DailyReflectionModalProps {
   isOpen: boolean
   onClose: () => void
   seasonId?: string
@@ -21,7 +21,7 @@ interface EditingReflection {
   content: string
 }
 
-export function SimpleDayReflectionModal({ isOpen, onClose, seasonId }: SimpleDayReflectionModalProps) {
+export function DailyReflectionModal({ isOpen, onClose, seasonId }: DailyReflectionModalProps) {
   const today = new Date().toISOString().split('T')[0]
   const { 
     data, 

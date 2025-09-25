@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import { Wand2, Maximize2, Sun, Moon } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '../ui'
 import { FullscreenModal, useFullscreenModal } from '../modals/FullscreenModal'
-import { SimpleDailyPlanningModal } from '../modals/SimpleDailyPlanningModal'
-import { SimpleDayReflectionModal } from '../modals/SimpleDayReflectionModal'
+import { DailyPlanningModal } from '../modals/DailyPlanningModal'
+import { DailyReflectionModal } from '../modals/DailyReflectionModal'
 import { TaskPromotionModal } from '../modals/TaskPromotionModal'
 
 export const QuickActions = () => {
@@ -131,13 +131,13 @@ export const QuickActions = () => {
       </FullscreenModal>
 
       {/* Daily Planning Modal */}
-      <SimpleDailyPlanningModal
+      <DailyPlanningModal
         isOpen={showPlanningModal}
         onClose={() => setShowPlanningModal(false)}
       />
 
       {/* Day Reflection Modal */}
-      <SimpleDayReflectionModal
+      <DailyReflectionModal
         isOpen={showReflectionModal}
         onClose={() => setShowReflectionModal(false)}
       />

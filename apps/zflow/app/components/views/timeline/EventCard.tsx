@@ -69,7 +69,7 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
 
   return (
     <article
-      className="group relative ml-2 sm:ml-12 mb-6 cursor-pointer"
+      className={`group relative ml-2 sm:ml-12 mb-6 cursor-pointer ${isCreationOnly ? 'max-w-xs' : ''}`}
       aria-label={
         ev.type === 'memory' || isCreationOnly
           ? `${isCreationOnly ? 'New task created' : typeProps.label}: ${ev.title}, at ${fmtHM(s)}, ${cat.name}`
@@ -78,7 +78,7 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
       onClick={() => onEventClick?.(ev)}
     >
       <div
-        className={`absolute left-[-14px] sm:left-[-2px] top-4 w-3 h-3 ${ev.type === 'memory' || isCreationOnly ? 'rounded-md' : ev.type === 'task' ? 'rounded-sm' : ev.type === 'time_entry' ? 'rounded-md border-2' : 'rounded-full'}`}
+        className={`absolute left-[-14px] sm:left-[-2px] ${isCreationOnly ? 'top-3 w-2.5 h-2.5' : 'top-4 w-3 h-3'} ${ev.type === 'memory' || isCreationOnly ? 'rounded-md' : ev.type === 'task' ? 'rounded-sm' : ev.type === 'time_entry' ? 'rounded-md border-2' : 'rounded-full'}`}
         style={{ background: cat.color, boxShadow: `0 0 0 4px ${TOKENS.color.canvas}`, border: (ev.meta?.isCrossDaySegment || isCreationOnly) ? `1px dashed ${typeProps.color}` : `1px solid ${typeProps.color}` }}
       />
 
@@ -88,14 +88,14 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
       </div>
 
       <div
-        className={`rounded-2xl overflow-hidden transition-all ${(ev.meta?.isCrossDaySegment || isCreationOnly) ? 'border-dashed' : 'border'} ${isOldTask ? 'opacity-75' : ''}`}
+        className={`${isCreationOnly ? 'rounded-lg' : 'rounded-2xl'} overflow-hidden transition-all ${(ev.meta?.isCrossDaySegment || isCreationOnly) ? 'border-dashed' : 'border'} ${isOldTask ? 'opacity-75' : ''}`}
         style={{
           background: isCreationOnly ? 'rgba(139, 92, 246, 0.06)' : (isOldTask ? '#fef3c7' : TOKENS.color.elevated),
           borderColor: isCreationOnly ? '#8B5CF6' : (isOldTask ? '#f59e0b' : (ev.meta?.isCrossDaySegment ? TOKENS.color.accent : TOKENS.color.border)),
-          boxShadow: TOKENS.shadowCard
+          boxShadow: isCreationOnly ? '0 1px 3px rgba(0, 0, 0, 0.1)' : TOKENS.shadowCard
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = TOKENS.shadowHover }}
-        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = TOKENS.shadowCard }}
+        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = isCreationOnly ? '0 2px 6px rgba(0, 0, 0, 0.15)' : TOKENS.shadowHover }}
+        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = isCreationOnly ? '0 1px 3px rgba(0, 0, 0, 0.1)' : TOKENS.shadowCard }}
         title={
           isCreationOnly
             ? `New task created: ${ev.title}`
@@ -104,14 +104,14 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
               : (ev.meta?.isCrossDaySegment ? `Cross-day segment: ${ev.title}` : ev.title)
         }
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 pt-3">
+        <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 ${isCreationOnly ? 'px-3 pt-2' : 'px-4 pt-3'}`}>
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-medium" style={{ background: isCreationOnly ? 'rgba(139, 92, 246, 0.12)' : typeProps.bgColor, color: typeProps.color }}>
-              <span className="text-[9px] sm:text-[10px]">{isCreationOnly ? '🆕' : typeProps.icon}</span>
+            <span className={`inline-flex items-center gap-1 sm:gap-1.5 ${isCreationOnly ? 'px-1.5 py-0.5 text-[9px] sm:text-[10px]' : 'px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-[11px]'} rounded-lg font-medium`} style={{ background: isCreationOnly ? 'rgba(139, 92, 246, 0.12)' : typeProps.bgColor, color: typeProps.color }}>
+              <span className="text-[8px] sm:text-[9px]">{isCreationOnly ? '🆕' : typeProps.icon}</span>
               <span>{isCreationOnly ? 'New Task' : (isCompletedTask ? `✅ ${typeProps.label}` : (isOldTask ? `⏰ ${typeProps.label}` : typeProps.label))}</span>
             </span>
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-medium" style={{ background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}44` }}>
-              <i className="h-2 w-2 rounded-full" style={{ background: cat.color }} />
+            <span className={`inline-flex items-center gap-1 sm:gap-1.5 ${isCreationOnly ? 'px-1.5 py-0.5 text-[9px] sm:text-[10px]' : 'px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-[11px]'} rounded-lg font-medium`} style={{ background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}44` }}>
+              <i className={`${isCreationOnly ? 'h-1.5 w-1.5' : 'h-2 w-2'} rounded-full`} style={{ background: cat.color }} />
               <span>{cat.name}</span>
             </span>
           </div>
@@ -141,9 +141,9 @@ export function EventCard({ ev, categories, onEventClick, onUpdateTimeEntry, t }
           </div>
         </div>
 
-        <div className="px-4 pb-4 pt-1">
+        <div className={`${isCreationOnly ? 'px-3 pb-2 pt-1' : 'px-4 pb-4 pt-1'}`}>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
-            <h3 className="text-[15px] sm:text-[16px] font-semibold flex-1 truncate">
+            <h3 className={`${isCreationOnly ? 'text-[13px] sm:text-[14px]' : 'text-[15px] sm:text-[16px]'} font-semibold flex-1 truncate`}>
               <span className={`line-clamp-2 ${isCompletedTask ? 'line-through opacity-75' : ''}`}>
                 {isCompletedTask ? '✅ ' : ''}{isCreationOnly ? ev.title : ev.title}
               </span>

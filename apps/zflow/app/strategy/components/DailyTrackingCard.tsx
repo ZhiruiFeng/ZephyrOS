@@ -11,8 +11,18 @@ interface DailyTrackingCardProps {
 }
 
 export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTrigger }: DailyTrackingCardProps) {
-  const today = new Date().toISOString().split('T')[0]
-  
+  // Get local date and timezone info
+  const { today, timezone } = useMemo(() => {
+    const now = new Date()
+    const localDateStr = now.toLocaleDateString('en-CA') // YYYY-MM-DD format in local timezone
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+    return {
+      today: localDateStr,
+      timezone: timeZone
+    }
+  }, [])
+
   // Determine if it's morning/planning time (before 6 PM) or evening/reflection time (after 6 PM)
   const { isReflectionTime, currentTime } = useMemo(() => {
     const now = new Date()
@@ -23,7 +33,7 @@ export function DailyTrackingCard({ onOpenPlanning, onOpenReflection, refreshTri
     }
   }, [])
 
-  const { data: planningData, loading: planningLoading, error: planningError, loadData } = useDailyStrategy(today)
+  const { data: planningData, loading: planningLoading, error: planningError, loadData } = useDailyStrategy(today, timezone)
   const { data: reflectionData, loading: reflectionLoading } = useDayReflection(today)
 
   // Trigger refresh when refreshTrigger changes

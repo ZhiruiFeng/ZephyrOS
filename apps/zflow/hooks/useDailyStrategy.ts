@@ -14,7 +14,7 @@ export interface DailyStrategyData {
   priorities: DailyStrategyItemWithDetails[]
 }
 
-export function useDailyStrategy(selectedDate: string, seasonId?: string) {
+export function useDailyStrategy(selectedDate: string, timezone?: string, seasonId?: string) {
   const [data, setData] = useState<DailyStrategyData>({
     intention: null,
     adventure: null,
@@ -26,12 +26,12 @@ export function useDailyStrategy(selectedDate: string, seasonId?: string) {
   // Load data for the selected date
   const loadData = useCallback(async () => {
     if (!selectedDate) return
-    
+
     setLoading(true)
     setError(null)
-    
+
     try {
-      const strategyData = await dailyStrategyApi.getDailyStrategyByType(selectedDate)
+      const strategyData = await dailyStrategyApi.getDailyStrategyByType(selectedDate, timezone)
       setData(strategyData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load daily strategy data')
@@ -39,7 +39,7 @@ export function useDailyStrategy(selectedDate: string, seasonId?: string) {
     } finally {
       setLoading(false)
     }
-  }, [selectedDate])
+  }, [selectedDate, timezone])
 
   // Create or update intention
   const saveIntention = useCallback(async (title: string, description: string): Promise<void> => {

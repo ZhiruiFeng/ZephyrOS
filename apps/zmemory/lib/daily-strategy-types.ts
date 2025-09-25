@@ -131,6 +131,7 @@ export const DailyStrategyQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD format
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  timezone: z.string().optional(), // Timezone for local date conversion
   
   // Strategy filters
   strategy_type: StrategyTypeEnum.optional(),
