@@ -1,5 +1,5 @@
 'use client'
 
-import { StrategyPage } from '../../features/strategy'
+import { StrategyPage } from '@/strategy'
 
 export default StrategyPage

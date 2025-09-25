@@ -23,7 +23,30 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@zephyros/shared": ["../../packages/shared/src"]
+      "@zephyros/shared": ["../../packages/shared/src"],
+
+      // Feature modules
+      "@/features/*": ["./features/*"],
+      "@/strategy": ["./features/strategy"],
+      "@/timeline": ["./features/timeline"],
+      "@/focus": ["./features/focus"],
+      "@/agents": ["./features/agents"],
+      "@/narrative": ["./features/narrative"],
+      "@/kanban": ["./features/kanban"],
+
+      // Core directories
+      "@/lib/*": ["./lib/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/components/*": ["./components/*"],
+      "@/types/*": ["./types/*"],
+      "@/contexts/*": ["./contexts/*"],
+
+      // App directories
+      "@/app/*": ["./app/*"],
+
+      // Utilities and config
+      "@/utils/*": ["./utils/*"],
+      "@/config/*": ["./config/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

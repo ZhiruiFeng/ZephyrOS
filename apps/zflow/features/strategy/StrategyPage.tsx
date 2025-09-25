@@ -3,13 +3,13 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
 
-import { useAuth } from '../../contexts/AuthContext'
-import LoginPage from '../../app/components/auth/LoginPage'
+import { useAuth } from '@/contexts/AuthContext'
+import LoginPage from '@/app/components/auth/LoginPage'
 import { useStrategyDashboard } from './hooks/useStrategyDashboard'
 import { useStrategyTasks } from './hooks/useStrategyTasks'
 import { useStrategyMemories } from './hooks/useStrategyMemories'
 import { useDailyStrategy } from './hooks/useDailyStrategy'
-import { useDayReflection } from '../../hooks/timeline/useDayReflection'
+import { useDayReflection } from '@/hooks/timeline/useDayReflection'
 import { generateWhatIfScenarios, generateStrategicInsights } from './mocks/strategy'
 import type { StrategyLens, WhatIfScenario } from './types/strategy'
 

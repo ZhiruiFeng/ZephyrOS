@@ -203,7 +203,90 @@ When updating existing API code:
 4. **Update error handling** to use consistent patterns
 5. **Add proper TypeScript types** if missing
 
-## 7. Feature-First Architecture
+## 7. Import Path Management
+
+ZFlow uses TypeScript path mapping to eliminate messy relative imports and improve code readability.
+
+### **Path Aliases Configuration**
+
+All path aliases are configured in `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      // Feature modules
+      "@/strategy": ["./features/strategy"],
+      "@/timeline": ["./features/timeline"],
+      "@/features/*": ["./features/*"],
+
+      // Core directories
+      "@/lib/*": ["./lib/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/components/*": ["./components/*"],
+      "@/types/*": ["./types/*"],
+      "@/contexts/*": ["./contexts/*"],
+
+      // App directories
+      "@/app/*": ["./app/*"]
+    }
+  }
+}
+```
+
+### **Import Patterns**
+
+#### ✅ **PREFERRED: Clean Path Aliases**
+```typescript
+// Features
+import { useStrategyDashboard, StrategyTask } from '@/strategy'
+import { useTimeline } from '@/timeline'
+
+// Core modules
+import { tasksApi } from '@/lib/api/tasks-api'
+import { useAuth } from '@/contexts/AuthContext'
+import type { Task, TaskStatus } from '@/types/domain/task'
+
+// Components
+import { Button, Card } from '@/components/ui'
+```
+
+#### ✅ **ACCEPTABLE: Relative Paths Within Same Feature**
+```typescript
+// Within features/strategy/ directory
+import { useStrategyTasks } from './hooks/useStrategyTasks'
+import type { StrategyTask } from './types/strategy'
+import { StrategyCard } from './components/StrategyCard'
+```
+
+#### ❌ **AVOID: Messy Relative Paths**
+```typescript
+// Bad - hard to read and maintain
+import { useAuth } from '../../contexts/AuthContext'
+import { tasksApi } from '../../../lib/api/tasks-api'
+import type { Task } from '../../../types/domain/task'
+```
+
+### **Benefits of Path Aliases**
+
+🎯 **Readability**: Clear, intuitive import statements
+🔧 **Maintainability**: Moving files doesn't break imports
+🚀 **Developer Experience**: IDE autocomplete works better
+📦 **Consistency**: Same import pattern across all files
+♻️ **Refactoring**: Easier to restructure code
+
+### **Path Alias Guidelines**
+
+1. **Use `@/` prefix** for all path aliases to distinguish from npm packages
+2. **Feature shortcuts** for commonly used features (`@/strategy`, `@/timeline`)
+3. **Directory mappings** for core folders (`@/lib/*`, `@/hooks/*`)
+4. **Relative imports within features** are acceptable and often clearer
+5. **Update tsconfig.json** when adding new major directories
+
+---
+
+## 8. Feature-First Architecture
 
 ZFlow follows a **Feature-First Architecture** pattern that promotes modular, reusable, and maintainable code organization.
 
@@ -272,15 +355,24 @@ export default StrategyPage
 ```
 
 #### 4. **Import from Features, Not Internals**
-✅ **CORRECT**:
+✅ **CORRECT** (using path aliases):
 ```typescript
-import { useStrategyDashboard, StrategyTask } from '../../features/strategy'
+import { useStrategyDashboard, StrategyTask } from '@/strategy'
+import { useTimeline } from '@/hooks/timeline/useTimeline'
+import { API_BASE } from '@/lib/api/api-base'
 ```
 
-❌ **INCORRECT**:
+✅ **ACCEPTABLE** (relative paths within feature):
+```typescript
+// Within features/strategy/ files
+import { useStrategyDashboard } from './hooks/useStrategyDashboard'
+import { StrategyTask } from './types/strategy'
+```
+
+❌ **INCORRECT** (messy relative paths):
 ```typescript
 import { useStrategyDashboard } from '../../features/strategy/hooks/useStrategyDashboard'
-import { StrategyTask } from '../../features/strategy/types/strategy'
+import { StrategyTask } from '../../../types/domain/strategy'
 ```
 
 ### Creating New Features
