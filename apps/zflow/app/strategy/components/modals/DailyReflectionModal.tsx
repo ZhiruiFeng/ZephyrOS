@@ -1,2 +1,1 @@
-export { DailyReflectionModal as default } from './DailyPlanningModal'
-export { DailyReflectionModal } from './DailyPlanningModal'
+export { DailyReflectionModal as default, DailyReflectionModal } from './DailyPlanningModal'
