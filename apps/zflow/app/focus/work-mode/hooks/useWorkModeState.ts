@@ -63,6 +63,11 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
   const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 
+  // Conversation sidebar
+  const [conversationOpen, setConversationOpen] = useState(false)
+  const [conversationMinimized, setConversationMinimized] = useState(false)
+  const [conversationWidth, setConversationWidth] = useState(400)
+
   // Refs for subtask auto-open behavior
   const autoOpenSubtasksRef = useRef(false)
   const lastSubtaskIdRef = useRef<string | null>(null)
@@ -320,6 +325,12 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
     setEnergyReviewOpen,
     energyReviewEntry,
     setEnergyReviewEntry,
+    conversationOpen,
+    setConversationOpen,
+    conversationMinimized,
+    setConversationMinimized,
+    conversationWidth,
+    setConversationWidth,
 
     // Computed values
     filteredTasks,

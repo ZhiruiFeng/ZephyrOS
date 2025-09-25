@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense, useEffect, useCallback, startTransition } from 'react'
+import React, { Suspense, useEffect, useCallback, startTransition, useState } from 'react'
 import { useTasks } from '../../../hooks/useMemories'
 import { useCategories } from '../../../hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -21,6 +21,7 @@ import TaskSidebar from './components/TaskSidebar'
 import TaskHeader from './components/TaskHeader'
 import TaskInfoPanel from './components/TaskInfoPanel'
 import WorkModeEditor from './components/WorkModeEditor'
+import { Message } from './components/ChatMessage'
 
 // Import custom hooks
 import { useWorkModeState } from './hooks/useWorkModeState'
@@ -332,6 +333,10 @@ function WorkModeViewInner() {
   // Celebration state
   const { isVisible: celebrationVisible, triggerCelebration, hideCelebration } = useCelebration()
 
+  // Conversation state
+  const [conversationMessages, setConversationMessages] = useState<Message[]>([])
+  const [messageCount, setMessageCount] = useState(0)
+
   // Use custom hooks for state management
   const workModeState = useWorkModeState(tasks, categories)
   const {
@@ -371,7 +376,13 @@ function WorkModeViewInner() {
     toggleDescriptionExpansion,
     toggleCategory,
     expandedCategories,
-    subtaskIdParam
+    subtaskIdParam,
+    conversationOpen,
+    setConversationOpen,
+    conversationMinimized,
+    setConversationMinimized,
+    conversationWidth,
+    setConversationWidth
   } = workModeState
 
   // Simplified task operations with built-in auto-save
@@ -465,6 +476,41 @@ function WorkModeViewInner() {
     }
   }, [selectedTask, removeMemoryFromTask, refetchAnchors])
 
+  // Conversation handlers
+  const handleSendMessage = useCallback((content: string) => {
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content,
+      timestamp: new Date(),
+      context: selectedTask ? {
+        taskId: selectedTask.id,
+        taskTitle: selectedTask.content.title,
+        subtaskId: selectedSubtask?.id
+      } : undefined
+    }
+
+    setConversationMessages(prev => [...prev, newMessage])
+    setMessageCount(prev => prev + 1)
+
+    // Simulate AI response (placeholder for future integration)
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: `Thanks for your message! I understand you're working on "${selectedTask?.content.title || 'your current task'}". While I'm not fully connected yet, I'm here to help you stay organized and focused. What would you like to explore about this task?`,
+        timestamp: new Date(),
+        context: selectedTask ? {
+          taskId: selectedTask.id,
+          taskTitle: selectedTask.content.title,
+          subtaskId: selectedSubtask?.id
+        } : undefined
+      }
+      setConversationMessages(prev => [...prev, aiResponse])
+      setMessageCount(prev => prev + 1)
+    }, 1500)
+  }, [selectedTask, selectedSubtask])
+
   // Early returns for loading/error states
   if (authLoading) {
     return (
@@ -536,6 +582,9 @@ function WorkModeViewInner() {
             setShowMemories={setShowMemories}
             showMemories={showMemories}
             refetchAnchors={refetchAnchors}
+            conversationOpen={conversationOpen}
+            setConversationOpen={setConversationOpen}
+            messageCount={messageCount}
           />
 
           <TaskInfoPanel
@@ -633,6 +682,15 @@ function WorkModeViewInner() {
             notes={notes}
             setNotes={setNotes}
             onStatusChange={handleStatusChange}
+            conversationOpen={conversationOpen}
+            onConversationClose={() => setConversationOpen(false)}
+            onConversationOpen={() => setConversationOpen(true)}
+            conversationMessages={conversationMessages}
+            onSendMessage={handleSendMessage}
+            conversationMinimized={conversationMinimized}
+            onToggleConversationMinimize={() => setConversationMinimized(prev => !prev)}
+            conversationWidth={conversationWidth}
+            onConversationWidthChange={setConversationWidth}
           />
         </div>
       </div>

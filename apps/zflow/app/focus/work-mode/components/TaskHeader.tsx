@@ -12,6 +12,7 @@ import { useTranslation } from '../../../../contexts/LanguageContext'
 import { useTimer } from '../../../../hooks/useTimer'
 import { useAutoSave } from '../../../../hooks/useAutoSave'
 import MemoryAnchorButton from '../../../components/memory/MemoryAnchorButton'
+import ConversationButton from './ConversationButton'
 import { TaskWithCategory } from './TaskSidebar'
 
 interface TaskHeaderProps {
@@ -38,6 +39,9 @@ interface TaskHeaderProps {
   setShowMemories: (fn: (prev: boolean) => boolean) => void
   showMemories: boolean
   refetchAnchors: () => void
+  conversationOpen: boolean
+  setConversationOpen: (open: boolean) => void
+  messageCount: number
 }
 
 const TaskHeader = memo(function TaskHeader({
@@ -63,7 +67,10 @@ const TaskHeader = memo(function TaskHeader({
   taskAnchors,
   setShowMemories,
   showMemories,
-  refetchAnchors
+  refetchAnchors,
+  conversationOpen,
+  setConversationOpen,
+  messageCount
 }: TaskHeaderProps) {
   const { t } = useTranslation()
 
@@ -236,6 +243,14 @@ const TaskHeader = memo(function TaskHeader({
               size="md"
               variant="default"
               isActive={showMemories}
+            />
+
+            {/* Conversation Button */}
+            <ConversationButton
+              onClick={() => setConversationOpen(!conversationOpen)}
+              isActive={conversationOpen}
+              messageCount={messageCount}
+              disabled={!selectedTask}
             />
           </div>
 
