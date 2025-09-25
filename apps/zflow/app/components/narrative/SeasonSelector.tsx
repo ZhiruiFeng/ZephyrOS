@@ -5,7 +5,7 @@ import type { CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarIcon, PinIcon, SparklesIcon, PlusIcon, LayoutGrid } from 'lucide-react'
 import { useNarrativeTheme } from '../../../hooks/memory/useNarrativeTheme'
-import type { Season, SeasonStatus } from '../../../types/narrative'
+import type { Season, SeasonStatus } from '@/narrative'
 
 interface SeasonSelectorProps {
   seasons: Season[]

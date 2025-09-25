@@ -4,13 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PlusIcon, BookOpenIcon } from 'lucide-react'
 import { useSeasons } from '../../../features/strategy'
-import { useEpisodes } from '../../../hooks/memory/useEpisodes'
+import { useEpisodes } from '@/narrative'
 import { SeasonCover } from './SeasonCover'
 import { EpisodeCard } from './EpisodeCard'
 import { AddEpisodeForm } from './AddEpisodeForm'
 import { CreateSeasonModal } from './CreateSeasonModal'
 import { SeasonSelector } from './SeasonSelector'
-import type { CreateSeasonRequest, CreateEpisodeRequest } from '../../../types/narrative'
+import type { CreateSeasonRequest, CreateEpisodeRequest } from '@/narrative'
 
 export function NarrativePage() {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null)

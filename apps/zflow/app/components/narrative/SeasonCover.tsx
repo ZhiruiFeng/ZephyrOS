@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { PencilIcon, CheckIcon, X, Trash2 } from 'lucide-react'
 import { useNarrativeTheme } from '../../../hooks/memory/useNarrativeTheme'
-import type { Season, SeasonTheme } from '../../../types/narrative'
+import type { Season, SeasonTheme } from '@/narrative'
 
 interface SeasonCoverProps {
   season: Season

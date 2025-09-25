@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { NarrativePage } from '../components/narrative/NarrativePage'
+import { NarrativePage } from '@/narrative'
 
 export const metadata: Metadata = {
   title: 'Life Narrative - ZephyrOS',

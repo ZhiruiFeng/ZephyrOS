@@ -1,4 +1,4 @@
-import type { Season } from '../../../../zmemory/types/narrative'
+import type { Season } from '@/narrative'
 import type { Task, Memory, Agent } from 'types'
 import type {
   StrategySeason,

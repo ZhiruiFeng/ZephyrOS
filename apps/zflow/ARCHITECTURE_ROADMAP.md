@@ -19,7 +19,7 @@ Transform ZFlow from a monolithic structure to a modular, feature-first architec
 - ✅ **Phase 3**: Strategy Feature Extraction (100%)
 - ✅ **Phase 4**: Route Modernization (100%)
 - ✅ **Phase 4.5**: Import Path Optimization (100%)
-- 🔄 **Phase 5**: Additional Feature Extraction (25%)
+- 🔄 **Phase 5**: Additional Feature Extraction (37.5%)
 - 📋 **Phase 6**: Infrastructure Cleanup (0%)
 - 📋 **Phase 7**: Performance Optimization (0%)
 
@@ -30,7 +30,7 @@ Transform ZFlow from a monolithic structure to a modular, feature-first architec
 | Timeline | ✅ Complete | High | Medium | `/timeline` | Successfully migrated from `/hooks/timeline/` |
 | Focus | 📋 Planned | High | High | `/focus/*` | Multi-route feature (4 routes) |
 | Agents | 📋 Planned | High | High | `/agents` | AI integration complexity |
-| Narrative | 📋 Planned | Medium | Medium | `/narrative` | Season/episode management |
+| Narrative | ✅ Complete | Medium | Medium | `/narrative` | Successfully migrated from scattered components |
 | Kanban | 📋 Planned | Medium | Medium | `/kanban` | Task visualization |
 | Profile | 📋 Planned | Low | Low | `/profile/*` | Simple user settings |
 | Speech | 📋 Planned | Low | Low | `/speech` | Single route feature |
@@ -230,14 +230,23 @@ import { StrategyPage } from '@/strategy'
 - ✅ Eliminated old `/hooks/timeline/` directory
 - ✅ Bundle size improvement: 96.7% reduction
 
-##### **5.2: Narrative Feature** (Next - Week 1-2)
+##### ✅ **5.2: Narrative Feature** (Completed)
 - **Priority**: Medium
 - **Complexity**: Medium
 - **Scope**: Season/episode management
 - **Routes**: `/narrative`
-- **Expected Impact**: Medium
+- **Expected Impact**: High (Bundle size reduced from 27KB to 16.7KB - 38% reduction!)
+- **Status**: Complete
 
-##### **5.3: Focus Feature** (Week 2-3)
+**Results**:
+- ✅ Created `/features/narrative/` module with complete structure
+- ✅ Migrated `useEpisodes` hook with full functionality
+- ✅ Created narrative API layer with proper error handling
+- ✅ Updated all imports across codebase to use `@/narrative`
+- ✅ Eliminated old `/hooks/memory/useEpisodes.ts`
+- ✅ Bundle size improvement: 38% reduction
+
+##### **5.3: Focus Feature** (Next - Week 2-3)
 - **Priority**: High
 - **Complexity**: High (multi-route)
 - **Scope**: Complete focus management system
@@ -317,18 +326,19 @@ import { StrategyPage } from '@/strategy'
 |-------|--------|-------|-------------|
 | `/strategy` | 27KB | 232B | 99.1% ↓ |
 | `/timeline` | 27KB | 877B | 96.7% ↓ |
+| `/narrative` | 27KB | 16.7KB | 38.1% ↓ |
 | `/focus` | TBD | TBD | TBD |
 | **Target** | - | - | **20-30% overall** |
 
 #### **Code Organization**
-- ✅ **Features Extracted**: 2/8 (25%)
+- ✅ **Features Extracted**: 3/8 (37.5%)
 - ✅ **Type Duplications Eliminated**: 5+
 - ✅ **API Standardization**: 100%
 - **Target**: 8/8 features extracted (100%)
 
 #### **Developer Experience**
-- ✅ **Import Clarity**: Strategy & Timeline features ✓
-- ✅ **Testing Isolation**: Strategy & Timeline features ✓
+- ✅ **Import Clarity**: Strategy, Timeline & Narrative features ✓
+- ✅ **Testing Isolation**: Strategy, Timeline & Narrative features ✓
 - ✅ **Documentation Coverage**: CODING_RULES.md updated
 - **Target**: All features isolated and documented
 
@@ -399,7 +409,7 @@ Each phase must pass:
 
 ### **Short-term (Next 2 Weeks)**
 1. ✅ **Complete Timeline Feature** - DONE
-2. **Extract Narrative Feature**
+2. ✅ **Extract Narrative Feature** - DONE
 3. **Update documentation** with lessons learned
 4. **Create feature scaffolding tools**
 
@@ -460,3 +470,13 @@ Each phase must pass:
 - Eliminated old `/hooks/timeline/` directory
 - Updated progress tracking: 2/8 features extracted (25% complete)
 - All TypeScript compilation and linting checks passing
+
+### Version 1.3 (2025-01-15)
+- ✅ Completed Phase 5.2: Narrative Feature Extraction
+- Successfully migrated narrative hooks and components to feature module
+- Achieved 38.1% bundle size reduction for `/narrative` route (27KB → 16.7KB)
+- Created complete narrative API layer with proper error handling
+- Updated all imports across codebase to use `@/narrative` path alias
+- Eliminated old `/hooks/memory/useEpisodes.ts`
+- Updated progress tracking: 3/8 features extracted (37.5% complete)
+- All TypeScript compilation, linting, and build checks passing

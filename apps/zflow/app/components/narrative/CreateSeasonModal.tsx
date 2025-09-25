@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, SparklesIcon } from 'lucide-react'
 import { useNarrativeTheme, useAdaptiveTheme, useThemeContentSuggestions } from '../../../hooks/memory/useNarrativeTheme'
-import type { CreateSeasonRequest, SeasonTheme } from 'types'
-import { SEASON_THEMES } from 'types'
+import type { CreateSeasonRequest, SeasonTheme } from '@/narrative'
+import { SEASON_THEMES } from '@/narrative'
 
 interface CreateSeasonModalProps {
   isOpen: boolean

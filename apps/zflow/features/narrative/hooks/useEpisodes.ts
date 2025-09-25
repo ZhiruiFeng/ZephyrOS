@@ -1,12 +1,20 @@
+'use client'
+
+// =====================================================
+// Narrative Feature - Episodes Hooks
+// =====================================================
+
 import useSWR from 'swr'
 import { useState, useCallback } from 'react'
-import { narrativeApiClient } from '../../lib/api/narrative-api'
+import { episodesApi, narrativeApi } from '../api/narrative-api'
 import type {
   Episode,
   CreateEpisodeRequest,
   UpdateEpisodeRequest,
-  UseEpisodesReturn
-} from 'types'
+  UseEpisodesReturn,
+  UseEpisodeReturn,
+  UseQuickEpisodeReturn
+} from '../types/narrative'
 
 // =====================================================
 // Custom hook for managing episodes
@@ -34,7 +42,7 @@ export function useEpisodes(seasonId?: string, options?: {
     mutate: refetchEpisodes
   } = useSWR(
     swrKey,
-    () => narrativeApiClient.episodes.list({
+    () => episodesApi.list({
       season_id: seasonId,
       limit: options?.limit,
       date_from: options?.dateFrom,
@@ -64,7 +72,7 @@ export function useEpisodes(seasonId?: string, options?: {
     setActionError(null)
 
     try {
-      const newEpisode = await narrativeApiClient.episodes.create(data)
+      const newEpisode = await episodesApi.create(data)
 
       // Optimistically add to the cache
       const currentEpisodes = episodes
@@ -96,7 +104,7 @@ export function useEpisodes(seasonId?: string, options?: {
     setActionError(null)
 
     try {
-      const updatedEpisode = await narrativeApiClient.episodes.update(id, data)
+      const updatedEpisode = await episodesApi.update(id, data)
 
       // Optimistically update the cache
       const updatedEpisodes = episodes.map(episode =>
@@ -129,7 +137,7 @@ export function useEpisodes(seasonId?: string, options?: {
     setActionError(null)
 
     try {
-      await narrativeApiClient.episodes.delete(id)
+      await episodesApi.delete(id)
 
       // Optimistically remove from the cache
       const updatedEpisodes = episodes.filter(episode => episode.id !== id)
@@ -171,7 +179,7 @@ export function useEpisodes(seasonId?: string, options?: {
 // =====================================================
 // Hook for a specific episode
 // =====================================================
-export function useEpisode(episodeId: string | null) {
+export function useEpisode(episodeId: string | null): UseEpisodeReturn {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -183,7 +191,7 @@ export function useEpisode(episodeId: string | null) {
     mutate: refetchEpisode
   } = useSWR(
     episodeId ? `/narrative/episodes/${episodeId}` : null,
-    episodeId ? () => narrativeApiClient.episodes.get(episodeId) : null,
+    episodeId ? () => episodesApi.get(episodeId) : null,
     {
       revalidateOnFocus: false,
       dedupingInterval: 30000
@@ -200,7 +208,7 @@ export function useEpisode(episodeId: string | null) {
     setActionError(null)
 
     try {
-      const updatedEpisode = await narrativeApiClient.episodes.update(episodeId, data)
+      const updatedEpisode = await episodesApi.update(episodeId, data)
 
       // Update the cache
       await refetchEpisode()
@@ -222,7 +230,7 @@ export function useEpisode(episodeId: string | null) {
     setActionError(null)
 
     try {
-      await narrativeApiClient.episodes.delete(episodeId)
+      await episodesApi.delete(episodeId)
 
       // Clear the cache since episode is deleted
       refetchEpisode(undefined, { revalidate: false })
@@ -236,7 +244,7 @@ export function useEpisode(episodeId: string | null) {
   }, [episodeId, refetchEpisode])
 
   return {
-    episode,
+    episode: episode || null,
     loading,
     error,
     updateEpisode,
@@ -248,7 +256,7 @@ export function useEpisode(episodeId: string | null) {
 // =====================================================
 // Hook for quick episode creation with defaults
 // =====================================================
-export function useQuickEpisode() {
+export function useQuickEpisode(): UseQuickEpisodeReturn {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -262,7 +270,7 @@ export function useQuickEpisode() {
     setError(null)
 
     try {
-      const episode = await narrativeApiClient.narrative.createQuickEpisode(data)
+      const episode = await narrativeApi.createQuickEpisode(data)
       return episode
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create quick episode'
