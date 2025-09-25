@@ -1,11 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { 
-  dailyStrategyApi, 
-  DailyStrategyItemWithDetails,
-} from '../../lib/api/daily-strategy-api'
+import { dailyStrategyApi, type DailyStrategyItemWithDetails } from '../../features/strategy'
 import { memoriesApi } from '../../lib/api/memories-api'
 import { tasksApi } from '../../lib/api'
-import { ReflectionType } from '../../app/strategy/components/modals/ReflectionTypeSelector'
+import { ReflectionType } from '../../features/strategy'
 
 export interface DayReflectionData {
   reflections: DailyStrategyItemWithDetails[]

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import useSWR from 'swr'
 import { aiTasksApi, tasksApi } from '../../lib/api'
 import type { AITask } from '../../lib/api/ai-api'
-import type { StrategyTask } from '../../lib/types/strategy'
+import type { StrategyTask } from '../../features/strategy'
 
 // =====================================================
 // AI Task Status Synchronization Hook

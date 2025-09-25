@@ -5,13 +5,9 @@ import { RefreshCw, AlertTriangle } from 'lucide-react'
 
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/auth/LoginPage'
-import { useStrategyDashboard } from '../../hooks/strategy/useStrategyDashboard'
-import { useStrategyTasks } from '../../hooks/strategy/useStrategyTasks'
-import { useStrategyMemories } from '../../hooks/strategy/useStrategyMemories'
-import { useDailyStrategy } from '../../hooks/strategy/useDailyStrategy'
+import { useStrategyDashboard, useStrategyTasks, useStrategyMemories, useDailyStrategy } from '../../features/strategy'
 import { useDayReflection } from '../../hooks/timeline/useDayReflection'
-import { generateWhatIfScenarios, generateStrategicInsights } from '../../lib/mocks/strategy'
-import type { StrategyLens, WhatIfScenario } from '../../lib/types/strategy'
+import { generateWhatIfScenarios, generateStrategicInsights, type StrategyLens, type WhatIfScenario } from '../../features/strategy'
 
 // Import all components
 import {
@@ -28,7 +24,7 @@ import { Scratchpad, WhatIfSimulator, QuickActions } from './components'
 import { DailyTrackingCard } from './components/DailyTrackingCard'
 import { KeyboardShortcutsModal, AgentSelectionModal } from './components'
 import { DailyRhythmModal } from './components/modals/DailyPlanningModal'
-import { useStrategyFilters, useKeyboardShortcuts } from './hooks'
+import { useStrategyFilters, useKeyboardShortcuts } from '../../features/strategy/hooks'
 import { progressIntent } from './utils/progressIntent'
 
 

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Edit3, Check, ExternalLink } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '../ui'
-import type { DailyStrategyItemWithDetails, DailyStrategyStatus } from '../../../../lib/api/daily-strategy-api'
+import type { DailyStrategyItemWithDetails, DailyStrategyStatus } from '../../../../features/strategy'
 
 interface PlanningItemDisplayProps {
   title: string

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Badge } from '../ui'
 import { Edit2, MoreHorizontal } from 'lucide-react'
 import { EditInitiativeModal } from '../modals/EditInitiativeModal'
-import type { Initiative } from '../../../../lib/types/strategy'
+import type { Initiative } from '../../../../features/strategy'
 
 interface InitiativeCardProps {
   initiative: Initiative

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Target, CheckCircle } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '../ui'
-import type { DailyStrategyItemWithDetails } from '../../../../lib/api/daily-strategy-api'
+import type { DailyStrategyItemWithDetails } from '../../../../features/strategy'
 
 interface ReflectionData {
   completionRate: number

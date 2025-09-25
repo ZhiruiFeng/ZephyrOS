@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { Calendar, Target, CheckCircle, Star, TrendingUp, Clock, Sun, Moon, ExternalLink } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from './ui'
-import type { DailyStrategyData } from '../../../hooks/strategy/useDailyStrategy'
+import type { DailyStrategyData } from '../../../features/strategy'
 import type { DayReflectionData } from '../../../hooks/timeline/useDayReflection'
 
 interface DailyTrackingCardProps {

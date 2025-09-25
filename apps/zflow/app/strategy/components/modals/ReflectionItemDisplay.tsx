@@ -4,7 +4,7 @@ import React from 'react'
 import { Edit3, X } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Button } from '../ui'
 import { ReflectionType, REFLECTION_TYPES } from './ReflectionTypeSelector'
-import type { DailyStrategyItemWithDetails } from '../../../../lib/api/daily-strategy-api'
+import type { DailyStrategyItemWithDetails } from '../../../../features/strategy'
 
 interface ReflectionItemDisplayProps {
   reflection: DailyStrategyItemWithDetails

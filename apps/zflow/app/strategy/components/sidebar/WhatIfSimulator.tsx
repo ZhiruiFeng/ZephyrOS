@@ -2,7 +2,7 @@ import React from 'react'
 import { Shuffle, Maximize2 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '../ui'
 import { FullscreenModal, useFullscreenModal } from '../modals/FullscreenModal'
-import type { WhatIfScenario } from '../../../../lib/types/strategy'
+import type { WhatIfScenario } from '../../../../features/strategy'
 
 interface WhatIfSimulatorProps {
   whatIfAutoRebalance: boolean

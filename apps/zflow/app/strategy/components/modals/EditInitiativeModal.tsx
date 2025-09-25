@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Edit, Calendar, Target, Flag, Tag } from 'lucide-react'
 import { Button, Textarea } from '../ui'
-import { useInitiatives } from '../../../../hooks/strategy/useInitiatives'
-import type { Initiative } from '../../../../lib/types/strategy'
+import { useInitiatives, type Initiative } from '../../../../features/strategy'
 
 interface EditInitiativeModalProps {
   isOpen: boolean

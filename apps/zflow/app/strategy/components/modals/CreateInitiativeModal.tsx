@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { X, Rocket, Calendar, Target, Flag, Tag } from 'lucide-react'
 import { Button, Textarea } from '../ui'
-import { useCreateInitiative, type CreateInitiativeData } from '../../hooks/useCreateInitiative'
+import { useCreateInitiative, type CreateInitiativeData } from '../../../../features/strategy/hooks/useCreateInitiative'
 
 interface CreateInitiativeModalProps {
   isOpen: boolean

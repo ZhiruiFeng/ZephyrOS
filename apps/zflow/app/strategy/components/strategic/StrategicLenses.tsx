@@ -6,7 +6,7 @@ import { VisionLens } from './VisionLens'
 import { ExecutionLens } from './ExecutionLens'
 import { DelegationLens } from './DelegationLens'
 import { ReflectionLens } from './ReflectionLens'
-import type { StrategyLens } from '../../../../lib/types/strategy'
+import type { StrategyLens } from '../../../../features/strategy'
 
 interface StrategicLensesProps {
   lens: StrategyLens
