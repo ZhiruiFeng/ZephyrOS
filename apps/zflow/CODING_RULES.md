@@ -203,9 +203,288 @@ When updating existing API code:
 4. **Update error handling** to use consistent patterns
 5. **Add proper TypeScript types** if missing
 
+## 7. Feature-First Architecture
+
+ZFlow follows a **Feature-First Architecture** pattern that promotes modular, reusable, and maintainable code organization.
+
+### Architecture Overview
+
+```
+/features/{feature-name}/     # 🎯 Self-contained feature modules
+├── hooks/                   # Feature-specific business logic hooks
+├── components/              # Feature UI components
+├── api/                     # Feature API layer
+├── types/                   # Domain types and interfaces
+├── utils/                   # Feature utilities
+├── mocks/                   # Test data and mock generators
+├── {Feature}Page.tsx        # Main page component (if applicable)
+└── index.ts                 # Public API (barrel export)
+
+/app/{route}/                # 🚀 Minimal Next.js routes
+└── page.tsx                 # Thin route controller
+```
+
+### Design Principles
+
+#### 1. **Feature Modules are Self-Contained**
+- Each feature in `/features/` should be completely independent
+- Features should not import from other features directly
+- All business logic, types, and utilities live within the feature
+- Features can be moved, tested, or extracted without breaking other parts
+
+#### 2. **Clean Public APIs**
+Every feature must export a clean public API via `index.ts`:
+
+```typescript
+// features/strategy/index.ts
+// =====================================================
+// Strategy Feature - Public API
+// =====================================================
+
+// Hooks (business logic)
+export { useStrategyDashboard } from './hooks/useStrategyDashboard'
+export { useStrategyTasks } from './hooks/useStrategyTasks'
+
+// API Layer
+export { strategyApi } from './api/strategy-api'
+
+// Types (domain models)
+export type {
+  StrategySeason,
+  Initiative,
+  StrategyTask
+} from './types/strategy'
+
+// Components (if reusable)
+export { default as StrategyPage } from './StrategyPage'
+```
+
+#### 3. **Routes are Thin Controllers**
+Next.js app router pages should be minimal and delegate to features:
+
+```typescript
+// app/strategy/page.tsx
+'use client'
+
+import { StrategyPage } from '../../features/strategy'
+
+export default StrategyPage
+```
+
+#### 4. **Import from Features, Not Internals**
+✅ **CORRECT**:
+```typescript
+import { useStrategyDashboard, StrategyTask } from '../../features/strategy'
+```
+
+❌ **INCORRECT**:
+```typescript
+import { useStrategyDashboard } from '../../features/strategy/hooks/useStrategyDashboard'
+import { StrategyTask } from '../../features/strategy/types/strategy'
+```
+
+### Creating New Features
+
+When creating a new feature, follow this step-by-step process:
+
+#### Step 1: Create Feature Structure
+```bash
+mkdir -p features/my-feature/{hooks,components,api,types,utils,mocks}
+```
+
+#### Step 2: Start with Types and API
+```typescript
+// features/my-feature/types/my-feature.ts
+export interface MyFeatureData {
+  id: string
+  title: string
+  status: 'active' | 'inactive'
+}
+
+// features/my-feature/api/my-feature-api.ts
+import { API_BASE, authenticatedFetch } from '../../../lib/api/api-base'
+
+export async function getMyFeatureData(): Promise<MyFeatureData[]> {
+  const response = await authenticatedFetch(`${API_BASE}/my-feature`)
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(errorData.error || `Failed to fetch: ${response.status}`)
+  }
+  return response.json()
+}
+
+export const myFeatureApi = {
+  getMyFeatureData,
+  // ... other API methods
+}
+```
+
+#### Step 3: Create Business Logic Hooks
+```typescript
+// features/my-feature/hooks/useMyFeature.ts
+import { useState, useEffect } from 'react'
+import { myFeatureApi } from '../api/my-feature-api'
+import type { MyFeatureData } from '../types/my-feature'
+
+export function useMyFeature() {
+  const [data, setData] = useState<MyFeatureData[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // ... hook implementation
+
+  return { data, loading, error }
+}
+```
+
+#### Step 4: Build UI Components
+```typescript
+// features/my-feature/components/MyFeatureCard.tsx
+import type { MyFeatureData } from '../types/my-feature'
+
+interface MyFeatureCardProps {
+  data: MyFeatureData
+}
+
+export function MyFeatureCard({ data }: MyFeatureCardProps) {
+  return (
+    <div>
+      <h3>{data.title}</h3>
+      {/* Component implementation */}
+    </div>
+  )
+}
+```
+
+#### Step 5: Create Public API
+```typescript
+// features/my-feature/index.ts
+// Public API - only export what other parts of the app need
+
+// Hooks
+export { useMyFeature } from './hooks/useMyFeature'
+
+// API
+export { myFeatureApi } from './api/my-feature-api'
+
+// Types
+export type { MyFeatureData } from './types/my-feature'
+
+// Components (if reusable outside the feature)
+export { MyFeatureCard } from './components/MyFeatureCard'
+```
+
+#### Step 6: Create Route (if needed)
+```typescript
+// app/my-feature/page.tsx
+'use client'
+
+import { MyFeaturePage } from '../../features/my-feature'
+
+export default MyFeaturePage
+```
+
+### Migration Guidelines
+
+When migrating existing code to Feature-First Architecture:
+
+#### Phase 1: Extract Business Logic
+- Move hooks from `/hooks/` or `/lib/hooks/` to `/features/{feature}/hooks/`
+- Move API functions to `/features/{feature}/api/`
+- Move types to `/features/{feature}/types/`
+
+#### Phase 2: Extract Components
+- Move feature-specific components to `/features/{feature}/components/`
+- Keep shared/generic components in existing locations
+
+#### Phase 3: Create Public API
+- Create `/features/{feature}/index.ts` with clean exports
+- Update imports across the codebase to use feature imports
+
+#### Phase 4: Route Modernization
+- Convert app routes to use feature modules
+- Remove duplicated components from app directories
+
+### Feature Module Guidelines
+
+#### What Goes in a Feature Module:
+✅ **Include**:
+- Domain-specific business logic (hooks)
+- Feature-specific API calls
+- Domain types and interfaces
+- Feature-specific UI components
+- Feature utilities and helpers
+- Test mocks and generators
+- Main page components (if the feature has its own route)
+
+❌ **Don't Include**:
+- Generic/shared utilities (keep in `/lib/`)
+- Cross-cutting concerns (auth, routing, etc.)
+- Global state management
+- Third-party integrations (unless feature-specific)
+
+#### File Naming Conventions:
+- **API files**: `{domain}-api.ts` (e.g., `strategy-api.ts`)
+- **Hook files**: `use{FeatureName}.ts` (e.g., `useStrategy.ts`)
+- **Type files**: `{domain}.ts` (e.g., `strategy.ts`)
+- **Component files**: `{ComponentName}.tsx` (PascalCase)
+- **Page components**: `{Feature}Page.tsx` (e.g., `StrategyPage.tsx`)
+
+### Testing Strategy
+
+Features should be testable in isolation:
+
+```typescript
+// features/my-feature/__tests__/useMyFeature.test.ts
+import { renderHook } from '@testing-library/react'
+import { useMyFeature } from '../hooks/useMyFeature'
+
+// Test the hook in isolation
+describe('useMyFeature', () => {
+  it('should fetch data successfully', () => {
+    // Test implementation
+  })
+})
+```
+
+### Benefits of Feature-First Architecture
+
+🎯 **Zero Duplication**: Single source of truth for each feature
+⚡ **Optimal Bundle Sizes**: Features can be code-split easily
+🔧 **Better Maintainability**: Changes are localized to features
+🧪 **Easier Testing**: Features can be tested independently
+♻️ **Maximum Reusability**: Features can be shared across routes
+🏗️ **Cleaner Architecture**: Clear separation of concerns
+📦 **Future-Proof**: Features can be extracted to packages if needed
+
+### Common Patterns
+
+#### Cross-Feature Communication:
+Use shared state management or event systems rather than direct feature imports:
+
+```typescript
+// Good: Via shared context or state management
+const { user } = useAuth()  // Shared auth context
+const { data } = useGlobalState()  // Shared state
+
+// Avoid: Direct feature imports
+import { useOtherFeature } from '../other-feature'  // ❌
+```
+
+#### Shared Components:
+Keep truly generic components outside features:
+
+```typescript
+// Generic UI components (keep in existing locations)
+import { Button, Card } from '../components/ui'
+
+// Feature-specific components (keep in feature)
+import { StrategyCard } from '../features/strategy'
+```
+
 ---
 
-**Last Updated**: 2025-09-21
-**Version**: 1.0
+**Last Updated**: 2025-09-25
+**Version**: 2.0
 
 This document should be updated whenever significant changes are made to the API architecture or development patterns.
