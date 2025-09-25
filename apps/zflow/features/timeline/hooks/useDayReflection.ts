@@ -1,18 +1,15 @@
+// =====================================================
+// Timeline Feature - Day Reflection Hook
+// =====================================================
+
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { dailyStrategyApi, type DailyStrategyItemWithDetails } from '../../features/strategy'
-import { memoriesApi } from '../../lib/api/memories-api'
-import { tasksApi } from '../../lib/api'
-import { ReflectionType } from '../../features/strategy'
+import { dailyStrategyApi, type DailyStrategyItemWithDetails } from '@/strategy'
+import { memoriesApi } from '@/lib/api/memories-api'
+import { tasksApi } from '@/lib/api'
+import { ReflectionType } from '@/strategy'
+import type { DayReflectionData, UseDayReflectionReturn } from '../types/timeline'
 
-export interface DayReflectionData {
-  reflections: DailyStrategyItemWithDetails[]
-  priorities: DailyStrategyItemWithDetails[]
-  completionRate: number
-  completedCount: number
-  totalCount: number
-}
-
-export function useDayReflection(date: string, seasonId?: string) {
+export function useDayReflection(date: string, seasonId?: string): UseDayReflectionReturn {
   const [data, setData] = useState<DayReflectionData>({
     reflections: [],
     priorities: [],

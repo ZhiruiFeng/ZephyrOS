@@ -9,7 +9,7 @@ import { useStrategyDashboard } from './hooks/useStrategyDashboard'
 import { useStrategyTasks } from './hooks/useStrategyTasks'
 import { useStrategyMemories } from './hooks/useStrategyMemories'
 import { useDailyStrategy } from './hooks/useDailyStrategy'
-import { useDayReflection } from '@/hooks/timeline/useDayReflection'
+import { useDayReflection } from '@/timeline'
 import { generateWhatIfScenarios, generateStrategicInsights } from './mocks/strategy'
 import type { StrategyLens, WhatIfScenario } from './types/strategy'
 

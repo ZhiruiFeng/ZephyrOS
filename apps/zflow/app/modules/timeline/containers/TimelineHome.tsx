@@ -3,7 +3,7 @@
 import React from 'react'
 import { DateSelector } from '../../../components/ui'
 import { TimelineView } from '../../../components/views'
-import type { TimelineItem } from '../../../../hooks/timeline/useTimeline'
+import type { TimelineItem } from '@/timeline'
 
 interface TimelineHomeProps {
   selectedDate: Date

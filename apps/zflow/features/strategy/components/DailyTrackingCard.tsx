@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { Calendar, Target, CheckCircle, Star, TrendingUp, Clock, Sun, Moon, ExternalLink } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from './ui'
 import type { DailyStrategyData } from '../hooks/useDailyStrategy'
-import type { DayReflectionData } from '../../../hooks/timeline/useDayReflection'
+import type { DayReflectionData } from '@/timeline'
 
 interface DailyTrackingCardProps {
   onOpenDailyModal: (view: 'planning' | 'reflection') => void
