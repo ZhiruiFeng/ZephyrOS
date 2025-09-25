@@ -111,10 +111,19 @@ export interface UpdateDailyStrategyStatusRequest {
 
 export interface DailyStrategyQuery {
   date?: string
+  date_from?: string
+  date_to?: string
   timezone?: string
   strategy_type?: StrategyType
   status?: DailyStrategyStatus
   importance_level?: ImportanceLevel
+  planned_time_of_day?: PlannedTimeOfDay
+  timeline_item_type?: string
+  timeline_item_id?: string
+  season_id?: string
+  initiative_id?: string
+  search?: string
+  tags?: string
   include_timeline_item?: boolean
   include_season?: boolean
   include_initiative?: boolean
@@ -486,14 +495,23 @@ export async function linkExistingTaskToPriority(
 /**
  * Get daily strategy items grouped by type for a specific date
  */
-export async function getDailyStrategyByType(date: string, timezone?: string) {
+export async function getDailyStrategyByType(
+  date: string,
+  timezone?: string,
+  options?: {
+    seasonId?: string
+    initiativeId?: string
+  }
+) {
   // Use the detailed items endpoint instead of overview to ensure we get timeline item details
   const items = await getDailyStrategyItems({
     date: date,
     timezone: timezone,
     include_timeline_item: true,
     include_season: false,
-    include_initiative: false
+    include_initiative: false,
+    ...(options?.seasonId ? { season_id: options.seasonId } : {}),
+    ...(options?.initiativeId ? { initiative_id: options.initiativeId } : {}),
   })
 
   // Group items by strategy type

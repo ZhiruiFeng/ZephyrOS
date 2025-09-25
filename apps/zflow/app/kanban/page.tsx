@@ -184,14 +184,14 @@ export default function KanbanView() {
     isLongPressActiveRef.current = true
   }
 
-  const clearLongPressTimer = () => {
+  const clearLongPressTimer = useCallback(() => {
     if (longPressTimerRef.current) {
       window.clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
     }
-  }
+  }, [])
 
-  const cancelTouchDrag = () => {
+  const cancelTouchDrag = useCallback(() => {
     setTouchDraggingId(null)
     setTouchDragTitle('')
     setTouchPos(null)
@@ -199,7 +199,7 @@ export default function KanbanView() {
     isLongPressActiveRef.current = false
     startPosRef.current = null
     clearLongPressTimer()
-  }
+  }, [clearLongPressTimer])
 
   const onGlobalPointerMove = (e: PointerEvent) => {
     if (!isLongPressActiveRef.current) return
@@ -242,7 +242,7 @@ export default function KanbanView() {
       console.error('Failed to move task (touch):', err)
       alert(t.messages.taskUpdateFailed)
     }
-  }, [touchDraggingId, hoveredStatus, tasks, updateTask, t.messages.taskUpdateFailed, triggerCelebration])
+  }, [touchDraggingId, hoveredStatus, tasks, updateTask, t.messages.taskUpdateFailed, triggerCelebration, cancelTouchDrag])
 
   useEffect(() => {
     // Attach global listeners while dragging

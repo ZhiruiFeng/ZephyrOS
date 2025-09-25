@@ -117,18 +117,34 @@ export const subtasksApi = {
     parent_task_id: string;
     reordered_count: number;
   }> {
+    const requestBody = {
+      parent_task_id: parentTaskId,
+      subtask_orders: subtaskOrders
+    }
+
+    console.log('Reorder API request:', JSON.stringify(requestBody, null, 2))
+
     const response = await authenticatedFetch(`${API_BASE}/subtasks/reorder`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        parent_task_id: parentTaskId,
-        subtask_orders: subtaskOrders
-      }),
+      body: JSON.stringify(requestBody),
     })
-    if (!response.ok) throw new Error('Failed to reorder subtasks')
-    return response.json()
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Reorder API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      })
+      throw new Error(`Failed to reorder subtasks: ${response.status} ${response.statusText} - ${errorText}`)
+    }
+
+    const result = await response.json()
+    console.log('Reorder API response:', result)
+    return result
   },
 
   async update(subtaskId: string, updates: {

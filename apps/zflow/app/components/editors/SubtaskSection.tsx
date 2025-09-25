@@ -209,8 +209,9 @@ const SubtaskItem: React.FC<SubtaskItemProps & { dragHandleProps?: any }> = ({
             {...dragHandleProps?.attributes}
             {...dragHandleProps?.listeners}
             className="cursor-grab active:cursor-grabbing"
+            title="Drag to reorder"
           >
-            <GripVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
+            <GripVertical className="w-4 h-4 text-gray-400 opacity-30 group-hover:opacity-100 hover:text-gray-600 transition-all" />
           </div>
         )}
         
@@ -725,30 +726,56 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    if (active.id !== over?.id) {
-      const oldIndex = groupedSubtasks.findIndex(subtask => subtask.id === active.id)
-      const newIndex = groupedSubtasks.findIndex(subtask => subtask.id === over?.id)
+    if (!active.id || !over?.id || active.id === over.id) {
+      return
+    }
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        try {
-          // 准备重新排序的数据
-          const reorderData = groupedSubtasks.map((subtask, index) => ({
-            task_id: subtask.id,
-            new_order: index
-          }))
+    const oldIndex = groupedSubtasks.findIndex(subtask => subtask.id === active.id)
+    const newIndex = groupedSubtasks.findIndex(subtask => subtask.id === over.id)
 
-          // 交换位置
-          const newOrder = arrayMove(reorderData, oldIndex, newIndex)
+    if (oldIndex === -1 || newIndex === -1) {
+      console.warn('Invalid drag operation: subtask not found', { active: active.id, over: over.id })
+      return
+    }
 
-          // 调用API重新排序
-          await reorderSubtasks(taskId, newOrder)
-          
-          // 刷新数据
-          setTimeout(() => refresh(), 100)
-        } catch (error) {
-          console.error('Failed to reorder subtasks:', error)
-        }
-      }
+    // Optimistic update - update UI immediately
+    const reorderedSubtasks = arrayMove(groupedSubtasks, oldIndex, newIndex)
+
+    try {
+      // Map to the format expected by the API
+      const reorderData = reorderedSubtasks.map((subtask, index) => ({
+        task_id: subtask.id,
+        new_order: index
+      }))
+
+      console.log('Reordering subtasks:', {
+        parentTaskId: taskId,
+        activeId: active.id,
+        overId: over.id,
+        oldIndex,
+        newIndex,
+        totalSubtasks: groupedSubtasks.length,
+        reorderData: reorderData.slice(0, 5) // Log first 5 for debugging
+      })
+
+      // Call API to reorder - this will persist the change
+      const result = await reorderSubtasks(taskId, reorderData)
+      console.log('Reorder successful:', result)
+
+      // Refresh data to ensure consistency
+      setTimeout(() => refresh(), 100)
+    } catch (error) {
+      console.error('Failed to reorder subtasks:', error)
+
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      console.error('Detailed error:', errorMessage)
+
+      // Refresh data to revert optimistic update on error
+      setTimeout(() => refresh(), 100)
+
+      // TODO: Show toast notification to user about the error
+      alert(`Failed to reorder subtasks: ${errorMessage}`)
     }
   }
 

@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Textarea, Badge } fro
 import { useDailyStrategy } from '../../../../hooks/useDailyStrategy'
 import { TaskSelector } from './TaskSelector'
 import { TaskMemory } from '../../../../lib/api/api-base'
+import type { DailyStrategyItemWithDetails, DailyStrategyStatus } from '../../../../lib/api/daily-strategy-api'
 
 interface DailyPlanningModalProps {
   isOpen: boolean
@@ -36,6 +37,17 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
   const [editing, setEditing] = useState<EditingState | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showTaskSelector, setShowTaskSelector] = useState<{ index: number } | null>(null)
+
+  const existingPriorities = useMemo(
+    () => data.priorities.filter(item => Boolean(item?.timeline_item?.title?.trim() || item?.title?.trim())),
+    [data.priorities]
+  )
+
+  const hasExistingPlan = Boolean(
+    (data.intention && (data.intention.timeline_item?.title?.trim() || data.intention.title?.trim())) ||
+    (data.adventure && (data.adventure.timeline_item?.title?.trim() || data.adventure.title?.trim())) ||
+    existingPriorities.length > 0
+  )
 
   // Navigation functions
   const goToPreviousDay = () => {
@@ -159,18 +171,62 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
   }
 
   // Render item component
+  const formatLabel = (label?: string | null) => {
+    if (!label) return ''
+    return label
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  const statusBadgeStyles: Record<DailyStrategyStatus, string> = {
+    planned: 'border-blue-200 bg-blue-50 text-blue-700',
+    in_progress: 'border-amber-200 bg-amber-50 text-amber-700',
+    completed: 'border-green-200 bg-green-50 text-green-700',
+    deferred: 'border-purple-200 bg-purple-50 text-purple-700',
+    cancelled: 'border-rose-200 bg-rose-50 text-rose-700',
+  }
+
   const renderItem = (
     title: string,
     type: 'intention' | 'adventure' | 'priority',
     icon: React.ReactNode,
     color: string,
-    item?: any,
+    item?: DailyStrategyItemWithDetails | null,
     index?: number,
     placeholder?: string
   ) => {
     const isEditing = editing?.type === type && editing?.index === index
-    const hasContent = item && item.title
-    
+    const currentItem = item ?? null
+    const itemTitle = currentItem?.timeline_item?.title?.trim() || currentItem?.title?.trim() || ''
+    const itemDescription = currentItem?.timeline_item?.description?.trim() || currentItem?.description?.trim() || ''
+    const hasContent = Boolean(itemTitle || itemDescription)
+    const statusClass = currentItem?.status ? statusBadgeStyles[currentItem.status] : undefined
+
+    const metadataBadges = [
+      currentItem?.importance_level ? {
+        key: 'importance',
+        label: `${formatLabel(currentItem.importance_level)} importance`,
+        className: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+      } : null,
+      currentItem?.planned_time_of_day ? {
+        key: 'timeOfDay',
+        label: formatLabel(currentItem.planned_time_of_day),
+        className: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+      } : null,
+      typeof currentItem?.required_energy_level === 'number' ? {
+        key: 'energy',
+        label: `Energy ${currentItem.required_energy_level}/10`,
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      } : null,
+      typeof currentItem?.planned_duration_minutes === 'number' ? {
+        key: 'duration',
+        label: `${currentItem.planned_duration_minutes} min planned`,
+        className: 'border-slate-200 bg-slate-50 text-slate-700',
+      } : null,
+    ].filter(Boolean) as Array<{ key: string; label: string; className?: string }>
+
     return (
       <Card className={`border-l-4 border-l-${color} hover:shadow-md transition-shadow`}>
         <CardHeader className="pb-3">
@@ -178,9 +234,12 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
             <div className="flex items-center gap-2">
               {icon}
               <span className="text-lg">{title}</span>
-              {item?.status === 'completed' && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  Completed
+              {currentItem?.status && (
+                <Badge 
+                  variant="outline" 
+                  className={`whitespace-nowrap text-xs font-medium ${statusClass ?? 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                >
+                  {formatLabel(currentItem.status)}
                 </Badge>
               )}
             </div>
@@ -246,26 +305,39 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
                 <h3
                   className={`font-medium text-gray-900 flex-1 ${item.timeline_item_id ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
                   onClick={() => {
-                    if (item.timeline_item_id) {
-                      window.open(`/focus/work-mode?taskId=${item.timeline_item_id}&from=strategy`, '_blank')
+                    if (currentItem?.timeline_item_id) {
+                      window.open(`/focus/work-mode?taskId=${currentItem.timeline_item_id}&from=strategy`, '_blank')
                     }
                   }}
-                  title={item.timeline_item_id ? 'Click to open task in focus mode' : ''}
+                  title={currentItem?.timeline_item_id ? 'Click to open task in focus mode' : ''}
                 >
-                  {item.timeline_item?.title || item.title}
+                  {itemTitle}
                 </h3>
-                {item.timeline_item_id && (
+                {currentItem?.timeline_item_id && (
                   <ExternalLink className="h-4 w-4 text-gray-400 hover:text-blue-600 cursor-pointer" />
                 )}
               </div>
-              {(item.timeline_item?.description || item.description) && (
-                <p className="text-gray-600 text-sm whitespace-pre-wrap">{item.timeline_item?.description || item.description}</p>
+              {itemDescription && (
+                <p className="text-gray-600 text-sm whitespace-pre-wrap">{itemDescription}</p>
               )}
-              {item.status !== 'completed' && (
+              {metadataBadges.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {metadataBadges.map(badge => (
+                    <Badge
+                      key={badge.key}
+                      variant="outline"
+                      className={`text-xs font-medium ${badge.className ?? 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                    >
+                      {badge.label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {currentItem?.status !== 'completed' && currentItem && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => markCompleted(item.id)}
+                  onClick={() => markCompleted(currentItem.id)}
                   className="mt-2"
                 >
                   <Check className="h-4 w-4 mr-1" />
@@ -284,9 +356,9 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
                 }
               }}
             >
-              {type === 'priority' 
-                ? (placeholder || 'Click to add task or link existing task...')
-                : (placeholder || `Click to add your ${title.toLowerCase()}...`)
+              {type === 'priority'
+                ? (placeholder || 'Map the priority that already exists for this day or capture a new one.')
+                : (placeholder || `Capture the ${title.toLowerCase()} that is already planned for this date.`)
               }
             </div>
           )}
@@ -348,6 +420,24 @@ export function DailyPlanningModal({ isOpen, onClose, seasonId }: DailyPlanningM
           </div>
         ) : (
           <div className="space-y-6">
+            {hasExistingPlan ? (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+                <p className="font-medium">Plan on record for {formatDisplayDate(selectedDate)}.</p>
+                <p className="text-sm mt-1 text-blue-700">
+                  {[
+                    data.intention && 'Intention captured',
+                    data.adventure && 'Adventure set',
+                    existingPriorities.length ? `${existingPriorities.length} priority ${existingPriorities.length === 1 ? 'task' : 'tasks'}` : null,
+                  ].filter(Boolean).join(' • ')}
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-slate-700">
+                <p className="font-medium">No daily plan captured for this date yet.</p>
+                <p className="text-sm mt-1">Record your intention, pick an adventure, and surface the priorities that will keep you on track.</p>
+              </div>
+            )}
+
             {/* Daily Intention */}
             {renderItem(
               'Daily Intention',

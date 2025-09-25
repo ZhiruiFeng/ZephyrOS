@@ -26,7 +26,10 @@ export function TaskPromotionModal({ isOpen, onClose, seasonId }: TaskPromotionM
   const [loadingTasks, setLoadingTasks] = useState(false)
 
   // Get already linked task IDs to filter them out
-  const linkedTaskIds = new Set(myTasks.map(task => task.timelineTaskId).filter(Boolean))
+  const linkedTaskIds = React.useMemo(
+    () => new Set(myTasks.map(task => task.timelineTaskId).filter(Boolean)),
+    [myTasks]
+  )
 
   const loadTimelineTasks = useCallback(async () => {
     setLoadingTasks(true)

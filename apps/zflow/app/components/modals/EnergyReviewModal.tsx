@@ -87,10 +87,16 @@ export default function EnergyReviewModal({ open, entry, onClose, skipFetchDayEn
     return () => ro.disconnect()
   }, [isMobile])
 
-  const xForIdx = (i: number) => pad.left + (i * plotW) / 71
-  const yForEnergy = (e: number) => pad.top + (1 - (e - 1) / 9) * plotH
-  const energyForY = (y: number) => Math.max(1, Math.min(10, Math.round(10 - ((y - pad.top) / Math.max(plotH, 1)) * 9)))
-  const idxForX = (x: number) => Math.max(0, Math.min(71, Math.round(((x - pad.left) / Math.max(plotW, 1)) * 71)))
+  const xForIdx = React.useCallback((i: number) => pad.left + (i * plotW) / 71, [pad.left, plotW])
+  const yForEnergy = React.useCallback((e: number) => pad.top + (1 - (e - 1) / 9) * plotH, [pad.top, plotH])
+  const energyForY = React.useCallback(
+    (y: number) => Math.max(1, Math.min(10, Math.round(10 - ((y - pad.top) / Math.max(plotH, 1)) * 9))),
+    [pad.top, plotH]
+  )
+  const idxForX = React.useCallback(
+    (x: number) => Math.max(0, Math.min(71, Math.round(((x - pad.left) / Math.max(plotW, 1)) * 71))),
+    [pad.left, plotW]
+  )
 
   const hourMarks = React.useMemo(() => Array.from({ length: 25 }, (_, h) => h), [])
   const points = React.useMemo(() => energyData.curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [energyData.curve, xForIdx, yForEnergy])
@@ -695,5 +701,4 @@ function canEditIdxWithFocused(idx: number, currentTimeInfo: any, focused: TimeE
   }
   return inRange
 }
-
 

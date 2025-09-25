@@ -76,22 +76,26 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     return () => ro.disconnect()
   }, [isMobile, containerRef])
 
-  const xForIdx = (i: number) => pad.left + (i * plotW) / 71
-  const yForEnergy = (e: number) => pad.top + (1 - (e - 1) / 9) * plotH
+  const xForIdx = React.useCallback((i: number) => pad.left + (i * plotW) / 71, [pad.left, plotW])
+  const yForEnergy = React.useCallback((e: number) => pad.top + (1 - (e - 1) / 9) * plotH, [pad.top, plotH])
 
   const hourMarks = React.useMemo(() => Array.from({ length: 25 }, (_, h) => h), [])
   const points = React.useMemo(() => energyData.curve.map((e, i) => ({ x: xForIdx(i), y: yForEnergy(Number(e) || 5) })), [energyData.curve, xForIdx, yForEnergy])
   const smoothPath = React.useMemo(() => buildSmoothPath(points, 0.8), [points])
 
   // Helper functions
-  const energyForY = (y: number, padTop: number, plotHeight: number) => {
-    return Math.max(1, Math.min(10, Math.round(10 - ((y - padTop) / Math.max(plotHeight, 1)) * 9)))
-  }
+  const energyForY = React.useCallback(
+    (y: number) => Math.max(1, Math.min(10, Math.round(10 - ((y - pad.top) / Math.max(plotH, 1)) * 9))),
+    [pad.top, plotH]
+  )
   
-  const idxForX = (x: number, padLeft: number, plotWidth: number) => {
-    const r = Math.round(((x - padLeft) / Math.max(plotWidth, 1)) * 71)
-    return Math.max(0, Math.min(71, r))
-  }
+  const idxForX = React.useCallback(
+    (x: number) => {
+      const r = Math.round(((x - pad.left) / Math.max(plotW, 1)) * 71)
+      return Math.max(0, Math.min(71, r))
+    },
+    [pad.left, plotW]
+  )
 
   function handlePointerDown(e: React.PointerEvent<SVGRectElement>) {
     const svg = (e.currentTarget as SVGRectElement).ownerSVGElement!
@@ -100,7 +104,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     const ctm = svg.getScreenCTM()
     if (!ctm) return
     const p = pt.matrixTransform(ctm.inverse())
-    const idx = idxForX(p.x, pad.left, plotW)
+    const idx = idxForX(p.x)
     if (!canEdit(idx, currentTimeInfo, focusedTimeEntry, (entry: any) => {
       const startDate = new Date(entry.start_at)
       const endDate = entry.end_at ? new Date(entry.end_at) : new Date()
@@ -112,7 +116,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     })) return
     dragging.current = idx
     ;(e.currentTarget as any).setPointerCapture?.(e.pointerId)
-    const val = Math.round(energyForY(p.y, pad.top, plotH))
+    const val = Math.round(energyForY(p.y))
     energyData.updateCurve(idx, val)
     didEditDuringDrag.current = true
   }
@@ -125,7 +129,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
     const ctm = svg.getScreenCTM()
     if (!ctm) return
     const p = pt.matrixTransform(ctm.inverse())
-    const idx = idxForX(p.x, pad.left, plotW)
+    const idx = idxForX(p.x)
     if (!canEdit(idx, currentTimeInfo, focusedTimeEntry, (entry: any) => {
       const startDate = new Date(entry.start_at)
       const endDate = entry.end_at ? new Date(entry.end_at) : new Date()
@@ -135,7 +139,7 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
       const endSegment = Math.min(71, endMinutes === 0 ? 71 : Math.floor((endMinutes - 1) / 20))
       return { startSegment, endSegment }
     })) return
-    const val = Math.round(energyForY(p.y, pad.top, plotH))
+    const val = Math.round(energyForY(p.y))
     energyData.updateCurve(idx, val)
     didEditDuringDrag.current = true
   }
@@ -278,8 +282,8 @@ export default function EnergySpectrum({ date, now, onSaved }: EnergySpectrumPro
               handlePointerUp={handlePointerUp}
               xForIdx={xForIdx}
               yForEnergy={yForEnergy}
-              energyForY={(y: number) => energyForY(y, pad.top, plotH)}
-              idxForX={(x: number) => idxForX(x, pad.left, plotW)}
+              energyForY={energyForY}
+              idxForX={idxForX}
               t={t}
             />
           </div>

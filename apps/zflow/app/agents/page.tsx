@@ -26,6 +26,7 @@ export default function AgentsPage() {
   const [sseReady, setSseReady] = useState(false)
   const [interfaceMode, setInterfaceMode] = useState<'text' | 'voice'>('text')
   const sseReadyRef = useRef(false)
+  const streamEndedNormallyRef = useRef(false)
   // Stable EventSource holder (avoid re-renders on connection changes)
   const eventSourceRef = useRef<EventSource | null>(null)
   // Reconnect/backoff state
@@ -50,14 +51,29 @@ export default function AgentsPage() {
     refreshHistoryRef.current?.()
   })
 
+  const {
+    currentSessionId,
+    currentMessages,
+    isActive,
+    viewingHistoricalConversation,
+    needsRedisSession,
+    addMessage,
+    updateMessage,
+    setCurrentSessionId,
+  } = sessionManager
+
+  useEffect(() => {
+    streamEndedNormallyRef.current = streamEndedNormally
+  }, [streamEndedNormally])
+
   // Sync messages into a ref map for up-to-date lookups inside event handlers
   useEffect(() => {
     const map = new Map<string, Message>()
-    for (const m of sessionManager.currentMessages) {
-      map.set(m.id, m)
+    for (const message of currentMessages) {
+      map.set(message.id, message)
     }
     messagesMapRef.current = map
-  }, [sessionManager.currentMessages])
+  }, [currentMessages])
 
   // Load available agents
   useEffect(() => {
@@ -113,6 +129,7 @@ export default function AgentsPage() {
           const data = await response.json()
           sessionManager.setCurrentSessionId(data.sessionId)
           setStreamEndedNormally(false) // Reset for new session
+          streamEndedNormallyRef.current = false
           setLastUserId(user.id)
           sessionCreatedKeyRef.current = key
         }
@@ -128,7 +145,7 @@ export default function AgentsPage() {
 
   // Set up SSE connection when session is created
   useEffect(() => {
-    if (!sessionManager.currentSessionId || !user || !sessionManager.isActive) return
+    if (!currentSessionId || !user || !isActive) return
 
     // Add a small delay to ensure session is fully created
     const timer = setTimeout(() => {
@@ -141,27 +158,28 @@ export default function AgentsPage() {
 
         // Reset stream end flag for new connection
         setStreamEndedNormally(false)
+        streamEndedNormallyRef.current = false
         
         // Clear processing messages for new session
         processingMessagesRef.current.clear()
 
         // For historical conversations, try to restore session if it doesn't exist in Redis
         try {
-          if (verifiedSessionIdRef.current !== sessionManager.currentSessionId) {
-            const sessionResponse = await fetch(`/api/agents/sessions?sessionId=${sessionManager.currentSessionId}`)
+          if (verifiedSessionIdRef.current !== currentSessionId) {
+            const sessionResponse = await fetch(`/api/agents/sessions?sessionId=${currentSessionId}`)
             if (!sessionResponse.ok) {
               // If session doesn't exist and we're viewing a historical conversation, restore it
-              if (sessionManager.viewingHistoricalConversation || sessionManager.needsRedisSession) {
+              if (viewingHistoricalConversation || needsRedisSession) {
                 console.log('🔄 Restoring historical session to Redis for SSE connection')
                 try {
                   const restoreResponse = await fetch('/api/agents/sessions/restore', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      sessionId: sessionManager.currentSessionId,
+                      sessionId: currentSessionId,
                       userId: user?.id,
                       agentId: selectedAgent,
-                      messages: sessionManager.currentMessages.map(msg => ({
+                      messages: Array.from(messagesMapRef.current.values()).map(msg => ({
                         id: msg.id,
                         type: msg.type,
                         content: msg.content,
@@ -178,7 +196,7 @@ export default function AgentsPage() {
                   } else {
                     console.log('✅ Session restored to Redis for SSE connection')
                     // Clear the restoration flag since session is now in Redis
-                    sessionManager.setCurrentSessionId(sessionManager.currentSessionId)
+                    setCurrentSessionId(currentSessionId)
                   }
                 } catch (restoreError) {
                   console.warn('Error restoring session for SSE:', restoreError)
@@ -190,7 +208,7 @@ export default function AgentsPage() {
               }
             }
             // Mark this sessionId as verified to avoid re-checks
-            verifiedSessionIdRef.current = sessionManager.currentSessionId
+            verifiedSessionIdRef.current = currentSessionId
           }
         } catch (error) {
           console.error('Failed to verify session existence:', error)
@@ -198,7 +216,7 @@ export default function AgentsPage() {
         }
 
         try {
-          const newEventSource = new EventSource(`/api/agents/stream?sessionId=${sessionManager.currentSessionId}`)
+          const newEventSource = new EventSource(`/api/agents/stream?sessionId=${currentSessionId}`)
           eventSourceRef.current = newEventSource
           
           newEventSource.onopen = () => {
@@ -233,7 +251,7 @@ export default function AgentsPage() {
                         streaming: true
                       }
                       messagesMapRef.current.set(data.messageId, newMsg)
-                      sessionManager.addMessage(newMsg)
+                      addMessage(newMsg)
                     }
                   }
                   break
@@ -247,7 +265,7 @@ export default function AgentsPage() {
                     const newContent = existingMessage.content + (data.content || '')
                     const updated: Message = { ...existingMessage, content: newContent, streaming: true }
                     messagesMapRef.current.set(existingMessage.id, updated)
-                    sessionManager.updateMessage(existingMessage.id, { content: newContent, streaming: true })
+                    updateMessage(existingMessage.id, { content: newContent, streaming: true })
                   } else if (data.messageId && !processingMessagesRef.current.has(data.messageId)) {
                     // Create message if it doesn't exist (fallback for missing start event)
                     processingMessagesRef.current.add(data.messageId)
@@ -260,7 +278,7 @@ export default function AgentsPage() {
                       streaming: true
                     }
                     messagesMapRef.current.set(data.messageId, newMsg)
-                    sessionManager.addMessage(newMsg)
+                    addMessage(newMsg)
                   }
                   break
                 }
@@ -271,7 +289,7 @@ export default function AgentsPage() {
                     const toolCalls = targetMessage.toolCalls || []
                     const updated: Message = { ...targetMessage, toolCalls: [...toolCalls, data.toolCall] }
                     messagesMapRef.current.set(targetMessage.id, updated)
-                    sessionManager.updateMessage(targetMessage.id, { toolCalls: updated.toolCalls })
+                    updateMessage(targetMessage.id, { toolCalls: updated.toolCalls })
                   }
                   break
                 }
@@ -282,7 +300,7 @@ export default function AgentsPage() {
                     const updatedToolCalls = messageWithTools.toolCalls.map((tc: any) => tc.id === data.toolCall.id ? data.toolCall : tc)
                     const updated: Message = { ...messageWithTools, toolCalls: updatedToolCalls }
                     messagesMapRef.current.set(messageWithTools.id, updated)
-                    sessionManager.updateMessage(messageWithTools.id, { toolCalls: updatedToolCalls })
+                    updateMessage(messageWithTools.id, { toolCalls: updatedToolCalls })
                   }
                   break
                 }
@@ -290,6 +308,7 @@ export default function AgentsPage() {
                 case 'end': {
                   setIsStreaming(false)
                   setStreamEndedNormally(true)
+                  streamEndedNormallyRef.current = true
                   // Ensure the message exists before updating it
                   const endingMessage = data.messageId ? messagesMapRef.current.get(data.messageId) : undefined
                   if (endingMessage) {
@@ -299,7 +318,7 @@ export default function AgentsPage() {
                       : endingMessage.content
                     const updated: Message = { ...endingMessage, streaming: false, content: hasContent ? endingMessage.content : nextContent }
                     messagesMapRef.current.set(endingMessage.id, updated)
-                    sessionManager.updateMessage(endingMessage.id, { 
+                    updateMessage(endingMessage.id, { 
                       streaming: false,
                       // If we missed token events (e.g., subscriber attached late), use final content from 'end'
                       content: updated.content
@@ -316,7 +335,7 @@ export default function AgentsPage() {
                       streaming: false
                     }
                     messagesMapRef.current.set(data.messageId, newMsg)
-                    sessionManager.addMessage(newMsg)
+                    addMessage(newMsg)
                   }
                   // Clean up processing tracker
                   if (data.messageId) {
@@ -328,7 +347,7 @@ export default function AgentsPage() {
                 case 'error': {
                   setIsStreaming(false)
                   console.error('Stream error:', data.error)
-                  sessionManager.addMessage({
+                  addMessage({
                     id: Date.now().toString(),
                     type: 'system' as const,
                     content: `Error: ${data.error}`,
@@ -364,7 +383,7 @@ export default function AgentsPage() {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
             reconnectTimerRef.current = setTimeout(() => {
               // Only reconnect if session/user are still valid and stream didn't end normally
-              if (sessionManager.currentSessionId && user && !streamEndedNormally) {
+              if (currentSessionId && user && !streamEndedNormallyRef.current) {
                 connectSSE()
               }
             }, delay)
@@ -394,7 +413,7 @@ export default function AgentsPage() {
       setSseReady(false)
       sseReadyRef.current = false
     }
-  }, [sessionManager.currentSessionId, user?.id, sessionManager.isActive])
+  }, [currentSessionId, user, isActive, selectedAgent, viewingHistoricalConversation, needsRedisSession, addMessage, updateMessage, setCurrentSessionId])
 
   // Send message handler
   const handleSendMessage = async (message: string) => {
@@ -463,6 +482,7 @@ export default function AgentsPage() {
 
     // Reset stream end flag for new message
     setStreamEndedNormally(false)
+    streamEndedNormallyRef.current = false
 
     // Ensure SSE is connected to avoid missing early tokens in memory mode
     if (!sseReadyRef.current) {
