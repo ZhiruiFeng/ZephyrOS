@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Mic, Square, RotateCcw, Upload } from "lucide-react";
-import { useAudioRecorder } from "../../../hooks/useAudioRecorder";
+import { useAudioRecorder } from "../../../hooks/media/useAudioRecorder";
 import { useTranslation } from "../../../contexts/LanguageContext";
 import { useSTTConfig } from "../../../contexts/STTConfigContext";
 

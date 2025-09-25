@@ -1,9 +1,9 @@
 import useSWR from 'swr'
-import { strategyApi } from '../../api/strategy'
-import { tasksApi, aiTasksApi } from '../../api'
-import type { ApiStrategyTask } from '../../api/strategy'
-import type { UseStrategyTasksReturn, StrategyTask } from '../../types/strategy'
-import type { Task } from '../../../app/types/task'
+import { strategyApi } from '../../lib/api/strategy'
+import { tasksApi, aiTasksApi } from '../../lib/api'
+import type { ApiStrategyTask } from '../../lib/api/strategy'
+import type { UseStrategyTasksReturn, StrategyTask } from '../../lib/types/strategy'
+import type { Task } from '../../app/types/task'
 
 // =====================================================
 // API to Frontend Type Adapter

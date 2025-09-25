@@ -3,9 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTasks, useUpdateTask } from '../../hooks/useMemories'
-import { useCategories } from '../../hooks/useCategories'
-import { useTimer } from '../../hooks/useTimer'
+import { useTasks, useUpdateTask } from '../../hooks/memory/useMemories'
+import { useCategories } from '../../hooks/ui/useCategories'
+import { useTimer } from '../../hooks/activities/useTimer'
 import { usePrefs } from '../../contexts/PrefsContext'
 import { useAuth } from '../../contexts/AuthContext'
 import LoginPage from '../components/auth/LoginPage'
@@ -23,7 +23,7 @@ import {
 import { useTranslation } from '../../contexts/LanguageContext'
 import EnergyReviewModal from '../components/modals/EnergyReviewModal'
 import { CelebrationAnimation } from '../components/ui/CelebrationAnimation'
-import { useCelebration } from '../../hooks/useCelebration'
+import { useCelebration } from '../../hooks/ui/useCelebration'
 
 type StatusKey = TaskContent['status']
 

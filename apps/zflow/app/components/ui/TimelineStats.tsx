@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Clock, Tag, FolderOpen, TrendingUp } from 'lucide-react'
-import { TimelineData } from '@/hooks/useTimeline'
+import { TimelineData } from '@/hooks/timeline/useTimeline'
 
 interface TimelineStatsProps {
   timelineData: TimelineData

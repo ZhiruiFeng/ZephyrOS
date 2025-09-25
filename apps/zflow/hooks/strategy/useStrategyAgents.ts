@@ -1,10 +1,10 @@
 import useSWR from 'swr'
-import { authJsonFetcher } from '../../utils/auth-fetcher'
-import { adaptAgentToStrategy } from '../../adapters/strategy'
-import { ZMEMORY_API_BASE } from '../../api/zmemory-api-base'
-import { authManager } from '../../auth-manager'
-import type { UseStrategyAgentsReturn, Agent } from '../../types/strategy'
-import type { Task } from '../../../app/types/task'
+import { authJsonFetcher } from '../../lib/utils/auth-fetcher'
+import { adaptAgentToStrategy } from '../../lib/adapters/strategy'
+import { ZMEMORY_API_BASE } from '../../lib/api/zmemory-api-base'
+import { authManager } from '../../lib/auth-manager'
+import type { UseStrategyAgentsReturn, Agent } from '../../lib/types/strategy'
+import type { Task } from '../../app/types/task'
 
 const ZFLOW_API_BASE = '/api'
 

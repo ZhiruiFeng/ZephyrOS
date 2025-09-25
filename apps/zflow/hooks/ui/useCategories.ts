@@ -1,8 +1,8 @@
 import useSWR, { mutate } from 'swr'
-import { categoriesApi } from '../lib/api'
-import { Category } from '../app/types/task'
-import { categoriesConfig } from '../lib/swr-config'
-import { useAuth } from '../contexts/AuthContext'
+import { categoriesApi } from '../../lib/api'
+import { Category } from '../../app/types/task'
+import { categoriesConfig } from '../../lib/swr-config'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Categories cache key
 const CATEGORIES_KEY = 'categories'

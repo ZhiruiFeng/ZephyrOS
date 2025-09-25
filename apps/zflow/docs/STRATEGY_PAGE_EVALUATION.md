@@ -58,7 +58,7 @@ All critical Phase 1 enhancements have been successfully implemented:
    - Added keyboard shortcut system with help modal
    - Optimized performance with React.memo for all major components
 
-2. **Strategy Hooks** (`/lib/hooks/strategy/`)
+2. **Strategy Hooks** (`/hooks/`)
    - `useInitiatives.ts`: Mock data integration with fallback error handling
    - `useStrategyTasks.ts`: Comprehensive task management with real-time filtering
    - `useStrategyAgents.ts`: AI agent delegation with workload tracking
@@ -79,7 +79,7 @@ All critical Phase 1 enhancements have been successfully implemented:
 
 **Location**: `/apps/zflow/app/strategy/page.tsx`
 **Type System**: `/apps/zflow/lib/types/strategy.ts`
-**Data Layer**: `/apps/zflow/lib/hooks/strategy/`
+**Data Layer**: `/apps/zflow/hooks/`
 **Mock Engine**: `/apps/zflow/lib/mocks/strategy.ts`
 
 ### Core Features Implemented
@@ -514,7 +514,7 @@ With the successful completion of Phase 1 UX improvements, the strategy page now
 
 ### 🔄 **Areas Requiring Real Data Integration**
 
-1. **Strategy Hooks** (`/lib/hooks/strategy/`)
+1. **Strategy Hooks** (`/hooks/`)
    - Currently using mock data with API fallbacks
    - Need transition to real API endpoints with robust error handling
 
@@ -675,7 +675,7 @@ CREATE TABLE strategy_agent_assignments (
 1. **Update useInitiatives Hook**
 
 ```typescript
-// lib/hooks/strategy/useInitiatives.ts
+// hooks/useInitiatives.ts
 export function useInitiatives(seasonId?: string): UseInitiativesReturn {
   const { user } = useAuth()
 
@@ -750,7 +750,7 @@ export default function StrategyPage() {
 **Implementation:**
 
 ```typescript
-// lib/hooks/strategy/useRealTimeStrategy.ts
+// hooks/useRealTimeStrategy.ts
 export function useRealTimeStrategy() {
   const { user } = useAuth()
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -792,7 +792,7 @@ export function useRealTimeStrategy() {
 **Progressive Analytics Implementation:**
 
 ```typescript
-// lib/hooks/strategy/useStrategyAnalytics.ts
+// hooks/useStrategyAnalytics.ts
 export function useStrategyAnalytics(seasonId?: string) {
   const { data: analytics } = useSWR(
     `/api/strategy/analytics${seasonId ? `?season_id=${seasonId}` : ''}`,

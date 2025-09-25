@@ -1,5 +1,5 @@
 import useSWR, { mutate } from 'swr'
-import { apiClient } from '../lib/api'
+import { apiClient } from '../../lib/api'
 
 // Hook to fetch all activities
 export function useActivities(

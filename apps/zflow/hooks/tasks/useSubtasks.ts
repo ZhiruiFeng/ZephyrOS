@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import useSWR, { mutate } from 'swr'
-import { subtasksApi, TaskMemory } from '../lib/api'
-import { Task } from '../app/types/task'
+import { subtasksApi, TaskMemory } from '../../lib/api'
+import { Task } from '../../app/types/task'
 
 export interface SubtaskTreeData {
   task: TaskMemory;

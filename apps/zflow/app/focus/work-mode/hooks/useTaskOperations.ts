@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { TaskMemory } from '../../../../lib/api'
-import { useUpdateTask } from '../../../../hooks/useMemories'
-import { useAutoSave } from '../../../../hooks/useAutoSave'
-import { useTimer } from '../../../../hooks/useTimer'
+import { useUpdateTask } from '../../../../hooks/memory/useMemories'
+import { useAutoSave } from '../../../../hooks/activities/useAutoSave'
+import { useTimer } from '../../../../hooks/activities/useTimer'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import { TaskWithCategory } from '../components/TaskSidebar'
 

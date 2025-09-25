@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { 
   dailyStrategyApi, 
   DailyStrategyItemWithDetails,
-} from '../lib/api/daily-strategy-api'
-import { memoriesApi } from '../lib/api/memories-api'
-import { tasksApi } from '../lib/api'
-import { ReflectionType } from '../app/strategy/components/modals/ReflectionTypeSelector'
+} from '../../lib/api/daily-strategy-api'
+import { memoriesApi } from '../../lib/api/memories-api'
+import { tasksApi } from '../../lib/api'
+import { ReflectionType } from '../../app/strategy/components/modals/ReflectionTypeSelector'
 
 export interface DayReflectionData {
   reflections: DailyStrategyItemWithDetails[]

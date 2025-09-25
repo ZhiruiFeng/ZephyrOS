@@ -1,6 +1,6 @@
 import useSWR, { mutate } from 'swr';
-import { apiClient, TaskMemory, CreateTaskRequest, UpdateTaskRequest } from '../lib/api';
-import { tasksConfig, taskDetailsConfig } from '../lib/swr-config';
+import { apiClient, TaskMemory, CreateTaskRequest, UpdateTaskRequest } from '../../lib/api';
+import { tasksConfig, taskDetailsConfig } from '../../lib/swr-config';
 
 // Hook to get memory list
 export function useTasks(params?: Parameters<typeof apiClient.getTasks>[0] | null) {

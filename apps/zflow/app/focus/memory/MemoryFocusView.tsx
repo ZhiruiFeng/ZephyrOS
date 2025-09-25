@@ -8,8 +8,8 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { Memory } from '../../types/memory'
 import { memoriesApi } from '../../../lib/api/memories-api'
-import { useAutoSave } from '../../../hooks/useAutoSave'
-import { useCategories } from '../../../hooks/useCategories'
+import { useAutoSave } from '../../../hooks/activities/useAutoSave'
+import { useCategories } from '../../../hooks/ui/useCategories'
 
 function formatDateTime(ts?: string | null) {
   if (!ts) return '—'

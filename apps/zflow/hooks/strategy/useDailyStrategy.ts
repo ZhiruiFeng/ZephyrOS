@@ -4,9 +4,9 @@ import {
   DailyStrategyItemWithDetails, 
   CreateDailyStrategyRequest,
   UpdateDailyStrategyRequest 
-} from '../lib/api/daily-strategy-api'
-import { memoriesApi } from '../lib/api/memories-api'
-import { tasksApi, TaskMemory } from '../lib/api'
+} from '../../lib/api/daily-strategy-api'
+import { memoriesApi } from '../../lib/api/memories-api'
+import { tasksApi, TaskMemory } from '../../lib/api'
 
 export interface DailyStrategyData {
   intention: DailyStrategyItemWithDetails | null

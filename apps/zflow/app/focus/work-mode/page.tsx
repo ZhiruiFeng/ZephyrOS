@@ -1,8 +1,8 @@
 'use client'
 
 import React, { Suspense, useEffect, useCallback, startTransition, useState } from 'react'
-import { useTasks } from '../../../hooks/useMemories'
-import { useCategories } from '../../../hooks/useCategories'
+import { useTasks } from '../../../hooks/memory/useMemories'
+import { useCategories } from '../../../hooks/ui/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import LoginPage from '../../components/auth/LoginPage'
 import { X } from 'lucide-react'
@@ -10,11 +10,11 @@ import SubtaskSection from '../../components/editors/SubtaskSection'
 import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
 import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
 import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
-import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/useMemoryAnchors'
+import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/memory/useMemoryAnchors'
 import eventBus from '../../core/events/event-bus'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { CelebrationAnimation } from '../../components/ui/CelebrationAnimation'
-import { useCelebration } from '../../../hooks/useCelebration'
+import { useCelebration } from '../../../hooks/ui/useCelebration'
 
 // Import modular components
 import TaskSidebar from './components/TaskSidebar'
@@ -27,9 +27,9 @@ import { Message } from './components/ChatMessage'
 import { useWorkModeState } from './hooks/useWorkModeState'
 
 // Import hooks directly
-import { useUpdateTask } from '../../../hooks/useMemories'
-import { useTimer } from '../../../hooks/useTimer'
-import { useAutoSave } from '../../../hooks/useAutoSave'
+import { useUpdateTask } from '../../../hooks/memory/useMemories'
+import { useTimer } from '../../../hooks/activities/useTimer'
+import { useAutoSave } from '../../../hooks/activities/useAutoSave'
 
 // Create a simplified task operations hook that includes auto-save internally
 function useTaskOperationsWithAutoSave({

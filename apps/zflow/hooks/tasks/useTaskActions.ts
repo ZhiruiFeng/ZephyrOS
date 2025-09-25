@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { TaskMemory, TaskContent } from '../lib/api'
-import { useCreateTask, useUpdateTask, useDeleteTask } from './useMemories'
+import { TaskMemory, TaskContent } from '../../lib/api'
+import { useCreateTask, useUpdateTask, useDeleteTask } from '../memory/useMemories'
 
 interface UseTaskActionsProps {
   t: any // translations

@@ -1,12 +1,12 @@
 import useSWR from 'swr'
 import { useState, useCallback } from 'react'
-import { narrativeApiClient } from '../lib/api/narrative-api'
+import { narrativeApiClient } from '../../lib/api/narrative-api'
 import type {
   Episode,
   CreateEpisodeRequest,
   UpdateEpisodeRequest,
   UseEpisodesReturn
-} from '../types/narrative'
+} from '../../types/narrative'
 
 // =====================================================
 // Custom hook for managing episodes

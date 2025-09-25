@@ -1,6 +1,6 @@
-import { adaptSeasonToStrategy } from '../../adapters/strategy'
-import type { UseStrategySeasonReturn } from '../../types/strategy'
-import type { Season } from '../../../../zmemory/types/narrative'
+import { adaptSeasonToStrategy } from '../../lib/adapters/strategy'
+import type { UseStrategySeasonReturn } from '../../lib/types/strategy'
+import type { Season } from '../../../zmemory/types/narrative'
 
 export function useSeason(): UseStrategySeasonReturn {
   // For now, create a mock current season since the API endpoint doesn't exist yet

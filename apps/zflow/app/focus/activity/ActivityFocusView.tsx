@@ -6,10 +6,10 @@ import { ArrowLeft, Save, Edit, Timer, Play, Square, Heart, Star, Smile, Frown }
 import NotionEditor from '../../components/editors/NotionEditor'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
-import { useActivity, useUpdateActivity } from '../../../hooks/useActivities'
-import { useCategories } from '../../../hooks/useCategories'
-import { useTimer } from '../../../hooks/useTimer'
-import { useAutoSave } from '../../../hooks/useAutoSave'
+import { useActivity, useUpdateActivity } from '../../../hooks/activities/useActivities'
+import { useCategories } from '../../../hooks/ui/useCategories'
+import { useTimer } from '../../../hooks/activities/useTimer'
+import { useAutoSave } from '../../../hooks/activities/useAutoSave'
 
 interface ActivityWithCategory {
   id: string

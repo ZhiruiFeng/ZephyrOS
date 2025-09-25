@@ -8,10 +8,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import TimelineView from '../components/views/TimelineView'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { TimelineItem } from '@/hooks/useTimeline'
+import { TimelineItem } from '@/hooks/timeline/useTimeline'
 import DateSelector from '../components/ui/DateSelector'
 import TimelineStats, { TimelineDetailedStats } from '../components/ui/TimelineStats'
-import { useTimeline } from '@/hooks/useTimeline'
+import { useTimeline } from '@/hooks/timeline/useTimeline'
 import { Clock, Calendar, BarChart3, Settings } from 'lucide-react'
 
 // Component that uses useSearchParams - needs to be wrapped in Suspense

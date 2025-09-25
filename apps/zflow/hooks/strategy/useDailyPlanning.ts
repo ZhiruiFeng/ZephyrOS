@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
 import useSWR from 'swr'
-import { memoriesApi } from '../../api/memories-api'
-import { strategyApi } from '../../api/strategy'
-import type { StrategyTask, StrategyMemory } from '../../types/strategy'
+import { memoriesApi } from '../../lib/api/memories-api'
+import { strategyApi } from '../../lib/api/strategy'
+import type { StrategyTask, StrategyMemory } from '../../lib/types/strategy'
 
 // =====================================================
 // Daily Planning Hook

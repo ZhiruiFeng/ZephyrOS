@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { API_BASE, authenticatedFetch } from '../lib/api/api-base'
+import { API_BASE, authenticatedFetch } from '../../lib/api/api-base'
 
 // Updated API Response Types for new schema
 export interface Vendor {

@@ -1,13 +1,13 @@
 import useSWR from 'swr'
 import { useState, useCallback } from 'react'
-import { narrativeApiClient } from '../lib/api/narrative-api'
+import { narrativeApiClient } from '../../lib/api/narrative-api'
 import type {
   Season,
   SeasonWithEpisodes,
   CreateSeasonRequest,
   UpdateSeasonRequest,
   UseSeasonsReturn
-} from '../types/narrative'
+} from '../../types/narrative'
 
 // =====================================================
 // SWR Keys for caching

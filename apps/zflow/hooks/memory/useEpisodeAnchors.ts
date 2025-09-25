@@ -1,7 +1,7 @@
 import useSWR from 'swr'
-import { API_BASE } from '../lib/api'
-import { authManager } from '../lib/auth-manager'
-import { type RelationType } from '../app/components/memory/RelationTypeBadge'
+import { API_BASE } from '../../lib/api'
+import { authManager } from '../../lib/auth-manager'
+import { type RelationType } from '../../app/components/memory/RelationTypeBadge'
 
 export interface EpisodeAnchoredMemory {
   memory_id: string

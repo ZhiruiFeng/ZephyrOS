@@ -5,7 +5,7 @@ import { Calendar, Clock, RefreshCw, Filter, Tag, CheckCircle, AlertCircle, Play
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTranslation } from '../../../contexts/LanguageContext';
 import { tasksApi, TaskMemory, TaskContent } from '../../../lib/api';
-import { useCategories } from '../../../hooks/useCategories';
+import { useCategories } from '../../../hooks/ui/useCategories';
 import LoginPage from '../../components/auth/LoginPage';
 import { toLocal, toUTC, formatRelative, getUserTimezone } from '../../utils/timeUtils';
 import { getDayBoundariesInTimezone, getTimezoneOffsetDescription, getCurrentTimezone as getCurrentTZ } from '../../utils/timezoneUtils';

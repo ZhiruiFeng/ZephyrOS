@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import useSWR from 'swr'
-import { timeTrackingApi, API_BASE } from '../lib/api'
-import eventBus from '../app/core/events/event-bus'
-import { authManager } from '../lib/auth-manager'
+import { timeTrackingApi, API_BASE } from '../../lib/api'
+import eventBus from '../../app/core/events/event-bus'
+import { authManager } from '../../lib/auth-manager'
 
 export interface UseTimerState {
   isRunning: boolean

@@ -4,13 +4,13 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PencilIcon, TrashIcon, CheckIcon, X, Calendar, Plus } from 'lucide-react'
-import { useNarrativeTheme } from '../../../hooks/useNarrativeTheme'
+import { useNarrativeTheme } from '../../../hooks/memory/useNarrativeTheme'
 import type { Episode, SeasonTheme } from '../../../types/narrative'
 import EpisodeStoryMemoryDisplay from './EpisodeStoryMemoryDisplay'
 import MemoryManagementModal from '../memory/MemoryManagementModal'
-import { useMemories } from '../../../hooks/useMemoryAnchors'
-import { useEpisodeMemoryActions } from '../../../hooks/useEpisodeMemoryAnchors'
-import { useEpisodeAnchors } from '../../../hooks/useEpisodeAnchors'
+import { useMemories } from '../../../hooks/memory/useMemoryAnchors'
+import { useEpisodeMemoryActions } from '../../../hooks/memory/useEpisodeMemoryAnchors'
+import { useEpisodeAnchors } from '../../../hooks/memory/useEpisodeAnchors'
 
 interface EpisodeCardProps {
   episode: Episode

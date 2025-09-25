@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import type { SeasonTheme, SeasonThemeConfig } from '../types/narrative'
-import { SEASON_THEMES } from '../types/narrative'
+import type { SeasonTheme, SeasonThemeConfig } from '../../types/narrative'
+import { SEASON_THEMES } from '../../types/narrative'
 
 // =====================================================
 // Hook for managing narrative theming

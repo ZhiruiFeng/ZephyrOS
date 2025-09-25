@@ -1,7 +1,7 @@
 import useSWR from 'swr'
-import { timeTrackingApi, timelineItemsApi, apiClient } from '../lib/api'
-import { memoriesApi } from '../lib/api/memories-api'
-import { processDayEntries, type TimeEntryWithCrossDay } from '../app/utils/crossDayUtils'
+import { timeTrackingApi, timelineItemsApi, apiClient } from '../../lib/api'
+import { memoriesApi } from '../../lib/api/memories-api'
+import { processDayEntries, type TimeEntryWithCrossDay } from '../../app/utils/crossDayUtils'
 
 export interface TimelineItem {
   id: string

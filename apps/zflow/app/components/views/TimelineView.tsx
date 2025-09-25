@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { TimelineItem } from '@/hooks/useTimeline'
+import { TimelineItem } from '@/hooks/timeline/useTimeline'
 import ModernTimelineView, { TimelineEvent, Category } from '@/app/components/views/ModernTimelineView'
 import { Language } from '@/lib/i18n'
 import { timeTrackingApi } from '@/lib/api'

@@ -1,7 +1,7 @@
 import useSWR from 'swr'
-import { strategyApi } from '../../api/strategy'
-import type { ApiStrategyMemory } from '../../api/strategy'
-import type { UseStrategyMemoriesReturn, StrategyReflectionForm, StrategyMemory } from '../../types/strategy'
+import { strategyApi } from '../../lib/api/strategy'
+import type { ApiStrategyMemory } from '../../lib/api/strategy'
+import type { UseStrategyMemoriesReturn, StrategyReflectionForm, StrategyMemory } from '../../lib/types/strategy'
 
 // =====================================================
 // API to Frontend Type Adapter
