@@ -1,6 +1,6 @@
 import useSWR from 'swr'
-import { strategyApi } from '../../lib/api/strategy'
-import type { ApiStrategyMemory } from '../../lib/api/strategy'
+import { strategyApi } from '../../lib/api/strategy-api'
+import type { ApiStrategyMemory } from '../../lib/api/strategy-api'
 import type { UseStrategyMemoriesReturn, StrategyReflectionForm, StrategyMemory } from '../../lib/types/strategy'
 
 // =====================================================

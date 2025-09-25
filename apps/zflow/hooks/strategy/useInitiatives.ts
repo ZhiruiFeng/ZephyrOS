@@ -1,6 +1,6 @@
 import useSWR from 'swr'
-import { strategyApi } from '../../lib/api/strategy'
-import type { ApiInitiative } from '../../lib/api/strategy'
+import { strategyApi } from '../../lib/api/strategy-api'
+import type { ApiInitiative } from '../../lib/api/strategy-api'
 import type { UseInitiativesReturn, Initiative, CreateInitiativeForm } from '../../lib/types/strategy'
 
 // =====================================================

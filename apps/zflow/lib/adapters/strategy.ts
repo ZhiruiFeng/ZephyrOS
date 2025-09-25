@@ -1,7 +1,5 @@
 import type { Season } from '../../../zmemory/types/narrative'
-import type { Task } from '../../app/types/task'
-import type { Memory } from '../../app/types/memory'
-import type { Agent } from '../types/strategy'
+import type { Task, Memory, Agent } from 'types'
 import type {
   StrategySeason,
   Initiative,

@@ -1,16 +1,8 @@
 import type { Season } from '../../../zmemory/types/narrative'
-import type { Task } from '../../app/types/task'
-import type { Memory } from '../../app/types/memory'
+import type { Task, Agent } from 'types'
+import type { Memory } from 'types'
 
-// Define Agent type locally since it may not exist yet
-export interface Agent {
-  id: string
-  name: string
-  description: string
-  status: 'online' | 'offline' | 'busy'
-  model?: string
-  provider: 'openai' | 'anthropic' | 'bedrock' | 'custom'
-}
+// Agent type imported from unified types system
 
 // =====================================================
 // Strategy Types - Built on existing ZMemory structures

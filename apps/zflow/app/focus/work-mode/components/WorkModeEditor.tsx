@@ -9,7 +9,7 @@ import { TaskWithCategory } from './TaskSidebar'
 import WorkModeEditorHeader from './WorkModeEditorHeader'
 import ConversationPanel from './ConversationPanel'
 import ResizeHandle from './ResizeHandle'
-import { Task } from '../../../../app/types/task'
+import { Task } from 'types'
 import { Message } from './ChatMessage'
 
 interface WorkModeEditorProps {

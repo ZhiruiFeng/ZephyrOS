@@ -1,6 +1,6 @@
 import useSWR, { mutate } from 'swr'
 import { categoriesApi } from '../../lib/api'
-import { Category } from '../../app/types/task'
+import { Category } from 'types'
 import { categoriesConfig } from '../../lib/swr-config'
 import { useAuth } from '../../contexts/AuthContext'
 

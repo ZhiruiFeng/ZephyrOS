@@ -1,4 +1,4 @@
-import { Task } from '../../app/types/task'
+import { Task } from 'types'
 import { toUTC } from '../../app/utils/timeUtils'
 import { API_BASE, authenticatedFetch, TaskMemory } from './api-base'
 

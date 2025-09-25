@@ -6,7 +6,7 @@ import type {
   CreateEpisodeRequest,
   UpdateEpisodeRequest,
   UseEpisodesReturn
-} from '../../types/narrative'
+} from 'types'
 
 // =====================================================
 // Custom hook for managing episodes

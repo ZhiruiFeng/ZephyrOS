@@ -15,7 +15,7 @@ import type {
   SeasonsResponse,
   EpisodesResponse,
   SeasonRecapResponse
-} from '../../types/narrative'
+} from 'types'
 
 // =====================================================
 // Utility Functions

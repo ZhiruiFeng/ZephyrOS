@@ -1,4 +1,4 @@
-import { Task } from '../../app/types/task'
+import { Task } from 'types'
 import { authManager } from '../auth-manager'
 import { ZMEMORY_API_BASE, IS_ZMEMORY_CROSS_ORIGIN } from './zmemory-api-base'
 

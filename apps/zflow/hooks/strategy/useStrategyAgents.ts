@@ -3,8 +3,9 @@ import { authJsonFetcher } from '../../lib/utils/auth-fetcher'
 import { adaptAgentToStrategy } from '../../lib/adapters/strategy'
 import { ZMEMORY_API_BASE } from '../../lib/api/zmemory-api-base'
 import { authManager } from '../../lib/auth-manager'
-import type { UseStrategyAgentsReturn, Agent } from '../../lib/types/strategy'
-import type { Task } from '../../app/types/task'
+import type { UseStrategyAgentsReturn } from '../../lib/types/strategy'
+import type { Agent } from 'types'
+import type { Task } from 'types'
 
 const ZFLOW_API_BASE = '/api'
 

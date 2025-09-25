@@ -7,7 +7,7 @@ import type {
   CreateSeasonRequest,
   UpdateSeasonRequest,
   UseSeasonsReturn
-} from '../../types/narrative'
+} from 'types'
 
 // =====================================================
 // SWR Keys for caching

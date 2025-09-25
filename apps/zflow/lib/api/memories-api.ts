@@ -1,11 +1,11 @@
-import { 
-  Memory, 
-  MemoryCreateInput, 
-  MemoryUpdateInput, 
-  MemorySearchParams, 
-  MemorySearchResult, 
-  WeeklyReview 
-} from '../../app/types/memory'
+import {
+  Memory,
+  MemoryCreateInput,
+  MemoryUpdateInput,
+  MemorySearchParams,
+  MemorySearchResult,
+  WeeklyReview
+} from 'types'
 import { authManager } from '../auth-manager'
 import { API_BASE, authenticatedFetch } from './api-base'
 

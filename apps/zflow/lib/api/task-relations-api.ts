@@ -1,4 +1,4 @@
-import { TaskRelationType } from '../../app/types/task'
+import { TaskRelationType } from 'types'
 import { API_BASE, authenticatedFetch } from './api-base'
 
 // Task Relations API

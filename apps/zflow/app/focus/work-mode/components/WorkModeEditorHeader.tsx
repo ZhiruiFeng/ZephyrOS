@@ -5,7 +5,7 @@ import { ChevronDown, Bot } from 'lucide-react'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import { TaskMemory } from '../../../../lib/api'
 import { TaskWithCategory } from './TaskSidebar'
-import { Task } from '../../../../app/types/task'
+import { Task } from 'types'
 import AITaskEditor, { AITaskForm } from '../../../components/profile/modules/AITaskEditor'
 
 interface WorkModeEditorHeaderProps {

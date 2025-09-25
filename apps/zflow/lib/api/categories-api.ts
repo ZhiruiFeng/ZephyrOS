@@ -1,4 +1,4 @@
-import { Category } from '../../app/types/task'
+import { Category } from 'types'
 import { API_BASE, authenticatedFetch } from './api-base'
 
 // Mock categories for fallback

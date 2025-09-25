@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import useSWR from 'swr'
 import { memoriesApi } from '../../lib/api/memories-api'
-import { strategyApi } from '../../lib/api/strategy'
+import { strategyApi } from '../../lib/api/strategy-api'
 import type { StrategyTask, StrategyMemory } from '../../lib/types/strategy'
 
 // =====================================================

@@ -1,7 +1,7 @@
 import useSWR from 'swr'
-import { strategyApi } from '../../lib/api/strategy'
+import { strategyApi } from '../../lib/api/strategy-api'
 import { useAITaskSync } from '../tasks/useAITaskSync'
-import type { ApiStrategyDashboard } from '../../lib/api/strategy'
+import type { ApiStrategyDashboard } from '../../lib/api/strategy-api'
 import type { StrategyDashboard, StrategySeason, Initiative, StrategyTask, StrategyAgent, StrategyMemory } from '../../lib/types/strategy'
 
 // =====================================================
