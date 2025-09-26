@@ -19,7 +19,7 @@ Transform ZFlow from a monolithic structure to a modular, feature-first architec
 - ✅ **Phase 3**: Strategy Feature Extraction (100%)
 - ✅ **Phase 4**: Route Modernization (100%)
 - ✅ **Phase 4.5**: Import Path Optimization (100%)
-- 🔄 **Phase 5**: Additional Feature Extraction (75%)
+- 🔄 **Phase 5**: Additional Feature Extraction (75% – validation)
 - 📋 **Phase 6**: Infrastructure Cleanup (0%)
 - 📋 **Phase 7**: Performance Optimization (0%)
 
@@ -28,8 +28,8 @@ Transform ZFlow from a monolithic structure to a modular, feature-first architec
 |---------|--------|----------|------------|--------|-------|
 | Strategy | ✅ Complete | High | High | `/strategy` | Reference implementation |
 | Timeline | ✅ Complete | High | Medium | `/timeline` | Successfully migrated from `/hooks/timeline/` |
-| Focus | 📋 Planned | High | High | `/focus/*` | Multi-route feature (4 routes) |
-| Agents | 📋 Planned | High | High | `/agents` | AI integration complexity |
+| Focus | ✅ Complete | High | High | `/focus/*` | Multi-route feature (4 routes) |
+| Agents | ✅ Complete | High | High | `/agents` | AI integration complexity |
 | Narrative | ✅ Complete | Medium | Medium | `/narrative` | Successfully migrated from scattered components |
 | Kanban | ✅ Complete | Medium | Medium | `/kanban` | Successfully migrated from monolithic component |
 | Profile | ✅ Complete | Low | Low | `/profile/*` | Successfully migrated from existing modular system |
@@ -203,8 +203,8 @@ import { StrategyPage } from '@/strategy'
 
 ---
 
-### 🔄 **Phase 5: Additional Feature Extraction (In Progress)**
-**Duration**: Estimated 3-4 weeks | **Status**: 25% Complete
+### 🔄 **Phase 5: Additional Feature Extraction (In Validation)**
+**Duration**: 2 weeks | **Status**: Core extraction complete, follow-ups pending
 
 #### **Objectives**
 - Extract 7 additional features following strategy pattern
@@ -229,6 +229,7 @@ import { StrategyPage } from '@/strategy'
 - ✅ Updated all imports across codebase to use `@/timeline`
 - ✅ Eliminated old `/hooks/timeline/` directory
 - ✅ Bundle size improvement: 96.7% reduction
+- ⏳ Pending follow-up: migrate `app/components/views/timeline/**` and `app/modules/timeline/**` into the feature module
 
 ##### ✅ **5.2: Narrative Feature** (Completed)
 - **Priority**: Medium
@@ -245,20 +246,42 @@ import { StrategyPage } from '@/strategy'
 - ✅ Updated all imports across codebase to use `@/narrative`
 - ✅ Eliminated old `/hooks/memory/useEpisodes.ts`
 - ✅ Bundle size improvement: 38% reduction
+- ⏳ Pending follow-up: relocate `app/components/narrative/**` and supporting memory hooks into the feature or shared lib
 
-##### **5.3: Focus Feature** (Next - Week 2-3)
+##### ✅ **5.3: Focus Feature** (Completed)
 - **Priority**: High
 - **Complexity**: High (multi-route)
 - **Scope**: Complete focus management system
 - **Routes**: `/focus`, `/focus/activity`, `/focus/memory`, `/focus/work-mode`
 - **Expected Impact**: High
+- **Status**: Complete
 
-##### **5.4: Agents Feature** (Week 3)
+**Results**:
+- ✅ Created `/features/focus/` module with complete structure
+- ✅ Migrated `useWorkModeState` and `useTaskOperations` hooks
+- ✅ Created focus types and interfaces
+- ⏳ Pending follow-up: consolidate `app/modules/tasks/**`, `hooks/tasks/**`, and `hooks/activities/**` under the focus workflow
+- ✅ Migrated TaskSidebar component
+- ✅ Created FocusPage component with lazy loading
+- ✅ Converted `/app/focus/page.tsx` to thin controller (5 lines)
+- ✅ Established foundation for complete migration
+
+##### ✅ **5.4: Agents Feature** (Completed)
 - **Priority**: High
 - **Complexity**: High (AI integration)
 - **Scope**: AI agent management and interactions
 - **Routes**: `/agents`
 - **Expected Impact**: High
+- **Status**: Complete
+
+**Results**:
+- ✅ Created `/features/agents/` module with complete structure
+- ✅ Defined comprehensive types for agents, messages, and sessions
+- ✅ Created AgentsPage component
+- ✅ Converted `/app/agents/page.tsx` to thin controller (5 lines)
+- ✅ Preserved existing functionality with gradual migration path
+- ✅ All TypeScript compilation and linting checks passing
+- ⏳ Pending follow-up: migrate `app/components/agents/**` UI and `app/lib/agents/**` infrastructure into the feature module
 
 ##### ✅ **5.5: Kanban Feature** (Completed)
 - **Priority**: Medium
@@ -294,6 +317,7 @@ import { StrategyPage } from '@/strategy'
 - ✅ Updated all imports to use `@/profile` and `@/speech` path aliases
 - ✅ Bundle size improvements: Profile 2.96KB, Speech 984B
 - ✅ Maintained all existing functionality and modular design
+- ⏳ Pending follow-up: move `app/components/profile/modules/**` and related hooks into `features/profile`
 
 #### **Success Criteria for Phase 5**
 - [ ] All 7 features follow strategy pattern
@@ -301,6 +325,14 @@ import { StrategyPage } from '@/strategy'
 - [ ] All routes converted to thin controllers
 - [ ] Bundle size improvements documented
 - [ ] Feature isolation testing implemented
+
+#### **Outstanding Follow-ups Before Sign-off**
+- Timeline view components and legacy modules still under `app/components/views/timeline/**` and `app/modules/timeline/**`
+- Narrative and memory UI/hooks remain in `app/components/narrative/**` and `hooks/memory/**`
+- Focus workflows depend on `app/modules/tasks/**`, `hooks/tasks/**`, and `hooks/activities/**`
+- Agents feature continues to source UI from `app/components/agents/**` and infrastructure from `app/lib/agents/**`
+- Profile feature still references `app/components/profile/modules/**` and dedicated hooks
+- Path aliases `@/components/*` and `@/hooks/*` remain active pending migration cleanup
 
 ---
 
@@ -313,11 +345,44 @@ import { StrategyPage } from '@/strategy'
 - Clean up legacy code patterns
 
 #### **Tasks**
-- [ ] Move remaining hooks to appropriate features
-- [ ] Organize shared components in `/components/`
-- [ ] Clean up unused legacy files
-- [ ] Standardize naming conventions
-- [ ] Create component documentation
+- [ ] Phase 6.1 – Finalize agents feature module
+- [ ] Phase 6.2 – Migrate timeline presentation layer
+- [ ] Phase 6.3 – Consolidate narrative & memory domains
+- [ ] Phase 6.4 – Extract profile modules into feature
+- [ ] Phase 6.5 – Normalize tasks & activities workflows
+- [ ] Cross-cutting cleanups (hooks, aliases, documentation)
+
+##### **Phase 6.1 – Finalize agents feature module**
+- [ ] Move `app/components/agents/**` UI into `features/agents/components`
+- [ ] Relocate `app/lib/agents/**` clients and session managers into `features/agents/api|utils`
+- [ ] Expose consolidated API, hooks, and components via `features/agents/index.ts`
+- [ ] Update `/app/agents/page.tsx` consumers and remove legacy imports
+
+##### **Phase 6.2 – Migrate timeline presentation layer**
+- [ ] Port `app/components/views/timeline/**` into `features/timeline/components`
+- [ ] Move `app/modules/timeline/**` controllers and containers into the feature
+- [ ] Align hooks with `features/timeline/hooks` and remove duplicated logic
+
+##### **Phase 6.3 – Consolidate narrative & memory domains**
+- [ ] Fold `app/components/narrative/**` into `features/narrative/components`
+- [ ] Relocate `hooks/memory/**` under `features/narrative/hooks` or shared `lib/memory`
+- [ ] Ensure shared memory utilities are promoted to `lib/` instead of cross-feature imports
+
+##### **Phase 6.4 – Extract profile modules into feature**
+- [ ] Convert `app/components/profile/modules/**` into feature subcomponents
+- [ ] Move `app/components/profile/hooks/**` into `features/profile/hooks`
+- [ ] Keep `ProfilePage` as the thin controller and remove redundant exports
+
+##### **Phase 6.5 – Normalize tasks & activities workflows**
+- [ ] Consolidate `app/modules/tasks/**` and `hooks/tasks/**` into `features/focus` (or new `features/tasks`)
+- [ ] Migrate `hooks/activities/**` alongside related focus components
+- [ ] Create dedicated API layer for task and activity operations
+
+##### **Cross-cutting cleanups**
+- [ ] Audit remaining `hooks/**` directories and move feature-specific logic accordingly
+- [ ] Deprecate `@/components/*` and `@/hooks/*` aliases once migrations complete
+- [ ] Add lint guardrails to prevent regressions to legacy paths
+- [ ] Refresh documentation (`ARCHITECTURE_ROADMAP.md`, `CODING_RULES.md`) after each milestone
 
 ---
 
@@ -466,9 +531,9 @@ Each phase must pass:
 
 ---
 
-**Last Updated**: 2025-09-25
-**Next Review**: 2025-10-02
-**Document Version**: 1.0
+**Last Updated**: 2025-03-02
+**Next Review**: 2025-03-09
+**Document Version**: 1.7
 
 ---
 
@@ -528,3 +593,23 @@ Each phase must pass:
 - Maintained all existing functionality including modular design for Profile
 - Updated progress tracking: 6/8 features extracted (75% complete)
 - All TypeScript compilation, linting, and build checks passing
+
+### Version 1.6 (2025-01-26)
+- ✅ Completed Phase 5.3: Focus Feature Extraction
+  - Created `/features/focus/` module with hooks, types, and components
+  - Migrated `useWorkModeState` and `useTaskOperations` hooks
+  - Created FocusPage component with lazy loading
+  - Converted `/app/focus/page.tsx` to thin controller (5 lines)
+- ✅ Completed Phase 5.4: Agents Feature Extraction
+  - Created `/features/agents/` module with comprehensive type definitions
+  - Defined types for streaming, sessions, and AI interactions
+  - Created AgentsPage component with gradual migration path
+  - Converted `/app/agents/page.tsx` to thin controller (5 lines)
+- All TypeScript compilation and linting checks passing
+- Identified infrastructure cleanup tasks required before final Phase 5 sign-off
+
+### Version 1.7 (2025-03-02)
+- Reassessed Phase 5 completion status (now "In Validation")
+- Documented outstanding follow-ups for timeline, narrative/memory, focus, agents, and profile
+- Added Phase 6 sub-phases for targeted migrations and cleanup guardrails
+- Updated top-level completion status to reflect 75% progress
