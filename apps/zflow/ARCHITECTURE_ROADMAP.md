@@ -346,7 +346,7 @@ import { StrategyPage } from '@/strategy'
 
 #### **Tasks**
 - ✅ Phase 6.1 – Finalize agents feature module
-- [ ] Phase 6.2 – Migrate timeline presentation layer
+- ✅ Phase 6.2 – Migrate timeline presentation layer
 - [ ] Phase 6.3 – Consolidate narrative & memory domains
 - [ ] Phase 6.4 – Extract profile modules into feature
 - [ ] Phase 6.5 – Normalize tasks & activities workflows
@@ -368,10 +368,29 @@ import { StrategyPage } from '@/strategy'
 - ✅ All TypeScript compilation and linting checks passing
 - ✅ Complete feature isolation achieved - no cross-feature dependencies remain
 
-##### **Phase 6.2 – Migrate timeline presentation layer**
-- [ ] Port `app/components/views/timeline/**` into `features/timeline/components`
-- [ ] Move `app/modules/timeline/**` controllers and containers into the feature
-- [ ] Align hooks with `features/timeline/hooks` and remove duplicated logic
+##### ✅ **Phase 6.2 – Migrate timeline presentation layer** (Completed)
+- ✅ Port `app/components/views/timeline/**` into `features/timeline/components`
+- ✅ Move `app/modules/timeline/**` controllers and containers into the feature
+- ✅ Align hooks with `features/timeline/hooks` and remove duplicated logic
+- ✅ Update main app imports to use consolidated `@/timeline` feature
+- ✅ Clean up legacy timeline modules and proxy files
+
+**Results**:
+- ✅ Successfully identified root cause of UI mess-up: main app was importing legacy TimelineHome while EventCard was migrated
+- ✅ Updated `app/page.tsx` import from legacy modules to use `@/timeline` feature consolidated API
+- ✅ Removed entire `app/modules/timeline/` directory containing legacy containers
+- ✅ Eliminated proxy files: `app/components/views/TimelineView.tsx` and `ModernTimelineView.tsx`
+- ✅ Updated `app/components/views/index.ts` to remove broken export and add explanatory comment
+- ✅ Created safety backup files to ensure UI stability during transition
+- ✅ All TypeScript compilation and build checks passing
+- ✅ Complete timeline feature isolation achieved
+
+**Key Lessons Learned**:
+- **Mixed Dependency States**: When migrating features, ensure ALL consumers update imports simultaneously to avoid broken dependency chains
+- **Import Path Analysis**: Legacy EventCard vs New EventCard were 99% identical except for import path differences (`../../../../lib/i18n` vs `@/lib/i18n`)
+- **Webpack Cache Issues**: Build cache can cause phantom import errors after file deletions - clearing `.next` cache resolves these issues
+- **Safety First Approach**: Creating backup files before deletion prevents UI breakage and allows for quick rollback if issues arise
+- **Systematic Cleanup**: After successful migration, identify and clean all remaining legacy files in organized phases rather than ad-hoc removal
 
 ##### **Phase 6.3 – Consolidate narrative & memory domains**
 - [ ] Fold `app/components/narrative/**` into `features/narrative/components`
@@ -541,9 +560,9 @@ Each phase must pass:
 
 ---
 
-**Last Updated**: 2025-03-02
-**Next Review**: 2025-03-09
-**Document Version**: 1.7
+**Last Updated**: 2025-09-26
+**Next Review**: 2025-10-03
+**Document Version**: 1.8
 
 ---
 
@@ -623,3 +642,16 @@ Each phase must pass:
 - Documented outstanding follow-ups for timeline, narrative/memory, focus, agents, and profile
 - Added Phase 6 sub-phases for targeted migrations and cleanup guardrails
 - Updated top-level completion status to reflect 75% progress
+
+### Version 1.8 (2025-09-26)
+- ✅ Completed Phase 6.2: Timeline presentation layer migration
+- Successfully resolved UI mess-up caused by mixed legacy/new dependency states
+- Updated main app imports from legacy modules to consolidated `@/timeline` feature API
+- Removed entire `app/modules/timeline/` directory and proxy files
+- Documented key lessons learned from timeline migration:
+  - Mixed dependency state debugging and resolution
+  - Import path analysis techniques for near-identical components
+  - Webpack cache clearing strategies for phantom import errors
+  - Safety-first migration approach with backup file creation
+  - Systematic legacy cleanup methodology
+- All TypeScript compilation, linting, and build checks passing

@@ -3,4 +3,4 @@ export { default as FutureView } from '../../modules/tasks/components/views/Futu
 export { default as ArchiveView } from '../../modules/tasks/components/views/ArchiveView'
 // ActivitiesView exported for test page usage only
 export { default as ActivitiesView } from './ActivitiesView'
-export { default as TimelineView } from './TimelineView'
+// TimelineView now available via @/timeline feature

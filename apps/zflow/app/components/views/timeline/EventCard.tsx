@@ -3,7 +3,7 @@
 import React from 'react'
 import { TOKENS } from './Tokens'
 import type { TimelineEvent, Category } from './types'
-import type { TranslationKeys } from '../../../../lib/i18n'
+import type { TranslationKeys } from '@/lib/i18n'
 import { toDate, spanMinutes, fmtHM, sparkPath, getTypeProperties } from './utils'
 
 interface Props {
