@@ -18,4 +18,4 @@ export { ConversationListItem } from './ConversationListItem'
 export { ConversationSearch } from './ConversationSearch'
 
 // Types passthrough (avoid clashes with feature domain types by aliasing)
-export type { Message as LegacyMessage, ToolCall as LegacyToolCall } from './AgentChatWindow'
+export type { Message as LegacyMessage, ToolCall as LegacyToolCall } from '../types/agents'

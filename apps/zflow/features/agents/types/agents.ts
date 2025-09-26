@@ -29,7 +29,7 @@ export interface Message {
 export interface ToolCall {
   id: string
   name: string
-  arguments?: any
+  parameters?: any
   result?: any
   status?: 'pending' | 'running' | 'completed' | 'error'
 }

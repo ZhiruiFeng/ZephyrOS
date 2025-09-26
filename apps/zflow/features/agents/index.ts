@@ -17,7 +17,6 @@ export type {
   ToolCall,
   Agent,
   ConversationSession,
-  ConversationSummary,
   SSEEventType,
   SSEEvent,
   InterfaceMode,
@@ -26,12 +25,32 @@ export type {
   AgentChatWindowProps
 } from './types/agents'
 
+// Conversation history types
+export type {
+  ConversationSummary,
+  ConversationDetail,
+  HistoricalMessage,
+  ConversationSearchResult,
+  ConversationStats,
+  ConversationHistoryFilter,
+  ConversationsResponse,
+  ConversationDetailResponse,
+  ConversationSearchResponse,
+  ConversationStatsResponse
+} from './types/conversation-history'
+
+// Legacy compatibility
+export type { Message as LegacyMessage } from './types/agents'
+
 // Page component
 export { default as AgentsPage } from './AgentsPage'
 
 // Feature modules
 export * from './components'
 export * from './hooks'
+
+// Session manager
+export { useSessionManager } from './hooks/session-manager'
 
 // Types only (safe for client-side)
 export type * from './api'

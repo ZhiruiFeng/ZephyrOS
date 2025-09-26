@@ -6,26 +6,9 @@ import { StreamingMessage } from './StreamingMessage'
 import { AgentSelector } from './AgentSelector'
 import { ConversationHistory } from './ConversationHistory'
 import { ConversationHistorySidebar } from './ConversationHistorySidebar'
-import { ConversationSummary } from '@/app/lib/conversation-history/types'
+import { ConversationSummary } from '../types/conversation-history'
+import { Message, ToolCall } from '../types/agents'
 import { useTranslation } from '@/contexts/LanguageContext'
-
-export interface Message {
-  id: string
-  type: 'user' | 'agent' | 'system'
-  content: string
-  timestamp: Date
-  agent?: string
-  streaming?: boolean
-  toolCalls?: ToolCall[]
-}
-
-export interface ToolCall {
-  id: string
-  name: string
-  parameters: any
-  status: 'pending' | 'running' | 'completed' | 'error'
-  result?: any
-}
 
 interface AgentChatWindowProps {
   sessionId?: string | null

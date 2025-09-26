@@ -345,18 +345,28 @@ import { StrategyPage } from '@/strategy'
 - Clean up legacy code patterns
 
 #### **Tasks**
-- [ ] Phase 6.1 – Finalize agents feature module
+- ✅ Phase 6.1 – Finalize agents feature module
 - [ ] Phase 6.2 – Migrate timeline presentation layer
 - [ ] Phase 6.3 – Consolidate narrative & memory domains
 - [ ] Phase 6.4 – Extract profile modules into feature
 - [ ] Phase 6.5 – Normalize tasks & activities workflows
 - [ ] Cross-cutting cleanups (hooks, aliases, documentation)
 
-##### **Phase 6.1 – Finalize agents feature module**
-- [ ] Move `app/components/agents/**` UI into `features/agents/components`
-- [ ] Relocate `app/lib/agents/**` clients and session managers into `features/agents/api|utils`
-- [ ] Expose consolidated API, hooks, and components via `features/agents/index.ts`
-- [ ] Update `/app/agents/page.tsx` consumers and remove legacy imports
+##### ✅ **Phase 6.1 – Finalize agents feature module** (Completed)
+- ✅ Move `app/components/agents/**` UI into `features/agents/components`
+- ✅ Relocate `app/lib/agents/**` clients and session managers into `features/agents/api|utils`
+- ✅ Expose consolidated API, hooks, and components via `features/agents/index.ts`
+- ✅ Update `/app/agents/page.tsx` consumers and remove legacy imports
+
+**Results**:
+- ✅ Successfully migrated all conversation-history infrastructure from `app/lib/conversation-history` to `features/agents/utils` and `features/agents/hooks`
+- ✅ Updated all component imports to use internal feature paths instead of legacy imports
+- ✅ Consolidated all agents-related types under `features/agents/types/`
+- ✅ AgentsPageImpl functionality fully integrated into the feature module's AgentsPage.tsx
+- ✅ Removed legacy `app/lib/conversation-history/` directory
+- ✅ Removed legacy `app/agents/AgentsPageImpl.tsx` file
+- ✅ All TypeScript compilation and linting checks passing
+- ✅ Complete feature isolation achieved - no cross-feature dependencies remain
 
 ##### **Phase 6.2 – Migrate timeline presentation layer**
 - [ ] Port `app/components/views/timeline/**` into `features/timeline/components`

@@ -7,8 +7,8 @@ import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/auth/LoginPage'
 import { AgentChatWindow, LegacyMessage as Message, MCPStatusIndicator } from '@/agents'
 import type { Agent } from '@/agents'
-import { ConversationSummary } from '../lib/conversation-history/types'
-import { useSessionManager } from '../lib/conversation-history/session-manager'
+import { ConversationSummary } from '@/agents'
+import { useSessionManager } from '@/agents'
 import BatchTranscriber from '../speech/components/BatchTranscriber'
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()

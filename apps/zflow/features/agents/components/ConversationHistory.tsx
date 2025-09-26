@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Message } from './AgentChatWindow'
+import { Message } from '../types/agents'
 import { StreamingMessage } from './StreamingMessage'
 
 interface ConversationHistoryProps {

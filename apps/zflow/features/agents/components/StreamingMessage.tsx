@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Loader, CheckCircle, XCircle, Clock } from 'lucide-react'
-import { Message, ToolCall } from './AgentChatWindow'
+import { Message, ToolCall } from '../types/agents'
 import { ToolCallDisplay } from './ToolCallDisplay'
 
 interface StreamingMessageProps {

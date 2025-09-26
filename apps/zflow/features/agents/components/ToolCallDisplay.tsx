@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { ChevronDown, ChevronRight, Loader, CheckCircle, XCircle, Clock, Zap } from 'lucide-react'
-import { ToolCall } from './AgentChatWindow'
+import { ToolCall } from '../types/agents'
 
 interface ToolCallDisplayProps {
   toolCall: ToolCall

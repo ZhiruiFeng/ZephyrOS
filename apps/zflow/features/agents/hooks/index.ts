@@ -1,16 +1,17 @@
 /**
  * Agents Feature - Hooks
- * 
- * Placeholder for agents-specific hooks.
- * Currently, agents rely on session management hooks from app/lib/conversation-history
- * which handle conversation state and history.
+ *
+ * This module exports all hooks used by the Agents feature,
+ * including conversation history management and session handling.
  */
 
-// Future agents-specific hooks will go here
-// Examples:
-// export { useAgentStreaming } from './useAgentStreaming'
-// export { useAgentSelection } from './useAgentSelection'
-// export { useMCPStatus } from './useMCPStatus'
+// Session management
+export { useSessionManager } from './session-manager'
 
-// Export empty object to make this a valid module
-export {}
+// Conversation history hooks
+export {
+  useConversationHistory,
+  useConversationDetail,
+  useConversationSearch,
+  useConversationActions
+} from './conversation-history'
