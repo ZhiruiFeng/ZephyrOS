@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ConversationSummary, ConversationDetail, HistoricalMessage } from './types'
 import { conversationHistoryService } from './service'
-import { Message } from '../../components/agents/AgentChatWindow'
+import { LegacyMessage as Message } from '@/agents'
 
 export interface SessionManagerState {
   // Current active session (Redis)

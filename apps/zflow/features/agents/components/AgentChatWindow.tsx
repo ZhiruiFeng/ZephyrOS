@@ -6,8 +6,8 @@ import { StreamingMessage } from './StreamingMessage'
 import { AgentSelector } from './AgentSelector'
 import { ConversationHistory } from './ConversationHistory'
 import { ConversationHistorySidebar } from './ConversationHistorySidebar'
-import { ConversationSummary } from '../../lib/conversation-history/types'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { ConversationSummary } from '@/app/lib/conversation-history/types'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 export interface Message {
   id: string

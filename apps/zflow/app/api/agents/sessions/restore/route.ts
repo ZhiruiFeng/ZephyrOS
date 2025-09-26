@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sessionManager } from '../../../../lib/agents/session-manager'
-import { agentRegistry } from '../../../../lib/agents/registry'
+import { sessionManager, agentRegistry } from '@/agents/server'
 
 // Disable static generation for Redis connections
 export const dynamic = 'force-dynamic'

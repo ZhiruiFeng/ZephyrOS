@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { agentRegistry } from '../../../lib/agents/registry'
+import { agentRegistry } from '@/agents/server'
 
 // 禁用静态生成，因为需要运行时环境变量
 export const dynamic = 'force-dynamic'

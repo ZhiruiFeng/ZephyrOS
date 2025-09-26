@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMCPClient } from '../../../../lib/agents/mcp-client'
-import { getMCPBridge } from '../../../../lib/agents/mcp-bridge'
-import { getSystemStatus } from '../../../../lib/agents/init'
+import { getSystemStatus, getMCPClient, getMCPBridge } from '@/agents/server'
 
 export async function GET(request: NextRequest) {
   try {

@@ -29,4 +29,9 @@ export type {
 // Page component
 export { default as AgentsPage } from './AgentsPage'
 
-// Note: Hooks and components will be added as we complete migration
+// Feature modules
+export * from './components'
+export * from './hooks'
+
+// Types only (safe for client-side)
+export type * from './api'

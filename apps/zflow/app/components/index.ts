@@ -7,4 +7,4 @@ export * from './auth'
 export * from './selectors'
 export * from './utils'
 export * from './views'
-export * from './agents'
+// Note: agents moved to features/agents - import from '@/agents' instead

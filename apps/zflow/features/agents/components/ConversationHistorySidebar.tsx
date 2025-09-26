@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { X, Plus, Search, Clock, Archive, MessageSquare } from 'lucide-react'
-import { useConversationHistory, useConversationSearch } from '../../lib/conversation-history'
-import { ConversationSummary } from '../../lib/conversation-history/types'
+import { useConversationHistory, useConversationSearch } from '@/app/lib/conversation-history'
+import { ConversationSummary } from '@/app/lib/conversation-history/types'
 import { ConversationListItem } from './ConversationListItem'
 import { ConversationSearch } from './ConversationSearch'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 interface ConversationHistorySidebarProps {
   isOpen: boolean

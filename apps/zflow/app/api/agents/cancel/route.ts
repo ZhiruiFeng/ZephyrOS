@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { StreamingService } from '../../../lib/agents/streaming'
-import { sessionManager } from '../../../lib/agents/session-manager'
+import { StreamingService } from '@/agents/server'
+import { sessionManager } from '@/agents/server'
 
 // 禁用静态生成，因为需要运行时 Redis 连接
 export const dynamic = 'force-dynamic'

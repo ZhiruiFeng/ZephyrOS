@@ -31,6 +31,7 @@
       "@/timeline": ["./features/timeline"],
       "@/focus": ["./features/focus"],
       "@/agents": ["./features/agents"],
+      "@/agents/server": ["./features/agents/server"],
       "@/narrative": ["./features/narrative"],
       "@/kanban": ["./features/kanban"],
       "@/profile": ["./features/profile"],

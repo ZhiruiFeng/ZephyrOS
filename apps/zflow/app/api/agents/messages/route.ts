@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sessionManager } from '../../../lib/agents/session-manager'
-import { agentRegistry } from '../../../lib/agents/registry'
-import { StreamingService } from '../../../lib/agents/streaming'
-import { openAIProvider, anthropicProvider, ensureAgentSystemReady } from '../../../lib/agents/init'
-import { AgentMessage } from '../../../lib/agents/types'
+import { sessionManager } from '@/agents/server'
+import { agentRegistry } from '@/agents/server'
+import { StreamingService } from '@/agents/server'
+import { openAIProvider, anthropicProvider, ensureAgentSystemReady } from '@/agents/server'
+import { AgentMessage } from '@/agents/server'
 
 // 禁用静态生成，因为需要运行时环境变量
 export const dynamic = 'force-dynamic'

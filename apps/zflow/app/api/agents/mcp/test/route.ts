@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initializeMCPConnection } from '../../../../lib/agents/mcp-client'
+import { initializeMCPConnection } from '@/agents/server'
 
 export async function POST(request: NextRequest) {
   try {

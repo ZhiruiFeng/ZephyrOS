@@ -5,21 +5,20 @@ import { Bot, Plus, MessageSquare, MessageCircle, Mic } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import LoginPage from '../components/auth/LoginPage'
-import { AgentChatWindow, Message } from '../components/agents'
-import { Agent } from '../lib/agents/types'
+import { AgentChatWindow, LegacyMessage as Message, MCPStatusIndicator } from '@/agents'
+import type { Agent } from '@/agents'
 import { ConversationSummary } from '../lib/conversation-history/types'
 import { useSessionManager } from '../lib/conversation-history/session-manager'
 import BatchTranscriber from '../speech/components/BatchTranscriber'
-import MCPStatusIndicator from '../components/agents/MCPStatusIndicator'
-
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
 
-  // State management
+// State management
   const [selectedAgent, setSelectedAgent] = useState('gpt-4')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [availableAgents, setAvailableAgents] = useState<Agent[]>([])
+  type AvailableAgent = { id: string; name: string; description: string; status: 'online' | 'offline' | 'busy' }
+  const [availableAgents, setAvailableAgents] = useState<AvailableAgent[]>([])
   const [streamEndedNormally, setStreamEndedNormally] = useState(false)
   const [lastUserId, setLastUserId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -82,7 +81,14 @@ export default function AgentsPage() {
         const response = await fetch('/api/agents/registry?onlineOnly=true')
         const data = await response.json()
         if (data.agents) {
-          setAvailableAgents(data.agents)
+          setAvailableAgents(
+            data.agents.map((a: any) => ({
+              id: a.id ?? a.name ?? 'unknown',
+              name: a.name ?? a.id ?? 'Agent',
+              description: a.description ?? '',
+              status: a.status ?? (a.isOnline ? 'online' : 'offline')
+            }))
+          )
         }
       } catch (error) {
         console.error('Error loading agents:', error)

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { sessionManager } from '../../../lib/agents/session-manager'
-import { StreamingService } from '../../../lib/agents/streaming'
+import { sessionManager } from '@/agents/server'
+import { StreamingService } from '@/agents/server'
 import { getRedisClient } from '../../../lib/redis'
 
 export const dynamic = 'force-dynamic'

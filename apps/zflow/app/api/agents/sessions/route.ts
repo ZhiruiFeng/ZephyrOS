@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sessionManager } from '../../../lib/agents/session-manager'
-import { agentRegistry } from '../../../lib/agents/registry'
+import { sessionManager } from '@/agents/server'
+import { agentRegistry } from '@/agents/server'
 
 // 禁用静态生成，因为需要运行时 Redis 连接
 export const dynamic = 'force-dynamic'

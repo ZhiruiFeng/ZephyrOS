@@ -1,4 +1,4 @@
-import { getRedisClient, getRedisSubscriber } from '../redis'
+import { getRedisClient, getRedisSubscriber } from '@/app/lib/redis'
 import { StreamingResponse } from './types'
 import { MemoryStreamingService } from './memory-streaming'
 

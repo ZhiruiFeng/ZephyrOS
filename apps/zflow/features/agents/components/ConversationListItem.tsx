@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react'
 import { MoreHorizontal, Edit2, Archive, Trash2, MessageSquare, Bot } from 'lucide-react'
-import { ConversationSummary } from '../../lib/conversation-history/types'
-import { useConversationActions } from '../../lib/conversation-history'
+import { ConversationSummary } from '@/app/lib/conversation-history/types'
+import { useConversationActions } from '@/app/lib/conversation-history'
 
 interface ConversationListItemProps {
   conversation: ConversationSummary
