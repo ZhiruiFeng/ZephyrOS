@@ -1,20 +1,16 @@
-// =====================================================
-// Narrative Feature - Main Page Component
-// =====================================================
-
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PlusIcon, BookOpenIcon } from 'lucide-react'
 import { useSeasons } from '@/strategy'
-import { useEpisodes } from './hooks/useEpisodes'
+import { useEpisodes } from '@/narrative'
 import { SeasonCover } from '@/app/components/narrative/SeasonCover'
 import { EpisodeCard } from '@/app/components/narrative/EpisodeCard'
 import { AddEpisodeForm } from '@/app/components/narrative/AddEpisodeForm'
 import { CreateSeasonModal } from '@/app/components/narrative/CreateSeasonModal'
 import { SeasonSelector } from '@/app/components/narrative/SeasonSelector'
-import type { CreateSeasonRequest, CreateEpisodeRequest } from './types/narrative'
+import type { CreateSeasonRequest, CreateEpisodeRequest } from '@/narrative'
 
 export function NarrativePage() {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null)
@@ -43,7 +39,7 @@ export function NarrativePage() {
   }, [seasons, activeSeason])
 
   useEffect(() => {
-    if (manualSelectionRef.current) return
+    if (!manualSelectionRef.current) return
 
     if (!selectedSeasonId) {
       if (activeSeason) {
@@ -102,61 +98,65 @@ export function NarrativePage() {
       const newSeason = await createSeason(data)
       selectSeason(newSeason.id)
       setSeasonSelectorExpanded(false)
-      setShowCreateSeason(false)
     } catch (error) {
       console.error('Failed to create season:', error)
-      throw error
     }
-  }
-
-  // Handle season updates
-  const handleUpdateSeason = async (updates: any) => {
-    if (!currentSeason) return
-    await updateSeason(currentSeason.id, updates)
   }
 
   // Handle episode creation
   const handleCreateEpisode = async (data: CreateEpisodeRequest) => {
-    return await createEpisode(data)
+    try {
+      await createEpisode(data)
+    } catch (error) {
+      console.error('Failed to create episode:', error)
+    }
   }
 
-  // Handle episode updates
-  const handleUpdateEpisode = async (episodeId: string, updates: any) => {
-    return await updateEpisode(episodeId, updates)
+  // Handle episode update
+  const handleUpdateEpisode = async (episodeId: string, data: Partial<CreateEpisodeRequest>) => {
+    try {
+      await updateEpisode(episodeId, data)
+    } catch (error) {
+      console.error('Failed to update episode:', error)
+    }
   }
 
   // Handle episode deletion
   const handleDeleteEpisode = async (episodeId: string) => {
-    return await deleteEpisode(episodeId)
+    try {
+      await deleteEpisode(episodeId)
+    } catch (error) {
+      console.error('Failed to delete episode:', error)
+    }
   }
 
-  const isLoading = seasonsLoading || episodesLoading
+  if (seasonsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Header */}
-      <div className="sticky top-14 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/60 dark:bg-gray-900/80">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <BookOpenIcon className="w-8 h-8 text-primary-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Life Narrative</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Live your life as a story composed of seasons and episodes
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Narrative
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Manage your seasons and episodes
                 </p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSeasonSelectorExpanded(!isSeasonSelectorExpanded)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-colors dark:bg-primary-900/50 dark:hover:bg-primary-900/70 dark:text-primary-300"
-              >
-                <PlusIcon className="w-4 h-4" />
-                {currentSeason ? 'Switch Season' : 'Select Season'}
-              </button>
-              
               <button
                 onClick={() => setShowCreateSeason(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
@@ -166,123 +166,125 @@ export function NarrativePage() {
               </button>
             </div>
           </div>
-
-          {/* Season Selector */}
-          <AnimatePresence>
-            {isSeasonSelectorExpanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="mt-4"
-              >
-                <SeasonSelector
-                  seasons={seasons}
-                  activeSeasonId={activeSeason?.id}
-                  selectedSeasonId={selectedSeasonId}
-                  onSelectSeason={selectSeason}
-                  onCreateSeason={() => setShowCreateSeason(true)}
-                  isExpanded={isSeasonSelectorExpanded}
-                  onToggle={() => setSeasonSelectorExpanded(!isSeasonSelectorExpanded)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-400">Loading your narrative...</p>
-            </div>
-          </div>
-        ) : currentSeason ? (
-          <div className="space-y-8">
+        {/* Season Selector */}
+        <div className="mb-6">
+          <SeasonSelector
+            seasons={seasons}
+            selectedSeasonId={selectedSeasonId}
+            activeSeasonId={selectedSeasonId}
+            onSelectSeason={selectSeason}
+            onCreateSeason={() => setShowCreateSeason(true)}
+            isExpanded={isSeasonSelectorExpanded}
+            onToggle={() => setSeasonSelectorExpanded(!isSeasonSelectorExpanded)}
+          />
+        </div>
+
+        {currentSeason ? (
+          <div className="space-y-6">
             {/* Season Cover */}
             <SeasonCover
               season={currentSeason}
               isEditable={true}
-              onUpdate={handleUpdateSeason}
-              onDelete={() => deleteSeason(currentSeason.id)}
+              onUpdate={async (updates) => {
+                await updateSeason(currentSeason.id, updates)
+              }}
             />
 
             {/* Episodes Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Episodes ({episodes.length})
+                  Episodes
                 </h2>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {episodes.length} episode{episodes.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+
+              {/* Add Episode Form */}
+              <div className="mb-6">
                 <AddEpisodeForm
                   seasonId={currentSeason.id}
                   seasonTheme={currentSeason.theme}
-                  onAdd={handleCreateEpisode}
+                  onAdd={async (episodeData) => {
+                    await createEpisode(episodeData)
+                    return {} as any // Return dummy episode for type compatibility
+                  }}
                 />
               </div>
 
-              {episodes.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {episodes.map((episode) => (
-                    <EpisodeCard
-                      key={episode.id}
-                      episode={episode}
-                      seasonTheme={currentSeason.theme}
-                      isEditable={true}
-                      onUpdate={async (updates) => {
-                        await handleUpdateEpisode(episode.id, updates)
-                      }}
-                      onDelete={() => handleDeleteEpisode(episode.id)}
-                    />
-                  ))}
+              {/* Episodes List */}
+              {episodesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : episodes.length > 0 ? (
+                <div className="space-y-4">
+                  <AnimatePresence>
+                    {episodes.map((episode) => (
+                      <motion.div
+                        key={episode.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <EpisodeCard
+                          episode={episode}
+                          seasonTheme={currentSeason.theme}
+                          isEditable={true}
+                          onUpdate={async (updates) => {
+                            await updateEpisode(episode.id, updates)
+                          }}
+                          onDelete={async () => {
+                            await deleteEpisode(episode.id)
+                          }}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <BookOpenIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <BookOpenIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                     No episodes yet
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    Start documenting your journey by creating your first episode.
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Create your first episode to start documenting your journey.
                   </p>
-                  <AddEpisodeForm
-                    seasonId={currentSeason.id}
-                    seasonTheme={currentSeason.theme}
-                    onAdd={handleCreateEpisode}
-                  />
                 </div>
               )}
             </div>
           </div>
         ) : (
           <div className="text-center py-12">
-            <BookOpenIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Welcome to your Life Narrative
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-              Start your journey by creating your first season. Think of seasons as chapters in your life story.
+            <BookOpenIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              No seasons yet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Create your first season to start organizing your narrative.
             </p>
             <button
               onClick={() => setShowCreateSeason(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors mx-auto"
             >
               <PlusIcon className="w-5 h-5" />
-              Create Your First Season
+              Create First Season
             </button>
           </div>
         )}
       </div>
 
       {/* Create Season Modal */}
-      <CreateSeasonModal
-        isOpen={showCreateSeason}
-        onClose={() => setShowCreateSeason(false)}
-        onSubmit={handleCreateSeason}
-      />
+        <CreateSeasonModal
+          isOpen={showCreateSeason}
+          onClose={() => setShowCreateSeason(false)}
+          onSubmit={handleCreateSeason}
+        />
     </div>
   )
 }

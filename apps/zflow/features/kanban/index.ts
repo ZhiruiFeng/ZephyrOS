@@ -39,4 +39,4 @@ export type { TaskContent, TaskMemory } from './types/kanban'
 export { KANBAN_COLUMN_CONFIG, KANBAN_FILTER_OPTIONS } from './types/kanban'
 
 // Kanban Components
-export { KanbanPage } from './KanbanPage'
+export { default as KanbanPage } from './KanbanPage'

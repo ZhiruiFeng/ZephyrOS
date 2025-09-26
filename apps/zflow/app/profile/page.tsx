@@ -1,9 +1,8 @@
 'use client'
 
-import React from 'react'
-import ProfileDashboard from '../components/profile/ProfileDashboard'
+import { ProfilePage } from '@/profile'
 
-export default function ProfilePage() {
-  return <ProfileDashboard />
+export default function ProfileRoute() {
+  return <ProfilePage />
 }
 

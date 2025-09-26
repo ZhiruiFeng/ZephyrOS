@@ -33,6 +33,8 @@
       "@/agents": ["./features/agents"],
       "@/narrative": ["./features/narrative"],
       "@/kanban": ["./features/kanban"],
+      "@/profile": ["./features/profile"],
+      "@/speech": ["./features/speech"],
 
       // Core directories
       "@/lib/*": ["./lib/*"],
