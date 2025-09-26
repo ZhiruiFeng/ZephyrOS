@@ -26,6 +26,8 @@ export class MCPClient {
   private availableTools: MCPTool[] = []
   private serverPath: string
   private serverArgs: string[]
+  // Track last access token we set in the MCP session to avoid redundant calls
+  private lastAccessToken: string | null = null
 
   constructor(serverPath: string = 'zmemory-mcp', serverArgs: string[] = []) {
     this.serverPath = serverPath
@@ -124,17 +126,22 @@ export class MCPClient {
       throw new Error('MCP client not connected')
     }
 
-    try {
-      console.log(`🔧 Calling MCP tool: ${name}`, arguments_)
+    // Helper to normalize a potential "Bearer <token>" header to raw token
+    const extractToken = (header?: string): string | null => {
+      if (!header) return null
+      const parts = header.split(' ')
+      return parts.length === 2 && /^Bearer$/i.test(parts[0]) ? parts[1] : header
+    }
 
-      // Authentication is handled during connection setup
+    // If we have a user token, ensure MCP session is authenticated for this user
+    const token = extractToken(userAuthToken)
+    const shouldPrimeAuth = !!token && token !== this.lastAccessToken && name !== 'set_access_token'
 
-      const response = await this.client.callTool({
+    const performCall = async (): Promise<MCPToolResult> => {
+      const response = await this.client!.callTool({
         name,
         arguments: arguments_
       })
-
-      console.log(`✅ MCP tool ${name} completed:`, response)
 
       return {
         content: response.content as Array<{
@@ -145,9 +152,59 @@ export class MCPClient {
         }>,
         isError: response.isError as boolean
       }
-    } catch (error) {
-      console.error(`❌ MCP tool ${name} failed:`, error)
+    }
 
+    try {
+      console.log(`🔧 Calling MCP tool: ${name}`, arguments_)
+
+      // Prime session auth with user token if needed
+      if (shouldPrimeAuth) {
+        try {
+          await this.client!.callTool({
+            name: 'set_access_token',
+            arguments: { access_token: token }
+          })
+          this.lastAccessToken = token!
+          // Optionally verify auth status silently
+          // await this.client!.callTool({ name: 'get_auth_status', arguments: {} })
+        } catch (authErr) {
+          console.warn('⚠️ Failed to set access token before tool call:', authErr)
+          // Continue; the main call may still work or return an auth error we can retry
+        }
+      }
+
+      const result = await performCall()
+      console.log(`✅ MCP tool ${name} completed`)
+      return result
+    } catch (error) {
+      // Retry once on probable auth error by re-setting token
+      const msg = error instanceof Error ? error.message : String(error)
+      const authLikely = /unauthorized|auth|认证|token/i.test(msg)
+
+      if (token && authLikely && name !== 'set_access_token') {
+        console.warn(`🔁 Retrying ${name} after refreshing access token`)
+        try {
+          await this.client!.callTool({
+            name: 'set_access_token',
+            arguments: { access_token: token }
+          })
+          this.lastAccessToken = token
+          const retryResult = await this.client!.callTool({ name, arguments: arguments_ })
+          return {
+            content: retryResult.content as Array<{
+              type: 'text' | 'image' | 'resource'
+              text?: string
+              data?: string
+              mimeType?: string
+            }>,
+            isError: retryResult.isError as boolean
+          }
+        } catch (retryErr) {
+          console.error(`❌ Retry for ${name} failed:`, retryErr)
+        }
+      }
+
+      console.error(`❌ MCP tool ${name} failed:`, error)
       return {
         content: [{
           type: 'text',

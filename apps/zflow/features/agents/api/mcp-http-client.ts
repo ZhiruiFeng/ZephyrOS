@@ -11,6 +11,7 @@ export class MCPHttpClient {
   private config: MCPHttpClientConfig
   private availableTools: MCPTool[] = []
   private connected = false
+  private lastAccessToken: string | null = null
 
   constructor(config: MCPHttpClientConfig) {
     this.config = {
@@ -259,15 +260,35 @@ export class MCPHttpClient {
       throw new Error('HTTP MCP client not connected')
     }
 
+    const extractToken = (header?: string): string | null => {
+      if (!header) return null
+      const parts = header.split(' ')
+      return parts.length === 2 && /^Bearer$/i.test(parts[0]) ? parts[1] : header
+    }
+
+    const token = extractToken(userAuthToken)
+    const shouldPrimeAuth = !!token && token !== this.lastAccessToken && name !== 'set_access_token'
+
     try {
       console.log(`🔧 Calling HTTP MCP tool: ${name}`, arguments_)
+
+      // Prime auth inside MCP session via tool call (server ignores headers for auth)
+      if (shouldPrimeAuth) {
+        try {
+          await this.sendMCPRequest('tools/call', {
+            name: 'set_access_token',
+            arguments: { access_token: token }
+          }, userAuthToken)
+          this.lastAccessToken = token!
+        } catch (authErr) {
+          console.warn('⚠️ Failed to set access token in HTTP MCP before tool call:', authErr)
+        }
+      }
 
       const result = await this.sendMCPRequest('tools/call', {
         name,
         arguments: arguments_
       }, userAuthToken)
-
-      console.log(`✅ HTTP MCP tool ${name} completed:`, result)
 
       // Transform response to match MCP format
       return {
@@ -278,8 +299,34 @@ export class MCPHttpClient {
         isError: result.isError || false
       }
     } catch (error) {
-      console.error(`❌ HTTP MCP tool ${name} failed:`, error)
+      // Retry once after resetting token
+      const msg = error instanceof Error ? error.message : String(error)
+      const authLikely = /unauthorized|auth|认证|token/i.test(msg)
 
+      if (token && authLikely && name !== 'set_access_token') {
+        try {
+          await this.sendMCPRequest('tools/call', {
+            name: 'set_access_token',
+            arguments: { access_token: token }
+          }, userAuthToken)
+          this.lastAccessToken = token
+          const result = await this.sendMCPRequest('tools/call', {
+            name,
+            arguments: arguments_
+          }, userAuthToken)
+          return {
+            content: result.content || [{
+              type: 'text',
+              text: result.text || result.message || 'Tool executed successfully'
+            }],
+            isError: result.isError || false
+          }
+        } catch (retryErr) {
+          console.error(`❌ HTTP MCP retry for ${name} failed:`, retryErr)
+        }
+      }
+
+      console.error(`❌ HTTP MCP tool ${name} failed:`, error)
       return {
         content: [{
           type: 'text',

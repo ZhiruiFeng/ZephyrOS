@@ -18,6 +18,8 @@ const serverPath = join(__dirname, '../dist/index.js');
 async function testMCPServer() {
   console.log('🧪 正在测试ZMemory MCP服务器...\n');
 
+  const accessToken = process.env.ACCESS_TOKEN; // 可选：传入 Supabase access token
+
   // 启动MCP服务器
   const server = spawn('node', [serverPath], {
     stdio: ['pipe', 'pipe', 'inherit'],
@@ -27,58 +29,86 @@ async function testMCPServer() {
     },
   });
 
-  // 测试数据
-  const testMessages = [
-    // 1. 列出工具
-    {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/list',
-      params: {},
+  // 构建测试消息（支持未认证与已认证两种路径）
+  const testMessages = [];
+
+  // 1) 工具列表
+  testMessages.push({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/list',
+    params: {},
+  });
+
+  // 2) 认证状态（未设置 token 时应显示未认证）
+  testMessages.push({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'get_auth_status',
+      arguments: {},
     },
-    // 2. 添加记忆
-    {
+  });
+
+  let nextId = 3;
+
+  if (accessToken) {
+    // 3) 设置访问令牌（桥接 Supabase 会话）
+    testMessages.push({
       jsonrpc: '2.0',
-      id: 2,
+      id: nextId++,
       method: 'tools/call',
       params: {
-        name: 'add_memory',
-        arguments: {
-          type: 'task',
-          content: {
-            title: 'MCP测试任务',
-            description: '这是一个通过MCP添加的测试任务',
-            status: 'pending',
-            priority: 'medium',
-          },
-          tags: ['mcp', 'test'],
-        },
+        name: 'set_access_token',
+        arguments: { access_token: accessToken },
       },
-    },
-    // 3. 搜索记忆
-    {
+    });
+
+    // 4) 再次检查认证状态
+    testMessages.push({
       jsonrpc: '2.0',
-      id: 3,
+      id: nextId++,
       method: 'tools/call',
       params: {
-        name: 'search_memories',
-        arguments: {
-          type: 'task',
-          limit: 5,
-        },
-      },
-    },
-    // 4. 获取统计信息
-    {
-      jsonrpc: '2.0',
-      id: 4,
-      method: 'tools/call',
-      params: {
-        name: 'get_memory_stats',
+        name: 'get_auth_status',
         arguments: {},
       },
-    },
-  ];
+    });
+
+    // 5) 系统状态（包含连接性与建议）
+    testMessages.push({
+      jsonrpc: '2.0',
+      id: nextId++,
+      method: 'tools/call',
+      params: {
+        name: 'get_system_status',
+        arguments: { include_recent_errors: true, check_connectivity: true },
+      },
+    });
+
+    // 6) 直接查询 AI 任务（示例：进行中）
+    testMessages.push({
+      jsonrpc: '2.0',
+      id: nextId++,
+      method: 'tools/call',
+      params: {
+        name: 'get_ai_tasks',
+        arguments: { status: 'in_progress', limit: 5 },
+      },
+    });
+  } else {
+    // 未携带 token 的情况下，依旧测试系统状态（多数检查可运行，但访问受限）
+    testMessages.push({
+      jsonrpc: '2.0',
+      id: nextId++,
+      method: 'tools/call',
+      params: {
+        name: 'get_system_status',
+        arguments: { include_recent_errors: true, check_connectivity: true },
+      },
+    });
+  }
 
   let responseCount = 0;
 
@@ -107,7 +137,7 @@ async function testMCPServer() {
       console.log('─'.repeat(50));
       
       server.stdin.write(JSON.stringify(message) + '\n');
-    }, i * 1000);
+    }, i * 600);
   }
 
   // 等待一段时间后结束测试
