@@ -10,7 +10,7 @@ const sessions = new Map(); // sessionId -> { transport, server }
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-session-id',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-session-id, X-User-Auth-Token',
   'Access-Control-Expose-Headers': 'Mcp-Session-Id',
 };
 

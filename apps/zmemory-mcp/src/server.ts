@@ -293,6 +293,10 @@ ID: ${category.id}
     console.error('ZMemory MCP服务器已启动');
   }
 
+  getServer() {
+    return this.server;
+  }
+
   async close() {
     await this.server.close();
   }

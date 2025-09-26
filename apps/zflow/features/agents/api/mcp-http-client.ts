@@ -118,7 +118,7 @@ export class MCPHttpClient {
     }
   }
 
-  private async sendMCPRequest(method: string, params?: any): Promise<any> {
+  private async sendMCPRequest(method: string, params?: any, userAuthToken?: string): Promise<any> {
     const request = {
       jsonrpc: '2.0',
       id: Date.now(),
@@ -129,6 +129,13 @@ export class MCPHttpClient {
     const headers: Record<string, string> = {}
     if (this.sessionId) {
       headers['mcp-session-id'] = this.sessionId
+    }
+
+    // Pass user auth token to MCP server if available
+    if (userAuthToken) {
+      headers['X-User-Auth-Token'] = userAuthToken
+    } else if (this.config.apiKey) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`
     }
 
     const response = await fetch(`${this.config.baseUrl.replace(/\/$/, '')}/api/mcp`, {
@@ -249,7 +256,7 @@ export class MCPHttpClient {
       const result = await this.sendMCPRequest('tools/call', {
         name,
         arguments: arguments_
-      })
+      }, userAuthToken)
 
       console.log(`✅ HTTP MCP tool ${name} completed:`, result)
 
