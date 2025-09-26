@@ -141,32 +141,6 @@ export function NarrativePage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <BookOpenIcon className="w-8 h-8 text-primary-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Narrative
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Manage your seasons and episodes
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowCreateSeason(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-              >
-                <PlusIcon className="w-4 h-4" />
-                New Season
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Season Selector */}
         <div className="mb-6">
