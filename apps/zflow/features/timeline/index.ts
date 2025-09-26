@@ -21,3 +21,20 @@ export type {
 
 // Timeline Components
 export { default as TimelinePage } from './TimelinePage'
+
+// Timeline View Components
+export {
+  TimelineView,
+  ModernTimelineView,
+  Header,
+  Gap,
+  NowMarker,
+  EventCard,
+  TimelineHome,
+  byStart,
+  findNowIndex,
+  toDate
+} from './components'
+
+// Timeline Component Types
+export type { TimelineEvent, Category } from './components'

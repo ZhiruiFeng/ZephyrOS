@@ -1,3 +1,3 @@
-export { default } from './timeline/ModernTimelineView'
-export type { TimelineEvent, Category } from './timeline/types'
-
+// Legacy re-export - use @/timeline for new imports
+export { ModernTimelineView as default } from '@/timeline'
+export type { TimelineEvent, Category } from '@/timeline'

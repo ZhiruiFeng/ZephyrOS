@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { DateSelector } from '@/app/components/ui'
-import TimelineView from '@/app/components/views/TimelineView'
+import { DateSelector } from '../../../components/ui'
+import { TimelineView } from '../../../components/views'
 import type { TimelineItem } from '@/timeline'
 
 interface TimelineHomeProps {

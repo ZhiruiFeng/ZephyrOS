@@ -7,7 +7,7 @@
 import React, { Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
-import TimelineView from '@/app/components/views/TimelineView'
+import { TimelineView } from './components'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TimelineItem } from './types/timeline'
 import DateSelector from '@/app/components/ui/DateSelector'

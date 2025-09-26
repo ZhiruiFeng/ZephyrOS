@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { DateSelector } from '@/app/components/ui'
-import TimelineView from '@/app/components/views/TimelineView'
+import TimelineView from '../components/TimelineView'
 import type { TimelineItem } from '@/timeline'
 
 interface TimelineHomeProps {
