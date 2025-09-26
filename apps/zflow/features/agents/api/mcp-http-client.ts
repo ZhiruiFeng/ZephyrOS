@@ -27,8 +27,17 @@ export class MCPHttpClient {
     try {
       console.log(`🔌 Connecting to HTTP MCP server: ${this.config.baseUrl}`)
 
-      // Test connection with health check
-      const healthResponse = await this.makeRequest('/health', 'GET')
+      // Test connection with health check (use simple headers for health endpoint)
+      const healthUrl = `${this.config.baseUrl.replace(/\/$/, '')}/health`
+      const healthResponse = await fetch(healthUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json', // Don't include text/event-stream for health check
+          'User-Agent': 'ZFlow-MCP-Client/1.0'
+        },
+        signal: AbortSignal.timeout(this.config.timeout!)
+      })
       if (!healthResponse.ok) {
         throw new Error(`MCP server health check failed: ${healthResponse.status}`)
       }
