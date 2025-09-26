@@ -221,6 +221,10 @@ All path aliases are configured in `tsconfig.json`:
       "@/timeline": ["./features/timeline"],
       "@/features/*": ["./features/*"],
 
+      // Shared library
+      "@/shared/*": ["./lib/shared/*"],
+      "@/shared": ["./lib/shared"],
+
       // Core directories
       "@/lib/*": ["./lib/*"],
       "@/hooks/*": ["./hooks/*"],
@@ -239,6 +243,11 @@ All path aliases are configured in `tsconfig.json`:
 
 #### ✅ **PREFERRED: Clean Path Aliases**
 ```typescript
+// Shared utilities (PREFERRED for cross-feature utilities)
+import { useTaskOperations, useCategories } from '@/shared'
+import { getStatusColor, smartFormatDate } from '@/shared/utils'
+import { StatusBadge, TaskCard } from '@/shared/components'
+
 // Features
 import { useStrategyDashboard, StrategyTask } from '@/strategy'
 import { useTimeline } from '@/timeline'
@@ -284,9 +293,117 @@ import type { Task } from '../../../types/domain/task'
 4. **Relative imports within features** are acceptable and often clearer
 5. **Update tsconfig.json** when adding new major directories
 
+## 8. Shared Utilities Library
+
+ZFlow implements a **Shared Utilities Library** pattern to eliminate code duplication and ensure consistent implementations across features.
+
+### **Shared Library Structure**
+
+```
+lib/shared/                  # 🎯 Cross-feature shared utilities
+├── hooks/                   # Shared React hooks
+│   ├── useTaskOperations.ts    # Generic task operations
+│   ├── useTaskActions.ts       # Task CRUD operations
+│   ├── useActivitiesShared.ts  # Activity management
+│   ├── useTimerShared.ts       # Timer functionality
+│   ├── useAutoSave.ts          # Auto-save logic
+│   ├── useCategories.ts        # Category management
+│   ├── useCelebration.ts       # UI animations
+│   ├── useModalState.ts        # Modal state management
+│   └── index.ts                # Barrel exports
+├── utils/                   # Utility functions
+│   ├── task-utils.ts           # Task helpers (getStatusColor, etc.)
+│   ├── time-utils.ts           # Time formatting & calculations
+│   ├── activity-utils.ts       # Activity helpers
+│   ├── validation-utils.ts     # Form validation
+│   └── index.ts                # Barrel exports
+├── components/              # Shared UI components
+│   ├── StatusBadge.tsx         # Status indicators
+│   ├── TaskCard.tsx            # Basic task display
+│   ├── TimerDisplay.tsx        # Timer UI component
+│   └── index.ts                # Barrel exports
+├── types/                   # Shared type definitions
+│   ├── shared-hooks.ts         # Hook return types
+│   ├── shared-tasks.ts         # Task-related types
+│   ├── shared-activities.ts    # Activity types
+│   └── index.ts                # Barrel exports
+└── index.ts                 # Main entry point
+```
+
+### **Import Patterns for Shared Utilities**
+
+#### ✅ **PREFERRED: Shared Library Imports**
+```typescript
+// Use shared utilities for cross-feature functionality
+import { useTaskOperations, useCategories } from '@/shared'
+import { getStatusColor, smartFormatDate } from '@/shared/utils'
+import { StatusBadge, TimerDisplay } from '@/shared/components'
+import type { TaskOperationsReturn } from '@/shared/types'
+```
+
+#### ✅ **ACCEPTABLE: Feature-Specific Extensions**
+```typescript
+// Feature-specific extensions of shared utilities
+import { useFocusTaskOperations } from '@/focus'
+
+// Using shared utilities within feature extensions
+import { useTaskOperations } from '@/shared'
+
+export function useFocusTaskOperations(props) {
+  const baseOperations = useTaskOperations()
+
+  // Add focus-specific functionality
+  return {
+    ...baseOperations,
+    focusSpecificMethod: () => { /* ... */ }
+  }
+}
+```
+
+#### ❌ **AVOID: Old Hook Directory Imports**
+```typescript
+// Old pattern - these directories have been cleaned up
+import { useTaskActions } from '@/hooks/tasks/useTaskActions'     // ❌ Removed
+import { useCategories } from '@/hooks/ui/useCategories'          // ❌ Removed
+import { useTimer } from '@/hooks/activities/useTimer'            // ❌ Removed
+```
+
+### **When to Use Shared vs Feature-Specific**
+
+#### **Use Shared Library (`@/shared`) For:**
+✅ **Cross-Feature Utilities**: Used by 2+ features
+✅ **Core Business Logic**: Task operations, activity management
+✅ **UI Patterns**: Status badges, common components
+✅ **Data Formatting**: Date/time formatting, validation
+✅ **State Management**: Categories, modal state
+
+#### **Use Feature-Specific For:**
+✅ **Feature Workflows**: Complex, feature-specific logic flows
+✅ **Domain-Specific Types**: Feature-only interfaces
+✅ **Business Rules**: Feature-specific validation or calculations
+✅ **Integration Logic**: Feature-specific API orchestration
+
+### **Migration Guidelines**
+
+When creating new utilities:
+
+1. **Start with Feature-Specific**: Build utilities within the feature first
+2. **Identify Shared Patterns**: When 2+ features need similar functionality
+3. **Extract to Shared**: Move common patterns to `@/shared`
+4. **Create Extensions**: Keep feature-specific logic as extensions of shared utilities
+
+### **Shared Library Benefits**
+
+🎯 **Zero Duplication**: Single source of truth for common functionality
+⚡ **Consistent Behavior**: All features use identical implementations
+🔧 **Easier Maintenance**: Changes in one place affect all features
+🧪 **Better Testing**: Shared utilities can be tested independently
+♻️ **Maximum Reusability**: New features can immediately use existing utilities
+🏗️ **Cleaner Architecture**: Clear separation between shared and feature-specific
+
 ---
 
-## 8. Feature-First Architecture
+## 9. Feature-First Architecture
 
 ZFlow follows a **Feature-First Architecture** pattern that promotes modular, reusable, and maintainable code organization.
 

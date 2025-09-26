@@ -12,7 +12,7 @@
 
 // Hooks (business logic)
 export { useWorkModeState } from './hooks/useWorkModeState'
-export { useTaskOperations } from './hooks/useTaskOperations'
+export { useFocusTaskOperations } from './hooks/useFocusTaskOperations'
 
 // Types (domain models)
 export type {

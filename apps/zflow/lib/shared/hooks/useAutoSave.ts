@@ -56,20 +56,20 @@ export function useAutoSave({
       try {
         pendingRef.current = true
         setStatus('saving')
-        
+
         await onSave()
-        
+
         setStatus('saved')
         setLastSaved(new Date())
-        
+
         // Reset to idle after showing "saved" for a longer moment
         setTimeout(() => {
           setStatus('idle')
         }, 5000)
-        
+
       } catch (error) {
         setStatus('error')
-        
+
         // Reset to idle after showing error for a moment
         setTimeout(() => {
           setStatus('idle')
@@ -99,19 +99,19 @@ export function useAutoSave({
     try {
       pendingRef.current = true
       setStatus('saving')
-      
+
       await onSave()
-      
+
       setStatus('saved')
       setLastSaved(new Date())
-      
+
       setTimeout(() => {
         setStatus('idle')
       }, 5000)
-      
+
     } catch (error) {
       setStatus('error')
-      
+
       setTimeout(() => {
         setStatus('idle')
       }, 3000)

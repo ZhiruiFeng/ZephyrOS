@@ -26,13 +26,13 @@ import {
 } from './components/editors'
 // views rendered via containers
 import { useTasks } from '../hooks/memory/useMemories'
-import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/ui/useCategories'
-import { useActivities } from '../hooks/activities/useActivities'
-import { useTimer } from '../hooks/activities/useTimer'
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/shared/hooks/useCategories'
+import { useActivities } from '@/shared/hooks/useActivitiesShared'
+import { useTimerShared } from '@/shared/hooks/useTimerShared'
 import { useTaskFiltering } from '../hooks/tasks/useTaskFiltering'
-import { useTaskActions } from '../hooks/tasks/useTaskActions'
+import { useTaskActions } from '@/shared/hooks/useTaskActions'
 import { useActivityActions } from '../hooks/activities/useActivityActions'
-import { useModalState } from '../hooks/ui/useModalState'
+import { useModalState } from '@/shared/hooks/useModalState'
 import { useTimeline, TimelineItem, TimelineHome } from '@/timeline'
 import eventBus from './core/events/event-bus'
 import TasksHome from './modules/tasks/containers/TasksHome'
@@ -70,7 +70,7 @@ function ZFlowPageContent() {
   const { createCategory } = useCreateCategory()
   const { updateCategory } = useUpdateCategory()
   const { deleteCategory } = useDeleteCategory()
-  const timer = useTimer()
+  const timer = useTimerShared()
   const { timelineData, isLoading: timelineLoading, error: timelineError, refetch: refetchTimeline } = useTimeline(selectedDate)
 
   // Shared filters

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import useSWR from 'swr'
-import { timeTrackingApi, API_BASE } from '../../lib/api'
-import eventBus from '../../app/core/events/event-bus'
-import { authManager } from '../../lib/auth-manager'
+import { timeTrackingApi, API_BASE } from '@/lib/api'
+import eventBus from '@/app/core/events/event-bus'
+import { authManager } from '@/lib/auth-manager'
 
 export interface UseTimerState {
   isRunning: boolean
@@ -18,7 +18,7 @@ export interface UseTimerState {
   refresh: () => void
 }
 
-export function useTimer(pollMs: number = 5000): UseTimerState {
+export function useTimerShared(pollMs: number = 5000): UseTimerState {
   const { data, mutate } = useSWR('running-timer', async () => {
     const authHeaders = await authManager.getAuthHeaders()
     const res = await fetch(`${API_BASE}/time-entries/running`, {
@@ -48,11 +48,11 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
   const stop = useCallback(async (taskId: string, opts?: { overrideEndAt?: string }) => {
     const result = await timeTrackingApi.stop(taskId, { overrideEndAt: opts?.overrideEndAt })
     try {
-      // 通知全局：计时已停止，携带本次 time entry 以便触发能量评估弹窗
+      // Notify globally: timer stopped, carry this time entry for energy evaluation popup
       eventBus.emitTimerStopped({ entry: result?.entry || null })
     } catch {}
     await mutate()
-    // 保持原签名不返回值，避免破坏现有调用点
+    // Keep original signature without return value to avoid breaking existing call sites
   }, [mutate])
 
   const startActivity = useCallback(async (activityId: string) => {
@@ -68,12 +68,12 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
         source: 'timer'
       })
     })
-    
+
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || 'Failed to start activity timer')
     }
-    
+
     await mutate()
   }, [mutate])
 
@@ -96,12 +96,12 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
         end_at: new Date().toISOString()
       })
     })
-    
+
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || 'Failed to stop activity timer')
     }
-    
+
     await mutate()
   }, [data?.entry, mutate])
 
@@ -128,4 +128,3 @@ export function useTimer(pollMs: number = 5000): UseTimerState {
     refresh,
   }
 }
-

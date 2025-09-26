@@ -3,9 +3,9 @@
 import React, { Suspense } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
-import { useActivities } from '../../../hooks/activities/useActivities'
-import { useCategories } from '../../../hooks/ui/useCategories'
-import { useTimer } from '../../../hooks/activities/useTimer'
+import { useActivities } from '@/shared/hooks/useActivitiesShared'
+import { useCategories } from '@/shared/hooks/useCategories'
+import { useTimerShared } from '@/shared/hooks/useTimerShared'
 import { ActivitiesView } from '../../components/views'
 
 function ActivitiesTestContent() {
@@ -13,7 +13,7 @@ function ActivitiesTestContent() {
   const { t } = useTranslation()
   const { activities, isLoading: activitiesLoading } = useActivities(user ? undefined : undefined)
   const { categories } = useCategories()
-  const timer = useTimer()
+  const timer = useTimerShared()
 
   if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   if (!user) return <div className="flex items-center justify-center min-h-screen">请先登录</div>

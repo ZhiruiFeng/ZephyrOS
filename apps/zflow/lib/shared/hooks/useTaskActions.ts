@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { TaskMemory, TaskContent } from '../../lib/api'
-import { useCreateTask, useUpdateTask, useDeleteTask } from '../memory/useMemories'
+import { TaskMemory, TaskContent } from '@/lib/api'
+import { useCreateTask, useUpdateTask, useDeleteTask } from '@/hooks/memory/useMemories'
 
 interface UseTaskActionsProps {
   t: any // translations
@@ -60,20 +60,20 @@ export function useTaskActions({ t }: UseTaskActionsProps) {
   const toggleComplete = useCallback(async (id: string, current: string) => {
     const newStatus = current === 'completed' ? 'pending' : 'completed'
     const now = new Date().toISOString()
-    await updateTask(id, { 
-      content: { 
+    await updateTask(id, {
+      content: {
         status: newStatus,
         completion_date: newStatus === 'completed' ? now : undefined
-      } 
+      }
     })
   }, [updateTask])
 
   // Put task on hold
   const holdTask = useCallback(async (id: string) => {
-    await updateTask(id, { 
-      content: { 
+    await updateTask(id, {
+      content: {
         status: 'on_hold'
-      } 
+      }
     })
   }, [updateTask])
 

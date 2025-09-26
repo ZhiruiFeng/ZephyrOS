@@ -37,6 +37,10 @@
       "@/profile": ["./features/profile"],
       "@/speech": ["./features/speech"],
 
+      // Shared library
+      "@/shared/*": ["./lib/shared/*"],
+      "@/shared": ["./lib/shared"],
+
       // Core directories
       "@/lib/*": ["./lib/*"],
       "@/hooks/*": ["./hooks/*"],

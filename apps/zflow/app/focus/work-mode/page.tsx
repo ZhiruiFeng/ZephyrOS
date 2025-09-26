@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useCallback, startTransition, useState } from 'react'
 import { useTasks } from '../../../hooks/memory/useMemories'
-import { useCategories } from '../../../hooks/ui/useCategories'
+import { useCategories } from '@/shared/hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import LoginPage from '../../components/auth/LoginPage'
 import { X } from 'lucide-react'
@@ -14,7 +14,7 @@ import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../ho
 import eventBus from '../../core/events/event-bus'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { CelebrationAnimation } from '../../components/ui/CelebrationAnimation'
-import { useCelebration } from '../../../hooks/ui/useCelebration'
+import { useCelebration } from '@/shared/hooks/useCelebration'
 
 // Import modular components
 import TaskSidebar from './components/TaskSidebar'
@@ -28,8 +28,8 @@ import { useWorkModeState } from './hooks/useWorkModeState'
 
 // Import hooks directly
 import { useUpdateTask } from '../../../hooks/memory/useMemories'
-import { useTimer } from '../../../hooks/activities/useTimer'
-import { useAutoSave } from '../../../hooks/activities/useAutoSave'
+import { useTimerShared } from '@/shared/hooks/useTimerShared'
+import { useAutoSave } from '@/shared/hooks/useAutoSave'
 
 // Create a simplified task operations hook that includes auto-save internally
 function useTaskOperationsWithAutoSave({
@@ -50,7 +50,7 @@ function useTaskOperationsWithAutoSave({
 }: any) {
   const { t } = useTranslation()
   const { updateTask, updateTaskSilent } = useUpdateTask()
-  const timer = useTimer(5000)
+  const timer = useTimerShared(5000)
 
   // Auto-save logic built directly into the hook to avoid circular dependencies
   const autoSaveNotes = useCallback(async () => {

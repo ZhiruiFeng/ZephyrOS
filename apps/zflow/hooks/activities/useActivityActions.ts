@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useCreateActivity, useUpdateActivity, useDeleteActivity } from './useActivities'
+import { useCreateActivity, useUpdateActivity, useDeleteActivity } from '@/shared/hooks/useActivitiesShared'
 
 interface UseActivityActionsProps {
   t: any // translations

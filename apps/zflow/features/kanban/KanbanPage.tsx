@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '@/hooks/memory/useMemories'
-import { useCategories } from '@/hooks/ui/useCategories'
-import { useTimer } from '@/hooks/activities/useTimer'
+import { useCategories } from '@/shared/hooks/useCategories'
+import { useTimerShared } from '@/shared/hooks/useTimerShared'
 import { usePrefs } from '@/contexts/PrefsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import LoginPage from '@/app/components/auth/LoginPage'
@@ -19,11 +19,11 @@ import {
   formatTagsString,
   getTaskDisplayDate,
   shouldShowOverdue
-} from '@/app/utils/taskUtils'
+} from '@/shared/utils/task-utils'
 import { useTranslation } from '@/contexts/LanguageContext'
 import EnergyReviewModal from '@/app/components/modals/EnergyReviewModal'
 import { CelebrationAnimation } from '@/app/components/ui/CelebrationAnimation'
-import { useCelebration } from '@/hooks/ui/useCelebration'
+import { useCelebration } from '@/shared/hooks/useCelebration'
 
 type StatusKey = TaskContent['status']
 
@@ -39,7 +39,7 @@ export default function KanbanPage() {
   const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
   const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
-  const timer = useTimer()
+  const timer = useTimerShared()
   const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 
