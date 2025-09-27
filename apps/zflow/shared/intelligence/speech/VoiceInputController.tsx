@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSTTConfig } from '@/contexts/STTConfigContext'
+import { refineTranscript, hasFillerWords } from './transcriptRefinement'
 
 // Types
 interface RecorderState {
@@ -358,7 +359,8 @@ const RecordingPanel: React.FC<{
   onCancel: () => void
   onClose: () => void
   sttProvider?: string
-}> = ({ isOpen, isMobile, position, recorderState, onStart, onPause, onResume, onComplete, onCancel, onClose, sttProvider }) => {
+  useRefinedTranscription?: boolean
+}> = ({ isOpen, isMobile, position, recorderState, onStart, onPause, onResume, onComplete, onCancel, onClose, sttProvider, useRefinedTranscription }) => {
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -424,6 +426,11 @@ const RecordingPanel: React.FC<{
         {sttProvider && (
           <div className="mt-1 text-xs text-gray-500">
             Using {sttProvider === 'elevenlabs' ? 'ElevenLabs Scribe' : 'OpenAI Whisper'}
+          </div>
+        )}
+        {useRefinedTranscription && (
+          <div className="mt-1 text-xs text-blue-600">
+            ✨ AI refinement enabled
           </div>
         )}
       </div>
@@ -500,6 +507,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [isRefining, setIsRefining] = useState(false)
 
   const [recorderState, recorderControls] = useRecorder()
 
@@ -697,12 +705,12 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
 
   const handleComplete = async () => {
     if (!focusedElement) return
-    
+
     setIsTranscribing(true)
-    
+
     try {
       let audioBlob: Blob
-      
+
       if (recorderState.isRecording) {
         // Stop recording and get the blob
         audioBlob = await recorderControls.stopAndGetBlob()
@@ -712,9 +720,9 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
       } else {
         throw new Error('No audio recording available')
       }
-      
+
       let text = ''
-      
+
       if (!useRealTranscription) {
         text = await mockTranscribe(audioBlob)
       } else {
@@ -740,13 +748,31 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
           }
         }
       }
-      
+
+      // Apply transcript refinement if enabled
+      if (sttConfig.useRefinedTranscription && text.trim() && hasFillerWords(text)) {
+        setIsTranscribing(false)
+        setIsRefining(true)
+
+        try {
+          const refinementResult = await refineTranscript(text, {
+            removeFillersOnly: true,
+            preserveStyle: true
+          })
+          text = refinementResult.refinedText
+        } catch (refinementError) {
+          console.warn('Transcript refinement failed, using original text:', refinementError)
+          // Continue with original text if refinement fails
+        }
+      }
+
       insertTextAtCursor(focusedElement, text)
     } catch (error) {
       console.error('Transcription failed:', error)
       alert('Failed to transcribe audio. Please try again.')
     } finally {
       setIsTranscribing(false)
+      setIsRefining(false)
       handlePanelClose()
     }
   }
@@ -786,16 +812,27 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
           onCancel={handleCancel}
           onClose={handlePanelClose}
           sttProvider={sttConfig.showProviderInUI ? sttConfig.provider : undefined}
+          useRefinedTranscription={sttConfig.useRefinedTranscription}
         />
       </div>
 
-      {isTranscribing && (
+      {(isTranscribing || isRefining) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              <span>Transcribing audio...</span>
+              <span>
+                {isRefining
+                  ? 'Refining transcript...'
+                  : 'Transcribing audio...'
+                }
+              </span>
             </div>
+            {isRefining && (
+              <div className="mt-2 text-sm text-gray-600">
+                Removing filler words and improving readability
+              </div>
+            )}
           </div>
         </div>
       )}

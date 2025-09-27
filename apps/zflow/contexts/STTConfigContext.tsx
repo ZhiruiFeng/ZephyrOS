@@ -8,7 +8,8 @@ import type { STTProvider, STTConfig } from '@/features/profile/components/modul
 const DEFAULT_STT_CONFIG: STTConfig = {
   provider: 'elevenlabs',
   autoSave: true,
-  showProviderInUI: false
+  showProviderInUI: false,
+  useRefinedTranscription: false
 }
 
 interface STTConfigContextType {
