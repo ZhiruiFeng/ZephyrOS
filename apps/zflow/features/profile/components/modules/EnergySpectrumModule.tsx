@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { BarChart3, Settings, X, Maximize2 } from 'lucide-react'
 import { useTranslation } from '@/contexts/LanguageContext'
-import EnergySpectrum from '@/app/components/ui/EnergySpectrum'
+import EnergySpectrum from '../ui/EnergySpectrum'
 import { getUserTimezone, getTimezoneAbbr } from '@/app/utils/timeUtils'
 import type { ProfileModuleProps } from '@/profile'
 

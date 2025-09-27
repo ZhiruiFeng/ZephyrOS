@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { TaskMemory } from '@/lib/api'
-import TaskCard from '@/app/components/ui/TaskCard'
+import TaskCard from '../ui/TaskCard'
 
 interface FutureViewProps {
   tasks: TaskMemory[]

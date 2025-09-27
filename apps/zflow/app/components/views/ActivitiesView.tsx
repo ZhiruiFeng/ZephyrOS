@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import ActivityCard from '../ui/ActivityCard'
+import { ActivityCard } from '@/features/activities'
 
 interface ActivitiesViewProps {
   activities: any[]

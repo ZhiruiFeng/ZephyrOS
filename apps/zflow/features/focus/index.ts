@@ -30,8 +30,28 @@ export type {
   MemoryFocusViewProps
 } from './types/focus'
 
+// Work Mode Types
+export type { Message } from './components/work-mode'
+
 // Components
 export { default as TaskSidebar } from './components/TaskSidebar'
 
+// Work Mode Components
+export {
+  TaskSidebar as WorkModeTaskSidebar,
+  WorkModeEditor,
+  WorkModeEditorHeader,
+  TaskInfoPanel,
+  TaskHeader,
+  ConversationPanel,
+  ChatMessage,
+  ChatInput,
+  ConversationButton,
+  ResizeHandle
+} from './components/work-mode'
+
 // Page components
 export { default as FocusPage } from './FocusPage'
+export { default as WorkModeView } from './WorkModeView'
+export { default as ActivityFocusView } from './ActivityFocusView'
+export { default as MemoryFocusView } from './MemoryFocusView'

@@ -2,6 +2,9 @@
 // Activities Feature - Public API
 // =====================================================
 
+// UI components
+export { default as ActivityCard } from './components/ui/ActivityCard'
+
 // Form components
 export { default as ActivityForm } from './forms/ActivityForm'
 export type { ActivityFormValue } from './forms/ActivityForm'

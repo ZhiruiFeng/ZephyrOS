@@ -14,6 +14,11 @@ export { default as ArchiveView } from './components/views/ArchiveView'
 export { default as TaskForm } from './forms/TaskForm'
 export type { TaskFormValue } from './forms/TaskForm'
 
+// UI components
+export { default as TaskCard } from './components/ui/TaskCard'
+export type { TaskCardVariant } from './components/ui/TaskCard'
+export { getPriorityIcon, getTimerIcon } from './components/ui/TaskIcons'
+
 // API
 export { tasksApi, subtasksApi } from './api/tasks-api'
 export type { 

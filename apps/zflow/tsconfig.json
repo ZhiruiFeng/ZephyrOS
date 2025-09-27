@@ -36,6 +36,8 @@
       "@/kanban": ["./features/kanban"],
       "@/profile": ["./features/profile"],
       "@/speech": ["./features/speech"],
+      "@/tasks": ["./features/tasks"],
+      "@/activities": ["./features/activities"],
 
       // Shared library
       "@/shared/*": ["./shared/*"],

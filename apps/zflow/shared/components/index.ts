@@ -1,15 +1,10 @@
 // =====================================================
-// ZFlow Shared Components - Barrel Export
+// Shared Components - Public API
 // =====================================================
 
-// Status and utility components
-export { StatusBadge } from './StatusBadge'
-
-// Task-related components
-export { TaskCard } from './TaskCard'
-
-// Timer components
-export { TimerDisplay } from './TimerDisplay'
+export { default as DateSelector } from './DateSelector'
+export { default as FloatingAddButton } from './FloatingAddButton'
+export { CelebrationAnimation } from './CelebrationAnimation'
 
 // Modals
 export { FullscreenModal, useFullscreenModal } from './modals/FullscreenModal'

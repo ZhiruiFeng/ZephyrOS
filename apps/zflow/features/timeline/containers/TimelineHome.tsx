@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { DateSelector } from '@/app/components/ui'
+import { DateSelector } from '@/shared/components'
 import TimelineView from '../components/TimelineView'
 import { usePerformanceTracking } from '@/lib/performance'
 import type { TimelineItem } from '@/timeline'

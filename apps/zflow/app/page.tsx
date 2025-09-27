@@ -10,7 +10,7 @@ import {
   LoginPage,
 } from './components/auth'
 import { MobileCategorySheet } from './components/navigation'
-import { FloatingAddButton } from './components/ui'
+import { FloatingAddButton } from '@/shared/components'
 // Lazy load heavy modal and editor components
 const AddTaskModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.AddTaskModal })))
 const TaskTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.TaskTimeModal })))

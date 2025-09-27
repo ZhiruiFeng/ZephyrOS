@@ -12,7 +12,7 @@ import LoginPage from '@/app/components/auth/LoginPage'
 import { TaskMemory, categoriesApi, TaskContent } from '@/lib/api'
 import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag, Hourglass } from 'lucide-react'
 import TaskEditor from '@/app/components/editors/TaskEditor'
-import { getPriorityIcon, getTimerIcon } from '@/app/components/ui/TaskIcons'
+import { getPriorityIcon, getTimerIcon } from '@/tasks'
 import {
   isOverdue,
   formatDate,
@@ -22,7 +22,7 @@ import {
 } from '@/shared/utils/task-utils'
 import { useTranslation } from '@/contexts/LanguageContext'
 import EnergyReviewModal from '@/app/components/modals/EnergyReviewModal'
-import { CelebrationAnimation } from '@/app/components/ui/CelebrationAnimation'
+import { CelebrationAnimation } from '@/shared/components'
 import { useCelebration } from '@/hooks/useCelebration'
 
 type StatusKey = TaskContent['status']

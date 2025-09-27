@@ -2,6 +2,9 @@
 // Profile Feature - Public API
 // =====================================================
 
+// UI Components
+export { default as EnergySpectrum } from './components/ui/EnergySpectrum'
+
 // Profile Components
 export { ProfilePage } from './ProfilePage'
 

@@ -16,8 +16,8 @@ const KanbanView = dynamic(() => import('@/kanban').then(mod => mod.KanbanPage),
   )
 })
 
-// For now, keep the WorkModeView in the app folder until we complete migration
-const WorkModeView = dynamic(() => import('@/app/focus/work-mode/WorkModeView'), { 
+// Import WorkModeView from the focus feature
+const WorkModeView = dynamic(() => import('./WorkModeView'), { 
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-64">
