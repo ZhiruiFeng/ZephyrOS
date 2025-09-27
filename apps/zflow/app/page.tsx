@@ -11,19 +11,14 @@ import {
 } from './components/auth'
 import { MobileCategorySheet } from './components/navigation'
 import { FloatingAddButton } from './components/ui'
-import {
-  // Modal components
-  AddTaskModal,
-  TaskTimeModal,
-  ActivityTimeModal,
-  DailyTimeModal,
-  EnergyReviewModal,
-} from './components/modals'
-import {
-  // Editor components
-  TaskEditor,
-  ActivityEditor,
-} from './components/editors'
+// Lazy load heavy modal and editor components
+const AddTaskModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.AddTaskModal })))
+const TaskTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.TaskTimeModal })))
+const ActivityTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.ActivityTimeModal })))
+const DailyTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.DailyTimeModal })))
+const EnergyReviewModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.EnergyReviewModal })))
+const TaskEditor = React.lazy(() => import('./components/editors').then(m => ({ default: m.TaskEditor })))
+const ActivityEditor = React.lazy(() => import('./components/editors').then(m => ({ default: m.ActivityEditor })))
 // views rendered via containers
 import { useTasks } from '@/hooks'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories'
@@ -33,9 +28,12 @@ import { useTaskFiltering } from '@/hooks'
 import { useTaskActions } from '@/hooks/useTaskActions'
 import { useActivityActions } from '@/hooks'
 import { useModalState } from '@/hooks/useModalState'
-import { useTimeline, TimelineItem, TimelineHome } from '@/timeline'
+import { useTimeline, TimelineItem } from '@/timeline'
 import eventBus from './core/events/event-bus'
-import TasksHome from './modules/tasks/containers/TasksHome'
+
+// Lazy load heavy components
+const TimelineHome = React.lazy(() => import('@/timeline').then(module => ({ default: module.TimelineHome })))
+const TasksHome = React.lazy(() => import('./modules/tasks/containers/TasksHome'))
 
 export type ViewKey = 'current' | 'future' | 'archive'
 export type DisplayMode = 'list' | 'grid'
@@ -336,18 +334,21 @@ function ZFlowPageContent() {
 
         {/* Content based on view mode */}
         {mainViewMode === 'timeline' ? (
-          <TimelineHome
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            items={timelineData.items}
-            loading={timelineLoading}
-            refetch={refetchTimeline}
-            t={t}
-            lang={currentLang}
-            onItemClick={handleTimelineItemClick}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+            <TimelineHome
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              items={timelineData.items}
+              loading={timelineLoading}
+              refetch={refetchTimeline}
+              t={t}
+              lang={currentLang}
+              onItemClick={handleTimelineItemClick}
+            />
+          </Suspense>
         ) : (
-          <TasksHome
+          <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+            <TasksHome
             view={view}
             setView={setView}
             displayMode={displayMode}
@@ -386,6 +387,7 @@ function ZFlowPageContent() {
             onOpenMobileCategorySelector={() => modalState.setShowMobileCategorySelector(true)}
             onOpenDailyModal={() => modalState.setShowDailyModal(true)}
           />
+          </Suspense>
         )}
       </div>
 
@@ -397,59 +399,73 @@ function ZFlowPageContent() {
       </div>
 
       {/* Add Task Modal */}
-      <AddTaskModal
-        isOpen={modalState.showAddModal}
-        onClose={modalState.closeAddModal}
-        onSubmit={taskActions.handleAddTask}
-        onSubmitAndStart={handleCreateTaskAndStart}
-        categories={categories}
-        defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined}
-      />
+      <Suspense fallback={null}>
+        <AddTaskModal
+          isOpen={modalState.showAddModal}
+          onClose={modalState.closeAddModal}
+          onSubmit={taskActions.handleAddTask}
+          onSubmitAndStart={handleCreateTaskAndStart}
+          categories={categories}
+          defaultCategoryId={selectedCategory !== 'all' && selectedCategory !== 'uncategorized' ? selectedCategory : undefined}
+        />
+      </Suspense>
 
       {/* Task Editor */}
-      <TaskEditor
-        isOpen={modalState.showTaskEditor}
-        onClose={modalState.closeTaskEditor}
-        task={modalState.editingTask}
-        categories={categories}
-        onSave={handleSaveTask}
-        title={t.task?.editTask || 'Edit Task'}
-      />
+      <Suspense fallback={null}>
+        <TaskEditor
+          isOpen={modalState.showTaskEditor}
+          onClose={modalState.closeTaskEditor}
+          task={modalState.editingTask}
+          categories={categories}
+          onSave={handleSaveTask}
+          title={t.task?.editTask || 'Edit Task'}
+        />
+      </Suspense>
 
       {/* Activity Editor */}
-      <ActivityEditor
-        isOpen={modalState.showActivityEditor}
-        onClose={modalState.closeActivityEditor}
-        activity={modalState.editingActivity}
-        categories={categories}
-        onSave={handleSaveActivity}
-      />
+      <Suspense fallback={null}>
+        <ActivityEditor
+          isOpen={modalState.showActivityEditor}
+          onClose={modalState.closeActivityEditor}
+          activity={modalState.editingActivity}
+          categories={categories}
+          onSave={handleSaveActivity}
+        />
+      </Suspense>
 
       {/* Task Time Modal */}
-      <TaskTimeModal
-        isOpen={!!modalState.timeModalTask}
-        onClose={() => modalState.setTimeModalTask(null)}
-        taskId={modalState.timeModalTask?.id || ''}
-        taskTitle={modalState.timeModalTask?.title}
-      />
+      <Suspense fallback={null}>
+        <TaskTimeModal
+          isOpen={!!modalState.timeModalTask}
+          onClose={() => modalState.setTimeModalTask(null)}
+          taskId={modalState.timeModalTask?.id || ''}
+          taskTitle={modalState.timeModalTask?.title}
+        />
+      </Suspense>
 
       {/* Activity Time Modal */}
-      <ActivityTimeModal
-        isOpen={!!modalState.timeModalActivity}
-        onClose={() => modalState.setTimeModalActivity(null)}
-        activityId={modalState.timeModalActivity?.id || ''}
-        activityTitle={modalState.timeModalActivity?.title}
-      />
+      <Suspense fallback={null}>
+        <ActivityTimeModal
+          isOpen={!!modalState.timeModalActivity}
+          onClose={() => modalState.setTimeModalActivity(null)}
+          activityId={modalState.timeModalActivity?.id || ''}
+          activityTitle={modalState.timeModalActivity?.title}
+        />
+      </Suspense>
 
       {/* Daily Time Overview Modal */}
-      <DailyTimeModal isOpen={modalState.showDailyModal} onClose={() => modalState.setShowDailyModal(false)} />
+      <Suspense fallback={null}>
+        <DailyTimeModal isOpen={modalState.showDailyModal} onClose={() => modalState.setShowDailyModal(false)} />
+      </Suspense>
 
       {/* Energy Review Modal */}
-      <EnergyReviewModal
-        open={modalState.energyReviewOpen}
-        entry={modalState.energyReviewEntry}
-        onClose={() => modalState.setEnergyReviewOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <EnergyReviewModal
+          open={modalState.energyReviewOpen}
+          entry={modalState.energyReviewEntry}
+          onClose={() => modalState.setEnergyReviewOpen(false)}
+        />
+      </Suspense>
 
       {/* Mobile Category Selector Sheet */}
       <MobileCategorySheet

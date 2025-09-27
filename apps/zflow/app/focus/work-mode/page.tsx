@@ -6,10 +6,11 @@ import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import LoginPage from '../../components/auth/LoginPage'
 import { X } from 'lucide-react'
-import SubtaskSection from '../../components/editors/SubtaskSection'
-import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
-import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
-import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
+// Lazy load heavy components that are conditionally rendered
+const SubtaskSection = React.lazy(() => import('../../components/editors/SubtaskSection'))
+const EnergyReviewModal = React.lazy(() => import('../../components/modals/EnergyReviewModal'))
+const TaskMemoryDisplay = React.lazy(() => import('../../components/memory/TaskMemoryDisplay'))
+const MemoryManagementModal = React.lazy(() => import('../../components/memory/MemoryManagementModal'))
 import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '@/hooks'
 import eventBus from '../../core/events/event-bus'
 import { useTranslation } from '../../../contexts/LanguageContext'
@@ -602,16 +603,18 @@ function WorkModeViewInner() {
 
           {selectedTask && showMemories && (
             <div className="p-4 lg:p-6 border-b border-gray-200 bg-gray-50">
-              <TaskMemoryDisplay
-                taskId={selectedTask.id}
-                memories={taskAnchors}
-                onAddMemory={() => setMemoryModalOpen(true)}
-                onRemoveMemory={handleMemoryRemoved}
-                onViewMemory={() => {}}
-                isLoading={anchorsLoading}
-                collapsible={true}
-                compact={false}
-              />
+              <Suspense fallback={<div className="flex items-center justify-center p-4"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+                <TaskMemoryDisplay
+                  taskId={selectedTask.id}
+                  memories={taskAnchors}
+                  onAddMemory={() => setMemoryModalOpen(true)}
+                  onRemoveMemory={handleMemoryRemoved}
+                  onViewMemory={() => {}}
+                  isLoading={anchorsLoading}
+                  collapsible={true}
+                  compact={false}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -635,13 +638,15 @@ function WorkModeViewInner() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <SubtaskSection
-                  taskId={subtaskPanelTaskId}
-                  onSubtaskSelect={taskOperations.handleSubtaskSelect}
-                  selectedSubtaskId={selectedSubtask?.id}
-                  autoSelectSubtaskId={subtaskPanelAutoSelectId}
-                  onSubtaskCompleted={triggerCelebration}
-                />
+                <Suspense fallback={<div className="flex items-center justify-center p-4"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+                  <SubtaskSection
+                    taskId={subtaskPanelTaskId}
+                    onSubtaskSelect={taskOperations.handleSubtaskSelect}
+                    selectedSubtaskId={selectedSubtask?.id}
+                    autoSelectSubtaskId={subtaskPanelAutoSelectId}
+                    onSubtaskCompleted={triggerCelebration}
+                  />
+                </Suspense>
               </div>
 
               <div className="lg:hidden fixed inset-0 z-50">
@@ -663,13 +668,15 @@ function WorkModeViewInner() {
                     </button>
                   </div>
                   <div className="p-4 overflow-y-auto">
-                    <SubtaskSection
-                      taskId={subtaskPanelTaskId}
-                      onSubtaskSelect={taskOperations.handleSubtaskSelect}
-                      selectedSubtaskId={selectedSubtask?.id}
-                      autoSelectSubtaskId={subtaskPanelAutoSelectId}
-                      onSubtaskCompleted={triggerCelebration}
-                    />
+                    <Suspense fallback={<div className="flex items-center justify-center p-4"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+                      <SubtaskSection
+                        taskId={subtaskPanelTaskId}
+                        onSubtaskSelect={taskOperations.handleSubtaskSelect}
+                        selectedSubtaskId={selectedSubtask?.id}
+                        autoSelectSubtaskId={subtaskPanelAutoSelectId}
+                        onSubtaskCompleted={triggerCelebration}
+                      />
+                    </Suspense>
                   </div>
                 </div>
               </div>
@@ -695,22 +702,26 @@ function WorkModeViewInner() {
         </div>
       </div>
 
-      <MemoryManagementModal
-        isOpen={memoryModalOpen}
-        onClose={() => setMemoryModalOpen(false)}
-        taskId={selectedTask?.id || ''}
-        taskTitle={selectedTask?.content.title || ''}
-        onMemoryCreated={handleMemoryCreated}
-        onMemoryLinked={handleMemoryLinked}
-        existingMemories={allMemories}
-        isLoading={memoriesLoading || memoryActionLoading}
-      />
+      <Suspense fallback={null}>
+        <MemoryManagementModal
+          isOpen={memoryModalOpen}
+          onClose={() => setMemoryModalOpen(false)}
+          taskId={selectedTask?.id || ''}
+          taskTitle={selectedTask?.content.title || ''}
+          onMemoryCreated={handleMemoryCreated}
+          onMemoryLinked={handleMemoryLinked}
+          existingMemories={allMemories}
+          isLoading={memoriesLoading || memoryActionLoading}
+        />
+      </Suspense>
 
-      <EnergyReviewModal
-        open={energyReviewOpen}
-        entry={energyReviewEntry}
-        onClose={() => setEnergyReviewOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <EnergyReviewModal
+          open={energyReviewOpen}
+          entry={energyReviewEntry}
+          onClose={() => setEnergyReviewOpen(false)}
+        />
+      </Suspense>
 
       <CelebrationAnimation
         isVisible={celebrationVisible}
