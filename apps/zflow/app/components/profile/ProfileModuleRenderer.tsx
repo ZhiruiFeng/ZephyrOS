@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
-import AgentDirectory from './modules/AgentDirectory'
+import AgentDirectory from '@/features/profile/components/modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModule'
 import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
