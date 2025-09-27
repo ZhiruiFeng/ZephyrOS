@@ -4,11 +4,11 @@ import React, { Suspense, useEffect, useCallback, startTransition, useState } fr
 import { useTasks } from '@/features/tasks/hooks'
 import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '@/contexts/AuthContext'
-import LoginPage from '@/app/components/auth/LoginPage'
+import { LoginPage } from '@/shared/components'
 import { X } from 'lucide-react'
 // Lazy load heavy components that are conditionally rendered
-const SubtaskSection = React.lazy(() => import('@/app/components/editors/SubtaskSection'))
-const EnergyReviewModal = React.lazy(() => import('@/app/components/modals/EnergyReviewModal'))
+const SubtaskSection = React.lazy(() => import('@/features/tasks').then(m => ({ default: m.SubtaskSection })))
+const EnergyReviewModal = React.lazy(() => import('@/features/profile').then(m => ({ default: m.EnergyReviewModal })))
 const TaskMemoryDisplay = React.lazy(() => import('@/features/memory/components/TaskMemoryDisplay'))
 const MemoryManagementModal = React.lazy(() => import('@/features/memory/components/MemoryManagementModal'))
 import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '@/features/memory/hooks'

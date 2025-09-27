@@ -38,3 +38,6 @@ export {
 
 // Timeline Component Types
 export type { TimelineEvent, Category } from './components'
+
+// Modal Components
+export { CreateTimelineItemModal, DailyTimeModal } from './components/modals'

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react'
 import { Mic, MicOff, Upload, Trash2, AlertCircle, Loader2 } from 'lucide-react'
-import ElevenLabsVoiceController from '../../components/elevenlabs/ElevenLabsVoiceController'
+import { ElevenLabsVoiceController } from '@/shared/intelligence/speech'
 
 interface TranscriptionResult {
   text: string

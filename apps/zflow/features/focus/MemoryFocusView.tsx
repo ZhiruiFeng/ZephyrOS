@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, Star, Tag, Trash2, Info, ChevronDown } from 'lucide-react'
-import NotionEditor from '@/app/components/editors/NotionEditor'
+import { NotionEditor } from '@/shared/components/editors'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { Memory } from '@/types/domain/memory'

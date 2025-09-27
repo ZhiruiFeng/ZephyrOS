@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { X as XIcon } from 'lucide-react'
 import { Task, Category } from '@/types/domain/task'
 import { TaskForm, TaskEditorProps } from '@/types/ui/forms'
-import CategorySelector from '../selectors/CategorySelector'
+import { CategorySelector } from '@/shared/components'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { toLocal, toUTC } from '@/app/utils/timeUtils'
 

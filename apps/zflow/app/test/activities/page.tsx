@@ -6,7 +6,7 @@ import { useTranslation } from '@/contexts/LanguageContext'
 import { useActivities } from '@/hooks/useActivities'
 import { useCategories } from '@/hooks/useCategories'
 import { useTimer } from '@/hooks/useTimer'
-import { ActivitiesView } from '../../components/views'
+import { ActivitiesView } from '@/features/activities'
 
 function ActivitiesTestContent() {
   const { user, loading: authLoading } = useAuth()

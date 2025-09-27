@@ -2,7 +2,7 @@
 
 import React, { memo, useRef, useState } from 'react'
 import { FileText, X, Bot, User, Sparkles, Send, MessageSquare } from 'lucide-react'
-import NotionEditor from '@/app/components/editors/NotionEditor'
+import { NotionEditor } from '@/shared/components/editors'
 import { TaskMemory } from '@/lib/api'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { TaskWithCategory } from './TaskSidebar'

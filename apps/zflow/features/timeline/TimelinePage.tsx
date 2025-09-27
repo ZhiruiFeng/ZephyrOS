@@ -11,7 +11,7 @@ import { TimelineView } from './components'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TimelineItem } from './types/timeline'
 import { DateSelector } from '@/shared/components'
-import TimelineStats, { TimelineDetailedStats } from '@/app/components/ui/TimelineStats'
+import TimelineStats, { TimelineDetailedStats } from '@/shared/components/TimelineStats'
 import { useTimeline } from './hooks/useTimeline'
 import { Clock, Calendar, BarChart3, Settings } from 'lucide-react'
 

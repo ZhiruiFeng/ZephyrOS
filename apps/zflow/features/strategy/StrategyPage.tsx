@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
 
 import { useAuth } from '@/contexts/AuthContext'
-import LoginPage from '@/app/components/auth/LoginPage'
+import { LoginPage } from '@/shared/components'
 import { useStrategyDashboard } from './hooks/useStrategyDashboard'
 import { useStrategyTasks } from './hooks/useStrategyTasks'
 import { useStrategyMemories } from './hooks/useStrategyMemories'

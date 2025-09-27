@@ -5,20 +5,16 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../contexts/LanguageContext'
 import { Grid, BarChart3 } from 'lucide-react'
-import {
-  // Auth components
-  LoginPage,
-} from './components/auth'
-import { MobileCategorySheet } from './components/navigation'
+import { LoginPage, MobileCategorySheet } from '@/shared/components'
 import { FloatingAddButton } from '@/shared/components'
 // Lazy load heavy modal and editor components
-const AddTaskModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.AddTaskModal })))
-const TaskTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.TaskTimeModal })))
-const ActivityTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.ActivityTimeModal })))
-const DailyTimeModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.DailyTimeModal })))
-const EnergyReviewModal = React.lazy(() => import('./components/modals').then(m => ({ default: m.EnergyReviewModal })))
-const TaskEditor = React.lazy(() => import('./components/editors').then(m => ({ default: m.TaskEditor })))
-const ActivityEditor = React.lazy(() => import('./components/editors').then(m => ({ default: m.ActivityEditor })))
+const AddTaskModal = React.lazy(() => import('@/features/tasks').then(m => ({ default: m.AddTaskModal })))
+const TaskTimeModal = React.lazy(() => import('@/features/tasks').then(m => ({ default: m.TaskTimeModal })))
+const ActivityTimeModal = React.lazy(() => import('@/features/activities').then(m => ({ default: m.ActivityTimeModal })))
+const DailyTimeModal = React.lazy(() => import('@/features/timeline').then(m => ({ default: m.DailyTimeModal })))
+const EnergyReviewModal = React.lazy(() => import('@/features/profile').then(m => ({ default: m.EnergyReviewModal })))
+const TaskEditor = React.lazy(() => import('@/features/tasks').then(m => ({ default: m.TaskEditor })))
+const ActivityEditor = React.lazy(() => import('@/features/activities').then(m => ({ default: m.ActivityEditor })))
 // views rendered via containers
 import { useTasks } from '@/features/tasks/hooks'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories'

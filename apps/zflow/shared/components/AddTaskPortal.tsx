@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useEffect } from 'react'
-import AddTaskModal from '../modals/AddTaskModal'
+import { AddTaskModal } from '@/features/tasks'
 import { useCategories } from '@/hooks/useCategories'
 import { useCreateTask } from '@/features/tasks/hooks'
 import { useTimer } from '@/hooks/useTimer'
 import { usePrefs } from '@/contexts/PrefsContext'
-import eventBus from '../../core/events/event-bus'
+import eventBus from '@/app/core/events/event-bus'
 
 /**
  * Global portal to open AddTaskModal from anywhere via event bus.

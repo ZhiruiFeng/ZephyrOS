@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { CategorySidebar } from '@/app/components/navigation'
-import { StatisticsCards, FilterControls } from '@/app/components/ui'
+import { CategorySidebar } from '@/shared/components'
+import { StatisticsCards, FilterControls } from '@/shared/components'
 import CurrentView from '../components/views/CurrentView'
 import FutureView from '../components/views/FutureView'
 import ArchiveView from '../components/views/ArchiveView'

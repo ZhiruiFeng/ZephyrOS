@@ -13,3 +13,6 @@ export * from './hooks'
 
 // Profile Types
 export * from './types'
+
+// Modal Components
+export { EnergyReviewModal } from './components/modals'

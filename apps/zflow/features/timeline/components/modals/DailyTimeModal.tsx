@@ -8,7 +8,7 @@ import {
   calculateTotalMinutes, 
   getCrossDayBorderClass,
   type TimeEntryWithCrossDay 
-} from '../../utils/crossDayUtils'
+} from '@/app/utils/crossDayUtils'
 
 // 创建本地时区的日期边界，然后转换为UTC用于API查询
 function startOfDay(d: Date) { 

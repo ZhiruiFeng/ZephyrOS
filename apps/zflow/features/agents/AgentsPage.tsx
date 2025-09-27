@@ -4,7 +4,7 @@ import React from 'react'
 import { Bot } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
-import LoginPage from '@/app/components/auth/LoginPage'
+import { LoginPage } from '@/shared/components'
 
 // Import the existing implementation temporarily
 // This will be refactored as we complete the migration

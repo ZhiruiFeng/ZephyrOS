@@ -14,10 +14,18 @@ export { default as ArchiveView } from './components/views/ArchiveView'
 export { default as TaskForm } from './forms/TaskForm'
 export type { TaskFormValue } from './forms/TaskForm'
 
+// Modal Components
+export { AddTaskModal, TaskTimeModal, CategoryPickerSheet } from './components/modals'
+
 // UI components
 export { default as TaskCard } from './components/ui/TaskCard'
 export type { TaskCardVariant } from './components/ui/TaskCard'
 export { getPriorityIcon, getTimerIcon } from './components/ui/TaskIcons'
+export { default as TaskRelationManager } from './components/TaskRelationManager'
+
+// Editors
+export { default as TaskEditor } from './components/TaskEditor'
+export { default as SubtaskSection } from './components/SubtaskSection'
 
 // API
 export { tasksApi, subtasksApi } from './api/tasks-api'

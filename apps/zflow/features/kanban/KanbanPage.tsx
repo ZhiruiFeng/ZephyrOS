@@ -8,10 +8,10 @@ import { useCategories } from '@/hooks/useCategories'
 import { useTimer } from '@/hooks/useTimer'
 import { usePrefs } from '@/contexts/PrefsContext'
 import { useAuth } from '@/contexts/AuthContext'
-import LoginPage from '@/app/components/auth/LoginPage'
+import { LoginPage } from '@/shared/components'
 import { TaskMemory, categoriesApi, TaskContent } from '@/lib/api'
 import { KanbanSquare, Search, Filter, ListTodo, Calendar, Pencil, FileText, Tag, Hourglass } from 'lucide-react'
-import TaskEditor from '@/app/components/editors/TaskEditor'
+import { TaskEditor } from '@/features/tasks'
 import { getPriorityIcon, getTimerIcon } from '@/tasks'
 import {
   isOverdue,
@@ -21,7 +21,7 @@ import {
   shouldShowOverdue
 } from '@/shared/utils/task-utils'
 import { useTranslation } from '@/contexts/LanguageContext'
-import EnergyReviewModal from '@/app/components/modals/EnergyReviewModal'
+import { EnergyReviewModal } from '@/features/profile'
 import { CelebrationAnimation } from '@/shared/components'
 import { useCelebration } from '@/hooks/useCelebration'
 

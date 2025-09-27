@@ -10,7 +10,7 @@ import {
   calculateTotalMinutes, 
   getCrossDayBorderClass,
   type TimeEntryWithCrossDay 
-} from '../../utils/crossDayUtils'
+} from '@/app/utils/crossDayUtils'
 
 interface TaskTimeModalProps {
   isOpen: boolean

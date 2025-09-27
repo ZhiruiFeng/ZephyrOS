@@ -6,7 +6,7 @@ import ModernTimelineView from './ModernTimelineView'
 import type { TimelineEvent, Category } from './types'
 import { Language } from '@/lib/i18n'
 import { timeTrackingApi } from '@/lib/api'
-import CreateTimelineItemModal from '@/app/components/modals/CreateTimelineItemModal'
+import { CreateTimelineItemModal } from './modals'
 
 interface TimelineViewProps {
   selectedDate: Date
