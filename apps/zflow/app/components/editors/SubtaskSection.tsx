@@ -37,9 +37,9 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useSubtasks, useSubtaskActions } from '@/hooks'
-import { TaskMemory } from '../../../lib/api'
+import { TaskMemory } from '@/lib/api'
 import { Task } from '@/types/domain/task'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import { StatusBadge } from '../shared/StatusBadge'
 
 // Helper function to detect if a task is an AI task

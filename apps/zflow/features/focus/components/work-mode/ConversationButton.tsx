@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { MessageSquare } from 'lucide-react'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 interface ConversationButtonProps {
   onClick: () => void

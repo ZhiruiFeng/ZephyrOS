@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { LogIn, Loader2 } from 'lucide-react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
   const { signInWithGoogle, loading } = useAuth()

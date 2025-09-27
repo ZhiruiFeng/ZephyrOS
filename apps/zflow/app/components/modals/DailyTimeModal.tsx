@@ -1,8 +1,8 @@
 import React from 'react'
 import useSWR from 'swr'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
-import { timeTrackingApi } from '../../../lib/api'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { timeTrackingApi } from '@/lib/api'
+import { useTranslation } from '@/contexts/LanguageContext'
 import { 
   processDayEntries, 
   calculateTotalMinutes, 

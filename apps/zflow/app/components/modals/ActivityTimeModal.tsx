@@ -3,8 +3,8 @@
 import React from 'react'
 import useSWR from 'swr'
 import { X, ChevronLeft, ChevronRight, Clock, List, Calendar as CalendarIcon, Minus, Plus, ArrowLeft, Play, Square } from 'lucide-react'
-import { timelineItemsApi, TimeEntry } from '../../../lib/api'
-import { useTranslation, type TranslationKeys } from '../../../lib/i18n'
+import { timelineItemsApi, TimeEntry } from '@/lib/api'
+import { useTranslation, type TranslationKeys } from '@/lib/i18n'
 import { 
   splitCrossDayEntries, 
   calculateTotalMinutes, 

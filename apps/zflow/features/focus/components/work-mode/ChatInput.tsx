@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Paperclip, Sparkles } from 'lucide-react'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void

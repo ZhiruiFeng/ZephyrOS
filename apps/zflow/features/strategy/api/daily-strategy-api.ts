@@ -1,5 +1,5 @@
-import { API_BASE, authenticatedFetch } from '../../../lib/api/api-base'
-import { tasksApi } from '../../../lib/api/tasks-api'
+import { API_BASE, authenticatedFetch } from '@/lib/api/api-base'
+import { tasksApi } from '@/lib/api/tasks-api'
 
 // =====================================================
 // DAILY STRATEGY API TYPES

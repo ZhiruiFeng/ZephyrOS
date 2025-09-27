@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PlusIcon, BookOpenIcon } from 'lucide-react'
-import { useSeasons } from '../../../features/strategy'
+import { useSeasons } from '@/features/strategy'
 import { useEpisodes } from '@/narrative'
 import { SeasonCover } from './SeasonCover'
 import { EpisodeCard } from './EpisodeCard'

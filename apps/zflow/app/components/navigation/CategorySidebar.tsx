@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { Category } from '@/types/domain/task'
-import { usePrefs } from '../../../contexts/PrefsContext'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { usePrefs } from '@/contexts/PrefsContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 type SpecialCategory = 'all' | 'uncategorized'
 

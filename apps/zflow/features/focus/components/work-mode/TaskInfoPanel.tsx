@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { Settings, Save, Plus } from 'lucide-react'
-import { TaskContent } from '../../../../lib/api'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { TaskContent } from '@/lib/api'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 interface TaskInfo {
   title: string

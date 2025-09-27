@@ -1,4 +1,4 @@
-import { API_BASE, authenticatedFetch } from '../../../lib/api/api-base'
+import { API_BASE, authenticatedFetch } from '@/lib/api/api-base'
 
 // =====================================================
 // Strategy API Client

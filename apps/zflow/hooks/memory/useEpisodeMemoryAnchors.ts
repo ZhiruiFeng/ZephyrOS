@@ -1,8 +1,8 @@
 import useSWR, { mutate } from 'swr'
 import { useState, useCallback } from 'react'
-import { API_BASE } from '../../lib/api'
-import { authManager } from '../../lib/auth-manager'
-import { type RelationType } from '../../app/components/memory/RelationTypeBadge'
+import { API_BASE } from '@/lib/api'
+import { authManager } from '@/lib/auth-manager'
+import { type RelationType } from '@/app/components/memory/RelationTypeBadge'
 
 export interface EpisodeMemoryAnchor {
   memory_id: string

@@ -1,4 +1,4 @@
-import { authManager } from '../../../lib/auth-manager'
+import { authManager } from '@/lib/auth-manager'
 
 export const authJsonFetcher = async (url: string) => {
   const authHeaders = await authManager.getAuthHeaders()

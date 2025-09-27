@@ -1,8 +1,8 @@
 'use client'
 
 import React, { Suspense } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import { useActivities } from '@/hooks/useActivities'
 import { useCategories } from '@/hooks/useCategories'
 import { useTimer } from '@/hooks/useTimer'

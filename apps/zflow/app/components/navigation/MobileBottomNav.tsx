@@ -4,8 +4,8 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Target, ListTodo, BookOpen, Plus, Bot } from 'lucide-react'
-import { useTranslation } from '../../../contexts/LanguageContext'
-import eventBus from '../../core/events/event-bus'
+import { useTranslation } from '@/contexts/LanguageContext'
+import eventBus from '@/app/core/events/event-bus'
 
 function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: any }) {
   const pathname = usePathname()

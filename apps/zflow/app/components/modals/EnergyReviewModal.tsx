@@ -2,16 +2,16 @@
 
 import React from 'react'
 import { X } from 'lucide-react'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import { useEnergyData } from '@/features/profile/components/ui/EnergySpectrumPackage/hooks/useEnergyData'
 import { getCurrentTimeInTimezone, buildSmoothPath } from '@/features/profile/components/ui/EnergySpectrumPackage/utils'
 import { DesktopEnergyChart } from '@/features/profile/components/ui/EnergySpectrumPackage/components/DesktopEnergyChart'
 import { MobileEnergyChart } from '@/features/profile/components/ui/EnergySpectrumPackage/components/MobileEnergyChart'
 import { useTimeEntries } from '@/features/profile/components/ui/EnergySpectrumPackage/hooks/useTimeEntries'
-import type { TimeEntry } from '../../../lib/api'
-import { tasksApi, timeTrackingApi } from '../../../lib/api'
+import type { TimeEntry } from '@/lib/api'
+import { tasksApi, timeTrackingApi } from '@/lib/api'
 import type { TimeEntryWithCrossDay } from '@/features/profile/components/ui/EnergySpectrumPackage/types'
-import { toLocal, toUTC } from '../../utils/timeUtils'
+import { toLocal, toUTC } from '@/app/utils/timeUtils'
 
 function localDateOf(iso: string) {
   const d = new Date(iso)

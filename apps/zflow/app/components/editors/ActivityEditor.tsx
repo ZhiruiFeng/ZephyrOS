@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { X, Save } from 'lucide-react'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 // Activity types with icons and labels
 const ACTIVITY_TYPES = [

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useSTTConfig } from '../../../contexts/STTConfigContext'
+import { useSTTConfig } from '@/contexts/STTConfigContext'
 
 // Types
 interface RecorderState {

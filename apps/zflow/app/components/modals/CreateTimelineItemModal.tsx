@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { X, Clock, Save, Loader2 } from 'lucide-react'
-import { activitiesApi, categoriesApi, timelineItemsApi } from '../../../lib/api'
+import { activitiesApi, categoriesApi, timelineItemsApi } from '@/lib/api'
 
 interface CreateTimelineItemModalProps {
   isOpen: boolean

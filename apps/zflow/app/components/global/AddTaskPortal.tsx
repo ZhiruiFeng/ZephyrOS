@@ -5,7 +5,7 @@ import AddTaskModal from '../modals/AddTaskModal'
 import { useCategories } from '@/hooks/useCategories'
 import { useCreateTask } from '@/hooks'
 import { useTimer } from '@/hooks/useTimer'
-import { usePrefs } from '../../../contexts/PrefsContext'
+import { usePrefs } from '@/contexts/PrefsContext'
 import eventBus from '../../core/events/event-bus'
 
 /**

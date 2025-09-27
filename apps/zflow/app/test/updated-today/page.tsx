@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, RefreshCw, Filter, Tag, CheckCircle, AlertCircle, Play, Pause, Archive, User } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useTranslation } from '../../../contexts/LanguageContext';
-import { tasksApi, TaskMemory, TaskContent } from '../../../lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { tasksApi, TaskMemory, TaskContent } from '@/lib/api';
 import { useCategories } from '@/hooks/useCategories';
 import LoginPage from '../../components/auth/LoginPage';
 import { toLocal, toUTC, formatRelative, getUserTimezone } from '../../utils/timeUtils';

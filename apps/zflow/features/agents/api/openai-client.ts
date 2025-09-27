@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { resolveZmemoryOrigin } from '../../../lib/api/zmemory-api-base'
+import { resolveZmemoryOrigin } from '@/lib/api/zmemory-api-base'
 import { AgentProvider, ChatContext, StreamingResponse, ZFlowTool } from './types'
 
 function getZmemoryBase(): string {

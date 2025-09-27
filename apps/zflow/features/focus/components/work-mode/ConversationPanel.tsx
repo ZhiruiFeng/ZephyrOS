@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from 'react'
 import { X, Minimize2, Maximize2 } from 'lucide-react'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import ChatMessage, { Message } from './ChatMessage'
 import ChatInput from './ChatInput'
 

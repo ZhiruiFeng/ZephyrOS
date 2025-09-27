@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react'
 import { X, Search } from 'lucide-react'
 import { Category } from '@/types/domain/task'
 import { CategoryCounts } from './CategorySidebar'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 const presetColors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#6B7280', '#9CA3AF']
 

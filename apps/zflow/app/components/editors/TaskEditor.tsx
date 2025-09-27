@@ -5,8 +5,8 @@ import { X as XIcon } from 'lucide-react'
 import { Task, Category } from '@/types/domain/task'
 import { TaskForm, TaskEditorProps } from '@/types/ui/forms'
 import CategorySelector from '../selectors/CategorySelector'
-import { useTranslation } from '../../../contexts/LanguageContext'
-import { toLocal, toUTC } from '../../utils/timeUtils'
+import { useTranslation } from '@/contexts/LanguageContext'
+import { toLocal, toUTC } from '@/app/utils/timeUtils'
 
 const X = XIcon
 

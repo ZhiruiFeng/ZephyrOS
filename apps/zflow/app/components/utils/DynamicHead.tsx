@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect } from 'react';
-import { useTranslation } from '../../../contexts/LanguageContext';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function DynamicHead() {
   const { t, currentLang } = useTranslation();

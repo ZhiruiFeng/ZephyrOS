@@ -19,8 +19,8 @@ import {
   Lightbulb
 } from 'lucide-react'
 import { Memory, MemoryCreateInput } from '@/types/domain/memory'
-import { memoriesApi, useMemoryOperations } from '../../../lib/api/memories-api'
-import { useSTTConfig } from '../../../contexts/STTConfigContext'
+import { memoriesApi, useMemoryOperations } from '@/lib/api/memories-api'
+import { useSTTConfig } from '@/contexts/STTConfigContext'
 
 interface MemoryCaptureProps {
   isOpen: boolean

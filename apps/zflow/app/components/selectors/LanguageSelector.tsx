@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Globe } from 'lucide-react';
-import { useTranslation } from '../../../contexts/LanguageContext';
-import { Language } from '../../../lib/i18n';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { Language } from '@/lib/i18n';
 
 interface LanguageSelectorProps {
   className?: string;

@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp } from 'lucide-react'
-import { useAuth } from '../../../contexts/AuthContext'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import { ModuleSelector } from '@/features/profile/components/ModuleSelector'
 import { EnergySpectrumModule } from '@/features/profile/components/modules/EnergySpectrumModule'
 import AgentDirectory from '@/features/profile/components/modules/AgentDirectory'

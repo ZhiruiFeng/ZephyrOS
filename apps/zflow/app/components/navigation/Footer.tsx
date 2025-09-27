@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { Zap, Heart, Github, Twitter } from 'lucide-react'
-import { useTranslation } from '../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 export default function Footer() {
   const { t } = useTranslation()
