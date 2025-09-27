@@ -2,7 +2,7 @@ import useSWR from 'swr'
 import { strategyApi } from '../api/strategy-api'
 import { tasksApi, aiTasksApi } from '../../../lib/api'
 import type { ApiStrategyTask } from '../api/strategy-api'
-import type { UseStrategyTasksReturn, StrategyTask } from '../types/strategy'
+import type { UseStrategyTasksReturn, StrategyTask } from '@/strategy'
 import type { Task } from 'types'
 
 // =====================================================

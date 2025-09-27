@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Mic, CheckCircle, AlertCircle, Settings2, Zap, Shield, Maximize2 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 // STT Provider types
 export type STTProvider = 'elevenlabs' | 'openai'

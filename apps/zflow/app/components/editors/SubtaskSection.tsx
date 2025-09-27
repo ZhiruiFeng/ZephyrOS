@@ -38,7 +38,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useSubtasks, useSubtaskActions } from '@/hooks'
 import { TaskMemory } from '../../../lib/api'
-import { Task } from '../../types/task'
+import { Task } from '@/types/domain/task'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { StatusBadge } from '../shared/StatusBadge'
 

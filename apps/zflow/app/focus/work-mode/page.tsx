@@ -24,7 +24,7 @@ import WorkModeEditor from './components/WorkModeEditor'
 import { Message } from './components/ChatMessage'
 
 // Import custom hooks
-import { useWorkModeState } from './hooks/useWorkModeState'
+import { useWorkModeState } from '@/focus'
 
 // Import hooks directly
 import { useUpdateTask } from '@/hooks'

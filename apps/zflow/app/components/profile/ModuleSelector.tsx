@@ -12,7 +12,7 @@ import {
   X
 } from 'lucide-react'
 import { useTranslation } from '../../../contexts/LanguageContext'
-import type { ModuleSelectorProps } from './types'
+import type { ModuleSelectorProps } from '@/profile'
 
 const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'energy-spectrum': BarChart3,

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Category } from '../../types/task'
+import { Category } from '@/types/domain/task'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
 

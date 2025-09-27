@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { STATUS_COLORS, PRIORITY_COLORS } from '../../core/constants/task'
-import { TaskStatus, TaskPriority } from '../../types/task'
+import { TaskStatus, TaskPriority } from '@/types/domain/task'
 
 interface StatusBadgeProps {
   status: TaskStatus;

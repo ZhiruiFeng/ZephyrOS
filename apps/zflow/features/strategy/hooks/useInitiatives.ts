@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { strategyApi, type ApiInitiative } from '../api/strategy-api'
-import type { UseInitiativesReturn, Initiative, CreateInitiativeForm } from '../types/strategy'
+import type { UseInitiativesReturn, Initiative, CreateInitiativeForm } from '@/strategy'
 
 // =====================================================
 // API to Frontend Type Adapter

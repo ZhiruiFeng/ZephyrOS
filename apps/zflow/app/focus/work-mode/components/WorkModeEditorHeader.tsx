@@ -6,7 +6,7 @@ import { useTranslation } from '../../../../contexts/LanguageContext'
 import { TaskMemory } from '../../../../lib/api'
 import { TaskWithCategory } from './TaskSidebar'
 import { Task } from 'types'
-import AITaskEditor, { AITaskForm } from '../../../components/profile/modules/AITaskEditor'
+import { AITaskEditor, type AITaskForm } from '@/app/components/profile'
 
 interface WorkModeEditorHeaderProps {
   selectedTask: TaskWithCategory

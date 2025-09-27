@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { conversationHistoryService } from '../utils/conversation-history-service'
-import { ConversationSummary, ConversationDetail, ConversationSearchResult } from '../types/conversation-history'
+import { ConversationSummary, ConversationDetail, ConversationSearchResult } from '@/agents'
 
 /**
  * Hook for managing conversation history list

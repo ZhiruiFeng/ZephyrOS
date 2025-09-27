@@ -7,7 +7,7 @@ import { dailyStrategyApi, type DailyStrategyItemWithDetails } from '@/strategy'
 import { memoriesApi } from '@/lib/api/memories-api'
 import { tasksApi } from '@/lib/api'
 import { ReflectionType } from '@/strategy'
-import type { DayReflectionData, UseDayReflectionReturn } from '../types/timeline'
+import type { DayReflectionData, UseDayReflectionReturn } from '@/timeline'
 
 export function useDayReflection(date: string, seasonId?: string): UseDayReflectionReturn {
   const [data, setData] = useState<DayReflectionData>({

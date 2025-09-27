@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRedisClient } from '@/app/lib/redis'
+import { getRedisClient } from '@/shared/utils/redis'
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,4 +1,4 @@
-import { getRedisClient } from '@/app/lib/redis'
+import { getRedisClient } from '@/shared/utils/redis'
 import { ChatSession, AgentMessage } from './types'
 import { MemorySessionManager } from './memory-session-manager'
 import { randomBytes } from 'crypto'

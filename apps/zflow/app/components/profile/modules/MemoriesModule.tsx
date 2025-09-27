@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Search, Calendar, Star, Heart, Settings, X, Filter, TrendingUp, Loader2, RefreshCw, Maximize2 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import { Memory, MemoryFilters } from '../../../types/memory'
+import { Memory, MemoryFilters } from '@/types/domain/memory'
 import { memoriesApi } from '../../../../lib/api/memories-api'
 import MemoryCapture from '../../memories/MemoryCapture'
 import MemoryCard from '../../memories/MemoryCard'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 export function MemoriesModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { user } = useAuth()

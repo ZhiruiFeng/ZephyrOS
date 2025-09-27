@@ -4,7 +4,7 @@
 
 import useSWR from 'swr'
 import { timelineApi } from '../api/timeline-api'
-import type { TimelineData, UseTimelineReturn } from '../types/timeline'
+import type { TimelineData, UseTimelineReturn } from '@/timeline'
 
 export function useTimeline(selectedDate: Date): UseTimelineReturn {
   const dateKey = selectedDate.toISOString().split('T')[0]

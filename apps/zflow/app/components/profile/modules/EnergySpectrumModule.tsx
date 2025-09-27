@@ -6,7 +6,7 @@ import { BarChart3, Settings, X, Maximize2 } from 'lucide-react'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import EnergySpectrum from '../../../components/ui/EnergySpectrum'
 import { getUserTimezone, getTimezoneAbbr } from '../../../../app/utils/timeUtils'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 export function EnergySpectrumModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()

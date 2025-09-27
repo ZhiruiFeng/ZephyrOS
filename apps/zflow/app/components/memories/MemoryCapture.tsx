@@ -18,7 +18,7 @@ import {
   Quote,
   Lightbulb
 } from 'lucide-react'
-import { Memory, MemoryCreateInput } from '../../types/memory'
+import { Memory, MemoryCreateInput } from '@/types/domain/memory'
 import { memoriesApi, useMemoryOperations } from '../../../lib/api/memories-api'
 import { useSTTConfig } from '../../../contexts/STTConfigContext'
 

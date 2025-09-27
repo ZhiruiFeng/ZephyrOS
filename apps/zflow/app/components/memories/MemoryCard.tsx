@@ -21,7 +21,7 @@ import {
   Meh,
   Frown
 } from 'lucide-react'
-import { Memory } from '../../types/memory'
+import { Memory } from '@/types/domain/memory'
 
 export type MemoryCardVariant = 'timeline' | 'search' | 'collection'
 

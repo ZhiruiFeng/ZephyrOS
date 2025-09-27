@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { ConversationSummary, ConversationDetail, HistoricalMessage } from '../types/conversation-history'
+import { ConversationSummary, ConversationDetail, HistoricalMessage } from '@/agents'
 import { conversationHistoryService } from '../utils/conversation-history-service'
-import { Message } from '../types/agents'
+import { Message } from '@/agents'
 
 export interface SessionManagerState {
   // Current active session (Redis)

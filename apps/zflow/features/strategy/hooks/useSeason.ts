@@ -1,5 +1,5 @@
 import { adaptSeasonToStrategy } from '../utils/strategy'
-import type { UseStrategySeasonReturn } from '../types/strategy'
+import type { UseStrategySeasonReturn } from '@/strategy'
 import type { Season } from '@/narrative'
 
 export function useSeason(): UseStrategySeasonReturn {

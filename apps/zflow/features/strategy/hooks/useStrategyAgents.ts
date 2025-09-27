@@ -3,7 +3,7 @@ import { authJsonFetcher } from '../../../lib/utils/auth-fetcher'
 import { adaptAgentToStrategy } from '../utils/strategy'
 import { ZMEMORY_API_BASE } from '../../../lib/api/zmemory-api-base'
 import { authManager } from '../../../lib/auth-manager'
-import type { UseStrategyAgentsReturn } from '../types/strategy'
+import type { UseStrategyAgentsReturn } from '@/strategy'
 import type { Agent } from 'types'
 import type { Task } from 'types'
 

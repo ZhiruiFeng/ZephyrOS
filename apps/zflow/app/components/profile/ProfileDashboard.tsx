@@ -15,9 +15,9 @@ import { ZMemoryApiKeysModule } from './modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from './modules/STTConfigModule'
 import { ZRelationsModule } from './modules/ZRelationsModule'
 import AITaskGrantorModule from './modules/AITaskGrantorModule'
-import { useProfileModules } from './hooks/useProfileModules'
+import { useProfileModules } from '@/profile'
 import { FullscreenModal, useFullscreenModal } from './FullscreenModal'
-import type { ProfileModule, ProfileModuleConfig } from './types'
+import type { ProfileModule, ProfileModuleConfig } from '@/profile'
 
 interface ProfileDashboardProps {
   className?: string

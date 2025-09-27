@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sessionManager } from '@/agents/server'
 import { StreamingService } from '@/agents/server'
-import { getRedisClient } from '../../../lib/redis'
+import { getRedisClient } from '@/shared/utils/redis'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'

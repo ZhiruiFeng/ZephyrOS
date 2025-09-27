@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TaskMemory, TaskContent } from '@/lib/api'
-import { Category } from '@/app/types/task'
+import { Category } from '@/types/domain/task'
 import type { TaskWithCategory, TaskInfo, TaskViewMode, GroupedTasks } from '../types/focus'
 
 export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {

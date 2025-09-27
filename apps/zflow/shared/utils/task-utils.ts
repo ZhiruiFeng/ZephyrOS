@@ -1,4 +1,4 @@
-import { Task } from '@/app/types/task'
+import { Task } from '@/types/domain/task'
 import { isOverdue as isOverdueUTC, toLocal, smartFormatDate, formatRelative } from './time-utils'
 
 // Get status color

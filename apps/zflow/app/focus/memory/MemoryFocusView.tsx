@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, MapPin, Star, Tag, Trash2, Info, ChevronDown } fro
 import NotionEditor from '../../components/editors/NotionEditor'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
-import { Memory } from '../../types/memory'
+import { Memory } from '@/types/domain/memory'
 import { memoriesApi } from '../../../lib/api/memories-api'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useCategories } from '@/hooks/useCategories'

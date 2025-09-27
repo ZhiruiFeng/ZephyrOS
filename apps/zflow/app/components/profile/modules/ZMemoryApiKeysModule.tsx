@@ -27,7 +27,7 @@ import {
   type ZMemoryApiKeyWithToken,
   type CreateZMemoryApiKeyRequest
 } from '../../../../lib/api'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 // Use the properly configured API client following ZFlow coding rules
 

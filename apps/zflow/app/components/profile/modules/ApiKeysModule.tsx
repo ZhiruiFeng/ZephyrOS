@@ -20,7 +20,7 @@ import {
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import { resolveZmemoryOrigin } from '../../../../lib/api/zmemory-api-base'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 // Types
 interface Vendor {

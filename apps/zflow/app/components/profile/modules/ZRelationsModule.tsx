@@ -31,7 +31,7 @@ import {
   type Touchpoint
 } from '@/hooks'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 const TIER_LABELS = {
   5: 'Core 5',

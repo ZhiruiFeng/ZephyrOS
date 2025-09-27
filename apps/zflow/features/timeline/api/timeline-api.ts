@@ -3,7 +3,7 @@
 // =====================================================
 
 import { API_BASE, authenticatedFetch } from '@/lib/api/api-base'
-import type { TimelineData, TimelineItem } from '../types/timeline'
+import type { TimelineData, TimelineItem } from '@/timeline'
 import type { TimeEntryWithCrossDay } from '@/app/utils/crossDayUtils'
 
 /**

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Plus, Loader2, Maximize2, Edit, Trash2, Clock, User, Target, AlertCircle, CheckCircle2, Copy, FileText, History, Play, Pause, RotateCcw, PanelLeftClose, PanelLeft, ExternalLink, X } from 'lucide-react'
 import { aiTasksApi, tasksApi, type AITask } from '../../../../lib/api'
-import type { ProfileModuleConfig } from '../types'
+import type { ProfileModuleConfig } from '@/profile'
 import AITaskEditor from './AITaskEditor'
 import { useRouter } from 'next/navigation'
 

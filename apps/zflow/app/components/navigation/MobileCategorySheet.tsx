@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react'
 import { X, Search } from 'lucide-react'
-import { Category } from '../../types/task'
+import { Category } from '@/types/domain/task'
 import { CategoryCounts } from './CategorySidebar'
 import { useTranslation } from '../../../contexts/LanguageContext'
 

@@ -24,3 +24,6 @@ export * from './activity-utils'
 
 // Validation utilities
 export * from './validation-utils'
+
+// Redis utilities
+export * from './redis'

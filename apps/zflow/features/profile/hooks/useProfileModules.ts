@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '../../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import type { ProfileModule, ProfileModuleConfig, ProfileModulesState } from '../types'
 
 // Available modules configuration
@@ -196,7 +196,7 @@ export function useProfileModules() {
       // In a real app, this would fetch from your backend/database
       // For now, we'll use localStorage as a fallback
       const savedPreferences = localStorage.getItem(`profile-modules-${user.id}`)
-      
+
       if (savedPreferences) {
         const parsed = JSON.parse(savedPreferences)
         setState(prev => ({
@@ -234,7 +234,7 @@ export function useProfileModules() {
         enabledModules,
         lastUpdated: new Date().toISOString()
       }
-      
+
       localStorage.setItem(`profile-modules-${user.id}`, JSON.stringify(preferences))
     } catch (error) {
       console.error('Failed to save profile module preferences:', error)

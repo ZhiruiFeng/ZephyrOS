@@ -10,7 +10,7 @@ import { ApiKeysModule } from './modules/ApiKeysModule'
 import { ZMemoryApiKeysModule } from './modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from './modules/STTConfigModule'
 import { ZRelationsModule } from './modules/ZRelationsModule'
-import type { ProfileModule, ProfileModuleConfig } from './types'
+import type { ProfileModule, ProfileModuleConfig } from '@/profile'
 
 interface ProfileModuleRendererProps {
   moduleConfig: ProfileModuleConfig

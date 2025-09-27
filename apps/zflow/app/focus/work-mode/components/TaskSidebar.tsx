@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Folder, FileText, ChevronRight, ChevronDown, Clock, Calendar, X, Bot } from 'lucide-react'
-import { Category } from '../../../types/task'
+import { Category } from '@/types/domain/task'
 import { TaskMemory } from '../../../../lib/api'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 

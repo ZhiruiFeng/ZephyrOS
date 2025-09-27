@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { TrendingUp, Settings, X, Calendar, Clock, Target, CheckCircle, Maximize2 } from 'lucide-react'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 export function StatsModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()

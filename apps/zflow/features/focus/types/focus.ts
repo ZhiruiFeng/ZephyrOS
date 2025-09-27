@@ -6,7 +6,7 @@
  */
 
 import type { TaskMemory, TaskContent } from '@/lib/api'
-import type { Category } from '@/app/types/task'
+import type { Category } from '@/types/domain/task'
 
 /**
  * View modes for the focus feature

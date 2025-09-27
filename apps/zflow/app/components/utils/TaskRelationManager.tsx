@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Task, TaskRelationType } from '../../types/task';
+import { Task, TaskRelationType } from '@/types/domain/task';
 
 interface TaskRelation {
   id: string;

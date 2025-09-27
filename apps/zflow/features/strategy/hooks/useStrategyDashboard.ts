@@ -2,7 +2,7 @@ import useSWR from 'swr'
 import { strategyApi } from '../api/strategy-api'
 import { useAITaskSync } from '@/hooks'
 import type { ApiStrategyDashboard } from '../api/strategy-api'
-import type { StrategyDashboard, StrategySeason, Initiative, StrategyTask, StrategyAgent, StrategyMemory } from '../types/strategy'
+import type { StrategyDashboard, StrategySeason, Initiative, StrategyTask, StrategyAgent, StrategyMemory } from '@/strategy'
 
 // =====================================================
 // API to Frontend Type Adapters

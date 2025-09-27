@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../../contexts/LanguageContext';
-import { Category } from '../../types/task';
+import { Category } from '@/types/domain/task';
 
 interface CategorySelectorProps {
   value?: string;

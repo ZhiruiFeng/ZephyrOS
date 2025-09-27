@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { Activity, Settings, X, Clock, CheckCircle, Circle, MoreHorizontal, Maximize2 } from 'lucide-react'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import type { ProfileModuleProps } from '../types'
+import type { ProfileModuleProps } from '@/profile'
 
 export function ActivitySummaryModule({ config, onConfigChange, fullScreenPath }: ProfileModuleProps) {
   const { t } = useTranslation()

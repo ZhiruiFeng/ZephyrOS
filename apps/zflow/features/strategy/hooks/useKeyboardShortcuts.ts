@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { StrategyLens } from '../types/strategy'
+import type { StrategyLens } from '@/strategy'
 
 interface UseKeyboardShortcutsProps {
   lens: StrategyLens
