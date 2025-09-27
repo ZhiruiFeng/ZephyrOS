@@ -18,94 +18,147 @@
 
 ## 🏗️ Architecture Overview
 
-ZFlow features a **modular component architecture** designed for scalability and maintainability:
+ZFlow features a **Feature-First Architecture** with organized shared components designed for scalability and maintainability:
 
 ```
 📁 apps/zflow/
-├── 📁 app/                     # Next.js app directory
-│   ├── 📁 components/          # ✨ Organized component library
-│   │   ├── 📁 auth/           # Authentication components
-│   │   ├── 📁 ui/             # Reusable UI components
-│   │   ├── 📁 modals/         # Modal dialogs
-│   │   ├── 📁 editors/        # Form & editor components
-│   │   ├── 📁 navigation/     # Navigation components
-│   │   ├── 📁 selectors/      # Selection/picker components
-│   │   ├── 📁 utils/          # Utility components
-│   │   ├── 📁 views/          # Main view components
-│   │   └── index.ts           # Clean export structure
-│   ├── 📁 hooks/              # Custom React hooks
-│   ├── 📁 contexts/           # React contexts
-│   ├── 📁 lib/                # API & utility libraries
-│   └── 📁 utils/              # Helper functions
-├── 📁 contexts/               # Shared contexts
-├── 📁 hooks/                  # Shared hooks
-└── 📁 lib/                    # Core libraries
+├── 📁 app/                     # Next.js App Router
+│   ├── 📁 (routes)/           # Page components
+│   └── layout.tsx             # Root layout
+│
+├── 📁 features/               # 🎯 FEATURE-FIRST ARCHITECTURE
+│   ├── 📁 tasks/             # Task management
+│   ├── 📁 memory/            # Memory & relationships
+│   ├── 📁 narrative/         # Narrative system
+│   ├── 📁 profile/           # User profile & modules
+│   ├── 📁 focus/             # Focus work modes
+│   ├── 📁 activities/        # Activity tracking
+│   ├── 📁 kanban/            # Kanban board
+│   ├── 📁 strategy/          # Strategic planning
+│   ├── 📁 speech/            # Speech & AI integration
+│   ├── 📁 agents/            # AI agents
+│   └── 📁 timeline/          # Timeline view
+│
+├── 📁 shared/                 # 🔄 CROSS-FEATURE UTILITIES
+│   ├── 📁 components/        # Shared UI components (categorized)
+│   │   ├── 📁 ui/           # Basic UI components
+│   │   ├── 📁 layout/       # Layout components
+│   │   ├── 📁 forms/        # Form components
+│   │   ├── 📁 data-display/ # Data visualization
+│   │   ├── 📁 feedback/     # User feedback
+│   │   ├── 📁 portals/      # Global portals
+│   │   ├── 📁 auth/         # Authentication
+│   │   ├── 📁 editors/      # Rich text editors
+│   │   ├── 📁 modals/       # Modal dialogs
+│   │   ├── 📁 navigation/   # Navigation
+│   │   ├── 📁 selectors/    # Selectors
+│   │   └── index.ts         # Main barrel export
+│   ├── 📁 utils/            # Shared utility functions
+│   │   ├── task-utils.ts    # Task utilities
+│   │   ├── time-utils.ts    # Time/date utilities
+│   │   ├── validation-utils.ts # Form validation
+│   │   ├── crossDayUtils.ts # Cross-day time entries
+│   │   ├── errorHandling.ts # Error handling
+│   │   ├── timezoneUtils.ts # Timezone utilities
+│   │   ├── activity-utils.ts # Activity utilities
+│   │   ├── redis.ts         # Redis utilities (server-only)
+│   │   └── index.ts         # Main barrel export
+│   └── index.ts             # Public API
+│
+├── 📁 hooks/                 # 🌐 CROSS-CUTTING HOOKS
+├── 📁 lib/                  # Core libraries
+├── 📁 types/                # Global type definitions
+└── 📁 contexts/             # React contexts
 ```
 
 ## 📦 Component Architecture
 
-### 🔧 Component Categories
+### 🎯 Feature-First Organization
+
+Each feature is self-contained with its own components, hooks, and types:
+
+```
+features/tasks/
+├── components/          # Task-specific UI components
+├── hooks/              # Task data and operations
+├── api/                # Task API layer
+├── types/              # Task type definitions
+└── index.ts            # Public API
+```
+
+### 🔧 Shared Component Categories
+
+#### **UI Components (`/ui`)**
+- `StatusBadge` - Task status and priority badges
+- `TaskCard` - Generic task display component
+- `TimerDisplay` - Timer UI component
+
+#### **Layout Components (`/layout`)**
+- `DynamicHead` - Dynamic page head component
+- `FloatingAddButton` - Floating action button
+
+#### **Form Components (`/forms`)**
+- `DateSelector` - Date selection component
+- `FilterControls` - Search and filtering controls
+
+#### **Data Display (`/data-display`)**
+- `StatisticsCards` - Dashboard statistics
+- `TimelineStats` - Timeline statistics component
+
+#### **Feedback (`/feedback`)**
+- `CelebrationAnimation` - User feedback animations
+
+#### **Portals (`/portals`)**
+- `AddTaskPortal` - Global task creation portal
 
 #### **Authentication (`/auth`)**
 - `LoginPage` - OAuth authentication interface
 - `AuthButton` - Sign in/out functionality
 
-#### **User Interface (`/ui`)**
-- `TaskCard` - Reusable task display component
-- `ActivityCard` - Activity tracking display
-- `StatisticsCards` - Dashboard statistics
-- `FilterControls` - Search and filtering
-- `FloatingAddButton` - Quick task creation
-- `TaskIcons` - Task status and priority icons
-- `EnergySpectrum` - Energy tracking visualization
+#### **Editors (`/editors`)**
+- `NotionEditor` - Rich text editor
+- `TimeCell` - Time input component
 
-#### **Modal Dialogs (`/modals`)**
-- `AddTaskModal` - Task creation dialog
-- `TaskTimeModal` - Task time tracking
-- `ActivityTimeModal` - Activity time tracking
-- `DailyTimeModal` - Daily overview
-- `EnergyReviewModal` - Energy assessment
-
-#### **Form Editors (`/editors`)**
-- `TaskEditor` - Comprehensive task editing
-- `ActivityEditor` - Activity management
-- `SubtaskSection` - Nested task management
+#### **Modals (`/modals`)**
+- `FullscreenModal` - Full-screen modal dialogs
 
 #### **Navigation (`/navigation`)**
 - `NavBar` - Main navigation bar
 - `CategorySidebar` - Category filtering
 - `MobileBottomNav` - Mobile navigation
-- `MobileCategorySheet` - Mobile category selector
+- `Footer` - Page footer
 
 #### **Selectors (`/selectors`)**
 - `CategorySelector` - Category picker
 - `LanguageSelector` - Language switcher
 
-#### **Views (`/views`)**
-- `CurrentView` - Active and recent tasks
-- `FutureView` - Backlog and on-hold tasks
-- `ArchiveView` - Completed and cancelled tasks
-- `ActivitiesView` - Life activity tracking
+### 📋 Import Patterns
 
-### 📋 Clean Import Pattern
-
-**Old Pattern:**
+**✅ Recommended: Main Barrel Export**
 ```typescript
-import TaskCard from './components/TaskCard'
-import LoginPage from './components/LoginPage'
-import AddTaskModal from './components/AddTaskModal'
+// Import from shared components
+import { TaskCard, StatusBadge, DateSelector } from '@/shared/components'
+
+// Import from shared utilities
+import { formatDate, toLocal, getStatusColor } from '@/shared/utils'
+
+// Import from features
+import { useTasks } from '@/features/tasks'
+import { useMemories } from '@/features/memory'
 ```
 
-**New Modular Pattern:**
+**✅ Alternative: Category-Specific Imports**
 ```typescript
-// Import from organized categories
-import { TaskCard, StatisticsCards, FilterControls } from './components/ui'
-import { LoginPage } from './components/auth'
-import { AddTaskModal, TaskTimeModal } from './components/modals'
-import { CurrentView, FutureView } from './components/views'
+// Import from specific categories
+import { TaskCard } from '@/shared/components/ui'
+import { DateSelector } from '@/shared/components/forms'
+import { StatisticsCards } from '@/shared/components/data-display'
+```
 
-// Or import everything from a category
-import * as UIComponents from './components/ui'
+**❌ Avoid: Direct File Imports**
+```typescript
+// Don't import directly from files (breaks encapsulation)
+import TaskCard from '@/shared/components/ui/TaskCard'
 ```
 
 ## 🚀 Quick Start
@@ -177,28 +230,49 @@ import * as UIComponents from './components/ui'
 
 ### Adding New Components
 
-1. **Choose the Right Category**
+1. **Choose the Right Location**
    ```bash
-   # UI components
-   components/ui/NewComponent.tsx
+   # Feature-specific components
+   features/tasks/components/NewTaskComponent.tsx
    
-   # Modal dialogs  
-   components/modals/NewModal.tsx
+   # Shared UI components
+   shared/components/ui/NewUIComponent.tsx
    
-   # Form editors
-   components/editors/NewEditor.tsx
+   # Shared form components
+   shared/components/forms/NewFormComponent.tsx
    ```
 
 2. **Update Index Files**
    ```typescript
-   // components/ui/index.ts
-   export { default as NewComponent } from './NewComponent'
+   // shared/components/ui/index.ts
+   export { NewUIComponent } from './NewUIComponent'
+   
+   // shared/components/index.ts (main barrel export)
+   export * from './ui'
    ```
 
 3. **Follow Naming Conventions**
    - PascalCase for component files
    - Descriptive, purpose-driven names
    - Include TypeScript interfaces
+   - Use barrel exports for clean imports
+
+### 🚀 Recent Architecture Improvements
+
+**December 2024 Refactoring:**
+
+- ✅ **Component Consolidation**: Moved scattered components to feature-based organization
+- ✅ **Utility Consolidation**: Merged duplicate utilities and eliminated code duplication
+- ✅ **Categorized Components**: Organized shared components into logical categories
+- ✅ **Build Optimization**: Improved build performance with proper client/server separation
+- ✅ **Better Discoverability**: Components are now easier to find and use
+
+**Key Benefits:**
+- 🎯 **Feature Isolation**: Each feature is self-contained with clear boundaries
+- 🔧 **Easier Maintenance**: Single source of truth for utilities and components
+- 📦 **Better Organization**: Components grouped by purpose and usage
+- 🛡️ **Type Safety**: Maintained 100% TypeScript compatibility
+- ⚡ **Performance**: Cleaner build process with proper module separation
 
 ### Custom Hooks Pattern
 
@@ -287,11 +361,20 @@ npm run type-check   # TypeScript checking
 
 ## 🤝 Contributing
 
-1. **Follow the Component Architecture**: Place components in appropriate folders
-2. **Maintain Type Safety**: Use TypeScript throughout
-3. **Update Index Files**: Ensure clean imports
-4. **Test Thoroughly**: Verify both mobile and desktop experiences
-5. **Document Changes**: Update README for significant architectural changes
+1. **Follow Feature-First Architecture**: Place components in appropriate feature folders
+2. **Use Shared Components**: Leverage categorized shared components when possible
+3. **Maintain Type Safety**: Use TypeScript throughout with strict compilation
+4. **Update Barrel Exports**: Ensure clean imports through index.ts files
+5. **Respect Boundaries**: Features should only import from shared/, not other features
+6. **Test Thoroughly**: Verify both mobile and desktop experiences
+7. **Document Changes**: Update README for significant architectural changes
+
+### Architecture Guidelines
+
+- **Feature Components**: Should only be used within their feature
+- **Shared Components**: Reusable across multiple features, no feature-specific logic
+- **Import Patterns**: Use absolute paths with `@/` aliases
+- **Build Safety**: Never import server-only utilities in client code
 
 ## 📝 License
 
