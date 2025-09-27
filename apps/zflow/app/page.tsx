@@ -25,13 +25,13 @@ import {
   ActivityEditor,
 } from './components/editors'
 // views rendered via containers
-import { useTasks } from '../hooks/memory/useMemories'
+import { useTasks } from '@/hooks'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories'
 import { useActivities } from '@/hooks/useActivities'
 import { useTimer } from '@/hooks/useTimer'
-import { useTaskFiltering } from '../hooks/tasks/useTaskFiltering'
+import { useTaskFiltering } from '@/hooks'
 import { useTaskActions } from '@/hooks/useTaskActions'
-import { useActivityActions } from '../hooks/activities/useActivityActions'
+import { useActivityActions } from '@/hooks'
 import { useModalState } from '@/hooks/useModalState'
 import { useTimeline, TimelineItem, TimelineHome } from '@/timeline'
 import eventBus from './core/events/event-bus'

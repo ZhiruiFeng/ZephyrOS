@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Suspense, useEffect, useCallback, startTransition, useState } from 'react'
-import { useTasks } from '../../../hooks/memory/useMemories'
+import { useTasks } from '@/hooks'
 import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '../../../contexts/AuthContext'
 import LoginPage from '../../components/auth/LoginPage'
@@ -10,7 +10,7 @@ import SubtaskSection from '../../components/editors/SubtaskSection'
 import EnergyReviewModal from '../../components/modals/EnergyReviewModal'
 import TaskMemoryDisplay from '../../components/memory/TaskMemoryDisplay'
 import MemoryManagementModal from '../../components/memory/MemoryManagementModal'
-import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '../../../hooks/memory/useMemoryAnchors'
+import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '@/hooks'
 import eventBus from '../../core/events/event-bus'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { CelebrationAnimation } from '../../components/ui/CelebrationAnimation'
@@ -27,7 +27,7 @@ import { Message } from './components/ChatMessage'
 import { useWorkModeState } from './hooks/useWorkModeState'
 
 // Import hooks directly
-import { useUpdateTask } from '../../../hooks/memory/useMemories'
+import { useUpdateTask } from '@/hooks'
 import { useTimer } from '@/hooks/useTimer'
 import { useAutoSave } from '@/hooks/useAutoSave'
 

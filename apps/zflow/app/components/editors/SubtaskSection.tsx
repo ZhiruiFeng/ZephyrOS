@@ -36,7 +36,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSubtasks, useSubtaskActions } from '../../../hooks/tasks/useSubtasks'
+import { useSubtasks, useSubtaskActions } from '@/hooks'
 import { TaskMemory } from '../../../lib/api'
 import { Task } from '../../types/task'
 import { useTranslation } from '../../../contexts/LanguageContext'

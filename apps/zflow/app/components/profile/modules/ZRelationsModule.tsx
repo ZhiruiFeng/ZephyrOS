@@ -29,7 +29,7 @@ import {
   type Person,
   type RelationshipProfile,
   type Touchpoint
-} from '../../../../hooks/memory/useZRelations'
+} from '@/hooks'
 import { useTranslation } from '../../../../contexts/LanguageContext'
 import type { ProfileModuleProps } from '../types'
 

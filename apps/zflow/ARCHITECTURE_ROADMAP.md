@@ -20,7 +20,7 @@ Transform ZFlow from a monolithic structure to a modular, feature-first architec
 - ✅ **Phase 4**: Route Modernization (100%)
 - ✅ **Phase 4.5**: Import Path Optimization (100%)
 - ✅ **Phase 5**: Additional Feature Extraction (100%)
-- ✅ **Phase 5.5**: Shared Utilities Migration (100% ⭐)
+- ✅ **Phase 5.5**: Shared Utilities Migration (100% ⭐) - **ARCHITECTURE RESTRUCTURED**
 - 📋 **Phase 6**: Infrastructure Cleanup (0%)
 - 📋 **Phase 7**: Performance Optimization (0%)
 
@@ -222,32 +222,46 @@ import { StrategyPage } from '@/strategy'
 - Establish 2-layer architecture for shared vs feature-specific logic
 
 ##### **Results**
-- ✅ Created comprehensive `/lib/shared/` library with 2-layer architecture
-- ✅ Migrated 8 shared hooks: `useTaskOperations`, `useTaskActions`, `useActivitiesShared`, `useTimerShared`, `useAutoSave`, `useCategories`, `useCelebration`, `useModalState`
+- ✅ **MAJOR ARCHITECTURE RESTRUCTURE**: Moved from `lib/shared/` to clean root-level structure
+- ✅ **Final Structure**: `hooks/` (root), `types/shared/`, `shared/` (root)
+- ✅ Migrated 8 shared hooks: `useTaskOperations`, `useTaskActions`, `useActivities` (renamed), `useTimer` (renamed), `useAutoSave`, `useCategories`, `useCelebration`, `useModalState`
 - ✅ Consolidated 4 utility modules: `task-utils`, `time-utils`, `activity-utils`, `validation-utils`
 - ✅ Created 3 shared components: `StatusBadge`, `TaskCard`, `TimerDisplay`
 - ✅ Established comprehensive shared type system
-- ✅ Resolved all naming conflicts (e.g., `useTaskOperations` → `useFocusTaskOperations` for focus-specific version)
-- ✅ Updated all features to use centralized utilities via `@/shared` imports
+- ✅ Resolved all naming conflicts and removed "Shared" suffixes from hooks
+- ✅ Updated all features to use clean import paths: `@/hooks`, `@/shared/utils`, `@/types/shared`
 - ✅ Achieved zero duplication across features
-- ✅ Completed optional legacy cleanup - removed all duplicate files
+- ✅ Completed architecture restructure based on user feedback for better visibility
 
-##### **Architecture Implemented**
-**Layer 1: ZFlow Shared Library (`lib/shared/`)**
-- **Path**: `@/shared/*`
-- **Purpose**: ZFlow-specific utilities shared across features within the web app
-- **Contains**: Hooks, utils, components, types used by multiple features
+##### **Final Clean Architecture Implemented**
+**Root-Level Shared Structure**:
+```
+apps/zflow/
+├── hooks/                   # 🔗 All application hooks at root level
+│   ├── useTaskOperations.ts    # Generic task operations
+│   ├── useActivities.ts        # Activity management (renamed from useActivitiesShared)
+│   ├── useTimer.ts             # Timer functionality (renamed from useTimerShared)
+│   └── index.ts                # Barrel exports
+├── types/shared/            # 🎯 Shared utility types
+│   ├── shared-hooks.ts         # Hook return types
+│   └── common.ts               # Common shared types
+├── shared/                  # 🛠 Shared utilities & components at root level
+│   ├── utils/                  # Utility functions
+│   └── components/             # Shared UI components
+```
 
-**Layer 2: Feature-Specific Extensions**
-- **Purpose**: Feature-specific customizations that extend shared functionality
-- **Example**: `useFocusTaskOperations` extends base `useTaskOperations`
-- **Pattern**: Features import from `@/shared` and add feature-specific logic
+**Clean Import Patterns**:
+- **Hooks**: `import { useTimer } from '@/hooks'`
+- **Utils**: `import { getStatusColor } from '@/shared/utils'`
+- **Types**: `import type { TaskOperationsReturn } from '@/types/shared'`
 
-##### **Import Guidelines Established**
+##### **Final Import Guidelines Established**
 ```typescript
-// ✅ PREFERRED: ZFlow shared utilities
-import { useTaskOperations, useCategories } from '@/shared'
+// ✅ PREFERRED: Clean shared utilities
+import { useTaskOperations, useCategories, useTimer } from '@/hooks'
 import { getStatusColor, formatSmartDate } from '@/shared/utils'
+import { StatusBadge, TimerDisplay } from '@/shared/components'
+import type { TaskOperationsReturn } from '@/types/shared'
 
 // ✅ ACCEPTABLE: Feature-specific extensions
 import { useFocusTaskOperations } from '@/focus'
@@ -258,11 +272,14 @@ import { useAuth } from '@/contexts/AuthContext'
 ```
 
 ##### **Files Changed**
-- `lib/shared/` - Complete shared library structure created
-- `tsconfig.json` - Added `@/shared/*` and `@/shared` path aliases
+- `hooks/` - All shared hooks moved to root level with clean names
+- `types/shared/` - Shared types organized under types directory
+- `shared/` - Root-level shared utilities and components
+- `tsconfig.json` - Updated paths to reflect new clean structure
 - `features/focus/hooks/useFocusTaskOperations.ts` - Renamed from `useTaskOperations.ts` to resolve conflicts
-- `features/kanban/KanbanPage.tsx` - Updated to use shared utilities
-- Legacy hook files removed: `hooks/tasks/`, `hooks/activities/`, `hooks/ui/`
+- `features/kanban/KanbanPage.tsx` - Updated to use clean import paths
+- **Complete restructure**: Moved from `lib/shared/` deep nesting to intuitive root-level structure
+- **Legacy cleanup**: Removed old `lib/shared/` directory and all duplicate files
 
 ##### **Impact**
 - 🎯 **Zero Duplication**: Eliminated all duplicate functionality across features
@@ -708,10 +725,15 @@ Each phase must pass:
 - Successfully resolved UI mess-up caused by mixed legacy/new dependency states
 - Updated main app imports from legacy modules to consolidated `@/timeline` feature API
 - Removed entire `app/modules/timeline/` directory and proxy files
-- Documented key lessons learned from timeline migration:
-  - Mixed dependency state debugging and resolution
-  - Import path analysis techniques for near-identical components
-  - Webpack cache clearing strategies for phantom import errors
-  - Safety-first migration approach with backup file creation
-  - Systematic legacy cleanup methodology
+- Documented key lessons learned from timeline migration
 - All TypeScript compilation, linting, and build checks passing
+
+### Version 1.9 (2025-09-26) - **MAJOR ARCHITECTURE RESTRUCTURE**
+- ✅ **COMPLETED**: Phase 5.5 Shared Utilities Migration - Complete Architecture Restructure
+- **Major Change**: Restructured from `lib/shared/` to clean root-level architecture based on user feedback
+- **New Structure**: `hooks/` (root), `types/shared/`, `shared/` (root) for better visibility and intuitive organization
+- **Hook Renaming**: Removed "Shared" suffixes - `useActivitiesShared` → `useActivities`, `useTimerShared` → `useTimer`
+- **Clean Import Paths**: `@/hooks`, `@/shared/utils`, `@/types/shared` instead of deep `lib/shared/` nesting
+- **Complete Documentation Update**: Updated CODING_RULES.md and all documentation to reflect new clean architecture
+- **Zero Breakage**: All features continue working with updated import paths
+- **Ready for Next Steps**: Foundation established for Phase 6 infrastructure cleanup and beyond

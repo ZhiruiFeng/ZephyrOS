@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { useTasks, useUpdateTask } from '../../../../hooks/memory/useMemories'
+import { useTasks, useUpdateTask } from '@/hooks'
 import { useAuth } from '../../../../contexts/AuthContext'
 import LoginPage from '../../../components/auth/LoginPage'
 import { TaskContent } from '../../../../lib/api'

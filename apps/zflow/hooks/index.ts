@@ -15,3 +15,12 @@ export { useAutoSave } from './useAutoSave'
 export { useCategories } from './useCategories'
 export { useCelebration } from './useCelebration'
 export { useModalState } from './useModalState'
+
+// Memory hooks - Timeline-related core shared data
+export * from './memory'
+
+// Task hooks - Task management and operations
+export * from './tasks'
+
+// Activity hooks - Activity management and actions
+export * from './activities'

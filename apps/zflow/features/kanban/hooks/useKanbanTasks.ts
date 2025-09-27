@@ -7,7 +7,7 @@
 import useSWR from 'swr'
 import { useState, useCallback, useMemo } from 'react'
 import { kanbanApi } from '../api/kanban-api'
-import { useTasks as useTasksFromMemory, useUpdateTask as useUpdateTaskFromMemory } from '@/hooks/memory/useMemories'
+import { useTasks as useTasksFromMemory, useUpdateTask as useUpdateTaskFromMemory } from '@/hooks'
 import type { 
   KanbanTask, 
   StatusKey, 

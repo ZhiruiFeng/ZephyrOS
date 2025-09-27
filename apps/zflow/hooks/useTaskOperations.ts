@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import { TaskMemory, TaskContent } from '@/lib/api'
-import { useUpdateTask } from '@/hooks/memory/useMemories'
+import { useUpdateTask } from '@/hooks'
 import { useTranslation } from '@/contexts/LanguageContext'
 
 /**

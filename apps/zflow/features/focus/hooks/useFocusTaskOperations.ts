@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { TaskMemory } from '@/lib/api'
-import { useUpdateTask } from '@/hooks/memory/useMemories'
+import { useUpdateTask } from '@/hooks'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useTimer } from '@/hooks/useTimer'
 import { useTranslation } from '@/contexts/LanguageContext'
