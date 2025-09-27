@@ -17,9 +17,9 @@ import {
   Zap,
   Maximize2
 } from 'lucide-react'
-import { useAuth } from '../../../../contexts/AuthContext'
-import { useTranslation } from '../../../../contexts/LanguageContext'
-import { resolveZmemoryOrigin } from '../../../../lib/api/zmemory-api-base'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/contexts/LanguageContext'
+import { resolveZmemoryOrigin } from '@/lib/api/zmemory-api-base'
 import type { ProfileModuleProps } from '@/profile'
 
 // Types
@@ -399,53 +399,51 @@ export function ApiKeysModule({ config, onConfigChange, fullScreenPath }: Profil
                   ))}
                 </select>
               </div>
-
-              {formData.vendor_id && services[formData.vendor_id]?.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Service (Optional)
-                  </label>
-                  <select
-                    value={formData.service_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, service_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">All services</option>
-                    {(services[formData.vendor_id] || []).map(service => (
-                      <option key={service.id} value={service.id}>
-                        {service.display_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Service
+                </label>
+                <select
+                  value={formData.service_id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, service_id: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">(Optional) Select service...</option>
+                  {(services[formData.vendor_id] || []).map(service => (
+                    <option key={service.id} value={service.id}>
+                      {service.display_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                API Key
-              </label>
-              <input
-                type="password"
-                value={formData.api_key}
-                onChange={(e) => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder={editingKey ? "Leave empty to keep current key" : "Enter your API key"}
-                required={!editingKey}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Display Name (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.display_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="My OpenAI Key"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  API Key
+                </label>
+                <input
+                  type="text"
+                  value={formData.api_key}
+                  onChange={(e) => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="sk-..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.display_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Personal OpenAI Key"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -477,7 +475,7 @@ export function ApiKeysModule({ config, onConfigChange, fullScreenPath }: Profil
           <div className="text-center py-8">
             <Key className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <h4 className="text-lg font-medium text-gray-900 mb-2">No API Keys</h4>
-            <p className="text-gray-600 mb-4">Add your first API key to get started with AI services.</p>
+            <p className="text-gray-600 mb-4">Add your first key to connect to external vendors.</p>
             {!showAddForm && (
               <button
                 onClick={() => setShowAddForm(true)}
@@ -489,77 +487,48 @@ export function ApiKeysModule({ config, onConfigChange, fullScreenPath }: Profil
           </div>
         ) : (
           <div className="space-y-4">
-            {(apiKeys || []).map(apiKey => (
+            {apiKeys.map(apiKey => (
               <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {getVendorIcon(apiKey.vendor_id)}
+                    <div className={`w-2 h-2 rounded-full ${apiKey.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">
-                          {apiKey.display_name || `${apiKey.vendor_name} Key`}
-                        </span>
-                        {apiKey.service_display_name && (
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                            {apiKey.service_display_name}
-                          </span>
-                        )}
-                        {!apiKey.is_active && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                        <span>{apiKey.vendor_name}</span>
-                        {apiKey.key_preview && (
-                          <span className="font-mono">{apiKey.key_preview}</span>
-                        )}
-                        {apiKey.last_used_at && (
-                          <span>Used {new Date(apiKey.last_used_at).toLocaleDateString()}</span>
-                        )}
-                      </div>
+                      <div className="font-medium text-gray-900">{apiKey.display_name || apiKey.vendor_name}</div>
+                      <div className="text-xs text-gray-500">Vendor: {apiKey.vendor_name}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleTest(apiKey.id)}
+                      className="px-3 py-1 text-xs rounded-full border bg-blue-50 text-blue-700 border-blue-200 disabled:opacity-50"
                       disabled={testingKeys.has(apiKey.id)}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="Test API key"
                     >
-                      {testingKeys.has(apiKey.id) ? (
-                        <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )}
+                      {testingKeys.has(apiKey.id) ? 'Testing...' : 'Test'}
                     </button>
-                    
                     <button
-                      onClick={() => {
-                        setEditingKey(apiKey)
-                        setFormData({
-                          vendor_id: apiKey.vendor_id,
-                          service_id: apiKey.service_id || '',
-                          api_key: '',
-                          display_name: apiKey.display_name || ''
-                        })
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Edit API key"
+                      onClick={() => setEditingKey(apiKey)}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                      aria-label="Edit API key"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    
                     <button
                       onClick={() => handleDelete(apiKey.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete API key"
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      aria-label="Delete API key"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+
+                <div className="mt-3 text-xs text-gray-600">
+                  {apiKey.service_display_name ? `Service: ${apiKey.service_display_name}` : 'No specific service'}
+                </div>
+
+                <div className="mt-1 text-xs text-gray-500">
+                  Created: {new Date(apiKey.created_at).toLocaleDateString()}
                 </div>
               </div>
             ))}

@@ -18,18 +18,16 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react'
-import { useAuth } from '../../../../contexts/AuthContext'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import {
   zmemoryApiKeysApi,
   ZMEMORY_SCOPES,
   type ZMemoryApiKey,
   type ZMemoryApiKeyWithToken,
   type CreateZMemoryApiKeyRequest
-} from '../../../../lib/api'
+} from '@/lib/api'
 import type { ProfileModuleProps } from '@/profile'
-
-// Use the properly configured API client following ZFlow coding rules
 
 export function ZMemoryApiKeysModule({
   config,
@@ -246,7 +244,7 @@ export function ZMemoryApiKeysModule({
             <div className="flex-1">
               <h4 className="text-lg font-medium text-green-900 mb-2">API Key Generated Successfully!</h4>
               <p className="text-sm text-green-800 mb-4">
-                Save this API key somewhere safe. You won&apos;t be able to see it again.
+                Save this API key somewhere safe. You won't be able to see it again.
               </p>
 
               <div className="bg-white border border-green-200 rounded-lg p-4">
@@ -398,91 +396,46 @@ export function ZMemoryApiKeysModule({
               <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Shield className="w-5 h-5 text-purple-600" />
+                    <div className={`w-2 h-2 rounded-full ${apiKey.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{apiKey.name}</span>
-                        {!apiKey.is_active && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                            Inactive
-                          </span>
-                        )}
-                        {apiKey.expires_at && new Date(apiKey.expires_at) < new Date() && (
-                          <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
-                            Expired
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                        {apiKey.key_preview && (
-                          <span className="font-mono">{apiKey.key_preview}</span>
-                        )}
-                        <span>{apiKey.scopes.length} permission{apiKey.scopes.length !== 1 ? 's' : ''}</span>
-                        {apiKey.last_used_at && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Used {new Date(apiKey.last_used_at).toLocaleDateString()}
-                          </span>
-                        )}
-                        {apiKey.expires_at && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Expires {new Date(apiKey.expires_at).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
+                      <div className="font-medium text-gray-900">{apiKey.name}</div>
+                      <div className="text-xs text-gray-500">Created: {new Date(apiKey.created_at).toLocaleDateString()}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleToggleActive(apiKey)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        apiKey.is_active
-                          ? 'text-green-600 hover:bg-green-50'
-                          : 'text-gray-400 hover:bg-gray-50'
-                      }`}
-                      title={apiKey.is_active ? 'Deactivate key' : 'Activate key'}
+                      className={`px-3 py-1 text-xs rounded-full border ${apiKey.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}
                     >
-                      {apiKey.is_active ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                      {apiKey.is_active ? 'Active' : 'Inactive'}
                     </button>
-
                     <button
-                      onClick={() => {
-                        setEditingKey(apiKey)
-                        setFormData({
-                          name: apiKey.name,
-                          scopes: apiKey.scopes,
-                          expires_in_days: 365 // Default for editing
-                        })
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Edit API key"
+                      onClick={() => setEditingKey(apiKey)}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                      aria-label="Edit API key"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-
                     <button
                       onClick={() => handleDelete(apiKey.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete API key"
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      aria-label="Delete API key"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Scopes display */}
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="text-xs text-gray-600 mb-2">Permissions:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {apiKey.scopes.map(scope => (
-                      <span key={scope} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                        {scope}
-                      </span>
-                    ))}
-                  </div>
+                <div className="mt-3 text-xs text-gray-600">
+                  Scopes: {apiKey.scopes.join(', ')}
                 </div>
+
+                {apiKey.expires_at && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    Expires: {new Date(apiKey.expires_at).toLocaleDateString()}
+                  </div>
+                )}
               </div>
             ))}
           </div>

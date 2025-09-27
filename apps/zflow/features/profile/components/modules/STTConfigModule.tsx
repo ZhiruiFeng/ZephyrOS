@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Mic, CheckCircle, AlertCircle, Settings2, Zap, Shield, Maximize2 } from 'lucide-react'
-import { useAuth } from '../../../../contexts/AuthContext'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import type { ProfileModuleProps } from '@/profile'
 
 // STT Provider types
@@ -377,5 +377,3 @@ export async function getSTTConfig(userId: string): Promise<STTConfig> {
   }
   return DEFAULT_STT_CONFIG
 }
-
-export default STTConfigModule

@@ -3,7 +3,7 @@
 import React from 'react'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { ZMemoryApiKeysModule } from '../../../components/profile/modules/ZMemoryApiKeysModule'
+import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
 
 export default function ZMemoryApiKeysPage() {
   const handleConfigChange = (newConfig: any) => {
