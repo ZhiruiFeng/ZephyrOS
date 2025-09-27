@@ -30,7 +30,7 @@ import {
   type RelationshipProfile,
   type Touchpoint
 } from '@/hooks'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useTranslation } from '@/contexts/LanguageContext'
 import type { ProfileModuleProps } from '@/profile'
 
 const TIER_LABELS = {

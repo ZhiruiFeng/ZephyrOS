@@ -1,7 +1,7 @@
 export { default as ProfileDashboard } from './ProfileDashboard'
 export { ModuleSelector } from './ModuleSelector'
-export { EnergySpectrumModule } from './modules/EnergySpectrumModule'
-export { MemoriesModule } from './modules/MemoriesModule'
+export { EnergySpectrumModule } from '@/features/profile/components/modules/EnergySpectrumModule'
+export { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
 export { ProfileModuleRenderer } from './ProfileModuleRenderer'
 
 // Export profile feature hooks and types

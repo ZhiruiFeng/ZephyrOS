@@ -1,13 +1,13 @@
 'use client'
 
 import React from 'react'
-import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
+import { EnergySpectrumModule } from '@/features/profile/components/modules/EnergySpectrumModule'
 import AgentDirectory from '@/features/profile/components/modules/AgentDirectory'
-import { MemoriesModule } from './modules/MemoriesModule'
+import { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
 import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModule'
 import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
-import { ZRelationsModule } from './modules/ZRelationsModule'
+import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
 import type { ProfileModule, ProfileModuleConfig } from '@/profile'
 
 interface ProfileModuleRendererProps {
