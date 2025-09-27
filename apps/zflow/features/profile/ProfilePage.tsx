@@ -16,7 +16,7 @@ import { STTConfigModule } from '@/app/components/profile/modules/STTConfigModul
 import { ZRelationsModule } from '@/app/components/profile/modules/ZRelationsModule'
 import AITaskGrantorModule from '@/app/components/profile/modules/AITaskGrantorModule'
 import { useProfileModules } from './hooks'
-import { FullscreenModal, useFullscreenModal } from '@/app/components/profile/FullscreenModal'
+import { FullscreenModal, useFullscreenModal } from '@/shared/components'
 import type { ProfileModule, ProfileModuleConfig } from './types'
 
 interface ProfilePageProps {
@@ -283,6 +283,9 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
           isOpen={fullscreenModal.isOpen}
           onClose={handleCloseFullscreen}
           title={availableModules.find(m => m.id === fullscreenModule)?.name || 'Module'}
+          contentPadding={false}
+          exitTooltip="退出全屏"
+          closeTooltip="关闭"
           icon={
             fullscreenModule === 'energy-spectrum' ? <BarChart3 className="w-6 h-6 text-blue-600" /> :
             fullscreenModule === 'memories' ? <BookOpen className="w-6 h-6 text-purple-600" /> :

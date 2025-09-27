@@ -8,7 +8,7 @@ import {
   Moon,
   Plus,
 } from 'lucide-react'
-import { FullscreenModal } from './FullscreenModal'
+import { FullscreenModal } from '@/shared/components'
 import { Card, CardContent } from '../ui'
 import { TaskSelector } from './TaskSelector'
 import { useDailyStrategy } from '../../hooks/useDailyStrategy'

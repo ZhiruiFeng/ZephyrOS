@@ -10,3 +10,6 @@ export { TaskCard } from './TaskCard'
 
 // Timer components
 export { TimerDisplay } from './TimerDisplay'
+
+// Modals
+export { FullscreenModal, useFullscreenModal } from './modals/FullscreenModal'

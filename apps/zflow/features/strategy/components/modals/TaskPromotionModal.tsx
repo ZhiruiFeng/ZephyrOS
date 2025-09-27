@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, CheckCircle, AlertTriangle, Search } from 'lucide-react'
-import { FullscreenModal } from './FullscreenModal'
+import { FullscreenModal } from '@/shared/components'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '../ui'
 import { useStrategyTasks } from '../../hooks/useStrategyTasks'
 import { useStrategyDashboard } from '../../hooks/useStrategyDashboard'
