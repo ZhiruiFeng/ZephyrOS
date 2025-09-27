@@ -1,6 +1,6 @@
 # ZFlow Architecture Guide
 
-**Version**: 2.0  
+**Version**: 2.1  
 **Last Updated**: September 2025  
 **Status**: Production Ready 🚀  
 
@@ -24,7 +24,6 @@ ZFlow is built using a **Feature-First Architecture** pattern that promotes main
 ```
 apps/zflow/
 ├── app/                          # Next.js App Router
-│   ├── components/               # Legacy - being phased out
 │   ├── (routes)/                 # Page components
 │   └── layout.tsx               # Root layout
 │
@@ -88,12 +87,46 @@ apps/zflow/
 │       └── index.ts            # Public API
 │
 ├── shared/                      # 🔄 CROSS-FEATURE UTILITIES
-│   ├── components/              # Shared UI components
-│   │   ├── StatusBadge.tsx     # Task status display
-│   │   ├── TaskCard.tsx        # Generic task card
-│   │   ├── TimerDisplay.tsx    # Timer component
-│   │   └── modals/             # Shared modal components
+│   ├── components/              # Shared UI components (categorized)
+│   │   ├── ui/                 # Basic UI components
+│   │   │   ├── StatusBadge.tsx # Task status display
+│   │   │   ├── TaskCard.tsx    # Generic task card
+│   │   │   ├── TimerDisplay.tsx # Timer component
+│   │   │   └── index.ts        # UI exports
+│   │   ├── layout/             # Layout components
+│   │   │   ├── DynamicHead.tsx # Dynamic page head
+│   │   │   ├── FloatingAddButton.tsx # Floating action button
+│   │   │   └── index.ts        # Layout exports
+│   │   ├── forms/              # Form components
+│   │   │   ├── DateSelector.tsx # Date selection
+│   │   │   ├── FilterControls.tsx # Filter controls
+│   │   │   └── index.ts        # Form exports
+│   │   ├── data-display/       # Data visualization
+│   │   │   ├── StatisticsCards.tsx # Statistics cards
+│   │   │   ├── TimelineStats.tsx # Timeline stats
+│   │   │   └── index.ts        # Data display exports
+│   │   ├── feedback/           # User feedback
+│   │   │   ├── CelebrationAnimation.tsx # Animations
+│   │   │   └── index.ts        # Feedback exports
+│   │   ├── portals/            # Global portals
+│   │   │   ├── AddTaskPortal.tsx # Task creation portal
+│   │   │   └── index.ts        # Portal exports
+│   │   ├── auth/               # Authentication components
+│   │   ├── editors/            # Editor components
+│   │   ├── modals/             # Modal components
+│   │   ├── navigation/         # Navigation components
+│   │   ├── selectors/          # Selector components
+│   │   └── index.ts            # Main barrel export
 │   ├── utils/                  # Shared utility functions
+│   │   ├── task-utils.ts       # Task utilities
+│   │   ├── time-utils.ts       # Time/date utilities
+│   │   ├── validation-utils.ts # Form validation
+│   │   ├── crossDayUtils.ts    # Cross-day time entries
+│   │   ├── errorHandling.ts    # Error handling
+│   │   ├── timezoneUtils.ts    # Timezone utilities
+│   │   ├── activity-utils.ts   # Activity utilities
+│   │   ├── redis.ts            # Redis utilities (server-only)
+│   │   └── index.ts            # Main barrel export (excludes redis.ts)
 │   └── index.ts                # Public API
 │
 ├── hooks/                       # 🌐 CROSS-CUTTING HOOKS
@@ -132,20 +165,108 @@ apps/zflow/
    - Reusable across multiple features
    - Generic, configurable components
    - No feature-specific logic
+   - **Organized by category** for better discoverability
 
 3. **Legacy Components** (`app/components/`)
    - **DEPRECATED**: Being phased out
    - Do not add new components here
    - Migrate existing components to appropriate features
 
-### **Key Shared Components**
+### **Shared Component Categories**
 
-| Component | Purpose | Usage |
-|-----------|---------|-------|
-| `StatusBadge` | Display task status | Task status visualization |
-| `TaskCard` | Generic task display | Task listings and cards |
-| `TimerDisplay` | Timer UI | Time tracking displays |
-| `FullscreenModal` | Modal dialogs | Full-screen overlays |
+| Category | Purpose | Key Components |
+|----------|---------|----------------|
+| **UI** | Basic UI elements | `StatusBadge`, `TaskCard`, `TimerDisplay` |
+| **Layout** | Layout and positioning | `DynamicHead`, `FloatingAddButton` |
+| **Forms** | Input and form controls | `DateSelector`, `FilterControls` |
+| **Data Display** | Statistics and visualization | `StatisticsCards`, `TimelineStats` |
+| **Feedback** | User feedback and animations | `CelebrationAnimation` |
+| **Portals** | Global portals and overlays | `AddTaskPortal` |
+| **Auth** | Authentication components | `AuthButton`, `LoginPage` |
+| **Editors** | Rich text editors | `NotionEditor`, `TimeCell` |
+| **Modals** | Modal dialogs | `FullscreenModal` |
+| **Navigation** | Navigation components | `NavBar`, `Footer`, `MobileBottomNav` |
+| **Selectors** | Selection components | `CategorySelector`, `LanguageSelector` |
+
+### **Component Import Patterns**
+
+```typescript
+// ✅ Recommended: Use main barrel export
+import { TaskCard, StatusBadge, DateSelector } from '@/shared/components'
+
+// ✅ Alternative: Import from specific categories
+import { TaskCard } from '@/shared/components/ui'
+import { DateSelector } from '@/shared/components/forms'
+
+// ❌ Avoid: Direct file imports (breaks encapsulation)
+import TaskCard from '@/shared/components/ui/TaskCard'
+```
+
+---
+
+## 🛠️ **Shared Utilities Architecture**
+
+The `shared/utils/` directory provides client-safe utility functions organized by domain:
+
+### **Utility Categories**
+
+| Utility | Purpose | Client-Safe |
+|---------|---------|-------------|
+| `task-utils.ts` | Task-related utilities (status colors, formatting) | ✅ |
+| `time-utils.ts` | Time and date utilities (formatting, timezone conversion) | ✅ |
+| `validation-utils.ts` | Form validation utilities | ✅ |
+| `crossDayUtils.ts` | Cross-day time entry processing | ✅ |
+| `errorHandling.ts` | Error handling and user feedback | ✅ |
+| `timezoneUtils.ts` | Advanced timezone handling | ✅ |
+| `activity-utils.ts` | Activity-related utilities | ✅ |
+| `redis.ts` | Redis client utilities | ❌ (Server-only) |
+
+### **Import Patterns**
+
+```typescript
+// ✅ Client-side: Use main barrel export (excludes redis.ts)
+import { formatDate, toLocal, getStatusColor } from '@/shared/utils'
+
+// ✅ Server-side: Direct import for Redis utilities
+import { getRedisClient } from '@/shared/utils/redis'
+
+// ❌ Never: Import redis.ts in client code
+import { getRedisClient } from '@/shared/utils' // This won't work
+```
+
+### **Build Safety**
+
+- `redis.ts` is excluded from the main `index.ts` export
+- This prevents Node.js modules (`dns`, `net`, `tls`) from being bundled in client code
+- Build process automatically excludes server-only utilities from client bundles
+
+---
+
+## 🚀 **Recent Architecture Improvements**
+
+### **December 2024 Refactoring**
+
+**Component Consolidation:**
+- ✅ Moved `app/speech/components/` → `features/speech/components/`
+- ✅ Organized shared components into logical categories
+- ✅ Eliminated scattered component files
+
+**Utility Consolidation:**
+- ✅ Merged duplicate utilities from `app/utils/` into `shared/utils/`
+- ✅ Eliminated code duplication between utility directories
+- ✅ Improved build performance by preventing Node.js modules in client bundles
+
+**Benefits:**
+- 🎯 **Better Organization**: Components grouped by purpose and usage
+- 🚀 **Improved Performance**: Cleaner build process with proper module separation
+- 🔧 **Easier Maintenance**: Single source of truth for utilities
+- 📦 **Better Discoverability**: Categorized components are easier to find
+- 🛡️ **Type Safety**: Maintained 100% TypeScript compatibility
+
+**Migration Notes:**
+- All existing imports continue to work through barrel exports
+- No breaking changes to public APIs
+- Build process now properly handles client/server module separation
 
 ---
 
@@ -182,8 +303,14 @@ apps/zflow/
 import { useTasks } from '@/features/tasks'
 import { useMemories } from '@/features/memory'
 
-// Shared component imports
-import { StatusBadge, TaskCard } from '@/shared/components'
+// Shared component imports (categorized)
+import { StatusBadge, TaskCard, DateSelector } from '@/shared/components'
+// Or import from specific categories:
+import { TaskCard } from '@/shared/components/ui'
+import { DateSelector } from '@/shared/components/forms'
+
+// Shared utility imports (client-safe)
+import { formatDate, toLocal, getStatusColor } from '@/shared/utils'
 
 // Cross-cutting hooks
 import { useTimer, useCategories } from '@/hooks'
@@ -204,6 +331,12 @@ import { TaskForm } from '@/features/tasks/components/TaskForm'
 
 // DON'T: Legacy app/components
 import { OldComponent } from '@/app/components/OldComponent'
+
+// DON'T: Direct component file imports (breaks encapsulation)
+import TaskCard from '@/shared/components/ui/TaskCard'
+
+// DON'T: Import server-only utilities in client code
+import { getRedisClient } from '@/shared/utils' // This won't work
 ```
 
 ---

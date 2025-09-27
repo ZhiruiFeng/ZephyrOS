@@ -1,7 +1,7 @@
 import React from 'react'
 import { Maximize2 } from 'lucide-react'
 import { energyToColor, canEdit, segmentToTimeLabel } from '../utils'
-import { formatDuration } from '@/app/utils/timeUtils'
+import { formatDuration } from '@/shared/utils'
 import type { 
   TimeEntryWithCrossDay, 
   HoveredTimeEntry, 

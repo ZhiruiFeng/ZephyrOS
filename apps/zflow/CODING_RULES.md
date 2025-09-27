@@ -140,6 +140,101 @@ Use these constants when configuring fetch options for cross-origin scenarios.
 - Export types for use by components and hooks
 - Use consistent naming patterns: `CreateXRequest`, `UpdateXRequest`, etc.
 
+### Shared Components Organization
+
+The `shared/components/` directory follows a categorized structure for better organization:
+
+```
+shared/components/
+├── ui/                    # Basic UI components
+│   ├── StatusBadge.tsx   # Status and priority badges
+│   ├── TaskCard.tsx      # Generic task card component
+│   ├── TimerDisplay.tsx  # Timer display component
+│   └── index.ts          # UI components exports
+│
+├── layout/               # Layout and positioning components
+│   ├── DynamicHead.tsx   # Dynamic page head component
+│   ├── FloatingAddButton.tsx # Floating action button
+│   └── index.ts          # Layout components exports
+│
+├── forms/                # Form and input components
+│   ├── DateSelector.tsx  # Date selection component
+│   ├── FilterControls.tsx # Filter control components
+│   └── index.ts          # Form components exports
+│
+├── data-display/         # Data visualization components
+│   ├── StatisticsCards.tsx # Statistics display cards
+│   ├── TimelineStats.tsx # Timeline statistics component
+│   └── index.ts          # Data display exports
+│
+├── feedback/             # User feedback and animations
+│   ├── CelebrationAnimation.tsx # Celebration animations
+│   └── index.ts          # Feedback components exports
+│
+├── portals/              # Global portal components
+│   ├── AddTaskPortal.tsx # Global task creation portal
+│   └── index.ts          # Portal components exports
+│
+├── auth/                 # Authentication components
+├── editors/              # Editor components
+├── modals/               # Modal components
+├── navigation/           # Navigation components
+├── selectors/            # Selector components
+└── index.ts              # Main barrel export
+```
+
+**Component Import Guidelines:**
+- Use the main barrel export: `import { TaskCard, StatusBadge } from '@/shared/components'`
+- Or import from specific categories: `import { TaskCard } from '@/shared/components/ui'`
+- Always use absolute paths with `@/` aliases
+
+### Shared Utils Organization
+
+The `shared/utils/` directory contains client-safe utility functions:
+
+```
+shared/utils/
+├── task-utils.ts         # Task-related utilities
+├── time-utils.ts         # Time and date utilities
+├── validation-utils.ts   # Form validation utilities
+├── crossDayUtils.ts      # Cross-day time entry utilities
+├── errorHandling.ts      # Error handling utilities
+├── timezoneUtils.ts      # Timezone handling utilities
+├── activity-utils.ts     # Activity-related utilities
+├── redis.ts              # Redis utilities (server-side only)
+└── index.ts              # Main barrel export (excludes redis.ts)
+```
+
+**Utils Import Guidelines:**
+- Use the main barrel export: `import { formatDate, toLocal } from '@/shared/utils'`
+- For server-side Redis utilities: `import { getRedisClient } from '@/shared/utils/redis'`
+- Never import `redis.ts` in client-side code (it's excluded from the main export)
+
+**Important Notes:**
+- `redis.ts` is excluded from the main `index.ts` export to prevent Node.js modules from being bundled in client-side code
+- All other utilities are safe for both client and server use
+- Server-side API routes can directly import Redis utilities when needed
+
+### Recent Refactoring Improvements
+
+**Component Consolidation (December 2024):**
+- Moved scattered components from `app/speech/components/` to `features/speech/components/`
+- Consolidated duplicate utility files from `app/utils/` into `shared/utils/`
+- Organized shared components into logical categories (ui, layout, forms, data-display, feedback, portals)
+- Eliminated code duplication between `app/utils/` and `shared/utils/`
+
+**Benefits:**
+- ✅ Cleaner project structure with feature-based organization
+- ✅ Eliminated duplicate code and potential inconsistencies
+- ✅ Better separation between client-safe and server-only utilities
+- ✅ Improved build performance by preventing Node.js modules in client bundles
+- ✅ More intuitive component discovery and usage
+
+**Migration Notes:**
+- All existing imports continue to work through barrel exports
+- No breaking changes to public APIs
+- Build process now properly excludes server-only modules from client bundles
+
 ## 3. Authentication Patterns
 
 All API calls must use authenticated requests:

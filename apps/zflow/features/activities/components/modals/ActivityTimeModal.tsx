@@ -10,7 +10,7 @@ import {
   calculateTotalMinutes, 
   getCrossDayBorderClass,
   type TimeEntryWithCrossDay 
-} from '@/app/utils/crossDayUtils'
+} from '@/shared/utils'
 
 // Using the standard TimeEntry interface from API
 

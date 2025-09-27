@@ -1,5 +1,5 @@
 import React from 'react'
-import { toLocal, formatDuration } from '@/app/utils/timeUtils'
+import { toLocal, formatDuration } from '@/shared/utils'
 import type { HoveredTimeEntry } from '../types'
 
 

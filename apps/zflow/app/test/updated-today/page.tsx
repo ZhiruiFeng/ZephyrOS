@@ -7,8 +7,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { tasksApi, TaskMemory, TaskContent } from '@/lib/api';
 import { useCategories } from '@/hooks/useCategories';
 import { LoginPage } from '@/shared/components';
-import { toLocal, toUTC, formatRelative, getUserTimezone } from '../../utils/timeUtils';
-import { getDayBoundariesInTimezone, getTimezoneOffsetDescription, getCurrentTimezone as getCurrentTZ } from '../../utils/timezoneUtils';
+import { toLocal, toUTC, formatRelative, getUserTimezone, getDayBoundariesInTimezone, getTimezoneOffsetDescription, getCurrentTimezone as getCurrentTZ } from '@/shared/utils';
 
 interface TasksResponse {
   tasks: TaskMemory[];

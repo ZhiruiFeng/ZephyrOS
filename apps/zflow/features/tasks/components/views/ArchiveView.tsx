@@ -3,7 +3,7 @@
 import React from 'react'
 import { TaskMemory } from '@/lib/api'
 import TaskCard from '../ui/TaskCard'
-import { formatDate } from '@/app/utils/taskUtils'
+import { formatDate } from '@/shared/utils'
 
 interface ArchiveViewProps {
   groupedArchiveList: Array<{ date: string; tasks: TaskMemory[] }>

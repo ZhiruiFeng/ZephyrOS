@@ -3,7 +3,7 @@
 import React from 'react'
 import { Calendar, Tag } from 'lucide-react'
 import type { TaskCardVariant } from '../TaskCard'
-import { formatDate, getTaskDisplayDate, shouldShowOverdue } from '@/app/utils/taskUtils'
+import { formatDate, getTaskDisplayDate, shouldShowOverdue } from '@/shared/utils'
 
 interface Props {
   variant: TaskCardVariant

@@ -9,7 +9,7 @@ import { AgentChatWindow, LegacyMessage as Message, MCPStatusIndicator } from '@
 import type { Agent } from '@/agents'
 import { ConversationSummary } from '@/agents'
 import { useSessionManager } from '@/agents'
-import BatchTranscriber from '../speech/components/BatchTranscriber'
+import { BatchTranscriber } from '@/features/speech/components'
 export default function AgentsPage() {
   const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()

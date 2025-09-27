@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { getStatusColor, getPriorityColor } from '../utils/task-utils'
+import { getStatusColor, getPriorityColor } from '../../utils/task-utils'
 import { TaskStatus, TaskPriority } from '@/types/domain/task'
 
 interface StatusBadgeProps {

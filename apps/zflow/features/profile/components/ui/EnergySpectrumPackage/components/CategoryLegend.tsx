@@ -1,5 +1,5 @@
 import React from 'react'
-import { formatDuration } from '@/app/utils/timeUtils'
+import { formatDuration } from '@/shared/utils'
 import type { CategorySummary } from '../types'
 
 interface CategoryLegendProps {

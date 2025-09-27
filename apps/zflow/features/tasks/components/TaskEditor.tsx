@@ -6,7 +6,7 @@ import { Task, Category } from '@/types/domain/task'
 import { TaskForm, TaskEditorProps } from '@/types/ui/forms'
 import { CategorySelector } from '@/shared/components'
 import { useTranslation } from '@/contexts/LanguageContext'
-import { toLocal, toUTC } from '@/app/utils/timeUtils'
+import { toLocal, toUTC } from '@/shared/utils'
 
 const X = XIcon
 

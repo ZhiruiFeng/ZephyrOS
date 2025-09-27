@@ -4,7 +4,7 @@
 
 import { API_BASE, authenticatedFetch } from '@/lib/api/api-base'
 import type { TimelineData, TimelineItem } from '@/timeline'
-import type { TimeEntryWithCrossDay } from '@/app/utils/crossDayUtils'
+import type { TimeEntryWithCrossDay } from '@/shared/utils'
 
 /**
  * Fetch timeline data for a specific date
@@ -14,7 +14,7 @@ export async function fetchTimelineData(selectedDate: Date): Promise<TimelineDat
     // Import API modules dynamically to avoid circular dependencies
     const { timeTrackingApi, timelineItemsApi, apiClient } = await import('@/lib/api')
     const { memoriesApi } = await import('@/lib/api/memories-api')
-    const { processDayEntries } = await import('@/app/utils/crossDayUtils')
+    const { processDayEntries } = await import('@/shared/utils')
 
     // Normalize the selected date to start of day
     const normalizedDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0)
@@ -203,7 +203,7 @@ export async function fetchTimelineRangeData(startDate: Date, endDate: Date): Pr
     // Import API modules dynamically
     const { timeTrackingApi, apiClient } = await import('@/lib/api')
     const { memoriesApi } = await import('@/lib/api/memories-api')
-    const { processDayEntries } = await import('@/app/utils/crossDayUtils')
+    const { processDayEntries } = await import('@/shared/utils')
 
     const from = startDate.toISOString()
     const to = endDate.toISOString()

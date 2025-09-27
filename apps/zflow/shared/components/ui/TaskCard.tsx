@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { StatusBadge, PriorityBadge } from './StatusBadge'
-import { smartFormatDate } from '../utils/time-utils'
+import { smartFormatDate } from '../../utils/time-utils'
 import { TaskStatus, TaskPriority } from '@/types/domain/task'
 
 interface BasicTaskCardProps {

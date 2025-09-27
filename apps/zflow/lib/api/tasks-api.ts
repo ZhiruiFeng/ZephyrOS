@@ -1,5 +1,5 @@
 import { Task } from 'types'
-import { toUTC } from '@/app/utils/timeUtils'
+import { toUTC } from '@/shared/utils'
 import { API_BASE, authenticatedFetch, TaskMemory } from './api-base'
 
 // Tasks API (via zmemory HTTP API)

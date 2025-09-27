@@ -1,7 +1,6 @@
 import React from 'react'
 import { timeTrackingApi } from '@/lib/api'
-import { getUserTimezone } from '@/app/utils/timeUtils'
-import { processDayEntries, type TimeEntryWithCrossDay } from '@/app/utils/crossDayUtils'
+import { getUserTimezone, processDayEntries, type TimeEntryWithCrossDay } from '@/shared/utils'
 import type { CategorySummary } from '../types'
 
 export function useTimeEntries(date: string) {

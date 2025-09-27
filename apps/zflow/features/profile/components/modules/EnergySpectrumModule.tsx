@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { BarChart3, Settings, X, Maximize2 } from 'lucide-react'
 import { useTranslation } from '@/contexts/LanguageContext'
 import EnergySpectrum from '../ui/EnergySpectrum'
-import { getUserTimezone, getTimezoneAbbr } from '@/app/utils/timeUtils'
+import { getUserTimezone, getTimezoneAbbr } from '@/shared/utils'
 import type { ProfileModuleProps } from '@/profile'
 
 export function EnergySpectrumModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {

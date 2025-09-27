@@ -11,7 +11,7 @@ import { useTimeEntries } from '@/features/profile/components/ui/EnergySpectrumP
 import type { TimeEntry } from '@/lib/api'
 import { tasksApi, timeTrackingApi } from '@/lib/api'
 import type { TimeEntryWithCrossDay } from '@/features/profile/components/ui/EnergySpectrumPackage/types'
-import { toLocal, toUTC } from '@/app/utils/timeUtils'
+import { toLocal, toUTC } from '@/shared/utils'
 
 function localDateOf(iso: string) {
   const d = new Date(iso)

@@ -9,7 +9,7 @@ import { Mic } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { LoginPage } from '@/shared/components'
-import BatchTranscriber from '@/app/speech/components/BatchTranscriber'
+import { BatchTranscriber } from './components'
 
 interface SpeechPageProps {
   className?: string
