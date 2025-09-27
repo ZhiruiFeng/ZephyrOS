@@ -3,6 +3,7 @@
 import React from 'react'
 import { DateSelector } from '@/app/components/ui'
 import TimelineView from '../components/TimelineView'
+import { usePerformanceTracking } from '@/lib/performance'
 import type { TimelineItem } from '@/timeline'
 
 interface TimelineHomeProps {
@@ -16,7 +17,7 @@ interface TimelineHomeProps {
   onItemClick: (item: TimelineItem) => void
 }
 
-export default function TimelineHome({
+const TimelineHome = React.memo(function TimelineHome({
   selectedDate,
   onDateChange,
   items,
@@ -26,6 +27,7 @@ export default function TimelineHome({
   lang,
   onItemClick,
 }: TimelineHomeProps) {
+  usePerformanceTracking('TimelineHome')
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-center">
@@ -48,4 +50,6 @@ export default function TimelineHome({
       />
     </div>
   )
-}
+})
+
+export default TimelineHome

@@ -30,6 +30,7 @@ import { useActivityActions } from '@/hooks'
 import { useModalState } from '@/hooks/useModalState'
 import { useTimeline, TimelineItem } from '@/timeline'
 import eventBus from './core/events/event-bus'
+import { usePerformanceTracking } from '@/lib/performance'
 
 // Lazy load heavy components
 const TimelineHome = React.lazy(() => import('@/timeline').then(module => ({ default: module.TimelineHome })))
@@ -40,6 +41,7 @@ export type DisplayMode = 'list' | 'grid'
 export type MainViewMode = 'tasks' | 'timeline'
 
 function ZFlowPageContent() {
+  usePerformanceTracking('ZFlowPageContent')
   const { user, loading: authLoading } = useAuth()
   const { t, currentLang } = useTranslation()
   const router = useRouter()

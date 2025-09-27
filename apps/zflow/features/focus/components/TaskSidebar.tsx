@@ -5,6 +5,7 @@ import { Folder, FileText, ChevronRight, ChevronDown, Clock, Calendar, X, Bot } 
 import { Category } from '@/types/domain/task'
 import { TaskMemory } from '@/lib/api'
 import { useTranslation } from '@/contexts/LanguageContext'
+import { usePerformanceTracking } from '@/lib/performance'
 import type { TaskWithCategory, GroupedTasks, TaskViewMode } from '../types/focus'
 
 // Helper function to detect if a task is an AI task
@@ -26,7 +27,7 @@ interface TaskSidebarProps {
   handleTaskSelect: (task: TaskWithCategory) => void
 }
 
-export default function TaskSidebar({
+const TaskSidebar = React.memo(function TaskSidebar({
   sidebarVisible,
   mobileSidebarOpen,
   setMobileSidebarOpen,
@@ -39,6 +40,7 @@ export default function TaskSidebar({
   selectedTask,
   handleTaskSelect
 }: TaskSidebarProps) {
+  usePerformanceTracking('TaskSidebar')
   const { t } = useTranslation()
 
   return (
@@ -210,4 +212,6 @@ export default function TaskSidebar({
       </div>
     </>
   )
-}
+})
+
+export default TaskSidebar

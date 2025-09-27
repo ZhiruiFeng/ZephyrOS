@@ -144,25 +144,29 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
 
   // Toggle category expansion
   const toggleCategory = useCallback((categoryId: string) => {
-    const newExpanded = new Set(expandedCategories)
-    if (newExpanded.has(categoryId)) {
-      newExpanded.delete(categoryId)
-    } else {
-      newExpanded.add(categoryId)
-    }
-    setExpandedCategories(newExpanded)
-  }, [expandedCategories])
+    setExpandedCategories(prev => {
+      const newExpanded = new Set(prev)
+      if (newExpanded.has(categoryId)) {
+        newExpanded.delete(categoryId)
+      } else {
+        newExpanded.add(categoryId)
+      }
+      return newExpanded
+    })
+  }, [])
 
   // Toggle task description expansion
   const toggleDescriptionExpansion = useCallback((taskId: string) => {
-    const newExpanded = new Set(expandedDescriptions)
-    if (newExpanded.has(taskId)) {
-      newExpanded.delete(taskId)
-    } else {
-      newExpanded.add(taskId)
-    }
-    setExpandedDescriptions(newExpanded)
-  }, [expandedDescriptions])
+    setExpandedDescriptions(prev => {
+      const newExpanded = new Set(prev)
+      if (newExpanded.has(taskId)) {
+        newExpanded.delete(taskId)
+      } else {
+        newExpanded.add(taskId)
+      }
+      return newExpanded
+    })
+  }, [])
 
   // Auto-expand categories with tasks
   const prevCategoryKeysRef = useRef<string>('')

@@ -16,6 +16,7 @@ import eventBus from '../../core/events/event-bus'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { CelebrationAnimation } from '../../components/ui/CelebrationAnimation'
 import { useCelebration } from '@/hooks/useCelebration'
+import { usePerformanceTracking } from '@/lib/performance'
 
 // Import modular components
 import TaskSidebar from './components/TaskSidebar'
@@ -732,6 +733,7 @@ function WorkModeViewInner() {
 }
 
 export default function WorkModeView() {
+  usePerformanceTracking('WorkModeView')
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen">

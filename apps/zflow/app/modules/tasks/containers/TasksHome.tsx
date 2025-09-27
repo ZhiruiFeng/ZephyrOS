@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { CategorySidebar } from '../../../components/navigation'
 import { StatisticsCards, FilterControls } from '../../../components/ui'
 import { CurrentView, FutureView, ArchiveView } from '../../../components/views'
 import type { TaskMemory } from '../../../../lib/api'
+import { usePerformanceTracking } from '@/lib/performance'
 
 import type { ViewKey, DisplayMode } from '../../../page'
 
@@ -61,7 +62,9 @@ interface TasksHomeProps {
   onOpenDailyModal: () => void
 }
 
-export default function TasksHome(props: TasksHomeProps) {
+const TasksHome = React.memo(function TasksHome(props: TasksHomeProps) {
+  usePerformanceTracking('TasksHome')
+
   const {
     view,
     setView,
@@ -102,6 +105,21 @@ export default function TasksHome(props: TasksHomeProps) {
     onOpenDailyModal,
   } = props
 
+  // Memoize callback handlers to prevent unnecessary re-renders
+  const categoryHandlers = useMemo(() => ({
+    onSelect: (key: any) => setSelectedCategory(key),
+    onCreate: async (payload: any) => {
+      await createCategory({ name: payload.name, color: payload.color })
+    },
+    onUpdate: async (id: string, payload: any) => {
+      await updateCategory(id, payload)
+    },
+    onDelete: async (id: string) => {
+      await deleteCategory(id)
+      if (selectedCategory === id) setSelectedCategory('all')
+    }
+  }), [setSelectedCategory, createCategory, updateCategory, deleteCategory, selectedCategory])
+
   return (
     <div className="flex gap-4 md:gap-6">
       <CategorySidebar
@@ -109,10 +127,10 @@ export default function TasksHome(props: TasksHomeProps) {
         selected={selectedCategory}
         counts={viewBasedCounts}
         view={view}
-        onSelect={(key) => setSelectedCategory(key as any)}
-        onCreate={async (payload) => { await createCategory({ name: payload.name, color: payload.color }) }}
-        onUpdate={async (id, payload) => { await updateCategory(id, payload) }}
-        onDelete={async (id) => { await deleteCategory(id); if (selectedCategory === id) setSelectedCategory('all') }}
+        onSelect={categoryHandlers.onSelect}
+        onCreate={categoryHandlers.onCreate}
+        onUpdate={categoryHandlers.onUpdate}
+        onDelete={categoryHandlers.onDelete}
         className="hidden md:block rounded-lg"
       />
 
@@ -192,4 +210,6 @@ export default function TasksHome(props: TasksHomeProps) {
       </div>
     </div>
   )
-}
+})
+
+export default TasksHome
