@@ -2,8 +2,6 @@
 
 import React from 'react'
 import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
-import { StatsModule } from './modules/StatsModule'
-import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
@@ -39,10 +37,6 @@ export function ProfileModuleRenderer({
   switch (moduleDefinition.id) {
     case 'energy-spectrum':
       return <EnergySpectrumModule {...sharedProps} />
-    case 'stats':
-      return <StatsModule {...sharedProps} />
-    case 'activity-summary':
-      return <ActivitySummaryModule {...sharedProps} />
     case 'agent-directory':
       return <AgentDirectory fullScreenPath={fullScreenPath} />
     case 'memories':

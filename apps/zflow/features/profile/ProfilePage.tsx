@@ -6,8 +6,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { ModuleSelector } from '@/app/components/profile/ModuleSelector'
 import { EnergySpectrumModule } from '@/app/components/profile/modules/EnergySpectrumModule'
-import { StatsModule } from '@/app/components/profile/modules/StatsModule'
-import { ActivitySummaryModule } from '@/app/components/profile/modules/ActivitySummaryModule'
 import AgentDirectory from '@/app/components/profile/modules/AgentDirectory'
 import { MemoriesModule } from '@/app/components/profile/modules/MemoriesModule'
 import { ApiKeysModule } from '@/app/components/profile/modules/ApiKeysModule'
@@ -33,6 +31,7 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
     reorderModules, 
     isLoading 
   } = useProfileModules()
+
 
   // Fullscreen modal state
   const [fullscreenModule, setFullscreenModule] = React.useState<string | null>(null)
@@ -87,30 +86,6 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
             onConfigChange={(newConfig) => {
               // Handle module-specific config changes
               console.log('Energy spectrum config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
-        )
-      case 'stats':
-        return (
-          <StatsModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Stats config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
-        )
-      case 'activity-summary':
-        return (
-          <ActivitySummaryModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Activity summary config changed:', newConfig)
             }}
             isFullscreen={isFullscreen}
             onToggleFullscreen={handleToggleFullscreenForModule}

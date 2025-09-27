@@ -32,32 +32,6 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     fullScreenPath: '/profile/modules/ai-task-grantor'
   },
   {
-    id: 'stats',
-    name: 'Productivity Stats',
-    description: 'Overview of your productivity metrics',
-    icon: 'TrendingUp',
-    category: 'analytics',
-    defaultEnabled: false,
-    defaultConfig: {
-      timeRange: 'week',
-      showTrends: true
-    },
-    fullScreenPath: '/profile/modules/stats'
-  },
-  {
-    id: 'activity-summary',
-    name: 'Activity Summary',
-    description: 'Recent activities and task completion',
-    icon: 'Activity',
-    category: 'productivity',
-    defaultEnabled: false,
-    defaultConfig: {
-      showRecentTasks: true,
-      maxItems: 10
-    },
-    fullScreenPath: '/profile/modules/activity-summary'
-  },
-  {
     id: 'agent-directory',
     name: 'External AI Panel',
     description: 'Catalog and manage your external AI agents',

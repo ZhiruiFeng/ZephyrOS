@@ -1,8 +1,6 @@
 export { default as ProfileDashboard } from './ProfileDashboard'
 export { ModuleSelector } from './ModuleSelector'
 export { EnergySpectrumModule } from './modules/EnergySpectrumModule'
-export { StatsModule } from './modules/StatsModule'
-export { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 export { MemoriesModule } from './modules/MemoriesModule'
 export { ProfileModuleRenderer } from './ProfileModuleRenderer'
 

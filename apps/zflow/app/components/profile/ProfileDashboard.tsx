@@ -6,8 +6,6 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
 import { ModuleSelector } from './ModuleSelector'
 import { EnergySpectrumModule } from './modules/EnergySpectrumModule'
-import { StatsModule } from './modules/StatsModule'
-import { ActivitySummaryModule } from './modules/ActivitySummaryModule'
 import AgentDirectory from './modules/AgentDirectory'
 import { MemoriesModule } from './modules/MemoriesModule'
 import { ApiKeysModule } from './modules/ApiKeysModule'
@@ -33,6 +31,7 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
     reorderModules, 
     isLoading 
   } = useProfileModules()
+
 
   // Fullscreen modal state
   const [fullscreenModule, setFullscreenModule] = React.useState<string | null>(null)
@@ -87,30 +86,6 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             onConfigChange={(newConfig) => {
               // Handle module-specific config changes
               console.log('Energy spectrum config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
-        )
-      case 'stats':
-        return (
-          <StatsModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Stats config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
-        )
-      case 'activity-summary':
-        return (
-          <ActivitySummaryModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Activity summary config changed:', newConfig)
             }}
             isFullscreen={isFullscreen}
             onToggleFullscreen={handleToggleFullscreenForModule}
