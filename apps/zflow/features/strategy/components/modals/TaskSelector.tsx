@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Clock, User } from 'lucide-react'
 import { Button } from '../ui'
-import { tasksApi } from '../../../../lib/api'
-import { TaskMemory } from '../../../../lib/api/api-base'
+import { tasksApi } from '@/lib/api'
+import { TaskMemory } from '@/lib/api/api-base'
 
 interface TaskSelectorProps {
   onSelectExisting: (task: TaskMemory) => void

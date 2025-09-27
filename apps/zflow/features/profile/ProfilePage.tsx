@@ -1,21 +1,23 @@
 'use client'
 
-import React from 'react'
+import React, { Suspense } from 'react'
 import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { ModuleSelector } from '@/features/profile/components/ModuleSelector'
-import { EnergySpectrumModule } from '@/features/profile/components/modules/EnergySpectrumModule'
-import AgentDirectory from '@/features/profile/components/modules/AgentDirectory'
-import { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
-import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModule'
-import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
-import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
-import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
-import AITaskGrantorModule from '@/features/profile/components/modules/AITaskGrantorModule'
 import { useProfileModules } from './hooks'
 import { FullscreenModal, useFullscreenModal } from '@/shared/components'
 import type { ProfileModule, ProfileModuleConfig } from './types'
+
+// Lazy load profile modules for better performance
+const EnergySpectrumModule = React.lazy(() => import('@/features/profile/components/modules/EnergySpectrumModule').then(m => ({ default: m.EnergySpectrumModule })))
+const AgentDirectory = React.lazy(() => import('@/features/profile/components/modules/AgentDirectory'))
+const MemoriesModule = React.lazy(() => import('@/features/profile/components/modules/MemoriesModule').then(m => ({ default: m.MemoriesModule })))
+const ApiKeysModule = React.lazy(() => import('@/features/profile/components/modules/ApiKeysModule').then(m => ({ default: m.ApiKeysModule })))
+const ZMemoryApiKeysModule = React.lazy(() => import('@/features/profile/components/modules/ZMemoryApiKeysModule').then(m => ({ default: m.ZMemoryApiKeysModule })))
+const STTConfigModule = React.lazy(() => import('@/features/profile/components/modules/STTConfigModule').then(m => ({ default: m.STTConfigModule })))
+const ZRelationsModule = React.lazy(() => import('@/features/profile/components/modules/ZRelationsModule').then(m => ({ default: m.ZRelationsModule })))
+const AITaskGrantorModule = React.lazy(() => import('@/features/profile/components/modules/AITaskGrantorModule'))
 
 interface ProfilePageProps {
   className?: string
@@ -70,6 +72,17 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
     return t.profile.yourProfile
   }, [user, t.profile.yourProfile])
 
+  // Loading component for lazy-loaded modules
+  const ModuleLoader = () => (
+    <div className="glass rounded-xl p-6 animate-pulse">
+      <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+      <div className="space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+  )
+
   const renderModule = (moduleConfig: ProfileModuleConfig) => {
     const moduleDefinition = availableModules.find(m => m.id === moduleConfig.id)
     if (!moduleDefinition) return null
@@ -80,100 +93,108 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
     switch (moduleConfig.id) {
       case 'energy-spectrum':
         return (
-          <EnergySpectrumModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              // Handle module-specific config changes
-              console.log('Energy spectrum config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <EnergySpectrumModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                // Handle module-specific config changes
+                console.log('Energy spectrum config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'memories':
         return (
-          <MemoriesModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Memories config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <MemoriesModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('Memories config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'api-keys':
         return (
-          <ApiKeysModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('API keys config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <ApiKeysModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('API keys config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'zmemory-api-keys':
         return (
-          <ZMemoryApiKeysModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('ZMemory API keys config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <ZMemoryApiKeysModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('ZMemory API keys config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'stt-config':
         return (
-          <STTConfigModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('STT config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <STTConfigModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('STT config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'zrelations':
         return (
-          <ZRelationsModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('ZRelations config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <ZRelationsModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('ZRelations config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'ai-task-grantor':
         return (
-          <AITaskGrantorModule 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('AI Task Grantor config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <AITaskGrantorModule 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('AI Task Grantor config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       case 'agent-directory':
         return (
-          <AgentDirectory 
-            key={moduleConfig.id}
-            config={moduleConfig}
-            onConfigChange={(newConfig) => {
-              console.log('Agent Directory config changed:', newConfig)
-            }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
-          />
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <AgentDirectory 
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('Agent Directory config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
         )
       default:
         return null

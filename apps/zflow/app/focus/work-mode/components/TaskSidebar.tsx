@@ -3,8 +3,8 @@
 import React from 'react'
 import { Folder, FileText, ChevronRight, ChevronDown, Clock, Calendar, X, Bot } from 'lucide-react'
 import { Category } from '@/types/domain/task'
-import { TaskMemory } from '../../../../lib/api'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { TaskMemory } from '@/lib/api'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 // Helper function to detect if a task is an AI task
 const isAITask = (task: TaskMemory): boolean => {

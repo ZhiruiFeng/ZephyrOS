@@ -183,6 +183,12 @@ const authHeaders = await authManager.getAuthHeaders()
 fetch(`${API_BASE}/endpoint`, { headers: authHeaders })
 ```
 
+### ❌ Missing Tailwind Content Updates
+- Tailwind purges unused utilities based on the `content` globs in `tailwind.config.js`.
+- When migrating components into new directories (e.g., `./features`, `./shared`), expand the `content` array immediately.
+- If a new path is omitted, Tailwind strips classes like `bg-purple-600`, causing UI elements to lose critical styling (e.g., invisible buttons).
+- Always update the config before removing legacy folders and run the dev server once to confirm styles are preserved.
+
 ## 5. Testing API Changes
 
 When modifying APIs:

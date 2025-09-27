@@ -1,13 +1,15 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { CategorySidebar } from '../../../components/navigation'
-import { StatisticsCards, FilterControls } from '../../../components/ui'
-import { CurrentView, FutureView, ArchiveView } from '../../../components/views'
+import { CategorySidebar } from '@/app/components/navigation'
+import { StatisticsCards, FilterControls } from '@/app/components/ui'
+import CurrentView from '../components/views/CurrentView'
+import FutureView from '../components/views/FutureView'
+import ArchiveView from '../components/views/ArchiveView'
 import type { TaskMemory } from '@/lib/api'
 import { usePerformanceTracking } from '@/lib/performance'
 
-import type { ViewKey, DisplayMode } from '../../../page'
+import type { ViewKey, DisplayMode } from '../types/tasks'
 
 interface TasksHomeProps {
   // State
@@ -56,9 +58,8 @@ interface TasksHomeProps {
   createCategory: (payload: any) => Promise<any>
   updateCategory: (id: string, payload: any) => Promise<any>
   deleteCategory: (id: string) => Promise<any>
-
-  // Open mobile selector
   onOpenMobileCategorySelector: () => void
+
   onOpenDailyModal: () => void
 }
 
@@ -143,13 +144,13 @@ const TasksHome = React.memo(function TasksHome(props: TasksHomeProps) {
           selectedCategory={selectedCategory}
           displayMode={displayMode}
           sortMode={sortMode}
+          categories={categories}
           onSearchChange={setSearch}
           onPriorityChange={setFilterPriority}
           onDisplayModeChange={setDisplayMode}
           onSortModeChange={setSortMode}
           onOpenMobileCategorySelector={onOpenMobileCategorySelector}
           onOpenDailyModal={onOpenDailyModal}
-          categories={categories}
           t={t}
         />
 

@@ -2,8 +2,8 @@
 
 import React, { memo, useState, useEffect, useRef } from 'react'
 import { ChevronDown, Bot } from 'lucide-react'
-import { useTranslation } from '../../../../contexts/LanguageContext'
-import { TaskMemory } from '../../../../lib/api'
+import { useTranslation } from '@/contexts/LanguageContext'
+import { TaskMemory } from '@/lib/api'
 import { TaskWithCategory } from './TaskSidebar'
 import { Task } from 'types'
 import { AITaskEditor, type AITaskForm } from '@/app/components/profile'

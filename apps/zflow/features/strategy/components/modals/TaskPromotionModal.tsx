@@ -6,8 +6,8 @@ import { FullscreenModal } from '@/shared/components'
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '../ui'
 import { useStrategyTasks } from '../../hooks/useStrategyTasks'
 import { useStrategyDashboard } from '../../hooks/useStrategyDashboard'
-import { tasksApi } from '../../../../lib/api'
-import type { TaskMemory } from '../../../../lib/api/api-base'
+import { tasksApi } from '@/lib/api'
+import type { TaskMemory } from '@/lib/api/api-base'
 
 interface TaskPromotionModalProps {
   isOpen: boolean

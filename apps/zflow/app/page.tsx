@@ -34,7 +34,7 @@ import { usePerformanceTracking } from '@/lib/performance'
 
 // Lazy load heavy components
 const TimelineHome = React.lazy(() => import('@/timeline').then(module => ({ default: module.TimelineHome })))
-const TasksHome = React.lazy(() => import('./modules/tasks/containers/TasksHome'))
+const TasksHome = React.lazy(() => import('@/features/tasks').then(m => ({ default: m.TasksHome })))
 
 export type ViewKey = 'current' | 'future' | 'archive'
 export type DisplayMode = 'list' | 'grid'

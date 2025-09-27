@@ -3,10 +3,10 @@
 import React from 'react'
 import Link from 'next/link'
 import { useTasks, useUpdateTask } from '@/hooks'
-import { useAuth } from '../../../../contexts/AuthContext'
-import LoginPage from '../../../components/auth/LoginPage'
-import { TaskContent } from '../../../../lib/api'
-import { useTranslation } from '../../../../contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
+import LoginPage from '@/app/components/auth/LoginPage'
+import { TaskContent } from '@/lib/api'
+import { useTranslation } from '@/contexts/LanguageContext'
 
 export default function ArchivePage() {
   const { t } = useTranslation()
