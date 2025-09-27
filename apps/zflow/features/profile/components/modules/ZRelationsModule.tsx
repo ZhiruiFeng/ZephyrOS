@@ -29,7 +29,7 @@ import {
   type Person,
   type RelationshipProfile,
   type Touchpoint
-} from '@/hooks'
+} from '@/features/memory/hooks'
 import { useTranslation } from '@/contexts/LanguageContext'
 import type { ProfileModuleProps } from '@/profile'
 

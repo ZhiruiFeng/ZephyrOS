@@ -16,7 +16,7 @@ import {
   Calendar
 } from 'lucide-react'
 import RelationTypeBadge, { type RelationType, relationConfig } from './RelationTypeBadge'
-import { type MemoryAnchor } from './MemoryCard'
+import { type MemoryAnchor } from './MemoryAnchorCard'
 
 interface Memory {
   id: string

@@ -36,11 +36,11 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSubtasks, useSubtaskActions } from '@/hooks'
+import { useSubtasks, useSubtaskActions } from '@/features/tasks/hooks'
 import { TaskMemory } from '@/lib/api'
 import { Task } from '@/types/domain/task'
 import { useTranslation } from '@/contexts/LanguageContext'
-import { StatusBadge } from '../shared/StatusBadge'
+import { StatusBadge } from '@/shared/components'
 
 // Helper function to detect if a task is an AI task
 const isAITask = (task: TaskMemory): boolean => {

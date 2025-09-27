@@ -2,9 +2,10 @@
 
 import React from 'react'
 import { getStatusColor, getPriorityColor } from '../utils/task-utils'
+import { TaskStatus, TaskPriority } from '@/types/domain/task'
 
 interface StatusBadgeProps {
-  status: string
+  status: TaskStatus
   className?: string
 }
 
@@ -19,7 +20,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = ''
 }
 
 interface PriorityBadgeProps {
-  priority: string
+  priority: TaskPriority
   className?: string
 }
 

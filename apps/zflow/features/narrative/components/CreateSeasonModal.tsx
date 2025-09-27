@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, SparklesIcon } from 'lucide-react'
-import { useNarrativeTheme, useAdaptiveTheme, useThemeContentSuggestions } from '@/hooks'
+import { useNarrativeTheme, useAdaptiveTheme, useThemeContentSuggestions } from '@/features/memory/hooks'
 import type { CreateSeasonRequest, SeasonTheme } from '@/narrative'
 import { SEASON_THEMES } from '@/narrative'
 

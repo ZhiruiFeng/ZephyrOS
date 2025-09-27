@@ -11,7 +11,7 @@ import {
   SortAsc,
   SortDesc
 } from 'lucide-react'
-import MemoryCard, { type MemoryAnchor } from './MemoryCard'
+import MemoryAnchorCard, { type MemoryAnchor } from './MemoryAnchorCard'
 import RelationTypeBadge, { type RelationType, relationConfig } from './RelationTypeBadge'
 
 interface TaskMemoryDisplayProps {
@@ -274,7 +274,7 @@ export default function TaskMemoryDisplay({
             // Compact view: flat list
             <div className="space-y-2">
               {filteredAndSortedMemories.map((anchor) => (
-                <MemoryCard
+                <MemoryAnchorCard
                   key={`${anchor.memory_id}-${anchor.anchor_item_id}`}
                   anchor={anchor}
                   onRemove={onRemoveMemory}
@@ -302,7 +302,7 @@ export default function TaskMemoryDisplay({
                     </div>
                     <div className="space-y-2 ml-4">
                       {anchors.map((anchor) => (
-                        <MemoryCard
+                        <MemoryAnchorCard
                           key={`${anchor.memory_id}-${anchor.anchor_item_id}`}
                           anchor={anchor}
                           onRemove={onRemoveMemory}

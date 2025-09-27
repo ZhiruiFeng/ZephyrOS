@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Suspense, useEffect, useCallback, startTransition, useState } from 'react'
-import { useTasks } from '@/hooks'
+import { useTasks } from '@/features/tasks/hooks'
 import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '@/contexts/AuthContext'
 import LoginPage from '@/app/components/auth/LoginPage'
@@ -9,9 +9,9 @@ import { X } from 'lucide-react'
 // Lazy load heavy components that are conditionally rendered
 const SubtaskSection = React.lazy(() => import('@/app/components/editors/SubtaskSection'))
 const EnergyReviewModal = React.lazy(() => import('@/app/components/modals/EnergyReviewModal'))
-const TaskMemoryDisplay = React.lazy(() => import('@/app/components/memory/TaskMemoryDisplay'))
-const MemoryManagementModal = React.lazy(() => import('@/app/components/memory/MemoryManagementModal'))
-import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '@/hooks'
+const TaskMemoryDisplay = React.lazy(() => import('@/features/memory/components/TaskMemoryDisplay'))
+const MemoryManagementModal = React.lazy(() => import('@/features/memory/components/MemoryManagementModal'))
+import { useTaskMemoryAnchors, useMemoryActions, useMemories } from '@/features/memory/hooks'
 import eventBus from '@/app/core/events/event-bus'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { CelebrationAnimation } from '@/shared/components'
@@ -31,7 +31,7 @@ import {
 import { useWorkModeState } from '@/focus'
 
 // Import hooks directly
-import { useUpdateTask } from '@/hooks'
+import { useUpdateTask } from '@/features/tasks/hooks'
 import { useTimer } from '@/hooks/useTimer'
 import { useAutoSave } from '@/hooks/useAutoSave'
 

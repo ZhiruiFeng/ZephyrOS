@@ -8,8 +8,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { Memory, MemoryFilters } from '@/types/domain/memory'
 import { memoriesApi } from '@/lib/api/memories-api'
-import MemoryCapture from '@/app/components/memories/MemoryCapture'
-import MemoryCard from '@/app/components/memories/MemoryCard'
+import MemoryCapture from '@/features/memory/components/MemoryCapture'
+import MemoryCard from '@/features/memory/components/MemoryCard'
 import type { ProfileModuleProps } from '@/profile'
 
 export function MemoriesModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {

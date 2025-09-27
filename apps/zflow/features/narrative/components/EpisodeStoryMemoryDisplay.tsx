@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import RelationTypeBadge, { type RelationType, relationConfig } from '../memory/RelationTypeBadge'
+import RelationTypeBadge, { type RelationType, relationConfig } from '@/features/memory/components/RelationTypeBadge'
 
 interface StoryMemory {
   memory_id: string

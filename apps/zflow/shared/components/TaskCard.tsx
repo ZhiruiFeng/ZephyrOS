@@ -3,18 +3,19 @@
 import React from 'react'
 import { StatusBadge, PriorityBadge } from './StatusBadge'
 import { smartFormatDate } from '../utils/time-utils'
+import { TaskStatus, TaskPriority } from '@/types/domain/task'
 
 interface BasicTaskCardProps {
   id: string
   title: string
   description?: string
-  status: string
-  priority: string
+  status: TaskStatus
+  priority: TaskPriority
   dueDate?: string
   tags?: string[]
   className?: string
   onClick?: () => void
-  onStatusChange?: (newStatus: string) => void
+  onStatusChange?: (newStatus: TaskStatus) => void
 }
 
 export const TaskCard: React.FC<BasicTaskCardProps> = ({

@@ -16,11 +16,8 @@ export { useCategories } from './useCategories'
 export { useCelebration } from './useCelebration'
 export { useModalState } from './useModalState'
 
-// Memory hooks - Timeline-related core shared data
-export * from './memory'
-
-// Task hooks - Task management and operations
-export * from './tasks'
-
-// Activity hooks - Activity management and actions
-export * from './activities'
+// Feature-specific hooks have been moved to their respective features:
+// - Task hooks: @/features/tasks/hooks  
+// - Memory hooks: @/features/memory/hooks
+// - Activity hooks: @/features/activities/hooks
+// - Speech/Media hooks: @/features/speech/hooks

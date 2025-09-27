@@ -1,7 +1,7 @@
 import useSWR, { mutate } from 'swr'
 import { useState, useCallback } from 'react'
-import { type RelationType } from '@/app/components/memory/RelationTypeBadge'
-import { type MemoryAnchor } from '@/app/components/memory/MemoryCard'
+import { type RelationType } from '../components/RelationTypeBadge'
+import { type MemoryAnchor } from '../components/MemoryAnchorCard'
 import { API_BASE } from '@/lib/api'
 import { authManager } from '@/lib/auth-manager'
 

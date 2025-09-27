@@ -11,7 +11,7 @@ import { TaskMemory } from '@/lib/api'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { useTimer } from '@/hooks/useTimer'
 import { useAutoSave } from '@/hooks/useAutoSave'
-import MemoryAnchorButton from '@/app/components/memory/MemoryAnchorButton'
+import MemoryAnchorButton from '@/features/memory/components/MemoryAnchorButton'
 import ConversationButton from './ConversationButton'
 import { TaskWithCategory } from './TaskSidebar'
 

@@ -20,13 +20,13 @@ const EnergyReviewModal = React.lazy(() => import('./components/modals').then(m 
 const TaskEditor = React.lazy(() => import('./components/editors').then(m => ({ default: m.TaskEditor })))
 const ActivityEditor = React.lazy(() => import('./components/editors').then(m => ({ default: m.ActivityEditor })))
 // views rendered via containers
-import { useTasks } from '@/hooks'
+import { useTasks } from '@/features/tasks/hooks'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories'
 import { useActivities } from '@/hooks/useActivities'
 import { useTimer } from '@/hooks/useTimer'
-import { useTaskFiltering } from '@/hooks'
+import { useTaskFiltering } from '@/features/tasks/hooks'
 import { useTaskActions } from '@/hooks/useTaskActions'
-import { useActivityActions } from '@/hooks'
+import { useActivityActions } from '@/features/activities/hooks'
 import { useModalState } from '@/hooks/useModalState'
 import { useTimeline, TimelineItem } from '@/timeline'
 import eventBus from './core/events/event-bus'

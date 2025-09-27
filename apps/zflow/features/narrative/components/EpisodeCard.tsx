@@ -4,13 +4,13 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PencilIcon, TrashIcon, CheckIcon, X, Calendar, Plus } from 'lucide-react'
-import { useNarrativeTheme } from '@/hooks'
+import { useNarrativeTheme } from '@/features/memory/hooks'
 import type { Episode, SeasonTheme } from '@/narrative'
 import EpisodeStoryMemoryDisplay from './EpisodeStoryMemoryDisplay'
-import MemoryManagementModal from '../memory/MemoryManagementModal'
-import { useMemories } from '@/hooks'
-import { useEpisodeMemoryActions } from '@/hooks'
-import { useEpisodeAnchors } from '@/hooks'
+import MemoryManagementModal from '@/features/memory/components/MemoryManagementModal'
+import { useMemories } from '@/features/memory/hooks'
+import { useEpisodeMemoryActions } from '@/features/memory/hooks'
+import { useEpisodeAnchors } from '@/features/memory/hooks'
 
 interface EpisodeCardProps {
   episode: Episode

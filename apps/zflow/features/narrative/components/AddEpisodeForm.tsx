@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PlusIcon, X, CalendarIcon } from 'lucide-react'
-import { useNarrativeTheme, useThemeMoodSuggestions, useThemeContentSuggestions } from '@/hooks'
+import { useNarrativeTheme, useThemeMoodSuggestions, useThemeContentSuggestions } from '@/features/memory/hooks'
 import type { Episode, SeasonTheme, CreateEpisodeRequest } from '@/narrative'
 
 interface AddEpisodeFormProps {

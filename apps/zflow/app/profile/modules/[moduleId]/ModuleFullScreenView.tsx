@@ -3,11 +3,9 @@
 import React from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import {
-  useProfileModules,
-  ProfileModuleRenderer
-} from '@/app/components/profile'
-import type { ProfileModuleConfig } from '@/app/components/profile'
+import { useProfileModules } from '@/profile'
+import { ProfileModuleRenderer } from '@/features/profile/components/ProfileModuleRenderer'
+import type { ProfileModuleConfig } from '@/profile'
 import { useTranslation } from '@/contexts/LanguageContext'
 
 interface ModuleFullScreenViewProps {

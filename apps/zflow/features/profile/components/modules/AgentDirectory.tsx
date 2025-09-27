@@ -46,7 +46,7 @@ import {
   type Vendor, 
   type AgentFeature as NewAgentFeature,
   type InteractionType
-} from '@/hooks/media/useAIAgents'
+} from '@/features/speech/hooks/useAIAgents'
 import { useTranslation } from '@/contexts/LanguageContext'
 
 // Legacy types for backward compatibility (deprecated)

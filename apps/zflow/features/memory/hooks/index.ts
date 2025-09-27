@@ -11,14 +11,7 @@ export {
   type CreateEpisodeAnchorRequest
 } from './useEpisodeMemoryAnchors'
 
-// Core memory management hooks
-export {
-  useTasks,
-  useTask,
-  useCreateTask,
-  useUpdateTask,
-  useDeleteTask
-} from './useMemories'
+// Task hooks have been moved to @/features/tasks/hooks
 
 // Memory anchoring and relationships
 export {

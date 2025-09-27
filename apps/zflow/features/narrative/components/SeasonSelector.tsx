@@ -4,7 +4,7 @@ import { memo, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarIcon, PinIcon, SparklesIcon, PlusIcon, LayoutGrid } from 'lucide-react'
-import { useNarrativeTheme } from '@/hooks'
+import { useNarrativeTheme } from '@/features/memory/hooks'
 import type { Season, SeasonStatus } from '@/narrative'
 
 interface SeasonSelectorProps {

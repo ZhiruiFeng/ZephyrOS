@@ -2,6 +2,15 @@
 // Task Hooks - Barrel Export
 // =====================================================
 
+// Base Task Operations (CRUD)
+export {
+  useTasks,
+  useTask,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask
+} from './useBaseTasks'
+
 // AI Task Synchronization
 export {
   useAITaskSync,

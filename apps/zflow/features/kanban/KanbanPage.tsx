@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTasks, useUpdateTask } from '@/hooks'
+import { useTasks, useUpdateTask } from '@/features/tasks/hooks'
 import { useCategories } from '@/hooks/useCategories'
 import { useTimer } from '@/hooks/useTimer'
 import { usePrefs } from '@/contexts/PrefsContext'
