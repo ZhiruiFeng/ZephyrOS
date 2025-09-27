@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Plus, Loader2, Maximize2, Edit, Trash2, Clock, User, Target, AlertCircle, CheckCircle2, Copy, FileText, History, Play, Pause, RotateCcw, PanelLeftClose, PanelLeft, ExternalLink, X } from 'lucide-react'
-import { aiTasksApi, tasksApi, type AITask } from '../../../../lib/api'
+import { aiTasksApi, tasksApi, type AITask } from '@/lib/api'
 import type { ProfileModuleConfig } from '@/profile'
 import AITaskEditor from './AITaskEditor'
 import { useRouter } from 'next/navigation'
@@ -49,7 +49,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
       const [allAiTaskItems, taskItems, agentItems] = await Promise.all([
         aiTasksApi.list({ limit: 100, sort_by: 'assigned_at', sort_order: 'desc' }),
         tasksApi.getAll({ limit: 100, sort_by: 'created_at', sort_order: 'desc' }),
-        import('../../../../lib/api').then(api => api.aiAgentsApi.list({ limit: 100 }))
+import('@/lib/api').then(api => api.aiAgentsApi.list({ limit: 100 }))
       ])
 
       // Separate pending and completed tasks

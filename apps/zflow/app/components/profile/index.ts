@@ -9,5 +9,5 @@ export { useProfileModules } from '@/profile'
 export type * from '@/profile'
 
 // Also export some profile modules that need to be accessible
-export { default as AITaskEditor, type AITaskForm } from './modules/AITaskEditor'
+export { default as AITaskEditor, type AITaskForm } from '@/features/profile/components/modules/AITaskEditor'
 export type { STTProvider, STTConfig } from '@/features/profile/components/modules/STTConfigModule'

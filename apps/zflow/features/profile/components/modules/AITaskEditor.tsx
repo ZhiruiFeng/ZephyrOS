@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { X, Copy, ChevronDown, Search, Check } from 'lucide-react'
-import { tasksApi, aiAgentsApi, aiTasksApi, agentFeaturesApi } from '../../../../lib/api'
+import { tasksApi, aiAgentsApi, aiTasksApi, agentFeaturesApi } from '@/lib/api'
 
 export type AITaskForm = {
   id?: string

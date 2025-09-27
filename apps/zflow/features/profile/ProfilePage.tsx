@@ -12,7 +12,7 @@ import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModu
 import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
 import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
-import AITaskGrantorModule from '@/app/components/profile/modules/AITaskGrantorModule'
+import AITaskGrantorModule from '@/features/profile/components/modules/AITaskGrantorModule'
 import { useProfileModules } from './hooks'
 import { FullscreenModal, useFullscreenModal } from '@/shared/components'
 import type { ProfileModule, ProfileModuleConfig } from './types'
