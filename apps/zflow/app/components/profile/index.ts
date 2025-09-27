@@ -1,5 +1,5 @@
 export { default as ProfileDashboard } from './ProfileDashboard'
-export { ModuleSelector } from './ModuleSelector'
+export { ModuleSelector } from '@/features/profile/components/ModuleSelector'
 export { EnergySpectrumModule } from '@/features/profile/components/modules/EnergySpectrumModule'
 export { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
 export { ProfileModuleRenderer } from './ProfileModuleRenderer'
