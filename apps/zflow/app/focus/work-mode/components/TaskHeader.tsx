@@ -9,8 +9,8 @@ import {
 } from 'lucide-react'
 import { TaskMemory } from '../../../../lib/api'
 import { useTranslation } from '../../../../contexts/LanguageContext'
-import { useTimerShared } from '@/shared/hooks/useTimerShared'
-import { useAutoSave } from '@/shared/hooks/useAutoSave'
+import { useTimer } from '@/hooks/useTimer'
+import { useAutoSave } from '@/hooks/useAutoSave'
 import MemoryAnchorButton from '../../../components/memory/MemoryAnchorButton'
 import ConversationButton from './ConversationButton'
 import { TaskWithCategory } from './TaskSidebar'
@@ -34,7 +34,7 @@ interface TaskHeaderProps {
   handleSaveNotes: () => Promise<void>
   isSaving: boolean
   autoSave: ReturnType<typeof useAutoSave>
-  timer: ReturnType<typeof useTimerShared>
+  timer: ReturnType<typeof useTimer>
   taskAnchors: any[]
   setShowMemories: (fn: (prev: boolean) => boolean) => void
   showMemories: boolean

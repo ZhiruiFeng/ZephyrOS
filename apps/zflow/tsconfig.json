@@ -38,8 +38,8 @@
       "@/speech": ["./features/speech"],
 
       // Shared library
-      "@/shared/*": ["./lib/shared/*"],
-      "@/shared": ["./lib/shared"],
+      "@/shared/*": ["./shared/*"],
+      "@/shared": ["./shared"],
 
       // Core directories
       "@/lib/*": ["./lib/*"],

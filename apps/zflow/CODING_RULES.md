@@ -222,8 +222,8 @@ All path aliases are configured in `tsconfig.json`:
       "@/features/*": ["./features/*"],
 
       // Shared library
-      "@/shared/*": ["./lib/shared/*"],
-      "@/shared": ["./lib/shared"],
+      "@/shared/*": ["./shared/*"],
+      "@/shared": ["./shared"],
 
       // Core directories
       "@/lib/*": ["./lib/*"],
@@ -300,45 +300,61 @@ ZFlow implements a **Shared Utilities Library** pattern to eliminate code duplic
 ### **Shared Library Structure**
 
 ```
-lib/shared/                  # 🎯 Cross-feature shared utilities
-├── hooks/                   # Shared React hooks
+apps/zflow/
+├── hooks/                   # 🔗 All application hooks
 │   ├── useTaskOperations.ts    # Generic task operations
 │   ├── useTaskActions.ts       # Task CRUD operations
-│   ├── useActivitiesShared.ts  # Activity management
-│   ├── useTimerShared.ts       # Timer functionality
+│   ├── useActivities.ts        # Activity management (renamed from useActivitiesShared)
+│   ├── useTimer.ts             # Timer functionality (renamed from useTimerShared)
 │   ├── useAutoSave.ts          # Auto-save logic
 │   ├── useCategories.ts        # Category management
 │   ├── useCelebration.ts       # UI animations
 │   ├── useModalState.ts        # Modal state management
+│   ├── memory/                 # Memory-related hooks
+│   ├── tasks/                  # Task-specific hooks
+│   ├── activities/             # Activity-specific hooks
 │   └── index.ts                # Barrel exports
-├── utils/                   # Utility functions
-│   ├── task-utils.ts           # Task helpers (getStatusColor, etc.)
-│   ├── time-utils.ts           # Time formatting & calculations
-│   ├── activity-utils.ts       # Activity helpers
-│   ├── validation-utils.ts     # Form validation
-│   └── index.ts                # Barrel exports
-├── components/              # Shared UI components
-│   ├── StatusBadge.tsx         # Status indicators
-│   ├── TaskCard.tsx            # Basic task display
-│   ├── TimerDisplay.tsx        # Timer UI component
-│   └── index.ts                # Barrel exports
-├── types/                   # Shared type definitions
-│   ├── shared-hooks.ts         # Hook return types
-│   ├── shared-tasks.ts         # Task-related types
-│   ├── shared-activities.ts    # Activity types
-│   └── index.ts                # Barrel exports
-└── index.ts                 # Main entry point
+├── types/                   # 🎯 All type definitions
+│   ├── domain/                 # Domain types (Task, Memory, etc.)
+│   ├── ui/                     # UI component types
+│   ├── shared/                 # Shared utility types
+│   │   ├── shared-hooks.ts        # Hook return types
+│   │   ├── shared-tasks.ts        # Task-related types
+│   │   ├── shared-activities.ts   # Activity types
+│   │   └── common.ts              # Common shared types
+│   └── index.ts                # Master export
+├── shared/                  # 🛠 Shared utilities & components
+│   ├── utils/                  # Utility functions
+│   │   ├── task-utils.ts          # Task helpers (getStatusColor, etc.)
+│   │   ├── time-utils.ts          # Time formatting & calculations
+│   │   ├── activity-utils.ts      # Activity helpers
+│   │   ├── validation-utils.ts    # Form validation
+│   │   └── index.ts               # Barrel exports
+│   ├── components/             # Shared UI components
+│   │   ├── StatusBadge.tsx        # Status indicators
+│   │   ├── TaskCard.tsx           # Basic task display
+│   │   ├── TimerDisplay.tsx       # Timer UI component
+│   │   └── index.ts               # Barrel exports
+│   └── index.ts                # Main entry point
+├── lib/                     # 📚 Core libraries & API clients
+└── features/                # 🎨 Feature modules
 ```
 
 ### **Import Patterns for Shared Utilities**
 
-#### ✅ **PREFERRED: Shared Library Imports**
+#### ✅ **PREFERRED: Clean Import Patterns**
 ```typescript
-// Use shared utilities for cross-feature functionality
-import { useTaskOperations, useCategories } from '@/shared'
+// Hooks from root hooks directory
+import { useTaskOperations, useCategories, useTimer } from '@/hooks'
+import { useActivities } from '@/hooks/useActivities'
+
+// Types from root types directory
+import type { Task, Memory } from '@/types/domain'
+import type { TaskOperationsReturn } from '@/types/shared'
+
+// Shared utilities and components
 import { getStatusColor, smartFormatDate } from '@/shared/utils'
 import { StatusBadge, TimerDisplay } from '@/shared/components'
-import type { TaskOperationsReturn } from '@/shared/types'
 ```
 
 #### ✅ **ACCEPTABLE: Feature-Specific Extensions**

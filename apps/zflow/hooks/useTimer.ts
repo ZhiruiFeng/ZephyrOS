@@ -18,7 +18,7 @@ export interface UseTimerState {
   refresh: () => void
 }
 
-export function useTimerShared(pollMs: number = 5000): UseTimerState {
+export function useTimer(pollMs: number = 5000): UseTimerState {
   const { data, mutate } = useSWR('running-timer', async () => {
     const authHeaders = await authManager.getAuthHeaders()
     const res = await fetch(`${API_BASE}/time-entries/running`, {
@@ -128,3 +128,6 @@ export function useTimerShared(pollMs: number = 5000): UseTimerState {
     refresh,
   }
 }
+
+// Export default alias
+export default useTimer

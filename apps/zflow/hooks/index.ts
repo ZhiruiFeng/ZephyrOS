@@ -7,8 +7,8 @@ export { useTaskOperations } from './useTaskOperations'
 export { useTaskActions } from './useTaskActions'
 
 // Activity management hooks
-export { useActivitiesShared } from './useActivitiesShared'
-export { useTimerShared } from './useTimerShared'
+export { useActivities, useActivity, useCreateActivity, useUpdateActivity, useDeleteActivity } from './useActivities'
+export { useTimer } from './useTimer'
 export { useAutoSave } from './useAutoSave'
 
 // UI hooks

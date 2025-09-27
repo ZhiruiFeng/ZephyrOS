@@ -2,9 +2,9 @@
 
 import React, { useEffect } from 'react'
 import AddTaskModal from '../modals/AddTaskModal'
-import { useCategories } from '@/shared/hooks/useCategories'
+import { useCategories } from '@/hooks/useCategories'
 import { useCreateTask } from '../../../hooks/memory/useMemories'
-import { useTimerShared } from '@/shared/hooks/useTimerShared'
+import { useTimer } from '@/hooks/useTimer'
 import { usePrefs } from '../../../contexts/PrefsContext'
 import eventBus from '../../core/events/event-bus'
 
@@ -15,7 +15,7 @@ import eventBus from '../../core/events/event-bus'
 export default function AddTaskPortal() {
   const { categories } = useCategories()
   const { createTask } = useCreateTask()
-  const timer = useTimerShared()
+  const timer = useTimer()
   const { selectedCategory } = usePrefs()
   const [open, setOpen] = React.useState(false)
   const [defaultCat, setDefaultCat] = React.useState<string | undefined>(undefined)

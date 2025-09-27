@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Save, X as XIcon, Star, Activity } from 'lucide-react'
 import { useTranslation } from '../../../contexts/LanguageContext'
-import { useCreateActivity } from '@/shared/hooks/useActivitiesShared'
+import { useCreateActivity } from '@/hooks/useActivities'
 import CategoryPickerSheet from './CategoryPickerSheet'
 import TaskForm from '../../modules/tasks/forms/TaskForm'
 import ActivityForm from '../../modules/activities/forms/ActivityForm'

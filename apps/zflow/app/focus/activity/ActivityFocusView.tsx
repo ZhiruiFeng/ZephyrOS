@@ -6,10 +6,10 @@ import { ArrowLeft, Save, Edit, Timer, Play, Square, Heart, Star, Smile, Frown }
 import NotionEditor from '../../components/editors/NotionEditor'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useTranslation } from '../../../contexts/LanguageContext'
-import { useActivity, useUpdateActivity } from '@/shared/hooks/useActivitiesShared'
-import { useCategories } from '@/shared/hooks/useCategories'
-import { useTimerShared } from '@/shared/hooks/useTimerShared'
-import { useAutoSave } from '@/shared/hooks/useAutoSave'
+import { useActivity, useUpdateActivity } from '@/hooks/useActivities'
+import { useCategories } from '@/hooks/useCategories'
+import { useTimer } from '@/hooks/useTimer'
+import { useAutoSave } from '@/hooks/useAutoSave'
 
 interface ActivityWithCategory {
   id: string
@@ -49,7 +49,7 @@ export default function ActivityFocusView() {
   const { activity, isLoading } = useActivity(activityId || '')
   const { updateActivity } = useUpdateActivity()
   const { categories } = useCategories()
-  const timer = useTimerShared()
+  const timer = useTimer()
 
   // Journal states
   const [notes, setNotes] = useState('')

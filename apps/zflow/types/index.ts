@@ -14,6 +14,9 @@ export * from './ui/hooks'
 
 // Shared utilities
 export * from './shared/common'
+export * from './shared/shared-tasks'
+export * from './shared/shared-activities'
+export * from './shared/shared-hooks'
 
 // Re-export for convenience
 export type {

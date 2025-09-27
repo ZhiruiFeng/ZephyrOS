@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { TaskMemory } from '@/lib/api'
 import { useUpdateTask } from '@/hooks/memory/useMemories'
-import { useAutoSave } from '@/shared/hooks/useAutoSave'
-import { useTimerShared } from '@/shared/hooks/useTimerShared'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { useTimer } from '@/hooks/useTimer'
 import { useTranslation } from '@/contexts/LanguageContext'
 import type { TaskWithCategory, TaskInfo } from '../types/focus'
 
@@ -47,7 +47,7 @@ export function useFocusTaskOperations({
 }: UseFocusTaskOperationsProps) {
   const { t } = useTranslation()
   const { updateTask, updateTaskSilent } = useUpdateTask()
-  const timer = useTimerShared(5000)
+  const timer = useTimer(5000)
 
   // Track if we're currently switching tasks to prevent auto-save conflicts
   const isSwitchingTaskRef = useRef(false)

@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTasks, useUpdateTask } from '@/hooks/memory/useMemories'
-import { useCategories } from '@/shared/hooks/useCategories'
-import { useTimerShared } from '@/shared/hooks/useTimerShared'
+import { useCategories } from '@/hooks/useCategories'
+import { useTimer } from '@/hooks/useTimer'
 import { usePrefs } from '@/contexts/PrefsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import LoginPage from '@/app/components/auth/LoginPage'
@@ -23,7 +23,7 @@ import {
 import { useTranslation } from '@/contexts/LanguageContext'
 import EnergyReviewModal from '@/app/components/modals/EnergyReviewModal'
 import { CelebrationAnimation } from '@/app/components/ui/CelebrationAnimation'
-import { useCelebration } from '@/shared/hooks/useCelebration'
+import { useCelebration } from '@/hooks/useCelebration'
 
 type StatusKey = TaskContent['status']
 
@@ -39,7 +39,7 @@ export default function KanbanPage() {
   const { tasks, isLoading, error } = useTasks(user ? { root_tasks_only: true } : null)
   const { categories } = useCategories()
   const { updateTask } = useUpdateTask()
-  const timer = useTimerShared()
+  const timer = useTimer()
   const [energyReviewOpen, setEnergyReviewOpen] = useState(false)
   const [energyReviewEntry, setEnergyReviewEntry] = useState<any>(null)
 

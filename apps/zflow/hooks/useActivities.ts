@@ -2,7 +2,7 @@ import useSWR, { mutate } from 'swr'
 import { apiClient } from '@/lib/api'
 
 // Hook to fetch all activities
-export function useActivitiesShared(
+export function useActivities(
   params?: Parameters<typeof apiClient.getActivities>[0],
   options?: { enabled?: boolean }
 ) {
@@ -92,5 +92,5 @@ export function useDeleteActivity() {
   return { deleteActivity }
 }
 
-// Alias for backward compatibility
-export const useActivities = useActivitiesShared
+// Export default alias
+export default useActivities
