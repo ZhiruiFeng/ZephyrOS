@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, createClientForRequest } from '../../../../lib/auth'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security'
+import { getUserIdFromRequest, createClientForRequest } from '@/auth'
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 import { z } from 'zod'
 
 // Server-side Supabase client using service role key

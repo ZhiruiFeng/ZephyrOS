@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
-import { DailyStrategyOverview } from '../../../../lib/daily-strategy-types';
+import { DailyStrategyOverview } from '@/lib/daily-strategy-types';
 
 // Query schema for overview endpoint
 const OverviewQuerySchema = z.object({

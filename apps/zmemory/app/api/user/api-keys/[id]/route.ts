@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { getAuthContext } from '../../../../../lib/auth'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '../../../../../lib/security'
+import { getAuthContext } from '@/auth'
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 

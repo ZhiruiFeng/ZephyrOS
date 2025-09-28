@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getUserIdFromRequest } from '../../../lib/auth'
+import { getUserIdFromRequest } from '@/auth'
 import { AIAgent, CreateAIAgentRequest, UpdateAIAgentRequest } from '../../../types'
-import { jsonWithCors, createOptionsResponse } from '../../../lib/security'
+import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 
 // Create Supabase client for service operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

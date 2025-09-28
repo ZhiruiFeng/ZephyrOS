@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest } from '../../../lib/auth'
+import { getUserIdFromRequest } from '@/auth'
 
 // Helper function to add CORS headers to responses
 function addCorsHeaders(response: NextResponse) {

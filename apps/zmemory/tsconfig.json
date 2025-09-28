@@ -4,7 +4,7 @@
     "lib": ["dom", "dom.iterable", "es6"],
     "allowJs": true,
     "skipLibCheck": true,
-    "types": [],
+    "types": ["jest", "node"],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -22,7 +22,22 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@zephyros/shared": ["../../packages/shared/src"]
+      "@zephyros/shared": ["../../packages/shared/src"],
+      "@/lib/*": ["./lib/*"],
+      "@/types/*": ["./types/*"],
+      "@/app/*": ["./app/*"],
+      "@/auth": ["./lib/auth"],
+      "@/auth/*": ["./lib/auth/*"],
+      "@/database": ["./lib/database"],
+      "@/database/*": ["./lib/database/*"],
+      "@/validation": ["./lib/validation"],
+      "@/validation/*": ["./lib/validation/*"],
+      "@/services": ["./lib/services"],
+      "@/services/*": ["./lib/services/*"],
+      "@/utils": ["./lib/utils"],
+      "@/utils/*": ["./lib/utils/*"],
+      "@/middleware": ["./lib/middleware"],
+      "@/middleware/*": ["./lib/middleware/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

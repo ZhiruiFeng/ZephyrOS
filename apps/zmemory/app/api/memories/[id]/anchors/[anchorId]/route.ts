@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   MemoryAnchorUpdateSchema,
   type MemoryAnchorUpdateBody
-} from '../../../../../../lib/validators';
+} from '@/validation';
 import { nowUTC } from '../../../../../../lib/time-utils';
 
 // Create Supabase client

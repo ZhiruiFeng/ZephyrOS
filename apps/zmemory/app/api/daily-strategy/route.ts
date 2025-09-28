@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   DailyStrategyQuerySchema,
   CreateDailyStrategySchema,
   DailyStrategyItem,
   DailyStrategyItemWithDetails,
   type DailyStrategyQuery
-} from '../../../lib/daily-strategy-types';
+} from '@/lib/daily-strategy-types';
 
 /**
  * @swagger

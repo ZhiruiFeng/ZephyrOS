@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
-import { analyzeMemory, findPotentialAnchors, type MemoryAnalysisInput } from '../../../../lib/memory-business-logic';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { analyzeMemory, findPotentialAnchors, type MemoryAnalysisInput } from '@/lib/memory-business-logic';
 import { z } from 'zod';
 
 // Schema for memory analysis request

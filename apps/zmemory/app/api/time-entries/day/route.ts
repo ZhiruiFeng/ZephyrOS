@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth'
-import { supabase as serviceClient } from '../../../../lib/supabase'
-import { createOptionsResponse, jsonWithCors } from '../../../../lib/security'
+import { createClientForRequest, getUserIdFromRequest } from '@/auth'
+import { supabase as serviceClient } from '@/lib/supabase'
+import { createOptionsResponse, jsonWithCors } from '@/lib/security'
 
 // Query user's time entries across all tasks within a time window (day view)
 // Query params: from (iso), to (iso)

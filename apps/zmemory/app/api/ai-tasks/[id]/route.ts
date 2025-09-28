@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getUserIdFromRequest } from '../../../../lib/auth'
-import { AITaskUpdateSchema } from '../../../../lib/validators'
+import { getUserIdFromRequest } from '@/auth'
+import { AITaskUpdateSchema } from '@/validation'
 
 function addCorsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', '*')

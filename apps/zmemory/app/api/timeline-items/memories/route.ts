@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
-import { MemoriesQuerySchema, type MemoriesQuery } from '../../../../lib/validators';
-import { nowUTC } from '../../../../lib/time-utils';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { MemoriesQuerySchema, type MemoriesQuery } from '@/validation';
+import { nowUTC } from '@/lib/time-utils';
 
 /**
  * @swagger

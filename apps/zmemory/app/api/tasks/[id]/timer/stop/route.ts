@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '../../../../../../lib/auth'
+import { createClientForRequest, getUserIdFromRequest } from '@/auth'
 import { supabase as serviceClient } from '../../../../../../lib/supabase'
-import { TimerStopSchema } from '../../../../../../lib/validators'
-import { createOptionsResponse, isRateLimited, getClientIP, jsonWithCors } from '../../../../../../lib/security'
+import { TimerStopSchema } from '@/validation'
+import { createOptionsResponse, isRateLimited, getClientIP, jsonWithCors } from '@/lib/security'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: taskId } = await params

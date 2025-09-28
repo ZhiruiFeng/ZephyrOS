@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
 function jsonWithCors(request: NextRequest, body: any, status = 200) {
   const origin = request.headers.get('origin') || '*';
   const res = NextResponse.json(body, { status });

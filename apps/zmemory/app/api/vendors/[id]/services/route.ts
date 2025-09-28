@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '../../../../../lib/security';
-import { apiKeyService } from '../../../../../lib/api-key-service';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security';
+import { apiKeyService } from '@/lib/api-key-service';
 
 /**
  * @swagger

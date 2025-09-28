@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '../../../../../lib/auth'
-import { supabase as serviceClient } from '../../../../../lib/supabase'
-import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '../../../../../lib/validators'
-import { createOptionsResponse, jsonWithCors } from '../../../../../lib/security'
+import { createClientForRequest, getUserIdFromRequest } from '@/auth'
+import { supabase as serviceClient } from '@/lib/supabase'
+import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation'
+import { createOptionsResponse, jsonWithCors } from '@/lib/security'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: timelineItemId } = await params
@@ -105,6 +105,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!parsed.success) return jsonWithCors(request, { error: 'Invalid body', details: parsed.error.errors }, 400)
 
     const { start_at, end_at, note, source } = parsed.data
+
+    // Ensure start_at is available (should be guaranteed by validation)
+    if (!start_at) {
+      return jsonWithCors(request, { error: 'start_at is required' }, 400)
+    }
 
     // If end_at provided, validate ordering client-side too (DB also enforces)
     if (end_at && new Date(end_at) <= new Date(start_at)) {

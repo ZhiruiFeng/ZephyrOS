@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
 import { z } from 'zod';
 
 // Validation schema

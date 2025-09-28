@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUser } from '../../../../lib/auth'
-import { resolveOpenAIKey } from '../../../../lib/api-key-resolver'
+import { getUser } from '@/auth'
+import { resolveOpenAIKey } from '@/lib/api-key-resolver'
 
 // Internal endpoint to resolve the user's OpenAI API key.
 // Note: Intentionally DOES NOT include CORS headers to prevent browser access.

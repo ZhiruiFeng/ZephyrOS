@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
-import { getAuthContext } from '../../../../lib/auth'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '../../../../lib/security'
+import { getAuthContext } from '@/auth'
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security'
 import { createClient } from '@supabase/supabase-js'
-import { generateSecureToken, hashApiKey } from '../../../../lib/crypto-utils'
+import { generateSecureToken, hashApiKey } from '@/lib/crypto-utils'
 import { z } from 'zod'
 
 /**

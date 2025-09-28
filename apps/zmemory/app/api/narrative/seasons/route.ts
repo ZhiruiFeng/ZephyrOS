@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest } from '../../../../lib/auth'
-import { jsonWithCors, createOptionsResponse } from '../../../../lib/security'
+import { getUserIdFromRequest } from '@/auth'
+import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 import type {
   Season,
   CreateSeasonRequest,

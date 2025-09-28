@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { getUser } from '../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '../../../lib/security';
-import { apiKeyService } from '../../../lib/api-key-service';
+import { getUser } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security';
+import { apiKeyService } from '@/lib/api-key-service';
 import { z } from 'zod';
 
 /**

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { APIMonitoring } from '../../../lib/monitoring';
-import { checkEnvironment } from '../../../lib/env-check';
+import { withPublicMiddleware, type EnhancedRequest } from '@/middleware';
+import { createHealthService } from '@/services';
 
 /**
  * @swagger
@@ -47,62 +47,50 @@ import { checkEnvironment } from '../../../lib/env-check';
  *             schema:
  *               $ref: '#/components/schemas/HealthCheck'
  */
-export async function GET() {
-  try {
-    const monitoring = APIMonitoring.getInstance();
-    const healthResult = await monitoring.performHealthCheck();
-    const envStatus = checkEnvironment();
-    
-    // Add environment information to health result
-    let enhancedResult = {
-      ...healthResult,
-      environment: {
-        mode: envStatus.mode,
-        configured: envStatus.isConfigured,
-        missing_vars: envStatus.missing,
-        recommendations: envStatus.isConfigured ? [] : envStatus.recommendations
-      }
-    };
-    
-    // 在测试或开发环境，即使数据库未配置（degraded），也视为整体可用
-    const isTestOrDev = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
-    if (isTestOrDev) {
-      enhancedResult = { ...enhancedResult, status: 'healthy' };
-    }
-    const statusCode = isTestOrDev ? 200 : (healthResult.status === 'unhealthy' ? 503 : 200);
-    
-    return NextResponse.json(enhancedResult, {
+
+/**
+ * Handle health check request using new architecture
+ */
+async function handleHealthCheck(request: EnhancedRequest): Promise<NextResponse> {
+  // Create service instance (minimal context since no user required)
+  const healthService = createHealthService({ userId: 'system' });
+
+  // Use service for business logic
+  const result = await healthService.checkHealth();
+
+  if (result.error) {
+    // Service handles error details, just determine status code
+    const statusCode = result.data?.status === 'unhealthy' ? 503 : 200;
+    return NextResponse.json(result.data, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
-      },
-    });
-  } catch (error) {
-    // Fallback health check if monitoring fails
-    const envStatus = checkEnvironment();
-    
-    return NextResponse.json({
-      service: 'zmemory-api',
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-      error: 'Health check failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      environment: {
-        mode: envStatus.mode,
-        configured: envStatus.isConfigured,
-        missing_vars: envStatus.missing,
-        recommendations: envStatus.recommendations
       }
-    }, {
-      status: 503,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
     });
   }
-} 
+
+  // Determine status code from health result
+  const isTestOrDev = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
+  const statusCode = isTestOrDev ? 200 : (result.data!.status === 'unhealthy' ? 503 : 200);
+
+  return NextResponse.json(result.data, {
+    status: statusCode,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    }
+  });
+}
+
+// Apply middleware - no auth required for health check, but get error handling and CORS
+export const GET = withPublicMiddleware(handleHealthCheck, {
+  rateLimit: {
+    windowMs: 1 * 60 * 1000, // 1 minute
+    maxRequests: 60 // Allow frequent health checks
+  }
+});
+
+// OPTIONS handled automatically by CORS middleware 

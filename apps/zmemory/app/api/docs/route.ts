@@ -1,10 +1,14 @@
-// Swagger UI endpoint for API documentation
-import { getApiDocs } from '../../../lib/swagger';
+import { NextResponse } from 'next/server';
+import { withPublicMiddleware, type EnhancedRequest } from '@/middleware';
+import { getApiDocs } from '@/lib/swagger';
 
-export async function GET() {
+/**
+ * Handle API documentation request
+ */
+async function handleDocsRequest(request: EnhancedRequest): Promise<NextResponse> {
   // In production, disable docs by default unless explicitly enabled
   if (process.env.NODE_ENV === 'production' && process.env.ENABLE_API_DOCS !== 'true') {
-    return new Response('API docs are disabled in production', { status: 404 });
+    return new NextResponse('API docs are disabled in production', { status: 404 });
   }
 
   const spec = await getApiDocs();
@@ -31,9 +35,17 @@ export async function GET() {
     </html>
   `;
 
-  return new Response(html, {
+  return new NextResponse(html, {
     headers: {
       'Content-Type': 'text/html',
     },
   });
 }
+
+// Apply public middleware - no auth required for docs, but get CORS and rate limiting
+export const GET = withPublicMiddleware(handleDocsRequest, {
+  rateLimit: {
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxRequests: 30 // Reasonable limit for documentation access
+  }
+});

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getUserIdFromRequest } from '../../../lib/auth'
-import { AITaskCreateSchema, AITasksQuerySchema } from '../../../lib/validators'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security'
+import { getUserIdFromRequest } from '@/auth'
+import { AITaskCreateSchema, AITasksQuerySchema } from '@/validation'
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 
 export const runtime = 'nodejs'
 

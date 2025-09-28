@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '../../../../lib/supabase-server';
-import { getUserIdFromRequest } from '../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
+import { supabaseServer } from '@/lib/supabase-server';
+import { getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
-import { nowUTC } from '../../../../lib/time-utils';
+import { nowUTC } from '@/lib/time-utils';
 
 // Validation schemas
 const TouchpointCreateSchema = z.object({

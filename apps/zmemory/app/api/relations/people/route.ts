@@ -1,35 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '../../../../lib/supabase-server';
-import { getUserIdFromRequest } from '../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../lib/security';
-import { z } from 'zod';
-import { nowUTC } from '../../../../lib/time-utils';
-
-// Validation schemas
-const PersonCreateSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-  email: z.string().email().optional(),
-  phone: z.string().max(50).optional(),
-  avatar_url: z.string().url().optional(),
-  notes: z.string().optional(),
-  company: z.string().max(255).optional(),
-  job_title: z.string().max(255).optional(),
-  location: z.string().max(255).optional(),
-  social_linkedin: z.string().max(255).optional(),
-  social_twitter: z.string().max(255).optional(),
-});
-
-const PersonUpdateSchema = PersonCreateSchema.partial();
-
-const PersonQuerySchema = z.object({
-  search: z.string().optional(),
-  company: z.string().optional(),
-  location: z.string().optional(),
-  limit: z.string().transform(val => parseInt(val) || 50).optional(),
-  offset: z.string().transform(val => parseInt(val) || 0).optional(),
-  sort_by: z.enum(['name', 'company', 'created_at', 'updated_at']).optional().default('name'),
-  sort_order: z.enum(['asc', 'desc']).optional().default('asc'),
-});
+import { supabaseServer } from '@/lib/supabase-server';
+import { getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { PersonCreateSchema, PersonUpdateSchema, PersonQuerySchema } from '@/validation/relations';
+import { nowUTC } from '@/lib/time-utils';
 
 // Mock data for development
 const generateMockPeople = () => [

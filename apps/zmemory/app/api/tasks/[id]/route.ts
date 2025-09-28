@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth';
-import { UpdateTaskSchema, TaskMemory } from '../../../../lib/task-types';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { UpdateTaskSchema, TaskMemory } from '@/validation';
 
 // Helper function to get category ID by name
 async function getCategoryIdByName(categoryName: string): Promise<string | null> {

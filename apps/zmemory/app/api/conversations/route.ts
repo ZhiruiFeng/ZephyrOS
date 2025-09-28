@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseSessionManager } from '../../../lib/supabase-session-manager'
-import { jsonWithCors, createOptionsResponse } from '../../../lib/security'
+import { supabaseSessionManager } from '@/lib/supabase-session-manager'
+import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 

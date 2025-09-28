@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { TaskStats, TaskStatus, TaskPriority, TaskCategory } from '../../../../lib/task-types';
+import { TaskStats, TaskStatus, TaskPriority, TaskCategory } from '@/validation';
 
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

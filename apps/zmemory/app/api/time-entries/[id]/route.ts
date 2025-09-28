@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth'
-import { supabase as serviceClient } from '../../../../lib/supabase'
-import { TimeEntryUpdateSchema } from '../../../../lib/validators'
-import { createOptionsResponse, jsonWithCors } from '../../../../lib/security'
+import { createClientForRequest, getUserIdFromRequest } from '@/auth'
+import { supabase as serviceClient } from '@/lib/supabase'
+import { TimeEntryUpdateSchema } from '@/validation'
+import { createOptionsResponse, jsonWithCors } from '@/lib/security'
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

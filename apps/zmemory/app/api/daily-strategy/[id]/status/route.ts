@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   UpdateDailyStrategyStatusSchema,
   DailyStrategyItemWithDetails
-} from '../../../../../lib/daily-strategy-types';
+} from '@/lib/daily-strategy-types';
 
 interface RouteParams {
   params: Promise<{

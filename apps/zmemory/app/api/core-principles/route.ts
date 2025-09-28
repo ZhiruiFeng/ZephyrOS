@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   CreateCorePrincipleSchema,
   CorePrincipleQuerySchema,
@@ -9,8 +9,8 @@ import {
   CorePrincipleStatus,
   CorePrincipleCategory,
   CorePrincipleSource
-} from '../../../lib/core-principles-types';
-import { nowUTC } from '../../../lib/time-utils';
+} from '@/lib/core-principles-types';
+import { nowUTC } from '@/lib/time-utils';
 
 // Create Supabase client (service key only for mock fallback; real requests use bearer token)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

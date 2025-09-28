@@ -23,7 +23,7 @@ export async function OPTIONS(request: NextRequest) {
     },
   });
 }
-import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
 import { z } from 'zod';
 
 // 验证schema

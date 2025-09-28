@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   ActivityCreateSchema, 
   ActivityUpdateSchema,
   ActivitiesQuerySchema,
   type ActivityCreateBody,
   type ActivitiesQuery
-} from '../../../lib/validators';
-import { nowUTC } from '../../../lib/time-utils';
+} from '@/validation';
+import { nowUTC } from '@/lib/time-utils';
 
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

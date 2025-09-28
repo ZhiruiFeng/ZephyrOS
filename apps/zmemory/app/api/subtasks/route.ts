@@ -1,36 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '../../../lib/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '../../../lib/security';
+import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   CreateSubtaskRequest,
   SubtaskTreeNode,
   TaskMemory
-} from '../../../lib/task-types';
+} from '@/validation';
 import { z } from 'zod';
 
 // Validation schemas
+const taskDataSchema = z.object({
+  type: z.literal('task'),
+  content: z.object({
+    title: z.string().min(1, 'Task title is required').max(200, 'Title too long'),
+    description: z.string().optional(),
+    status: z.enum(['pending', 'in_progress', 'completed', 'cancelled', 'on_hold']).default('pending'),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+    category_id: z.string().optional(),
+    due_date: z.string().datetime().optional(),
+    estimated_duration: z.number().positive().optional(),
+    progress: z.number().min(0).max(100).default(0),
+    assignee: z.string().optional(),
+    notes: z.string().optional(),
+    completion_behavior: z.enum(['manual', 'auto_when_subtasks_complete']).default('manual'),
+    progress_calculation: z.enum(['manual', 'average_subtasks', 'weighted_subtasks']).default('manual'),
+  }),
+  tags: z.array(z.string()).optional(),
+  metadata: z.record(z.any()).optional()
+});
+
 const CreateSubtaskSchema = z.object({
   parent_task_id: z.string().uuid('Invalid parent task ID'),
-  task_data: z.object({
-    type: z.literal('task'),
-    content: z.object({
-      title: z.string().min(1, 'Task title is required').max(200, 'Title too long'),
-      description: z.string().optional(),
-      status: z.enum(['pending', 'in_progress', 'completed', 'cancelled', 'on_hold']).default('pending'),
-      priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-      category_id: z.string().optional(),
-      due_date: z.string().datetime().optional(),
-      estimated_duration: z.number().positive().optional(),
-      progress: z.number().min(0).max(100).default(0),
-      assignee: z.string().optional(),
-      notes: z.string().optional(),
-      completion_behavior: z.enum(['manual', 'auto_when_subtasks_complete']).default('manual'),
-      progress_calculation: z.enum(['manual', 'average_subtasks', 'weighted_subtasks']).default('manual'),
-    }),
-    tags: z.array(z.string()).optional(),
-    metadata: z.record(z.any()).optional()
-  }),
+  task_data: taskDataSchema.optional(),
+  task: taskDataSchema.optional(), // Alternative field name for backward compatibility
   subtask_order: z.number().int().min(0).optional()
+}).refine(data => {
+  // Ensure either task_data or task is provided
+  return data.task_data || data.task;
+}, {
+  message: "Either task_data or task must be provided",
+  path: ["task_data"]
+}).transform(data => {
+  // Normalize to use task_data
+  const normalized = { ...data };
+  if (data.task && !data.task_data) {
+    normalized.task_data = data.task;
+  }
+  return normalized;
 });
 
 const SubtaskQuerySchema = z.object({
@@ -217,6 +233,11 @@ export async function POST(request: NextRequest) {
 
     const subtaskData = validationResult.data;
     const now = new Date().toISOString();
+
+    // Ensure task_data exists (should be guaranteed by validation)
+    if (!subtaskData.task_data) {
+      return jsonWithCors(request, { error: 'task_data is required' }, 400);
+    }
 
     // Enforce auth
     const userId = await getUserIdFromRequest(request);
