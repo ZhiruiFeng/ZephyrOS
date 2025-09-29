@@ -127,20 +127,48 @@ function ZFlowPageContent() {
       return (level === 0) || (level === undefined && !parentId)
     }
 
-    const getTasksForView = (viewType: ViewKey) => {
+    // Get unfiltered tasks for the current view (not filtered by category)
+    const getUnfilteredTasksForView = (viewType: ViewKey) => {
+      const now = Date.now()
+      const windowMs = 24 * 60 * 60 * 1000
+
+      // Apply only search and priority filters, but not category filter
+      const commonFiltered = tasks?.filter((t) => {
+        const c = t.content as any
+        const matchSearch = !search || c.title.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
+        const matchPriority = filterPriority === 'all' || c.priority === filterPriority
+        return matchSearch && matchPriority
+      }) || []
+
       switch (viewType) {
         case 'current':
-          return currentList.filter(isRootTask)
+          return commonFiltered.filter((t) => {
+            const c = t.content as any
+            if (c.status === 'pending' || c.status === 'in_progress') return true
+            if (c.status === 'completed') {
+              const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+              return completedAt && now - completedAt <= windowMs
+            }
+            return false
+          }).filter(isRootTask)
         case 'future':
-          return futureList.filter(isRootTask)
+          return commonFiltered.filter(t => (t.content as any).status === 'on_hold').filter(isRootTask)
         case 'archive':
-          return archiveList.filter(isRootTask)
+          return commonFiltered.filter((t) => {
+            const c = t.content as any
+            if (c.status === 'cancelled') return true
+            if (c.status === 'completed') {
+              const completedAt = c.completion_date ? new Date(c.completion_date).getTime() : 0
+              return completedAt && now - completedAt > windowMs
+            }
+            return false
+          }).filter(isRootTask)
         default:
           return []
       }
     }
 
-    const viewTasks = getTasksForView(view)
+    const viewTasks = getUnfilteredTasksForView(view)
     const counts = {
       byId: {} as Record<string, number>,
       byIdCompleted: {} as Record<string, number>,
@@ -171,7 +199,7 @@ function ZFlowPageContent() {
     }
 
     return counts
-  }, [view, currentList, futureList, archiveList])
+  }, [view, tasks, search, filterPriority])
 
   // Event handlers
   React.useEffect(() => {
