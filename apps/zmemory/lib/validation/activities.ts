@@ -78,17 +78,17 @@ export const ActivitiesQuerySchema = z.object({
   ended_before: isoDateTime.optional(),
 
   // Rating filters
-  min_satisfaction: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
-  max_satisfaction: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
-  min_mood_before: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
-  min_mood_after: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
-  min_energy_before: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
-  min_energy_after: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
-  min_enjoyment: z.string().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  min_satisfaction: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  max_satisfaction: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  min_mood_before: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  min_mood_after: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  min_energy_before: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  min_energy_after: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
+  min_enjoyment: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(ratingSchema),
 
   // Duration filters
-  min_duration: z.string().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().positive().optional()),
-  max_duration: z.string().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().positive().optional()),
+  min_duration: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().positive().optional()),
+  max_duration: z.string().optional().transform(v => v ? parseInt(v) : undefined).pipe(z.number().int().positive().optional()),
 
   // Location and context
   location: z.string().optional(),
