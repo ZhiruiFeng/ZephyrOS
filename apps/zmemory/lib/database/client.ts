@@ -6,17 +6,29 @@ export { createClientForRequest } from '@/auth';
 
 /**
  * Get a database client instance
- * This is a convenience wrapper around the existing auth functions
+ * Prefer the service role key for backend operations so RLS policies allow access.
  */
 export function getDatabaseClient(): DatabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl) {
     throw new Error('Supabase configuration missing');
   }
 
-  return createClient(supabaseUrl, supabaseKey);
+  const supabaseKey = serviceRoleKey || anonKey;
+
+  if (!supabaseKey) {
+    throw new Error('Supabase credentials missing');
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
 }
 
 /**

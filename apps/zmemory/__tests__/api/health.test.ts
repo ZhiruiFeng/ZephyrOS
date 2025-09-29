@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 describe('/api/health', () => {
   it('should return health status', async () => {
     const request = new NextRequest('http://localhost:3001/api/health');
-    const response = await GET();
+    const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -19,7 +19,7 @@ describe('/api/health', () => {
 
   it('should have correct response headers', async () => {
     const request = new NextRequest('http://localhost:3001/api/health');
-    const response = await GET();
+    const response = await GET(request);
 
     expect(response.headers.get('content-type')).toContain('application/json');
   });

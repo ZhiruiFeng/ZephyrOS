@@ -12,17 +12,20 @@ export { BaseRepository } from './repositories/base-repository';
 export { MemoryRepository } from './repositories/memory-repository';
 export { TaskRepository } from './repositories/task-repository';
 export { ActivityRepository } from './repositories/activity-repository';
+export { AITaskRepositoryImpl as AITaskRepository } from './repositories/ai-task-repository';
 
 // Type exports for repositories
 export type { Memory, MemoryFilterParams } from './repositories/memory-repository';
 export type { Task, TaskFilterParams, CreateSubtaskRequest, TaskTreeNode } from './repositories/task-repository';
 export type { Activity, ActivityFilterParams } from './repositories/activity-repository';
+export type { AITaskRepository as AITaskRepositoryInterface } from './repositories/ai-task-repository';
 
 // Factory function to create repository instances
 import { getDatabaseClient } from './client';
 import { MemoryRepository } from './repositories/memory-repository';
 import { TaskRepository } from './repositories/task-repository';
 import { ActivityRepository } from './repositories/activity-repository';
+import { AITaskRepositoryImpl } from './repositories/ai-task-repository';
 
 export function createMemoryRepository() {
   return new MemoryRepository(getDatabaseClient());
@@ -36,11 +39,16 @@ export function createActivityRepository() {
   return new ActivityRepository(getDatabaseClient());
 }
 
+export function createAITaskRepository() {
+  return new AITaskRepositoryImpl(getDatabaseClient());
+}
+
 // Repository container for dependency injection
 export class RepositoryContainer {
   private memoryRepo?: MemoryRepository;
   private taskRepo?: TaskRepository;
   private activityRepo?: ActivityRepository;
+  private aiTaskRepo?: AITaskRepositoryImpl;
 
   getMemoryRepository(): MemoryRepository {
     if (!this.memoryRepo) {
@@ -61,6 +69,13 @@ export class RepositoryContainer {
       this.activityRepo = createActivityRepository();
     }
     return this.activityRepo;
+  }
+
+  getAITaskRepository(): AITaskRepositoryImpl {
+    if (!this.aiTaskRepo) {
+      this.aiTaskRepo = createAITaskRepository();
+    }
+    return this.aiTaskRepo;
   }
 }
 

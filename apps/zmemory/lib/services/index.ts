@@ -13,6 +13,7 @@ export { TaskWorkflowServiceImpl, TaskHierarchyServiceImpl } from './task-workfl
 export { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 export { HealthServiceImpl } from './health-service';
 export { AgentFeaturesServiceImpl } from './agent-features-service';
+export { AITaskServiceImpl } from './ai-task-service';
 
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';
@@ -20,6 +21,7 @@ export type { TaskWorkflowService, TaskHierarchyService } from './task-workflow-
 export type { ActivityAnalyticsService } from './activity-analytics-service';
 export type { HealthService } from './health-service';
 export type { AgentFeaturesService } from './agent-features-service';
+export type { AITaskService } from './ai-task-service';
 
 // Service factory functions and dependency injection
 import type { ServiceContext, ServiceDependencies } from './types';
@@ -28,6 +30,7 @@ import { TaskWorkflowServiceImpl, TaskHierarchyServiceImpl } from './task-workfl
 import { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 import { HealthServiceImpl } from './health-service';
 import { AgentFeaturesServiceImpl } from './agent-features-service';
+import { AITaskServiceImpl } from './ai-task-service';
 import { repositories } from '@/database';
 
 /**
@@ -40,7 +43,8 @@ export function createMemoryAnalysisService(
   const deps = dependencies || {
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
-    activityRepository: repositories.getActivityRepository()
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
   };
   return new MemoryAnalysisServiceImpl(context, deps);
 }
@@ -52,7 +56,8 @@ export function createTaskWorkflowService(
   const deps = dependencies || {
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
-    activityRepository: repositories.getActivityRepository()
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
   };
   return new TaskWorkflowServiceImpl(context, deps);
 }
@@ -64,7 +69,8 @@ export function createTaskHierarchyService(
   const deps = dependencies || {
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
-    activityRepository: repositories.getActivityRepository()
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
   };
   return new TaskHierarchyServiceImpl(context, deps);
 }
@@ -76,7 +82,8 @@ export function createActivityAnalyticsService(
   const deps = dependencies || {
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
-    activityRepository: repositories.getActivityRepository()
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
   };
   return new ActivityAnalyticsServiceImpl(context, deps);
 }
@@ -88,7 +95,8 @@ export function createHealthService(
   const deps = dependencies || {
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
-    activityRepository: repositories.getActivityRepository()
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
   };
   return new HealthServiceImpl(context, deps);
 }
@@ -100,9 +108,23 @@ export function createAgentFeaturesService(
   const deps = dependencies || {
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
-    activityRepository: repositories.getActivityRepository()
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
   };
   return new AgentFeaturesServiceImpl(context, deps);
+}
+
+export function createAITaskService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): AITaskServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new AITaskServiceImpl(context, deps);
 }
 
 /**
@@ -240,7 +262,8 @@ export const ServiceUtils = {
     return {
       memoryRepository: repositories.getMemoryRepository(),
       taskRepository: repositories.getTaskRepository(),
-      activityRepository: repositories.getActivityRepository()
+      activityRepository: repositories.getActivityRepository(),
+      aiTaskRepository: repositories.getAITaskRepository()
     };
   },
 

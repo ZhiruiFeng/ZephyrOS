@@ -1,0 +1,179 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// Base interfaces for repository operations
+export interface BaseEntity {
+  id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginationParams {
+  limit?: number;
+  offset?: number;
+}
+
+export interface SortParams {
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface DateRangeParams {
+  from_date?: string;
+  to_date?: string;
+  created_after?: string;
+  created_before?: string;
+  updated_after?: string;
+  updated_before?: string;
+}
+
+export interface SearchParams {
+  search?: string;
+  search_fields?: string[];
+}
+
+export interface FilterParams extends PaginationParams, SortParams, DateRangeParams, SearchParams {
+  status?: string;
+  tags?: string[];
+  category_id?: string;
+  [key: string]: any;
+}
+
+export interface RepositoryResult<T> {
+  data: T | null;
+  error: Error | null;
+}
+
+export interface RepositoryListResult<T> {
+  data: T[] | null;
+  error: Error | null;
+  total?: number;
+}
+
+export interface JoinConfig {
+  table: string;
+  select: string;
+  alias?: string;
+}
+
+export interface AggregationResult {
+  [key: string]: number | string;
+}
+
+// Database client type
+export type DatabaseClient = SupabaseClient;
+
+// Common error types
+export class RepositoryError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public statusCode: number = 500
+  ) {
+    super(message);
+    this.name = 'RepositoryError';
+  }
+}
+
+export class NotFoundError extends RepositoryError {
+  constructor(resource: string, id?: string) {
+    super(
+      id ? `${resource} with id ${id} not found` : `${resource} not found`,
+      'NOT_FOUND',
+      404
+    );
+  }
+}
+
+export class ValidationError extends RepositoryError {
+  constructor(message: string, public details?: any) {
+    super(message, 'VALIDATION_ERROR', 400);
+  }
+}
+
+export class UnauthorizedError extends RepositoryError {
+  constructor(message = 'Unauthorized access') {
+    super(message, 'UNAUTHORIZED', 401);
+  }
+}
+
+// AI Task Entity
+export interface AITask extends BaseEntity {
+  // Basic info
+  title: string;
+  description?: string;
+  task_type: 'generation' | 'analysis' | 'summarization' | 'classification' | 'translation' | 'conversation' | 'coding' | 'reasoning' | 'other';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+
+  // AI configuration
+  model?: string;
+  provider?: string;
+  prompt?: string;
+  system_prompt?: string;
+
+  // Parameters
+  max_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+
+  // Input/Output
+  input_data?: Record<string, any>;
+  expected_output_format?: string;
+  output_data?: Record<string, any>;
+
+  // Execution
+  scheduled_for?: string;
+  deadline?: string;
+  assigned_at?: string;
+  due_at?: string;
+  retry_count: number;
+  max_retries: number;
+
+  // Related items
+  task_id?: string;
+  agent_id?: string;
+  parent_task_id?: string;
+  related_memory_id?: string;
+  related_conversation_id?: string;
+
+  // Organization
+  tags: string[];
+  category?: string;
+
+  // Metadata
+  metadata?: Record<string, any>;
+  estimated_cost?: number;
+  actual_cost?: number;
+  estimated_duration_seconds?: number;
+  execution_time_seconds?: number;
+  tokens_used?: number;
+  model_used?: string;
+  provider_used?: string;
+  error_message?: string;
+}
+
+export interface AITaskFilterParams extends FilterParams {
+  task_type?: string;
+  priority?: string;
+  model?: string;
+  provider?: string;
+  mode?: string;
+  assigned_from?: string;
+  assigned_to?: string;
+  task_id?: string;
+  agent_id?: string;
+  parent_task_id?: string;
+  related_memory_id?: string;
+  related_conversation_id?: string;
+  scheduled_after?: string;
+  scheduled_before?: string;
+  deadline_after?: string;
+  deadline_before?: string;
+  due_from?: string;
+  due_to?: string;
+  retry_count_min?: number;
+  retry_count_max?: number;
+  min_cost?: number;
+  max_cost?: number;
+}

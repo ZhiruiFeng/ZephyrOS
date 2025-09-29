@@ -23,7 +23,10 @@ export function getAllowedOrigins(): string[] {
   return [
     'http://localhost:3000',
     'http://localhost:3001', 
-    'http://localhost:3002'
+    'http://localhost:3002',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3002'
   ];
 }
 
@@ -73,8 +76,10 @@ export function jsonWithCors(request: NextRequest, body: any, status = 200): Nex
 export function createOptionsResponse(request: NextRequest): NextResponse {
   const origin = request.headers.get('origin');
   const allowedOrigins = getAllowedOrigins();
-  const hasAuth = !!(request.headers.get('authorization') || request.headers.get('Authorization'));
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
   const requestedHeaders = request.headers.get('access-control-request-headers');
+  const requestedHasAuth = requestedHeaders?.toLowerCase().includes('authorization') ?? false;
+  const hasAuth = !!authHeader || requestedHasAuth;
   
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',

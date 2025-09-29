@@ -8,23 +8,38 @@ export const aiTaskTypes = [
 ] as const;
 
 // AI task statuses
-export const aiTaskStatuses = ['pending', 'in_progress', 'completed', 'failed', 'cancelled'] as const;
+export const aiTaskStatuses = ['pending', 'assigned', 'in_progress', 'paused', 'completed', 'failed', 'cancelled'] as const;
 
 // AI task priorities
 export const aiTaskPriorities = ['low', 'medium', 'high', 'urgent'] as const;
 
 // AI task creation schema
 export const AITaskCreateSchema = z.object({
-  // Basic info
-  title: z.string().min(1, 'Title is required').max(200),
-  description: z.string().optional(),
+  // Core fields aligned with existing client payload
+  objective: z.string().min(1, 'Objective is required'),
+  deliverables: z.string().optional(),
+  context: z.string().optional(),
+  acceptance_criteria: z.string().optional(),
   task_type: z.enum(aiTaskTypes),
-  priority: z.enum(aiTaskPriorities).default('medium'),
-  status: z.enum(aiTaskStatuses).default('pending'),
+  priority: z.enum(aiTaskPriorities).optional(),
+  status: z.enum(aiTaskStatuses).optional(),
+  mode: z.enum(['plan_only', 'dry_run', 'execute']).optional(),
+  dependencies: z.array(z.string()).optional(),
+  guardrails: z.object({
+    costCapUSD: z.number().nullable().optional(),
+    timeCapMin: z.number().nullable().optional(),
+    requiresHumanApproval: z.boolean().optional(),
+    dataScopes: z.array(z.string()).optional()
+  }).optional(),
+  metadata: z.record(z.any()).optional(),
+
+  // Legacy/new fields (kept optional for backward compatibility)
+  title: z.string().optional(),
+  description: z.string().optional(),
 
   // AI configuration
   model: z.string().optional(),
-  provider: z.string().optional(), // openai, anthropic, etc.
+  provider: z.string().optional(),
   prompt: z.string().optional(),
   system_prompt: z.string().optional(),
 
@@ -37,28 +52,25 @@ export const AITaskCreateSchema = z.object({
   input_data: z.record(z.any()).optional(),
   expected_output_format: z.string().optional(),
 
-  // Execution
-  scheduled_for: isoDateTime.optional(),
+  // Execution scheduling
   deadline: isoDateTime.optional(),
-  retry_count: z.number().int().min(0).default(0),
-  max_retries: z.number().int().min(0).default(3),
+  retry_count: z.number().int().min(0).optional(),
+  max_retries: z.number().int().min(0).optional(),
 
-  // Related items
-  task_id: uuidSchema.optional(), // Related task
-  agent_id: uuidSchema.optional(), // Related AI agent
-  parent_task_id: uuidSchema.optional(),
-  related_memory_id: uuidSchema.optional(),
-  related_conversation_id: uuidSchema.optional(),
+  // Related entities
+  task_id: uuidSchema,
+  agent_id: uuidSchema,
 
-  // Organization
-  tags: z.array(z.string()).default([]),
+  // Additional organisation
+  tags: z.array(z.string()).optional(),
   category: z.string().optional(),
 
-  // Metadata
-  metadata: z.record(z.any()).optional(),
+  // Estimates
   estimated_cost: z.number().positive().optional(),
+  estimated_cost_usd: z.number().positive().optional(),
   estimated_duration_seconds: z.number().int().positive().optional(),
-});
+  estimated_duration_min: z.number().int().positive().optional(),
+}).passthrough();
 
 // AI task update schema
 export const AITaskUpdateSchema = AITaskCreateSchema.partial();
@@ -73,7 +85,7 @@ export const AITasksQuerySchema = z.object({
   // AI configuration filters
   model: z.string().optional(),
   provider: z.string().optional(),
-  mode: z.string().optional(),
+  mode: z.enum(['plan_only', 'dry_run', 'execute']).optional(),
 
   // Assignment filters
   assigned_from: isoDateTime.optional(),
@@ -87,8 +99,6 @@ export const AITasksQuerySchema = z.object({
   related_conversation_id: uuidSchema.optional(),
 
   // Date filters
-  scheduled_after: isoDateTime.optional(),
-  scheduled_before: isoDateTime.optional(),
   deadline_after: isoDateTime.optional(),
   deadline_before: isoDateTime.optional(),
   due_from: isoDateTime.optional(),
@@ -113,8 +123,8 @@ export const AITasksQuerySchema = z.object({
   // Pagination and sorting
   ...paginationSchema,
   sort_by: z.enum([
-    'created_at', 'updated_at', 'scheduled_for', 'deadline',
-    'priority', 'status', 'title', 'estimated_cost', 'assigned_at'
+    'created_at', 'updated_at', 'deadline', 'due_at',
+    'priority', 'status', 'objective', 'estimated_cost', 'assigned_at'
   ]).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
 });

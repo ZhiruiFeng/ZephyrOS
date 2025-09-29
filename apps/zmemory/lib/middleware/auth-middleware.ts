@@ -21,7 +21,7 @@ export function withAuth<THandler extends (request: AuthenticatedRequest, ...arg
 ): (request: NextRequest, ...args: any[]) => Promise<NextResponse> {
   const {
     requireAuth = true,
-    devFallbackUserId = 'dev-user-123',
+    devFallbackUserId = '00000000-0000-0000-0000-000000000001',
     customUnauthorizedResponse
   } = options;
 

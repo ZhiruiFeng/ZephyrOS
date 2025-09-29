@@ -44,3 +44,11 @@ export const GET = withStandardMiddleware(handleAgentFeaturesRequest, {
     maxRequests: 100 // Allow frequent feature requests
   }
 });
+
+// Explicit OPTIONS handler for preflight requests
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false,
+  rateLimit: false
+});

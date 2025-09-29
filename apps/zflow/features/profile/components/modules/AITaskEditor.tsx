@@ -41,6 +41,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
   const taskSelectRef = React.useRef<HTMLDivElement | null>(null)
   const taskSearchRef = React.useRef<HTMLInputElement | null>(null)
   const isTaskSelectDisabled = Boolean(initial?.isEditing)
+  const initialKey = React.useMemo(() => (initial ? JSON.stringify(initial) : 'null'), [initial])
   const [form, setForm] = React.useState<AITaskForm>({
     task_id: initial?.task_id,
     agent_id: initial?.agent_id,
@@ -60,6 +61,8 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
   React.useEffect(() => {
     if (!isOpen) return
 
+    setError(null)
+
     if (initial) {
       setForm({
         task_id: initial.task_id,
@@ -75,10 +78,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         metadata: initial.metadata || { priority: 'medium', tags: [] },
         status: initial.status || 'pending'
       })
-      // Set guardrails checkbox if there are existing guardrails
-      if (initial.guardrails) {
-        setUseGuardrails(true)
-      }
+      setUseGuardrails(Boolean(initial.guardrails))
     } else {
       // Reset form for new task
       setForm({
@@ -97,31 +97,49 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
       })
       setUseGuardrails(false)
     }
-  }, [isOpen, initial])
+  }, [isOpen, initialKey])
 
   React.useEffect(() => {
     if (!isOpen) return
+
+    let cancelled = false
+
+    setError(null)
     setLoading(true)
     Promise.all([
       tasksApi.getAll({ limit: 100, sort_by: 'created_at', sort_order: 'desc' }),
       aiAgentsApi.list({ limit: 100, sort_by: 'activity_score', sort_order: 'desc' as any }),
       agentFeaturesApi.list({ is_active: true, limit: 200 })
-    ]).then(([ts, ags, fts]) => {
-      // Filter tasks to show statuses that are ready for AI assignment
-      const filteredTasks = ts.filter((task: any) => {
-        const status = task.content?.status || task.status
-        return status === 'pending' || status === 'in_progress'
-      })
-      setTasks(filteredTasks)
-      setAgents(ags)
-      setFeatures(fts)
+    ])
+      .then(([ts, ags, fts]) => {
+        if (cancelled) return
 
-      // Set guardrails checkbox state based on initial data
-      if (initial?.guardrails) {
-        setUseGuardrails(true)
-      }
-    }).finally(() => setLoading(false))
-  }, [isOpen, initial])
+        // Filter tasks to show statuses that are ready for AI assignment
+        const filteredTasks = ts.filter((task: any) => {
+          const status = task.content?.status || task.status
+          return status === 'pending' || status === 'in_progress'
+        })
+        setTasks(filteredTasks)
+        setAgents(ags)
+        setFeatures(fts)
+
+        if (initial?.guardrails) {
+          setUseGuardrails(true)
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        console.error('Failed to load AI task editor data', err)
+        setError('Failed to load AI task resources')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen])
 
   const handleChange = React.useCallback((patch: Partial<AITaskForm>) => {
     setForm(prev => {

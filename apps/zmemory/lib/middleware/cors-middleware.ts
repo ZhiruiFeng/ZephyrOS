@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jsonWithCors, createOptionsResponse } from '@/lib/security';
+import { jsonWithCors, createOptionsResponse, getAllowedOrigins } from '@/lib/security';
 
 export interface CorsMiddlewareOptions {
   allowedOrigins?: string[];
@@ -51,6 +51,7 @@ export function applyCorsHeaders(
   options: CorsMiddlewareOptions = {}
 ): NextResponse {
   const {
+    allowedOrigins = getAllowedOrigins(),
     allowedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders = [
       'Content-Type',
@@ -67,6 +68,38 @@ export function applyCorsHeaders(
 
   const origin = request.headers.get('origin');
   const requestedHeaders = request.headers.get('access-control-request-headers');
+  const hasAuthHeader = !!(request.headers.get('authorization') || request.headers.get('Authorization'));
+  const requestedHasAuth = requestedHeaders?.toLowerCase().includes('authorization') ?? false;
+  const hasAuth = hasAuthHeader || requestedHasAuth;
+
+  const normalizedAllowedOrigins = Array.isArray(allowedOrigins) ? allowedOrigins : [allowedOrigins];
+  let allowOrigin = '*';
+
+  if (
+    origin && (
+      normalizedAllowedOrigins.includes(origin) ||
+      (!options.allowedOrigins && origin.endsWith('.vercel.app')) ||
+      hasAuth
+    )
+  ) {
+    allowOrigin = origin;
+  }
+
+  if (allowOrigin === '*') {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.delete('Access-Control-Allow-Credentials');
+  } else {
+    response.headers.set('Access-Control-Allow-Origin', allowOrigin);
+
+    if (credentials) {
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+    } else {
+      response.headers.delete('Access-Control-Allow-Credentials');
+    }
+
+    response.headers.append('Vary', 'Origin');
+    response.headers.append('Vary', 'Access-Control-Request-Headers');
+  }
 
   // Set CORS headers on the response
   // Note: The origin validation is already handled in jsonWithCors and createOptionsResponse
