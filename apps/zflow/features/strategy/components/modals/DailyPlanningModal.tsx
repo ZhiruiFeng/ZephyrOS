@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { FullscreenModal } from '@/shared/components'
 import { Card, CardContent } from '../ui'
-import { TaskSelector } from './TaskSelector'
+import { TaskSelectorModal } from '@/shared/components'
 import { useDailyStrategy } from '../../hooks/useDailyStrategy'
 import { useDayReflection } from '@/timeline'
 import { TaskMemory } from '@/lib/api/api-base'
@@ -461,17 +461,15 @@ export function DailyRhythmModal({ isOpen, onClose, seasonId, initialView = 'pla
           )
         )}
 
-        {showTaskSelector && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden">
-              <TaskSelector
-                onSelectExisting={handleSelectExistingTask}
-                onCreateNew={handleCreateNewTask}
-                onCancel={() => setShowTaskSelector(null)}
-              />
-            </div>
-          </div>
-        )}
+        <TaskSelectorModal
+          isOpen={!!showTaskSelector}
+          onSelectTask={handleSelectExistingTask}
+          onCreateNew={handleCreateNewTask}
+          onCancel={() => setShowTaskSelector(null)}
+          title="Select a Task for Priority"
+          createNewText="Create New Priority Task"
+          createNewDescription="Create a new task for this priority"
+        />
 
         {showReflectionTypeSelector && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
