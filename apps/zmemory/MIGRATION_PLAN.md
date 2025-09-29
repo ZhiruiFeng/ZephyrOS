@@ -1,5 +1,9 @@
 # ZMemory Migration Plan: Legacy to New Architecture
 
+> **Status Dashboard:** For a live view of completed routes, active tasks, and
+> future TODOs see `MIGRATION_STATUS.md`. The plan below captures the original
+> phased roadmap; the dashboard is now the day-to-day tracker.
+
 ## 📊 Migration Analysis
 
 ### Route Complexity Distribution
