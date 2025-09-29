@@ -30,8 +30,8 @@ class PerformanceMonitor {
     const renderTime = performance.now() - startTime
     this.renderStartTimes.delete(componentName)
 
-    // Only log slow renders (>16ms for 60fps)
-    if (renderTime > 16) {
+    // Only log slow renders (>30ms for 60fps)
+    if (renderTime > 30) {
       console.warn(`🐌 Slow render: ${componentName} took ${renderTime.toFixed(2)}ms`)
     }
 
