@@ -713,8 +713,7 @@ function WorkModeViewInner() {
           taskTitle={selectedTask?.content.title || ''}
           onMemoryCreated={handleMemoryCreated}
           onMemoryLinked={handleMemoryLinked}
-          existingMemories={allMemories}
-          isLoading={memoriesLoading || memoryActionLoading}
+          isLoading={memoryActionLoading}
         />
       </Suspense>
 

@@ -304,7 +304,7 @@ export function EpisodeCard({
         taskTitle={episode.title}
         onMemoryCreated={async (memory, anchor) => {
           await createMemoryWithEpisodeAnchor(
-            { title: memory.title, note: memory.note, tags: memory.tags },
+            { title: memory.title || '', note: memory.note, tags: memory.tags },
             { episode_id: episode.id, relation_type: anchor.relation_type, weight: anchor.weight, local_time_range: anchor.local_time_range, notes: anchor.notes }
           )
           setMemoryModalOpen(false)
@@ -318,8 +318,7 @@ export function EpisodeCard({
           setMemoryModalOpen(false)
           refetch()
         }}
-        existingMemories={allMemories}
-        isLoading={memoriesLoading || memActionLoading}
+        isLoading={memActionLoading}
       />
 
       {/* Delete confirmation modal */}

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Calendar, MapPin, Star, Tag, Trash2, Info, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Star, Tag, Trash2, Info, ChevronDown, Plus } from 'lucide-react'
 import { NotionEditor } from '@/shared/components/editors'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
@@ -10,6 +10,7 @@ import { Memory } from '@/types/domain/memory'
 import { memoriesApi } from '@/lib/api/memories-api'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useCategories } from '@/hooks/useCategories'
+import { TimelineItemSelector, type TimelineItem, type TimelineItemType } from '@/shared/components/selectors'
 
 function formatDateTime(ts?: string | null) {
   if (!ts) return '—'
@@ -63,6 +64,7 @@ function MemoryFocusViewContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [showDescription, setShowDescription] = useState(false)
   const [editingDescription, setEditingDescription] = useState(false)
+  const [showTimelineSelector, setShowTimelineSelector] = useState(false)
 
   // Load memory detail
   useEffect(() => {
@@ -270,6 +272,24 @@ function MemoryFocusViewContent() {
       try { router.back(); return } catch {}
     }
     router.push('/memories')
+  }
+
+  const handleSelectTimelineItem = async (item: TimelineItem, type: TimelineItemType) => {
+    if (!memoryId) return
+    try {
+      setIsAddingAnchor(true)
+      await memoriesApi.addAnchor(memoryId, {
+        anchor_item_id: item.id,
+        relation_type: newAnchorRelation
+      })
+      const list = await memoriesApi.getAnchors(memoryId, { limit: 20 })
+      setAnchors(list)
+      setShowTimelineSelector(false)
+    } catch (e) {
+      console.error('Failed to add anchor:', e)
+    } finally {
+      setIsAddingAnchor(false)
+    }
   }
 
   if (!user) {
@@ -519,31 +539,18 @@ function MemoryFocusViewContent() {
             </div>
             <div className="mt-3 border-t pt-3 space-y-2">
               <div className="text-xs text-gray-600">Add anchor</div>
-              <input value={newAnchorItemId} onChange={(e) => setNewAnchorItemId(e.target.value)} placeholder="Timeline item ID (UUID)" className="w-full bg-white/60 border border-gray-200 rounded-md px-2 py-1" />
               <select value={newAnchorRelation} onChange={(e) => setNewAnchorRelation(e.target.value as any)} className="w-full bg-white/60 border border-gray-200 rounded-md px-2 py-1">
                 {['context_of','result_of','insight_from','about','co_occurred','triggered_by','reflects_on'].map(r => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
               <button
-                onClick={async () => {
-                  if (!memoryId || !newAnchorItemId) return
-                  try {
-                    setIsAddingAnchor(true)
-                    await memoriesApi.addAnchor(memoryId, { anchor_item_id: newAnchorItemId, relation_type: newAnchorRelation })
-                    const list = await memoriesApi.getAnchors(memoryId, { limit: 20 })
-                    setAnchors(list)
-                    setNewAnchorItemId('')
-                  } catch (e) {
-                    // ignore
-                  } finally {
-                    setIsAddingAnchor(false)
-                  }
-                }}
-                disabled={isAddingAnchor || !newAnchorItemId}
-                className="w-full mt-1 px-3 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => setShowTimelineSelector(true)}
+                disabled={isAddingAnchor}
+                className="w-full mt-1 px-3 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {isAddingAnchor ? 'Adding…' : 'Add Anchor'}
+                <Plus className="w-4 h-4" />
+                {isAddingAnchor ? 'Adding…' : 'Link Task or Activity'}
               </button>
             </div>
           </div>
@@ -569,6 +576,24 @@ function MemoryFocusViewContent() {
           </div>
         </div>
       </div>
+
+      {/* Timeline Item Selector Modal */}
+      <TimelineItemSelector
+        isOpen={showTimelineSelector}
+        onSelectItem={handleSelectTimelineItem}
+        onCancel={() => setShowTimelineSelector(false)}
+        title="Link to Task or Activity"
+        config={{
+          enabledTypes: ['task', 'activity'], // Only tasks and activities for memory focus
+          taskConfig: {
+            statuses: ['pending', 'in_progress', 'completed'],
+            includeSubtasks: true
+          },
+          activityConfig: {
+            statuses: ['active', 'completed']
+          }
+        }}
+      />
     </div>
   )
 }
