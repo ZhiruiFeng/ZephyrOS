@@ -341,27 +341,41 @@ export class MCPHttpClient {
    * Convert MCP tools to ZFlow tool format for agent registration
    */
   createZFlowTools(): ZFlowTool[] {
-    return this.availableTools.map(mcpTool => ({
-      name: mcpTool.name,
-      description: mcpTool.description,
-      parameters: mcpTool.inputSchema,
-      handler: async (params: any, context: ChatContext) => {
-        // Extract user auth token from context
-        const userAuthToken = (context.metadata as any)?.authToken
+    // Filter out OAuth authentication tools since users are already authenticated via Google OAuth
+    // These tools are only needed for standalone MCP clients, not for zflow agents
+    const authToolsToExclude = [
+      'authenticate',           // OAuth flow start - not needed
+      'exchange_code_for_token', // OAuth flow step - not needed
+      'refresh_token',          // OAuth flow - not needed
+      'set_access_token',       // Called automatically by mcp-http-client
+      'clear_auth',             // Not needed - user logs out via zflow UI
+      'get_auth_status',        // Not useful - auth is automatic
+      'get_user_info'           // Not needed - user info comes from Google OAuth
+    ]
 
-        const result = await this.callTool(mcpTool.name, params, userAuthToken)
+    return this.availableTools
+      .filter(tool => !authToolsToExclude.includes(tool.name))
+      .map(mcpTool => ({
+        name: mcpTool.name,
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema,
+        handler: async (params: any, context: ChatContext) => {
+          // Extract user auth token from context
+          const userAuthToken = (context.metadata as any)?.authToken
 
-        if (result.isError) {
-          throw new Error(result.content[0]?.text || 'HTTP MCP tool execution failed')
+          const result = await this.callTool(mcpTool.name, params, userAuthToken)
+
+          if (result.isError) {
+            throw new Error(result.content[0]?.text || 'HTTP MCP tool execution failed')
+          }
+
+          // Return the text content from MCP response
+          return result.content
+            .filter(item => item.type === 'text')
+            .map(item => item.text)
+            .join('\n') || 'Tool executed successfully'
         }
-
-        // Return the text content from MCP response
-        return result.content
-          .filter(item => item.type === 'text')
-          .map(item => item.text)
-          .join('\n') || 'Tool executed successfully'
-      }
-    }))
+      }))
   }
 
   isConnected(): boolean {

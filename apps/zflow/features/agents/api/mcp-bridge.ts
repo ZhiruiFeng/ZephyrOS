@@ -7,7 +7,7 @@ export class MCPBridge {
   private initialized = false
   private registeredProviders: Set<AgentProvider> = new Set()
 
-  async initialize(): Promise<void> {
+  async initialize(providers?: AgentProvider[]): Promise<void> {
     if (this.initialized) return
 
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
@@ -22,8 +22,8 @@ export class MCPBridge {
       const mcpTools = mcpClient.createZFlowTools()
       console.log(`📋 Created ${mcpTools.length} ZFlow tools from MCP`)
 
-      // Register tools with all available providers
-      await this.registerToolsWithProviders(mcpTools)
+      // Register tools with provided providers or create new ones
+      await this.registerToolsWithProviders(mcpTools, providers)
 
       this.initialized = true
       console.log('✅ MCP bridge initialized successfully')
@@ -38,9 +38,23 @@ export class MCPBridge {
     }
   }
 
-  private async registerToolsWithProviders(tools: ZFlowTool[]): Promise<void> {
-    // For now, we'll register with known providers
-    // In the future, this could be dynamic based on a provider registry
+  private async registerToolsWithProviders(tools: ZFlowTool[], providers?: AgentProvider[]): Promise<void> {
+    // If providers are passed in, register tools with them directly
+    if (providers && providers.length > 0) {
+      providers.forEach(provider => {
+        try {
+          tools.forEach(tool => provider.registerTool(tool))
+          this.registeredProviders.add(provider)
+          console.log(`✅ Registered ${tools.length} tools with ${provider.name} provider`)
+        } catch (error) {
+          console.warn(`Failed to register tools with ${provider.name} provider:`, error)
+        }
+      })
+      return
+    }
+
+    // Legacy: create new provider instances (not recommended - causes instance mismatch)
+    console.warn('⚠️  Creating new provider instances - this may cause tool registration issues')
 
     // Register with OpenAI provider if available
     try {
@@ -107,10 +121,10 @@ export function getMCPBridge(): MCPBridge {
 }
 
 // Initialize MCP bridge on server startup
-export async function initializeMCPBridge(): Promise<MCPBridge> {
+export async function initializeMCPBridge(providers?: AgentProvider[]): Promise<MCPBridge> {
   const bridge = getMCPBridge()
   if (!bridge.isInitialized()) {
-    await bridge.initialize()
+    await bridge.initialize(providers)
   }
   return bridge
 }

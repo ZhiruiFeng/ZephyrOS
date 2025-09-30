@@ -27,34 +27,29 @@ async function performInitialization(): Promise<void> {
       return
     }
 
+    // Create provider instances
     if (!openAIProvider) {
       openAIProvider = new OpenAIProvider()
-      agentRegistry.registerProvider(openAIProvider)
     }
 
     if (!anthropicProvider) {
       anthropicProvider = new AnthropicProvider()
-      agentRegistry.registerProvider(anthropicProvider)
     }
 
-    // Initialize MCP bridge and register tools with providers
+    // Initialize MCP bridge and register tools with EXISTING provider instances
     try {
       console.log('🔧 Setting up MCP integration...')
-      const mcpBridge = await initializeMCPBridge()
-
-      // Get the registered providers from the bridge
-      const providersWithTools = mcpBridge.getRegisteredProviders()
-      console.log(`✅ MCP tools registered with ${providersWithTools.length} providers`)
-
-      // Update registry with tool-enabled providers
-      providersWithTools.forEach(provider => {
-        agentRegistry.registerProvider(provider)
-      })
+      await initializeMCPBridge([openAIProvider, anthropicProvider])
+      console.log(`✅ MCP tools registered with existing provider instances`)
 
     } catch (mcpError) {
       console.warn('⚠️ MCP initialization failed, continuing without MCP tools:', mcpError)
       // Continue without MCP - basic agent functionality will still work
     }
+
+    // Register providers with registry (now with MCP tools loaded)
+    agentRegistry.registerProvider(openAIProvider)
+    agentRegistry.registerProvider(anthropicProvider)
 
     console.log('✅ ZFlow Agent System initialized successfully')
 

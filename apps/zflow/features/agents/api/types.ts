@@ -14,6 +14,7 @@ export interface ToolCall {
   parameters: any
   status: 'pending' | 'running' | 'completed' | 'error'
   result?: any
+  error?: string
 }
 
 export interface Agent {

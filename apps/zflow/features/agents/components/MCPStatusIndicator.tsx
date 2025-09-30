@@ -223,9 +223,9 @@ export default function MCPStatusIndicator({ className = '' }: MCPStatusIndicato
                   Connected Services
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {status.mcp.registeredProviders.map(provider => (
+                  {Array.from(new Set(status.mcp.registeredProviders)).map((provider, index) => (
                     <div
-                      key={provider}
+                      key={`${provider}-${index}`}
                       className="flex items-center justify-between p-2 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-md"
                     >
                       <span className="text-sm font-medium text-purple-800 capitalize">

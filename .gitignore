@@ -161,3 +161,5 @@ temp/
 .plan/
 .cursor/
 .venv/
+notebook/
+.ipynb_checkpoints/
