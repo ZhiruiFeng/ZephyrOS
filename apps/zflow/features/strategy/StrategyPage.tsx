@@ -292,79 +292,54 @@ export default function StrategyPage() {
       />
 
       {/* Page Body */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Main Column */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        {/* Top Row: Season Goal + Daily Tracking */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Season Goal */}
-          <SeasonGoalCard season={season} progressIntent={progressIntentCallback} />
+          <div className="lg:col-span-2">
+            <SeasonGoalCard season={season} progressIntent={progressIntentCallback} />
+          </div>
 
-          {/* Strategic Insights */}
-          <StrategicInsightsCard insights={insights} />
-
-          {/* Strategic Lenses */}
-          <StrategicLenses
-            lens={lens}
-            onLensChange={setLens}
-            filteredInitiatives={filteredInitiatives}
-            filteredMyTasks={filteredMyTasks}
-            filteredAgentTasks={filteredAgentTasks}
-            agents={agents}
-            recentMemories={recentMemories}
-            reflectionContent={reflectionContent}
-            onReflectionContentChange={setReflectionContent}
-            onSaveReflection={saveReflection}
-            progressIntentCallback={progressIntentCallback}
-            searchQuery={searchQuery}
-            statusFilter={statusFilter}
-            priorityFilter={priorityFilter}
-            categoryFilter={categoryFilter}
-            onInitiativeUpdated={handleInitiativeUpdated}
-          />
-
-          {/* Strategic Map */}
-          <StrategicMapCard season={season} initiatives={initiatives} />
-        </div>
-
-        {/* Right Rail */}
-        <div className="space-y-4">
           {/* Daily Tracking */}
-          <DailyTrackingCard
-            onOpenDailyModal={(view) => {
-              setDailyModalView(view)
-              setShowDailyModal(true)
-            }}
-            planning={{
-              data: planningState.data,
-              loading: planningState.loading,
-              error: planningState.error,
-            }}
-            reflection={{
-              data: reflectionState.data,
-              loading: reflectionState.loading,
-              error: reflectionState.error,
-            }}
-          />
-
-          {/* Scratchpad */}
-          <Scratchpad
-            scratch={scratch}
-            onScratchChange={setScratch}
-            onPromoteToTask={promoteToTask}
-            onShowAgentModal={() => setShowAgentModal(true)}
-          />
-
-          {/* What-If Simulator */}
-          <WhatIfSimulator
-            whatIfAutoRebalance={whatIfAutoRebalance}
-            onAutoRebalanceChange={setWhatIfAutoRebalance}
-            whatIfScenarios={whatIfScenarios}
-            selectedScenario={selectedScenario}
-            onScenarioSelect={setSelectedScenario}
-          />
-
-          {/* Quick Actions */}
-          <QuickActions />
+          <div>
+            <DailyTrackingCard
+              onOpenDailyModal={(view) => {
+                setDailyModalView(view)
+                setShowDailyModal(true)
+              }}
+              planning={{
+                data: planningState.data,
+                loading: planningState.loading,
+                error: planningState.error,
+              }}
+              reflection={{
+                data: reflectionState.data,
+                loading: reflectionState.loading,
+                error: reflectionState.error,
+              }}
+            />
+          </div>
         </div>
+
+        {/* Full Width Row: Strategic Lenses */}
+        <StrategicLenses
+          lens={lens}
+          onLensChange={setLens}
+          filteredInitiatives={filteredInitiatives}
+          filteredMyTasks={filteredMyTasks}
+          filteredAgentTasks={filteredAgentTasks}
+          agents={agents}
+          recentMemories={recentMemories}
+          reflectionContent={reflectionContent}
+          onReflectionContentChange={setReflectionContent}
+          onSaveReflection={saveReflection}
+          progressIntentCallback={progressIntentCallback}
+          searchQuery={searchQuery}
+          statusFilter={statusFilter}
+          priorityFilter={priorityFilter}
+          categoryFilter={categoryFilter}
+          onInitiativeUpdated={handleInitiativeUpdated}
+        />
       </div>
 
       {/* Modals */}

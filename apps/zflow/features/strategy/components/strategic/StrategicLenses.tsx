@@ -47,11 +47,53 @@ export const StrategicLenses = ({
 }: StrategicLensesProps) => {
   const fullscreen = useFullscreenModal()
 
+  // Calculate metrics for each lens
+  const visionCount = filteredInitiatives.length
+  const executionCount = filteredMyTasks.length + filteredAgentTasks.length
+  const delegationCount = filteredAgentTasks.length
+  const reflectionCount = recentMemories?.length || 0
+
   const lensTabs = [
-    { id: 'vision', label: 'Vision', shortLabel: 'Vision', icon: Eye, shortcut: '1' },
-    { id: 'execution', label: 'Execution', shortLabel: 'Exec', icon: ClipboardCheck, shortcut: '2' },
-    { id: 'delegation', label: 'AI Delegation', shortLabel: 'AI', icon: Bot, shortcut: '3' },
-    { id: 'reflection', label: 'Reflection', shortLabel: 'Reflect', icon: Lightbulb, shortcut: '4' }
+    {
+      id: 'vision',
+      label: 'Vision',
+      shortLabel: 'Vision',
+      icon: Eye,
+      shortcut: '1',
+      count: visionCount,
+      color: 'blue',
+      description: 'Strategic initiatives'
+    },
+    {
+      id: 'execution',
+      label: 'Execution',
+      shortLabel: 'Exec',
+      icon: ClipboardCheck,
+      shortcut: '2',
+      count: executionCount,
+      color: 'green',
+      description: 'Active tasks'
+    },
+    {
+      id: 'delegation',
+      label: 'AI Delegation',
+      shortLabel: 'AI',
+      icon: Bot,
+      shortcut: '3',
+      count: delegationCount,
+      color: 'orange',
+      description: 'Agent tasks'
+    },
+    {
+      id: 'reflection',
+      label: 'Reflection',
+      shortLabel: 'Reflect',
+      icon: Lightbulb,
+      shortcut: '4',
+      count: reflectionCount,
+      color: 'purple',
+      description: 'Recent memories'
+    }
   ]
 
   const hasActiveFilters = Boolean(searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all')
@@ -119,25 +161,73 @@ export const StrategicLenses = ({
           </div>
         </CardHeader>
       <CardContent>
-        {/* Strategic Lens Navigation - Mobile Optimized */}
+        {/* Strategic Lens Navigation - Enhanced Card-Style Tabs */}
         <div className="mb-6">
-          <div className="flex overflow-x-auto scrollbar-hide space-x-1 bg-gray-100 p-1 rounded-lg">
-            {lensTabs.map(({ id, label, shortLabel, icon: Icon, shortcut }) => (
-              <button
-                key={id}
-                onClick={() => onLensChange(id as StrategyLens)}
-                className={`flex items-center justify-center min-w-0 flex-shrink-0 gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 ${
-                  lens === id
-                    ? 'bg-white text-blue-600 shadow-sm border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
-                }`}
-                title={`${label} (Press ${shortcut})`}
-              >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                <span className="hidden xs:inline sm:hidden lg:inline whitespace-nowrap">{label}</span>
-                <span className="xs:hidden sm:inline lg:hidden whitespace-nowrap">{shortLabel}</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {lensTabs.map(({ id, label, shortLabel, icon: Icon, shortcut, count, color, description }) => {
+              const isActive = lens === id
+
+              // Color mappings
+              const colorClasses = {
+                blue: {
+                  active: 'bg-blue-50 border-blue-300 text-blue-700',
+                  inactive: 'bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-blue-50/50',
+                  icon: 'text-blue-600',
+                  badge: 'bg-blue-100 text-blue-700'
+                },
+                green: {
+                  active: 'bg-green-50 border-green-300 text-green-700',
+                  inactive: 'bg-white border-gray-200 text-gray-600 hover:border-green-200 hover:bg-green-50/50',
+                  icon: 'text-green-600',
+                  badge: 'bg-green-100 text-green-700'
+                },
+                orange: {
+                  active: 'bg-orange-50 border-orange-300 text-orange-700',
+                  inactive: 'bg-white border-gray-200 text-gray-600 hover:border-orange-200 hover:bg-orange-50/50',
+                  icon: 'text-orange-600',
+                  badge: 'bg-orange-100 text-orange-700'
+                },
+                purple: {
+                  active: 'bg-purple-50 border-purple-300 text-purple-700',
+                  inactive: 'bg-white border-gray-200 text-gray-600 hover:border-purple-200 hover:bg-purple-50/50',
+                  icon: 'text-purple-600',
+                  badge: 'bg-purple-100 text-purple-700'
+                }
+              }
+
+              const colors = colorClasses[color as keyof typeof colorClasses]
+
+              return (
+                <button
+                  key={id}
+                  onClick={() => onLensChange(id as StrategyLens)}
+                  className={`group flex flex-col items-start p-4 rounded-xl border-2 transition-all duration-200 ${
+                    isActive ? colors.active : colors.inactive
+                  }`}
+                  title={`${label} (Press ${shortcut})`}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <Icon className={`h-5 w-5 ${isActive ? colors.icon : 'text-gray-400 group-hover:' + colors.icon}`} />
+                    {count > 0 && (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        isActive ? colors.badge : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-left w-full">
+                    <div className="font-semibold text-sm mb-0.5">
+                      <span className="hidden md:inline">{label}</span>
+                      <span className="md:hidden">{shortLabel}</span>
+                    </div>
+                    <div className={`text-xs ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                      {description}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 

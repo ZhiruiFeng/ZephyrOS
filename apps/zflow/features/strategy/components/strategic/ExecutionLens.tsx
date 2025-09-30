@@ -1,5 +1,5 @@
 import React from 'react'
-import { ClipboardCheck, Bot } from 'lucide-react'
+import { ClipboardCheck, Bot, CheckCircle2, Sparkles } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui'
 import { TaskCard, AgentTaskCard } from '../business'
 
@@ -37,11 +37,18 @@ export const ExecutionLens = ({
               />
             ))}
             {filteredMyTasks.length === 0 && (
-              <div className="text-center py-4 text-gray-500 text-sm">
-                {hasActiveFilters
-                  ? 'No tasks match your search criteria.'
-                  : 'No tasks assigned to you'
-                }
+              <div className="flex flex-col items-center justify-center py-8 px-4">
+                <div className="w-12 h-12 mb-3 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="text-sm text-gray-600 text-center">
+                  {hasActiveFilters
+                    ? 'No matching tasks found.'
+                    : 'All clear! No pending tasks.'}
+                </p>
+                {!hasActiveFilters && (
+                  <p className="text-xs text-gray-500 mt-1">You're doing great! 🎉</p>
+                )}
               </div>
             )}
           </CardContent>
@@ -64,11 +71,18 @@ export const ExecutionLens = ({
               />
             ))}
             {filteredAgentTasks.length === 0 && (
-              <div className="text-center py-4 text-gray-500 text-sm">
-                {hasActiveFilters
-                  ? 'No agent tasks match your search criteria.'
-                  : 'No tasks delegated to agents'
-                }
+              <div className="flex flex-col items-center justify-center py-8 px-4">
+                <div className="w-12 h-12 mb-3 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-6 w-6 text-orange-600" />
+                </div>
+                <p className="text-sm text-gray-600 text-center">
+                  {hasActiveFilters
+                    ? 'No matching agent tasks.'
+                    : 'No tasks delegated to agents yet'}
+                </p>
+                {!hasActiveFilters && (
+                  <p className="text-xs text-gray-500 mt-1">Delegate tasks to scale your work</p>
+                )}
               </div>
             )}
           </CardContent>
