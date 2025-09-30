@@ -77,6 +77,11 @@ export class OpenAIProvider implements AgentProvider {
     const { sessionId, messages, agent } = context
     const messageId = Math.random().toString(36).substring(2, 15)
 
+    console.log(`🤖 OpenAI sendMessage called with ${this.tools.length} tools available`)
+    if (this.tools.length === 0) {
+      console.warn('⚠️ WARNING: OpenAI provider has NO TOOLS registered! Agent will hallucinate.')
+    }
+
     // Resolve per-user API key first
     const authToken = (context.metadata && (context.metadata as any).authToken) as string | undefined
     const userKey = await resolveUserOpenAIKey(authToken, 'openai_gpt4')

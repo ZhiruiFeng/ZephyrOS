@@ -59,20 +59,30 @@ async function performInitialization(): Promise<void> {
   }
 }
 
-// Legacy functions for backward compatibility
-function getOpenAIProvider(): OpenAIProvider {
+// Provider getter functions that ensure initialization
+async function getOpenAIProvider(): Promise<OpenAIProvider> {
+  // Ensure system is initialized before returning provider
+  await ensureAgentSystemReady()
+
   if (!openAIProvider) {
-    openAIProvider = new OpenAIProvider()
-    agentRegistry.registerProvider(openAIProvider)
+    console.error('❌ CRITICAL: OpenAI provider is null after initialization!')
+    throw new Error('OpenAI provider failed to initialize')
   }
+
+  console.log(`🔍 Returning OpenAI provider with ${openAIProvider['tools']?.length || 0} tools`)
   return openAIProvider!
 }
 
-function getAnthropicProvider(): AnthropicProvider {
+async function getAnthropicProvider(): Promise<AnthropicProvider> {
+  // Ensure system is initialized before returning provider
+  await ensureAgentSystemReady()
+
   if (!anthropicProvider) {
-    anthropicProvider = new AnthropicProvider()
-    agentRegistry.registerProvider(anthropicProvider)
+    console.error('❌ CRITICAL: Anthropic provider is null after initialization!')
+    throw new Error('Anthropic provider failed to initialize')
   }
+
+  console.log(`🔍 Returning Anthropic provider with ${anthropicProvider['tools']?.length || 0} tools`)
   return anthropicProvider!
 }
 

@@ -57,14 +57,14 @@ export async function POST(request: NextRequest) {
     }
     await sessionManager.addMessage(sessionId, userMessage)
 
-    // Get appropriate provider
+    // Get appropriate provider (await since providers ensure initialization)
     let provider: any
     switch (agent.provider) {
       case 'openai':
-        provider = openAIProvider()
+        provider = await openAIProvider()
         break
       case 'anthropic':
-        provider = anthropicProvider()
+        provider = await anthropicProvider()
         break
       default:
         return NextResponse.json(
