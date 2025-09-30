@@ -570,13 +570,31 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
     format: 'flat', 
     include_completed: true 
   })
-  const { updateSubtask, deleteSubtask, reorderSubtasks, isUpdating, isDeleting, isReordering } = useSubtaskActions()
+  const { updateSubtask, deleteSubtask, reorderSubtasks, moveToParent, isUpdating, isDeleting, isReordering } = useSubtaskActions()
   const [editingSubtask, setEditingSubtask] = useState<TaskMemory | null>(null)
   const [creatingForParentId, setCreatingForParentId] = useState<string | null>(null)
   const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set())
   const [autoSelectedId, setAutoSelectedId] = useState<string | null>(null)
   const [showAITaskDetails, setShowAITaskDetails] = useState(false)
   const [selectedAITask, setSelectedAITask] = useState<TaskMemory | null>(null)
+  const [isShiftPressed, setIsShiftPressed] = useState(false)
+
+  // Track Shift key for cross-parent moving
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftPressed(true)
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftPressed(false)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
 
   const handleAITaskClick = (task: TaskMemory) => {
     setSelectedAITask(task)
@@ -723,6 +741,20 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
 
   
 
+  // Helper function to extract parent ID from hierarchy path
+  const getParentId = (subtask: TaskMemory): string | null => {
+    const path = subtask.hierarchy_path
+    if (!path) return null
+    const parts = path.split('/')
+    // The last part is the task itself, second to last is the immediate parent
+    return parts.length > 1 ? parts[parts.length - 2] : null
+  }
+
+  // Helper function to get hierarchy level
+  const getLevel = (subtask: TaskMemory): number => {
+    return subtask.hierarchy_level ?? 0
+  }
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
@@ -730,36 +762,107 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
       return
     }
 
-    const oldIndex = groupedSubtasks.findIndex(subtask => subtask.id === active.id)
-    const newIndex = groupedSubtasks.findIndex(subtask => subtask.id === over.id)
+    const draggedSubtask = groupedSubtasks.find(s => s.id === active.id)
+    const targetSubtask = groupedSubtasks.find(s => s.id === over.id)
 
-    if (oldIndex === -1 || newIndex === -1) {
+    if (!draggedSubtask || !targetSubtask) {
       console.warn('Invalid drag operation: subtask not found', { active: active.id, over: over.id })
       return
     }
 
-    // Optimistic update - update UI immediately
-    const reorderedSubtasks = arrayMove(groupedSubtasks, oldIndex, newIndex)
+    const draggedParentId = getParentId(draggedSubtask)
+    const targetParentId = getParentId(targetSubtask)
+    const draggedLevel = getLevel(draggedSubtask)
+    const targetLevel = getLevel(targetSubtask)
+
+    // Check if dragging within the same parent (same level and same parent)
+    const isSameParent = draggedParentId === targetParentId && draggedLevel === targetLevel
+
+    if (!isSameParent) {
+      // Cross-parent or cross-level move
+      if (!isShiftPressed) {
+        console.warn('Cross-parent or cross-level moving requires Shift key', {
+          draggedId: active.id,
+          draggedParentId,
+          draggedLevel,
+          targetId: over.id,
+          targetParentId,
+          targetLevel
+        })
+        alert('To move subtasks between different parents or levels, hold the Shift key while dragging.')
+        return
+      }
+
+      // Handle cross-parent move
+      try {
+        console.log('Moving subtask to new parent:', {
+          subtaskId: draggedSubtask.id,
+          oldParentId: draggedParentId,
+          newParentId: targetParentId,
+          targetId: over.id
+        })
+
+        // Move to the target's parent
+        await moveToParent(draggedSubtask.id, targetParentId || taskId)
+        console.log('Move to parent successful')
+
+        // Refresh data to ensure consistency
+        setTimeout(() => refresh(), 100)
+      } catch (error) {
+        console.error('Failed to move subtask to new parent:', error)
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        console.error('Detailed error:', errorMessage)
+
+        setTimeout(() => refresh(), 100)
+        alert(`Failed to move subtask: ${errorMessage}`)
+      }
+      return
+    }
+
+    // Filter to only siblings (same parent and same level)
+    const siblings = groupedSubtasks.filter(subtask => {
+      const parentId = getParentId(subtask)
+      const level = getLevel(subtask)
+      return parentId === draggedParentId && level === draggedLevel
+    })
+
+    const oldIndex = siblings.findIndex(s => s.id === active.id)
+    const newIndex = siblings.findIndex(s => s.id === over.id)
+
+    if (oldIndex === -1 || newIndex === -1) {
+      console.warn('Invalid drag operation: subtask not found in siblings', {
+        active: active.id,
+        over: over.id,
+        siblings: siblings.map(s => s.id)
+      })
+      return
+    }
+
+    // Reorder within siblings
+    const reorderedSiblings = arrayMove(siblings, oldIndex, newIndex)
 
     try {
-      // Map to the format expected by the API
-      const reorderData = reorderedSubtasks.map((subtask, index) => ({
+      // Map siblings to the format expected by the API
+      const reorderData = reorderedSiblings.map((subtask, index) => ({
         task_id: subtask.id,
         new_order: index
       }))
 
-      console.log('Reordering subtasks:', {
-        parentTaskId: taskId,
+      console.log('Reordering subtasks within same parent:', {
+        parentId: draggedParentId || taskId,
+        level: draggedLevel,
         activeId: active.id,
         overId: over.id,
         oldIndex,
         newIndex,
-        totalSubtasks: groupedSubtasks.length,
-        reorderData: reorderData.slice(0, 5) // Log first 5 for debugging
+        totalSiblings: siblings.length,
+        reorderData
       })
 
-      // Call API to reorder - this will persist the change
-      const result = await reorderSubtasks(taskId, reorderData)
+      // Call API to reorder - use the immediate parent ID
+      const parentIdForApi = draggedParentId || taskId
+      const result = await reorderSubtasks(parentIdForApi, reorderData)
       console.log('Reorder successful:', result)
 
       // Refresh data to ensure consistency
@@ -812,7 +915,15 @@ export default function SubtaskSection({ taskId, onSubtaskSelect, selectedSubtas
   
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 space-y-3 w-full max-w-full overflow-x-hidden">
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3 w-full max-w-full overflow-x-hidden relative">
+      {/* Shift key indicator */}
+      {isShiftPressed && (
+        <div className="absolute top-2 right-2 z-10 bg-blue-500 text-white text-xs px-2 py-1 rounded-md shadow-md flex items-center gap-1">
+          <span className="font-semibold">Shift</span>
+          <span>Cross-parent mode enabled</span>
+        </div>
+      )}
+
       {/* Root task */}
       {rootItem && (
         <>

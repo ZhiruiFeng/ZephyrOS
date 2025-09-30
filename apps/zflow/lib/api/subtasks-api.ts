@@ -159,9 +159,14 @@ export const subtasksApi = {
     assignee?: string;
     notes?: string;
     tags?: string[];
+    parent_task_id?: string | null;
   }): Promise<TaskMemory> {
     // Use the main tasks API for updating subtasks
     return tasksApi.update(subtaskId, updates)
+  },
+
+  async moveToParent(subtaskId: string, newParentId: string): Promise<TaskMemory> {
+    return this.update(subtaskId, { parent_task_id: newParentId })
   },
 
   async delete(subtaskId: string): Promise<{ message: string; id: string } | void> {

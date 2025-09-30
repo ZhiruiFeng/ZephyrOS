@@ -153,13 +153,35 @@ export function useSubtaskActions() {
     setIsReordering(true)
     try {
       const result = await subtasksApi.reorder(parentTaskId, subtaskOrders)
-      
+
       // Refresh the task tree
       await mutate([`/api/tasks/${parentTaskId}/tree`, undefined])
-      
+
       return result
     } finally {
       setIsReordering(false)
+    }
+  }, [])
+
+  const moveToParent = useCallback(async (
+    subtaskId: string,
+    newParentId: string
+  ) => {
+    setIsUpdating(true)
+    try {
+      const result = await subtasksApi.moveToParent(subtaskId, newParentId)
+
+      // Refresh all task trees that might be affected
+      await mutate((key) => {
+        if (Array.isArray(key) && key[0] === '/api/tasks') {
+          return key[0].includes('/tree')
+        }
+        return false
+      })
+
+      return result
+    } finally {
+      setIsUpdating(false)
     }
   }, [])
 
@@ -168,6 +190,7 @@ export function useSubtaskActions() {
     updateSubtask,
     deleteSubtask,
     reorderSubtasks,
+    moveToParent,
     isCreating,
     isUpdating,
     isDeleting,
