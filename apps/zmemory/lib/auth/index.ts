@@ -147,6 +147,38 @@ export async function getUser(request: NextRequest): Promise<{ id: string } | nu
   return { id: ctx.id }
 }
 
+/**
+ * Get appropriate Supabase client based on authentication type
+ * - API key auth: Uses service role client (bypasses RLS, no JWT parsing)
+ * - OAuth auth: Uses user-scoped client (enforces RLS with JWT)
+ */
+export async function getClientForAuthType(request: NextRequest): Promise<SupabaseClient | null> {
+  const authContext = await getAuthContext(request)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (authContext?.authType === 'api_key') {
+    // For API key auth, use service role client to avoid JWT parsing errors
+    // This client bypasses RLS but we already validated the user via the API key
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[AUTH] Cannot create service role client - missing env vars')
+      return null
+    }
+    console.log('[AUTH] getClientForAuthType: Creating service role client for API key auth')
+    return createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  }
+
+  // For OAuth or unknown auth type, use regular client with user's JWT
+  console.log('[AUTH] getClientForAuthType: Creating user-scoped client for OAuth auth')
+  return createClientForRequest(request)
+}
+
 // Re-export from other auth modules for easy access
 export * from './api-key-auth'
 export * from './oauth'

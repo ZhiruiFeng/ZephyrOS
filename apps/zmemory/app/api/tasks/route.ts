@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getUserIdFromRequest, getAuthContext, getClientForAuthType } from '@/lib/auth/index';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   CreateTaskSchema,
@@ -283,7 +283,13 @@ export async function GET(request: NextRequest) {
 
     console.log('[TASKS] User authenticated, fetching tasks for user:', userId)
 
-    const client = createClientForRequest(request) || supabase
+    // Get appropriate client based on auth type (API key vs OAuth)
+    const client = await getClientForAuthType(request) || supabase
+
+    if (!client) {
+      console.error('[TASKS] CRITICAL: No database client available')
+      return jsonWithCors(request, { error: 'Database configuration error' }, 500)
+    }
 
     // Build Supabase query against tasks table with hierarchy support
     let dbQuery = client
@@ -510,7 +516,8 @@ export async function POST(request: NextRequest) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
 
-    const client = createClientForRequest(request) || supabase
+    // Get appropriate client based on auth type
+    const client = await getClientForAuthType(request) || supabase
 
     // Determine category_id - handle both category (name) and category_id (direct ID)
     let categoryId = null;
