@@ -38,6 +38,12 @@ export const timeTrackingApi = {
     if (params?.to) sp.set('to', params.to)
     if (params?.limit !== undefined) sp.set('limit', String(params.limit))
     if (params?.offset !== undefined) sp.set('offset', String(params.offset))
+    // Set required filter parameters with default values
+    sp.set('min_duration', '1')
+    sp.set('max_duration', '86400') // 24 hours in seconds
+    sp.set('min_productivity', '1')
+    sp.set('min_focus', '1')
+    sp.set('min_energy', '1')
     const res = await authenticatedFetch(`${API_BASE}/tasks/${taskId}/time-entries?${sp.toString()}`)
     if (!res.ok) throw new Error('Failed to fetch time entries')
     return res.json()
