@@ -40,46 +40,95 @@ export type AuthContext = {
  */
 export async function getAuthContext(request: NextRequest): Promise<AuthContext | null> {
   const token = getBearerToken(request)
-  if (!token) return null
+  if (!token) {
+    console.log('[AUTH] No bearer token found in request')
+    return null
+  }
+
+  console.log('[AUTH] Token received:', token.substring(0, 10) + '...')
 
   // API key path: Bearer zm_...
   if (token.startsWith('zm_')) {
+    console.log('[AUTH] Detected ZMemory API key (starts with zm_)')
+
     if (!supabaseServer) {
+      console.error('[AUTH] CRITICAL: supabaseServer is null')
+      console.error('[AUTH] SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT SET')
+      console.error('[AUTH] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET (length: ' + process.env.SUPABASE_SERVICE_ROLE_KEY.length + ')' : 'NOT SET')
       return null
     }
+
+    console.log('[AUTH] supabaseServer is initialized, attempting API key authentication')
+
     try {
       const keyHash = await hashApiKey(token)
+      console.log('[AUTH] API key hashed successfully:', keyHash.substring(0, 20) + '...')
+
+      console.log('[AUTH] Calling authenticate_zmemory_api_key RPC function...')
       const { data, error } = await supabaseServer.rpc('authenticate_zmemory_api_key', { api_key_hash: keyHash })
+
       if (error) {
+        console.error('[AUTH] RPC function returned error:', JSON.stringify(error))
         return null
       }
+
+      console.log('[AUTH] RPC function returned data:', data ? 'DATA PRESENT' : 'NO DATA')
+
       if (!data || (Array.isArray(data) && data.length === 0)) {
+        console.error('[AUTH] API key not found or invalid')
         return null
       }
+
       const row = Array.isArray(data) ? (data as any[])[0] : (data as any)
+      console.log('[AUTH] API key authenticated successfully for user:', row.user_id)
+
       // Best-effort usage update (await to avoid thenable .catch issues)
       try {
         await supabaseServer.rpc('update_zmemory_api_key_usage', { api_key_hash: keyHash })
-      } catch {}
+        console.log('[AUTH] API key usage updated')
+      } catch (updateError) {
+        console.error('[AUTH] Failed to update API key usage:', updateError)
+      }
+
       return {
         id: row.user_id as string,
         authType: 'api_key',
         scopes: (row.scopes as string[]) || [],
         keyId: row.key_id as string,
       }
-    } catch {
+    } catch (error) {
+      console.error('[AUTH] Exception during API key authentication:', error)
       return null
     }
   }
 
+  console.log('[AUTH] Not an API key, attempting OAuth JWT authentication')
+
   // OAuth path via Supabase JWT
   const client = createClientForRequest(request)
-  if (!client) return null
+  if (!client) {
+    console.error('[AUTH] Failed to create Supabase client for OAuth')
+    return null
+  }
+
   try {
+    console.log('[AUTH] Calling client.auth.getUser() for JWT validation')
     const { data, error } = await client.auth.getUser()
-    if (error || !data.user) return null
+
+    if (error) {
+      console.error('[AUTH] OAuth JWT validation error:', JSON.stringify(error))
+      return null
+    }
+
+    if (!data.user) {
+      console.error('[AUTH] OAuth JWT valid but no user found')
+      return null
+    }
+
+    console.log('[AUTH] OAuth authentication successful for user:', data.user.id)
     return { id: data.user.id, authType: 'oauth' }
-  } catch {
+  } catch (error) {
+    console.error('[AUTH] Exception during OAuth authentication:', error)
     return null
   }
 }

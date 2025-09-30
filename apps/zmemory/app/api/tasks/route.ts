@@ -192,9 +192,15 @@ const generateMockTasks = (): TaskMemory[] => [
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('[TASKS] ========== NEW REQUEST ==========')
+    console.log('[TASKS] Request URL:', request.url)
+    console.log('[TASKS] Authorization header:', request.headers.get('authorization') ? 'PRESENT (Bearer ' + request.headers.get('authorization')?.substring(7, 17) + '...)' : 'MISSING')
+    console.log('[TASKS] Environment:', process.env.NODE_ENV)
+
     // Rate limiting - more permissive for GET requests
     const clientIP = getClientIP(request);
     if (isRateLimited(clientIP, 15 * 60 * 1000, 300)) { // 300 requests per 15 minutes
+      console.error('[TASKS] Rate limit exceeded for IP:', clientIP)
       return jsonWithCors(request, { error: 'Too many requests' }, 429);
     }
 
@@ -252,9 +258,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Enforce auth (dev fallback to mock when not authenticated)
+    console.log('[TASKS] Attempting to get user ID from request')
     const userId = await getUserIdFromRequest(request)
+    console.log('[TASKS] getUserIdFromRequest returned:', userId ? `User ID: ${userId}` : 'NULL')
+
     if (!userId) {
+      console.error('[TASKS] No user ID - authentication failed')
       if (process.env.NODE_ENV !== 'production') {
+        console.log('[TASKS] Development mode - returning mock data')
         // In development, allow UI to work without auth
         let tasks = generateMockTasks()
         // Apply minimal filtering for better UX
@@ -266,8 +277,11 @@ export async function GET(request: NextRequest) {
         tasks = tasks.slice(start, end)
         return jsonWithCors(request, tasks)
       }
+      console.error('[TASKS] Production mode - returning 401 Unauthorized')
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
+
+    console.log('[TASKS] User authenticated, fetching tasks for user:', userId)
 
     const client = createClientForRequest(request) || supabase
 
@@ -350,11 +364,19 @@ export async function GET(request: NextRequest) {
     // Apply pagination
     dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
 
+    console.log('[TASKS] Executing database query...')
     const { data, error } = await dbQuery;
-    
+
     if (error) {
-      console.error('Database error:', error);
+      console.error('[TASKS] Database error:', JSON.stringify(error));
+      console.error('[TASKS] Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       if (process.env.NODE_ENV !== 'production') {
+        console.log('[TASKS] Development mode - returning mock data after error')
         // Dev fallback: return mock instead of breaking the UI
         let tasks = generateMockTasks();
         const start = query.offset;
@@ -362,6 +384,7 @@ export async function GET(request: NextRequest) {
         tasks = tasks.slice(start, end);
         return jsonWithCors(request, tasks);
       }
+      console.error('[TASKS] Production mode - returning error response')
       return NextResponse.json(
         { error: 'Failed to fetch tasks' },
         { status: 500 }
