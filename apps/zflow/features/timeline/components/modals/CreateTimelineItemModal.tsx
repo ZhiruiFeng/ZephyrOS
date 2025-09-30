@@ -92,11 +92,12 @@ export default function CreateTimelineItemModal({
       // Create time entry for the activity
       if (startTime && endTime) {
         const timeEntryData = {
+          title: title.trim(), // Required field for validation
           start_at: new Date(startTime).toISOString(),
           end_at: new Date(endTime).toISOString(),
           source: 'manual'
         }
-        
+
         await timelineItemsApi.createTimeEntry(newActivity.id, timeEntryData)
       }
 
