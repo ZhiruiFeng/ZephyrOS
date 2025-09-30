@@ -114,3 +114,4 @@ client-secrets.json
 
 # Claude Desktop config (contains sensitive data)
 claude_desktop_config.json
+.vercel

@@ -160,3 +160,4 @@ temp/
 
 .plan/
 .cursor/
+.venv/
