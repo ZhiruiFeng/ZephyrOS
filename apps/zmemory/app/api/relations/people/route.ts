@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest } from '@/auth';
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { PersonCreateSchema, PersonUpdateSchema, PersonQuerySchema } from '@/validation/relations';
 import { nowUTC } from '@/lib/time-utils';
@@ -335,10 +335,12 @@ export async function POST(request: NextRequest) {
     // Create person
     const personPayload = {
       ...personData,
-      user_id: userId,
       created_at: now,
       updated_at: now
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(personPayload, userId, request);
 
     const { data, error } = await supabaseServer
       .from('people')

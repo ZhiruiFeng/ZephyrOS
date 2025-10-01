@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest } from '@/auth';
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
 import { nowUTC } from '@/lib/time-utils';
@@ -418,13 +418,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Start a transaction to create touchpoint and update relationship profile
+    const touchpointPayload = {
+      ...touchpointData,
+      created_at: now
+    };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(touchpointPayload, userId, request);
+
     const { data: touchpointResult, error: touchpointError } = await supabaseServer
       .from('relationship_touchpoints')
-      .insert({
-        ...touchpointData,
-        user_id: userId,
-        created_at: now
-      })
+      .insert(touchpointPayload)
       .select(`
         *,
         person:people(

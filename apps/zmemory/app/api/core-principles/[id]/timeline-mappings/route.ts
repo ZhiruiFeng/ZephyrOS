@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   CreateTimelineMappingSchema,
@@ -443,9 +443,11 @@ export async function POST(
       would_apply_again: mappingData.content.would_apply_again || null,
       applied_at: mappingData.content.applied_at || now,
       created_at: now,
-      updated_at: now,
-      user_id: userId
+      updated_at: now
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     const { data, error } = await client
       .from('core_principle_timeline_items_mapping')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest } from '@/auth'
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
 import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 import type {
   Episode,
@@ -144,7 +144,6 @@ export async function POST(request: NextRequest) {
     // Create episode
     const episodeData = {
       season_id: body.season_id,
-      user_id: userId,
       title: body.title.trim(),
       date_range_start: body.date_range_start,
       date_range_end: body.date_range_end,
@@ -152,6 +151,9 @@ export async function POST(request: NextRequest) {
       reflection: body.reflection?.trim() || null,
       metadata: {}
     }
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(episodeData, userId, request);
 
     const { data: episode, error } = await supabase
       .from('episodes')

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getUserIdFromRequest } from '@/auth'
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
 import { AIAgent, CreateAIAgentRequest, UpdateAIAgentRequest } from '../../../types'
 import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 
@@ -146,12 +146,16 @@ export async function POST(request: NextRequest) {
     const { feature_ids, ...agentData } = CreateAgentSchema.parse(body)
 
     // Start a transaction-like process
+    const agentPayload = {
+      ...agentData
+    };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(agentPayload, userId, request);
+
     const { data: agent, error: agentError } = await supabase
       .from('ai_agents')
-      .insert({
-        ...agentData,
-        user_id: userId
-      })
+      .insert(agentPayload)
       .select()
       .single()
 
@@ -165,9 +169,13 @@ export async function POST(request: NextRequest) {
       const featureMappings = feature_ids.map((featureId, index) => ({
         agent_id: agent.id,
         feature_id: featureId,
-        is_primary: index === 0, // First feature is primary
-        user_id: userId
+        is_primary: index === 0 // First feature is primary
       }))
+
+      // Add user_id to each mapping
+      for (const mapping of featureMappings) {
+        await addUserIdIfNeeded(mapping, userId, request);
+      }
 
       const { error: mappingError } = await supabase
         .from('agent_feature_mappings')
@@ -252,9 +260,13 @@ export async function PUT(request: NextRequest) {
         const featureMappings = feature_ids.map((featureId: string, index: number) => ({
           agent_id: id,
           feature_id: featureId,
-          is_primary: index === 0,
-          user_id: userId
+          is_primary: index === 0
         }))
+
+        // Add user_id to each mapping
+        for (const mapping of featureMappings) {
+          await addUserIdIfNeeded(mapping, userId, request);
+        }
 
         const { error: mappingError } = await supabase
           .from('agent_feature_mappings')

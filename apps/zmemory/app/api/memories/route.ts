@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   MemoryCreateSchema,
@@ -437,49 +437,50 @@ export async function POST(request: NextRequest) {
 
     // Use appropriate client based on auth type (supports both OAuth and API keys)
     const client = await getClientForAuthType(request) || supabase;
+
     // Create memory directly - trigger will sync to timeline_items
     // Note: Only include fields that exist in the memories table schema
-    const memoryPayload = {
+    const memoryPayload: any = {
       title: transformedData.title || transformedData.note?.substring(0, 100) || 'Untitled',
       description: (transformedData as any).description ?? null,
       note: transformedData.note,
       title_override: transformedData.title, // Store title as title_override for DB schema
       memory_type: transformedData.memory_type || 'note',
-      
+
       // Time fields
       captured_at: transformedData.captured_at || now,
       happened_range: transformedData.happened_range,
-      
+
       // Emotional/energy fields (these exist in DB)
       emotion_valence: transformedData.emotion_valence,
       emotion_arousal: transformedData.emotion_arousal,
       energy_delta: transformedData.energy_delta,
-      
+
       // Location fields
       place_name: transformedData.place_name,
       latitude: transformedData.latitude,
       longitude: transformedData.longitude,
-      
+
       // Highlight/salience fields
       is_highlight: transformedData.is_highlight || false,
       salience_score: transformedData.salience_score,
-      
+
       // Organization
       category_id: transformedData.category_id || null,
       tags: transformedData.tags || [],
-      
-      // User ownership
-      user_id: userId,
-      
+
       // Status
       status: 'active',
-      
+
       // Supertype/subtype relationship
       type: 'memory'
-      
+
       // Note: 'mood', 'source', 'context', 'importance_level', 'related_to' are NOT included
       // as they don't exist in the memories table schema
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(memoryPayload, userId, request);
 
     const { data, error } = await client
       .from('memories')

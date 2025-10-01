@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, getClientForAuthType } from '@/auth'
+import { getUserIdFromRequest, getClientForAuthType, addUserIdIfNeeded } from '@/auth'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 import { z } from 'zod'
 
@@ -438,7 +438,6 @@ export async function POST(request: NextRequest) {
 
     // Prepare insert payload
     const insertPayload = {
-      user_id: userId,
       initiative_id: memoryData.initiative_id || null,
       season_id: memoryData.season_id || null,
       memory_id: memoryData.memory_id || null,
@@ -451,6 +450,9 @@ export async function POST(request: NextRequest) {
       tags: memoryData.tags,
       context_data: memoryData.context_data
     }
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     const { data, error } = await client
       .from('core_strategy_memories')

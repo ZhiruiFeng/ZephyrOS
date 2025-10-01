@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   CreateCorePrincipleSchema,
@@ -413,9 +413,11 @@ export async function POST(request: NextRequest) {
       deprecation_reason: principleData.content.deprecation_reason || null,
       metadata: principleData.metadata || {},
       created_at: now,
-      updated_at: now,
-      user_id: userId
+      updated_at: now
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     const { data, error } = await client
       .from('core_principles')

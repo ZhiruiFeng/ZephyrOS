@@ -3,6 +3,7 @@ import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { createActivityService } from '@/services';
 import { getDatabaseClient } from '@/database';
 import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation';
+import { addUserIdIfNeeded } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,9 +136,11 @@ async function handleCreateTimeEntry(
     ...data,
     timeline_item_id: activityId,
     timeline_item_type: 'activity',
-    user_id: userId,
     source: data.source || 'manual'
   };
+
+  // Add user_id to payload (always needed since we use service role client)
+  await addUserIdIfNeeded(timeEntryData, userId, request);
 
   const { data: result, error } = await client
     .from('time_entries')

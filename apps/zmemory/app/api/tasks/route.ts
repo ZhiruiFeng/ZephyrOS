@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getUserIdFromRequest, getAuthContext, getClientForAuthType } from '@/lib/auth/index';
+import { getUserIdFromRequest, getAuthContext, getClientForAuthType, addUserIdIfNeeded } from '@/lib/auth/index';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   CreateTaskSchema,
@@ -536,14 +536,16 @@ export async function POST(request: NextRequest) {
       tags: taskData.tags || [],
       created_at: now,
       updated_at: now,
-      user_id: userId,
-      
+
       // Subtasks hierarchy fields
       parent_task_id: taskData.content.parent_task_id || null,
       subtask_order: taskData.content.subtask_order || 0,
       completion_behavior: taskData.content.completion_behavior || 'manual',
       progress_calculation: taskData.content.progress_calculation || 'manual',
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     // If creating with completed status and no explicit completion_date, set it to now
     if (insertPayload.status === 'completed' && !taskData.content.completion_date) {

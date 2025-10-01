@@ -141,7 +141,7 @@ export async function getClientForAuthType(request: NextRequest): Promise<Supaba
 
   if (authContext?.authType === 'api_key') {
     // For API key auth, use service role client to avoid JWT parsing errors
-    // This client bypasses RLS but we already validated the user via the API key
+    // Service role key bypasses RLS automatically
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!supabaseUrl || !serviceRoleKey) {
       return null
@@ -156,6 +156,27 @@ export async function getClientForAuthType(request: NextRequest): Promise<Supaba
 
   // For OAuth or unknown auth type, use regular client with user's JWT
   return createClientForRequest(request)
+}
+
+/**
+ * Helper to conditionally add user_id to payload based on auth type
+ * - API key auth: Must explicitly set user_id (service role client bypasses RLS)
+ * - OAuth auth: Should NOT set user_id (let RLS use auth.uid() from JWT)
+ *
+ * @param payload The payload object to conditionally add user_id to
+ * @param userId The user ID to add
+ * @param request The request to check auth type from
+ */
+export async function addUserIdIfNeeded(
+  payload: Record<string, any>,
+  userId: string,
+  request: NextRequest
+): Promise<void> {
+  const authContext = await getAuthContext(request)
+  if (authContext?.authType === 'api_key') {
+    payload.user_id = userId
+  }
+  // For OAuth, don't set user_id - let the database default (auth.uid()) handle it
 }
 
 // Re-export from other auth modules for easy access

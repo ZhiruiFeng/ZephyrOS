@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest } from '@/auth'
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
 import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 import type {
   Season,
@@ -129,7 +129,6 @@ export async function POST(request: NextRequest) {
 
     // Create season
     const seasonData = {
-      user_id: userId,
       title: body.title.trim(),
       intention: body.intention?.trim() || null,
       theme: body.theme,
@@ -138,6 +137,9 @@ export async function POST(request: NextRequest) {
       status: 'active' as const,
       metadata: {}
     }
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(seasonData, userId, request);
 
     const { data: season, error } = await supabase
       .from('seasons')

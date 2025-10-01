@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   AssetCreateSchema,
@@ -321,9 +321,11 @@ export async function POST(request: NextRequest) {
     // Create asset
     const insertPayload = {
       ...assetData,
-      user_id: userId,
       created_at: now
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     console.log('Creating asset with payload:', JSON.stringify(insertPayload, null, 2));
 

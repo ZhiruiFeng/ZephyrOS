@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, getClientForAuthType } from '@/auth'
+import { getUserIdFromRequest, getClientForAuthType, addUserIdIfNeeded } from '@/auth'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 import { z } from 'zod'
 
@@ -534,7 +534,6 @@ export async function POST(request: NextRequest) {
 
     // Prepare insert payload
     const insertPayload = {
-      user_id: userId,
       initiative_id: taskData.initiative_id,
       task_id: taskData.task_id || null,
       title: taskData.title,
@@ -557,6 +556,9 @@ export async function POST(request: NextRequest) {
     if (insertPayload.status === 'completed' && !insertPayload.completion_date) {
       insertPayload.completion_date = new Date().toISOString()
     }
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     const { data, error } = await client
       .from('core_strategy_tasks')

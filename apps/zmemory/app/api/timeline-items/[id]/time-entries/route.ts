@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getUserIdFromRequest } from '@/auth'
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
 import { getClientForAuthType } from '@/lib/auth/index'
 import { supabase as serviceClient } from '@/lib/supabase'
 import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation'
@@ -146,16 +146,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
+    const entryPayload = {
+      timeline_item_id: timelineItemId,
+      start_at,
+      end_at: end_at || null,
+      note: note || null,
+      source: source || 'manual',
+    };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(entryPayload, userId, request);
+
     const { data, error } = await client
       .from('time_entries')
-      .insert({
-        user_id: userId,
-        timeline_item_id: timelineItemId,
-        start_at,
-        end_at: end_at || null,
-        note: note || null,
-        source: source || 'manual',
-      })
+      .insert(entryPayload)
       .select(`
         id, timeline_item_id,
         start_at, end_at, duration_minutes, note, source,

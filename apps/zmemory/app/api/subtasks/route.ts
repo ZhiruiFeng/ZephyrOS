@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   CreateSubtaskRequest,
@@ -299,14 +299,16 @@ export async function POST(request: NextRequest) {
       tags: subtaskData.task_data.tags || [],
       created_at: now,
       updated_at: now,
-      user_id: userId,
-      
+
       // Subtask-specific fields
       parent_task_id: subtaskData.parent_task_id,
       subtask_order: subtaskOrder,
       completion_behavior: subtaskData.task_data.content.completion_behavior || 'manual',
       progress_calculation: subtaskData.task_data.content.progress_calculation || 'manual',
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     const { data, error } = await client
       .from('tasks')

@@ -100,30 +100,43 @@ export async function getUser(request: NextRequest): Promise<{ id: string } | nu
 
 /**
  * Get appropriate Supabase client based on authentication type
- * - API key auth: Uses service role client (bypasses RLS, no JWT parsing)
- * - OAuth auth: Uses user-scoped client (enforces RLS with JWT)
+ * - For server-side operations, we always use service role client to bypass RLS
+ * - We validate the user via JWT/API key and explicitly set user_id in payloads
+ * - This is the recommended pattern for server-side Next.js API routes
  */
 export async function getClientForAuthType(request: NextRequest): Promise<SupabaseClient | null> {
-  const authContext = await getAuthContext(request)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (authContext?.authType === 'api_key') {
-    // For API key auth, use service role client to avoid JWT parsing errors
-    // This client bypasses RLS but we already validated the user via the API key
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceRoleKey) {
-      return null
-    }
-    return createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+  // Always use service role client for server-side operations
+  // We've already validated the user via getAuthContext/getUserIdFromRequest
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null
   }
 
-  // For OAuth or unknown auth type, use regular client with user's JWT
-  return createClientForRequest(request)
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+/**
+ * Helper to add user_id to payload for server-side operations
+ * Since we always use service role client (which bypasses RLS),
+ * we must explicitly set user_id for all authenticated requests
+ *
+ * @param payload The payload object to add user_id to
+ * @param userId The user ID to add
+ * @param request The request (for future extensibility)
+ */
+export async function addUserIdIfNeeded(
+  payload: Record<string, any>,
+  userId: string,
+  request: NextRequest
+): Promise<void> {
+  // Always set user_id since we're using service role client
+  payload.user_id = userId
 }
 

@@ -355,7 +355,8 @@ export async function POST(request: NextRequest) {
         p_planned_time_of_day: strategyData.planned_time_of_day || null,
         p_required_energy_level: strategyData.required_energy_level || null,
         p_tags: strategyData.tags,
-        p_metadata: strategyData.metadata
+        p_metadata: strategyData.metadata,
+        p_user_id: userId
       });
 
     if (createError || !newItemId) {

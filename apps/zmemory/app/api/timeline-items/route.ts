@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserIdFromRequest } from '@/auth';
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { getClientForAuthType } from '@/lib/auth/index';
 import { jsonWithCors, createOptionsResponse } from '@/lib/security';
 import { z } from 'zod';
@@ -252,9 +252,11 @@ export async function POST(request: NextRequest) {
       tags: itemData.tags,
       status: itemData.status,
       priority: itemData.priority,
-      user_id: userId,
       metadata: itemData.metadata,
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(insertPayload, userId, request);
 
     const { data, error } = await client
       .from('timeline_items')

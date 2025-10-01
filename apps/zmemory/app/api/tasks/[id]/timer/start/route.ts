@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth'
+import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
 import { supabase as serviceClient } from '../../../../../../lib/supabase'
 import { TimerStartSchema } from '@/validation'
 import { createOptionsResponse, isRateLimited, getClientIP, jsonWithCors } from '@/lib/security'
@@ -69,11 +69,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Start new entry
     const payload = {
-      user_id: userId,
       timeline_item_id: taskId,
       start_at: new Date().toISOString(),
       source: 'timer' as const,
     }
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(payload, userId, request);
+
     const { data: inserted, error: insertErr } = await client
       .from('time_entries')
       .insert(payload)

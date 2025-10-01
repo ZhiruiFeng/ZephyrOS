@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest } from '@/auth';
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
 import { nowUTC } from '@/lib/time-utils';
@@ -391,13 +391,15 @@ export async function POST(request: NextRequest) {
     const profilePayload = {
       ...profileData,
       cadence_days: cadenceDays,
-      user_id: userId,
       health_score: 100, // New relationships start with perfect health
       reciprocity_balance: 0,
       is_dormant: false,
       created_at: now,
       updated_at: now
     };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(profilePayload, userId, request);
 
     const { data, error } = await supabaseServer
       .from('relationship_profiles')

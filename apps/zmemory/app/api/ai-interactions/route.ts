@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getUserIdFromRequest } from '@/auth'
+import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
 import { AIInteraction, CreateAIInteractionRequest, UpdateAIInteractionRequest } from '../../../types'
 import { jsonWithCors, createOptionsResponse } from '@/lib/security'
 
@@ -187,12 +187,16 @@ export async function POST(request: NextRequest) {
       return jsonWithCors(request, { error: 'Agent not found or access denied' }, 404)
     }
 
+    const interactionPayload = {
+      ...validatedData
+    };
+
+    // Add user_id to payload (always needed since we use service role client)
+    await addUserIdIfNeeded(interactionPayload, userId, request);
+
     const { data: interaction, error } = await supabase
       .from('ai_interactions')
-      .insert({
-        ...validatedData,
-        user_id: userId
-      })
+      .insert(interactionPayload)
       .select()
       .single()
 
