@@ -3,174 +3,174 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 export const memoryTools: Tool[] = [
   {
     name: 'add_memory',
-    description: 'Create a new memory/note in ZMemory with rich metadata. Use for capturing thoughts, insights, quotes, or any information worth remembering. Supports emotional context, location, importance rating, and tags. Returns created memory with unique ID.',
+    description: 'Create a new memory/note in ZMemory with rich metadata. Use for capturing thoughts, insights, quotes, learnings, or any information worth remembering. Memories are non-time-consuming items that appear on timeline but cannot be time-tracked. Supports emotional context, location, importance rating, and tags. Syncs to timeline_items table (type=memory). Returns created memory with UUID.',
     inputSchema: {
       type: 'object',
       properties: {
-        note: { type: 'string', description: 'Main content of the memory - what you want to remember', minLength: 1 },
+        note: { type: 'string', description: 'Main memory content (required) - the information/thought/insight you want to preserve', minLength: 1 },
         memory_type: {
           type: 'string',
           enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
           default: 'note',
-          description: 'Type of memory: "note" for general notes, "thought" for reflections, "quote" for memorable quotes, "insight" for key realizations, "link" for web resources, "file" for document references'
+          description: 'Type of memory: "note"=general information, "thought"=personal reflection, "quote"=memorable quotes, "insight"=key realization/learning, "link"=web resource reference, "file"=document reference'
         },
-        title: { type: 'string', description: '记忆标题（可选，用于覆盖自动生成的标题）' },
+        title: { type: 'string', description: 'Optional title override (auto-generated from note content if not provided)' },
         emotion_valence: {
           type: 'integer',
           minimum: -5,
           maximum: 5,
-          description: '情感效价（-5到5，负值表示消极，正值表示积极）'
+          description: 'Emotional tone of the memory (-5=very negative/sad, 0=neutral, +5=very positive/joyful). Track emotional context.'
         },
         emotion_arousal: {
           type: 'integer',
-          minimum: -5,
+          minimum: 0,
           maximum: 5,
-          description: '情感唤醒度（-5到5，负值表示平静，正值表示兴奋）'
+          description: 'Emotional intensity level (0=calm/passive, 5=highly excited/activated). Measures activation level regardless of positive/negative.'
         },
         energy_delta: {
           type: 'integer',
           minimum: -5,
           maximum: 5,
-          description: '能量变化（-5到5，记忆对能量水平的影响）'
+          description: 'How this memory affects energy (-5=very draining, 0=neutral, +5=very energizing). Track impact on vitality.'
         },
-        place_name: { type: 'string', description: '地点名称' },
-        latitude: { type: 'number', description: '地理位置纬度' },
-        longitude: { type: 'number', description: '地理位置经度' },
-        is_highlight: { type: 'boolean', default: false, description: '是否为重要记忆' },
+        place_name: { type: 'string', description: 'Location name where this memory occurred or is associated with (e.g., "Central Park", "office", "home")' },
+        latitude: { type: 'number', description: 'Geographic latitude coordinate (decimal degrees, -90 to 90)' },
+        longitude: { type: 'number', description: 'Geographic longitude coordinate (decimal degrees, -180 to 180)' },
+        is_highlight: { type: 'boolean', default: false, description: 'Mark as important/highlight memory for easier retrieval and review' },
         salience_score: {
           type: 'number',
           minimum: 0,
           maximum: 1,
-          description: '重要性评分（0.0-1.0）'
+          description: 'Importance/relevance score (0.0=trivial, 1.0=critical). Used for prioritization and filtering.'
         },
-        category_id: { type: 'string', description: '分类ID' },
-        tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+        category_id: { type: 'string', description: 'Category UUID for organization (optional, from categories table)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization and search (e.g., ["work", "idea", "urgent"])' },
         happened_range: {
           type: 'object',
           properties: {
-            start: { type: 'string', format: 'date-time', description: '事件开始时间' },
-            end: { type: 'string', format: 'date-time', description: '事件结束时间' }
+            start: { type: 'string', format: 'date-time', description: 'When the event/experience started (ISO 8601)' },
+            end: { type: 'string', format: 'date-time', description: 'When the event/experience ended (ISO 8601)' }
           },
-          description: '事件发生的时间范围'
+          description: 'Time range when the remembered event actually occurred (different from when you captured it). Stored as tstzrange in database.'
         },
-        captured_at: { type: 'string', format: 'date-time', description: '记录时间（默认为当前时间）' }
+        captured_at: { type: 'string', format: 'date-time', description: 'When you recorded this memory (defaults to now if not specified)' }
       },
       required: ['note'],
     },
   },
   {
     name: 'search_memories',
-    description: '搜索和筛选记忆，支持多种条件组合，包括类型、情感、位置、时间范围等高级筛选',
+    description: 'Search and filter memories with advanced criteria including text search, emotional filters, location, time ranges, and importance. Use to retrieve specific memories, find patterns, or review past insights. Returns array of matching memories.',
     inputSchema: {
       type: 'object',
       properties: {
         memory_type: {
           type: 'string',
           enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
-          description: '按记忆类型筛选'
+          description: 'Filter by memory type category'
         },
         status: {
           type: 'string',
           enum: ['active', 'archived', 'deleted'],
-          description: '按状态筛选'
+          description: 'Filter by status (active=current, archived=stored away, deleted=soft-deleted)'
         },
-        is_highlight: { type: 'boolean', description: '只显示重要记忆' },
-        search: { type: 'string', description: '全文搜索记忆内容' },
-        tags: { type: 'string', description: '按标签筛选（逗号分隔）' },
-        place_name: { type: 'string', description: '按地点名称筛选' },
+        is_highlight: { type: 'boolean', description: 'Only return highlighted/important memories when true' },
+        search: { type: 'string', description: 'Full-text search across note content, title, and metadata. Searches title_override and note fields.' },
+        tags: { type: 'string', description: 'Filter by tags (comma-separated, e.g., "work,idea"). Returns memories having ANY of the tags.' },
+        place_name: { type: 'string', description: 'Filter by location name (partial match supported)' },
         min_emotion_valence: {
           type: 'integer',
           minimum: -5,
           maximum: 5,
-          description: '最低情感效价'
+          description: 'Only return memories with emotional tone >= this value (find positive memories)'
         },
         max_emotion_valence: {
           type: 'integer',
           minimum: -5,
           maximum: 5,
-          description: '最高情感效价'
+          description: 'Only return memories with emotional tone <= this value (find negative memories)'
         },
         min_salience: {
           type: 'number',
           minimum: 0,
           maximum: 1,
-          description: '最低重要性评分'
+          description: 'Only return memories with importance score >= this value (find most important)'
         },
-        captured_from: { type: 'string', format: 'date-time', description: '记录时间起始范围' },
-        captured_to: { type: 'string', format: 'date-time', description: '记录时间结束范围' },
-        near_lat: { type: 'number', description: '搜索位置纬度（配合near_lng和distance_km使用）' },
-        near_lng: { type: 'number', description: '搜索位置经度' },
-        distance_km: { type: 'number', description: '搜索半径（公里）' },
-        category_id: { type: 'string', description: '按分类ID筛选' },
+        captured_from: { type: 'string', format: 'date-time', description: 'Filter memories captured on or after this timestamp' },
+        captured_to: { type: 'string', format: 'date-time', description: 'Filter memories captured on or before this timestamp' },
+        near_lat: { type: 'number', description: 'Search for memories near this latitude (requires near_lng and distance_km)' },
+        near_lng: { type: 'number', description: 'Search for memories near this longitude (requires near_lat and distance_km)' },
+        distance_km: { type: 'number', description: 'Search radius in kilometers for location-based search' },
+        category_id: { type: 'string', description: 'Filter by category UUID' },
         sort_by: {
           type: 'string',
           enum: ['captured_at', 'happened_at', 'salience_score', 'emotion_valence', 'updated_at'],
           default: 'captured_at',
-          description: '排序字段'
+          description: 'Sort field (happened_at uses lower bound of happened_range)'
         },
         sort_order: {
           type: 'string',
           enum: ['asc', 'desc'],
           default: 'desc',
-          description: '排序方向'
+          description: 'Sort direction (asc=oldest/lowest first, desc=newest/highest first)'
         },
-        limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: '返回数量限制' },
-        offset: { type: 'number', minimum: 0, default: 0, description: '分页偏移' },
+        limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: 'Maximum number of results' },
+        offset: { type: 'number', minimum: 0, default: 0, description: 'Pagination offset (number to skip)' },
       },
       required: [],
     },
   },
   {
     name: 'get_memory',
-    description: '根据ID获取特定的记忆详情',
+    description: 'Get complete details of a specific memory by UUID. Use after search_memories to view full memory content including all metadata, emotional context, and location data.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: '记忆ID' },
+        id: { type: 'string', description: 'Memory UUID from add_memory or search_memories' },
       },
       required: ['id'],
     },
   },
   {
     name: 'update_memory',
-    description: '更新现有记忆的内容，支持修改所有记忆属性包括情感、位置、重要性等',
+    description: 'Update an existing memory. Use to refine content, add emotional context, update importance rating, or change tags. Only provide fields you want to change. Commonly used to enhance memories with additional insights or correct information.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: '记忆ID' },
-        note: { type: 'string', description: '记忆内容' },
-        title: { type: 'string', description: '记忆标题' },
+        id: { type: 'string', description: 'Memory UUID to update' },
+        note: { type: 'string', description: 'Updated memory content' },
+        title: { type: 'string', description: 'Updated title override' },
         memory_type: {
           type: 'string',
           enum: ['note', 'link', 'file', 'thought', 'quote', 'insight'],
-          description: '记忆类型'
+          description: 'Updated memory type'
         },
-        emotion_valence: { type: 'integer', minimum: -5, maximum: 5, description: '情感效价' },
-        emotion_arousal: { type: 'integer', minimum: -5, maximum: 5, description: '情感唤醒度' },
-        energy_delta: { type: 'integer', minimum: -5, maximum: 5, description: '能量变化' },
-        place_name: { type: 'string', description: '地点名称' },
-        is_highlight: { type: 'boolean', description: '是否为重要记忆' },
-        salience_score: { type: 'number', minimum: 0, maximum: 1, description: '重要性评分' },
-        tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
-        category_id: { type: 'string', description: '分类ID' },
+        emotion_valence: { type: 'integer', minimum: -5, maximum: 5, description: 'Updated emotional tone (-5 to +5)' },
+        emotion_arousal: { type: 'integer', minimum: 0, maximum: 5, description: 'Updated emotional intensity (0 to 5)' },
+        energy_delta: { type: 'integer', minimum: -5, maximum: 5, description: 'Updated energy impact (-5 to +5)' },
+        place_name: { type: 'string', description: 'Updated location name' },
+        is_highlight: { type: 'boolean', description: 'Toggle highlight/important status' },
+        salience_score: { type: 'number', minimum: 0, maximum: 1, description: 'Updated importance score (0.0 to 1.0)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'New tags list (replaces existing tags completely)' },
+        category_id: { type: 'string', description: 'New category UUID' },
       },
       required: ['id'],
     },
   },
   {
     name: 'delete_memory',
-    description: '删除指定的记忆',
+    description: 'Delete a memory by UUID. This performs a soft delete (sets status to deleted) rather than permanent removal. Memory can potentially be recovered.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: '要删除的记忆ID' },
+        id: { type: 'string', description: 'Memory UUID to delete' },
       },
       required: ['id'],
     },
   },
   {
     name: 'get_memory_stats',
-    description: '获取记忆统计信息，包括总数、类型分布、状态分布、情感分布等',
+    description: 'Get aggregate statistics about user\'s memory collection. Shows total count, type distribution, status breakdown, emotional patterns, and highlight counts. Use for analytics and understanding memory collection patterns.',
     inputSchema: {
       type: 'object',
       properties: {},

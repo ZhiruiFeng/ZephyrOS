@@ -3,147 +3,147 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 export const activityTools: Tool[] = [
   {
     name: 'create_activity',
-    description: '记录一项活动，支持详细的心情、能量、满意度跟踪以及上下文信息',
+    description: 'Record a leisure/wellness activity with mood, energy, and satisfaction tracking. Use for logging non-goal-oriented experiences like exercise, meditation, reading, or socializing. Unlike tasks, activities focus on experiential quality and wellbeing metrics. Syncs to timeline_items table (type=activity). Returns created activity with ID.',
     inputSchema: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: '活动标题', maxLength: 500 },
-        description: { type: 'string', description: '活动描述' },
+        title: { type: 'string', description: 'Activity title (required) - what you did (e.g., "Morning run", "Read fiction book")', maxLength: 500 },
+        description: { type: 'string', description: 'Detailed description of the activity and what happened' },
         activity_type: {
           type: 'string',
           enum: ['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'],
-          description: '活动类型'
+          description: 'Activity category (required) - type of experience for tracking patterns'
         },
-        started_at: { type: 'string', format: 'date-time', description: '活动开始时间' },
-        ended_at: { type: 'string', format: 'date-time', description: '活动结束时间' },
-        duration_minutes: { type: 'number', description: '持续时间（分钟）' },
-        mood_before: { type: 'integer', minimum: 1, maximum: 10, description: '活动前心情（1-10）' },
-        mood_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后心情（1-10）' },
-        energy_before: { type: 'integer', minimum: 1, maximum: 10, description: '活动前能量水平（1-10）' },
-        energy_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后能量水平（1-10）' },
-        satisfaction_level: { type: 'integer', minimum: 1, maximum: 10, description: '满意度（1-10）' },
+        started_at: { type: 'string', format: 'date-time', description: 'When activity started (ISO 8601 format, e.g., "2023-12-25T14:30:00Z")' },
+        ended_at: { type: 'string', format: 'date-time', description: 'When activity ended (ISO 8601 format)' },
+        duration_minutes: { type: 'number', description: 'How long it lasted in minutes (auto-calculated from start/end if not provided)' },
+        mood_before: { type: 'integer', minimum: 1, maximum: 10, description: 'Mood level before activity (1=very low, 10=excellent) - track emotional impact' },
+        mood_after: { type: 'integer', minimum: 1, maximum: 10, description: 'Mood level after activity (1=very low, 10=excellent)' },
+        energy_before: { type: 'integer', minimum: 1, maximum: 10, description: 'Energy level before activity (1=exhausted, 10=highly energized)' },
+        energy_after: { type: 'integer', minimum: 1, maximum: 10, description: 'Energy level after activity (1=exhausted, 10=highly energized)' },
+        satisfaction_level: { type: 'integer', minimum: 1, maximum: 10, description: 'Overall satisfaction with the activity (1=disappointed, 10=deeply fulfilling)' },
         intensity_level: {
           type: 'string',
           enum: ['low', 'moderate', 'high'],
-          description: '强度水平'
+          description: 'Physical/mental intensity (low=relaxing, moderate=engaged, high=intense)'
         },
-        location: { type: 'string', description: '地点' },
-        weather: { type: 'string', description: '天气情况' },
-        companions: { type: 'array', items: { type: 'string' }, description: '同伴列表' },
-        notes: { type: 'string', description: '活动备注' },
-        insights: { type: 'string', description: '活动感悟或收获' },
-        gratitude: { type: 'string', description: '感恩记录' },
+        location: { type: 'string', description: 'Where the activity took place (e.g., "Central Park", "home", "gym")' },
+        weather: { type: 'string', description: 'Weather conditions during activity (e.g., "sunny", "rainy")' },
+        companions: { type: 'array', items: { type: 'string' }, description: 'Names of people who joined you (e.g., ["Alice", "Bob"])' },
+        notes: { type: 'string', description: 'Additional notes or observations about the experience' },
+        insights: { type: 'string', description: 'Key realizations or learnings from this activity' },
+        gratitude: { type: 'string', description: 'What you are grateful for from this experience' },
         status: {
           type: 'string',
           enum: ['active', 'completed', 'cancelled'],
           default: 'completed',
-          description: '活动状态'
+          description: 'Activity status (active=ongoing, completed=finished, cancelled=did not complete)'
         },
-        tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
-        category_id: { type: 'string', description: '分类ID' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags for organization (e.g., ["outdoor", "solo", "weekend"])' },
+        category_id: { type: 'string', description: 'Category UUID for grouping (optional, can be obtained from categories table)' },
       },
       required: ['title', 'activity_type'],
     },
   },
   {
     name: 'search_activities',
-    description: '搜索和筛选活动记录，支持按类型、状态、心情、满意度、时间等条件筛选',
+    description: 'Search and filter activity records by type, mood, satisfaction, time range, and more. Use to find patterns in wellbeing data, analyze what activities boost mood/energy, or review past experiences. Returns array of matching activities.',
     inputSchema: {
       type: 'object',
       properties: {
         activity_type: {
           type: 'string',
           enum: ['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'],
-          description: '按活动类型筛选'
+          description: 'Filter by specific activity type'
         },
         status: {
           type: 'string',
           enum: ['active', 'completed', 'cancelled'],
-          description: '按活动状态筛选'
+          description: 'Filter by completion status'
         },
         intensity_level: {
           type: 'string',
           enum: ['low', 'moderate', 'high'],
-          description: '按强度水平筛选'
+          description: 'Filter by intensity level'
         },
         min_satisfaction: {
           type: 'integer',
           minimum: 1,
           maximum: 10,
-          description: '最低满意度'
+          description: 'Only return activities with satisfaction >= this value (find most fulfilling activities)'
         },
         min_mood_after: {
           type: 'integer',
           minimum: 1,
           maximum: 10,
-          description: '活动后最低心情'
+          description: 'Only return activities where post-activity mood >= this value (find mood boosters)'
         },
-        location: { type: 'string', description: '按地点筛选' },
-        from: { type: 'string', format: 'date-time', description: '活动开始时间晚于此时间' },
-        to: { type: 'string', format: 'date-time', description: '活动开始时间早于此时间' },
-        search: { type: 'string', description: '在标题、描述、备注中搜索关键词' },
-        tags: { type: 'string', description: '按标签筛选（逗号分隔）' },
-        category_id: { type: 'string', description: '按分类ID筛选' },
+        location: { type: 'string', description: 'Filter by location (exact match or partial)' },
+        from: { type: 'string', format: 'date-time', description: 'Filter activities started on or after this timestamp' },
+        to: { type: 'string', format: 'date-time', description: 'Filter activities started on or before this timestamp' },
+        search: { type: 'string', description: 'Search keywords in title, description, notes, and insights' },
+        tags: { type: 'string', description: 'Filter by tags (comma-separated, e.g., "outdoor,solo")' },
+        category_id: { type: 'string', description: 'Filter by category UUID' },
         sort_by: {
           type: 'string',
           enum: ['started_at', 'satisfaction_level', 'mood_after', 'title', 'created_at'],
           default: 'started_at',
-          description: '排序字段'
+          description: 'Sort results by this field'
         },
         sort_order: {
           type: 'string',
           enum: ['asc', 'desc'],
           default: 'desc',
-          description: '排序方向'
+          description: 'Sort direction (asc=oldest/lowest first, desc=newest/highest first)'
         },
-        limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: '返回数量限制' },
-        offset: { type: 'number', minimum: 0, default: 0, description: '分页偏移' },
+        limit: { type: 'number', minimum: 1, maximum: 100, default: 20, description: 'Maximum number of results to return' },
+        offset: { type: 'number', minimum: 0, default: 0, description: 'Number of results to skip (for pagination)' },
       },
       required: [],
     },
   },
   {
     name: 'get_activity',
-    description: '根据ID获取特定活动的详细信息',
+    description: 'Get complete details of a specific activity by ID. Use after search_activities to view full activity information including all mood/energy metrics, companions, and reflections.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: '活动ID' },
+        id: { type: 'string', description: 'Activity UUID from create_activity or search_activities' },
       },
       required: ['id'],
     },
   },
   {
     name: 'update_activity',
-    description: '更新现有活动的信息',
+    description: 'Update an existing activity record. Use to add reflections after completion, correct details, or update status. Only provide fields you want to change. Commonly used to add insights/gratitude after the fact.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: '活动ID' },
-        title: { type: 'string', description: '活动标题' },
-        description: { type: 'string', description: '活动描述' },
+        id: { type: 'string', description: 'Activity UUID to update' },
+        title: { type: 'string', description: 'New activity title' },
+        description: { type: 'string', description: 'New activity description' },
         activity_type: {
           type: 'string',
           enum: ['exercise', 'meditation', 'reading', 'music', 'socializing', 'gaming', 'walking', 'cooking', 'rest', 'creative', 'learning', 'other'],
-          description: '活动类型'
+          description: 'New activity type'
         },
-        ended_at: { type: 'string', format: 'date-time', description: '活动结束时间' },
-        mood_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后心情' },
-        energy_after: { type: 'integer', minimum: 1, maximum: 10, description: '活动后能量水平' },
-        satisfaction_level: { type: 'integer', minimum: 1, maximum: 10, description: '满意度' },
-        intensity_level: { type: 'string', enum: ['low', 'moderate', 'high'], description: '强度水平' },
-        notes: { type: 'string', description: '活动备注' },
-        insights: { type: 'string', description: '活动感悟' },
-        gratitude: { type: 'string', description: '感恩记录' },
-        status: { type: 'string', enum: ['active', 'completed', 'cancelled'], description: '活动状态' },
-        tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
+        ended_at: { type: 'string', format: 'date-time', description: 'New end time (use to mark ongoing activity as completed)' },
+        mood_after: { type: 'integer', minimum: 1, maximum: 10, description: 'Updated post-activity mood rating' },
+        energy_after: { type: 'integer', minimum: 1, maximum: 10, description: 'Updated post-activity energy level' },
+        satisfaction_level: { type: 'integer', minimum: 1, maximum: 10, description: 'Updated satisfaction rating' },
+        intensity_level: { type: 'string', enum: ['low', 'moderate', 'high'], description: 'Updated intensity level' },
+        notes: { type: 'string', description: 'Updated or additional notes' },
+        insights: { type: 'string', description: 'New insights or reflections gained from the activity' },
+        gratitude: { type: 'string', description: 'Updated gratitude notes' },
+        status: { type: 'string', enum: ['active', 'completed', 'cancelled'], description: 'New status' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'New tags list (replaces existing tags)' },
       },
       required: ['id'],
     },
   },
   {
     name: 'get_activity_stats',
-    description: '获取活动统计信息，包括类型分布、心情能量趋势、满意度等数据',
+    description: 'Get aggregate statistics and insights about user\'s activity patterns. Shows activity type distribution, average mood/energy impacts, satisfaction trends, and more. Use for wellbeing analytics and pattern discovery.',
     inputSchema: {
       type: 'object',
       properties: {},
