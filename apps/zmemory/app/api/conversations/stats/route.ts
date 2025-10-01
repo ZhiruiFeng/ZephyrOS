@@ -1,41 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseSessionManager } from '@/lib/supabase-session-manager'
-import { jsonWithCors, createOptionsResponse } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createConversationService } from '@/services';
 
-export const dynamic = 'force-dynamic'
-
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/conversations/stats - Get user's conversation statistics
- * Query params:
- *   - userId: string (required)
  */
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const userId = searchParams.get('userId')
+async function handleGetStats(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
 
-    if (!userId) {
-      return jsonWithCors(request, { error: 'userId is required' }, 400)
-    }
+  const conversationService = createConversationService({ userId });
+  const result = await conversationService.getStats();
 
-    const stats = await supabaseSessionManager.getSessionStats(userId)
-
-    return jsonWithCors(request, {
-      success: true,
-      stats: {
-        totalConversations: stats.totalSessions,
-        totalMessages: stats.totalMessages,
-        archivedConversations: stats.archivedSessions,
-        activeConversations: stats.totalSessions - stats.archivedSessions
-      }
-    })
-
-  } catch (error) {
-    console.error('Error fetching conversation stats:', error)
-    return jsonWithCors(request, { error: 'Failed to fetch conversation statistics' }, 500)
+  if (result.error) {
+    throw result.error;
   }
+
+  return NextResponse.json({
+    success: true,
+    stats: result.data
+  });
 }
+
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetStats, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100 // Statistics are relatively lightweight
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

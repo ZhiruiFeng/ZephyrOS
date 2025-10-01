@@ -1,41 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseSessionManager } from '@/lib/supabase-session-manager'
-import { jsonWithCors, createOptionsResponse } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createConversationService } from '@/services';
+import { MessageSearchSchema } from '@/validation';
 
-export const dynamic = 'force-dynamic'
-
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/conversations/search - Search messages across user's conversation history
- * Query params:
- *   - userId: string (required)
- *   - q: string (search query, required)
- *   - limit?: number (default: 20)
  */
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const userId = searchParams.get('userId')
-    const query = searchParams.get('q')
-    const limit = parseInt(searchParams.get('limit') || '20')
+async function handleSearchMessages(request: EnhancedRequest): Promise<NextResponse> {
+  const query = request.validatedQuery!;
+  const userId = request.userId!;
 
-    if (!userId) {
-      return jsonWithCors(request, { error: 'userId is required' }, 400)
-    }
+  const conversationService = createConversationService({ userId });
+  const result = await conversationService.searchMessages(query.q, query.limit);
 
-    if (!query) {
-      return jsonWithCors(request, { error: 'search query (q) is required' }, 400)
-    }
-
-    const results = await supabaseSessionManager.searchMessages(userId, query, limit)
-
-    return jsonWithCors(request, { success: true, query, results, count: results.length })
-
-  } catch (error) {
-    console.error('Error searching conversations:', error)
-    return jsonWithCors(request, { error: 'Failed to search conversations' }, 500)
+  if (result.error) {
+    throw result.error;
   }
+
+  return NextResponse.json({
+    success: true,
+    query: query.q,
+    results: result.data || [],
+    count: result.data?.length || 0
+  });
 }
+
+// Apply middleware with search-specific rate limiting
+export const GET = withStandardMiddleware(handleSearchMessages, {
+  validation: { querySchema: MessageSearchSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100 // Search operations are more expensive
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

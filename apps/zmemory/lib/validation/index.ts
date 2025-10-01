@@ -12,6 +12,7 @@ export * from './time-entries';
 export * from './ai-tasks';
 export * from './timers';
 export * from './categories';
+export * from './conversations';
 export * from './task-relations';
 
 // Backward compatibility exports - these maintain the exact same export names

@@ -33,12 +33,14 @@ startup instructions for future migration sessions.
 | `/api/vendors` | ✅ | VendorService with vendor/service lookup, optional relationship joins |
 | `/api/interaction-types` | ✅ | InteractionTypeService with category filtering and grouping |
 | `/api/energy-days` | ✅ | EnergyDayService with date-range queries and upsert logic |
+| `/api/conversations` | ✅ | ConversationRepository + ConversationService with session/message management, 5 routes migrated (GET, POST, PATCH, DELETE list/detail/messages/search/stats), rate limiting (300 GET, 100 POST, 50 DELETE per 15min) |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).
 - AI task migration established the repository/service pattern including cost analytics, batching, and metadata normalisation.
 - Categories migration demonstrates clean CRUD pattern with usage validation (prevents deletion of in-use categories).
 - Task Relations migration shows complex validation logic (task existence checks, duplicate prevention) cleanly separated into service layer.
+- Conversations migration shows multi-route refactor (5 route files → repository + service pattern), comprehensive session + message management with search and stats.
 - Lookup endpoints (vendors, interaction-types, energy-days) demonstrate service-only pattern (no repository needed for read-mostly system data).
 - Types were modularised into `/lib/database/types/**` and `/lib/services/types/**`, keeping legacy imports working via index re-exports.
 
@@ -48,7 +50,6 @@ Highlights:
 
 | API Route | Current Blockers / Notes | Planned Actions |
 |-----------|-------------------------|-----------------|
-| `/api/conversations` | 151 lines, CRUD operations | Apply CategoryRepository pattern, migrate to service layer |
 | `/api/core-principles` | 466 lines, complex business logic | Extract to service layer, may need custom repository methods |
 | `/api/daily-strategy` | 424 lines, complex operations | Plan incremental migration approach |
 | `/api/tasks` / `/api/memories` / `/api/activities` | 400–600 line legacy handlers | Break into sub-operations, plan staged rollout with regression coverage |
@@ -65,8 +66,9 @@ For detailed sequencing see `MIGRATION_PLAN.md` (Phase 2 & 3 sections).
 - [x] Update this dashboard after each route to keep status current.
 
 ### Medium Priority
-- [ ] `/api/conversations`: CRUD migration similar to categories pattern.
+- [x] `/api/conversations`: CRUD migration with multi-route refactor (5 routes).
 - [x] Batch-migrate lightweight lookup endpoints (`/api/vendors`, `/api/interaction-types`, `/api/energy-days`).
+- [ ] `/api/core-principles`: Extract complex business logic to service layer.
 - [ ] Capture a reusable smoke-test checklist in this file once Phase 2 routes land.
 
 ### Long-Term (Phase 3 Prep)

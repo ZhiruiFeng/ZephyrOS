@@ -1,120 +1,127 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseSessionManager } from '@/lib/supabase-session-manager'
-import { jsonWithCors, createOptionsResponse } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createConversationService } from '@/services';
+import {
+  UpdateConversationSchema,
+  DeleteConversationSchema
+} from '@/validation';
 
-export const dynamic = 'force-dynamic'
-
-/**
- * OPTIONS - Handle CORS preflight requests
- */
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/conversations/[sessionId] - Get specific conversation with messages
- * Query params:
- *   - userId?: string (for access control)
  */
-export async function GET(
-  request: NextRequest,
+async function handleGetConversation(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ sessionId: string }> }
-) {
-  try {
-    const { sessionId } = await params
-    const userId = request.nextUrl.searchParams.get('userId')
+): Promise<NextResponse> {
+  const { sessionId } = await params;
+  const userId = request.userId!;
 
-    if (!sessionId) {
-      return jsonWithCors(request, { error: 'sessionId is required' }, 400)
-    }
-
-    const session = await supabaseSessionManager.getSession(sessionId, userId || undefined)
-
-    if (!session) {
-      return jsonWithCors(request, { error: 'Conversation not found' }, 404)
-    }
-
-    return jsonWithCors(request, { success: true, conversation: session })
-
-  } catch (error) {
-    console.error('Error fetching conversation:', error)
-    return jsonWithCors(request, { error: 'Failed to fetch conversation' }, 500)
+  if (!sessionId) {
+    const error = new Error('sessionId is required');
+    (error as any).code = '400';
+    throw error;
   }
+
+  const conversationService = createConversationService({ userId });
+  const result = await conversationService.getConversation(sessionId);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return NextResponse.json({
+    success: true,
+    conversation: result.data
+  });
 }
 
 /**
  * PATCH /api/conversations/[sessionId] - Update conversation metadata
- * Body: { title?: string, summary?: string, isArchived?: boolean }
  */
-export async function PATCH(
-  request: NextRequest,
+async function handleUpdateConversation(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ sessionId: string }> }
-) {
-  try {
-    const { sessionId } = await params
-    const updates = await request.json()
-    const userId = updates.userId // For access control
+): Promise<NextResponse> {
+  const { sessionId } = await params;
+  const updates = request.validatedBody!;
+  const userId = request.userId!;
 
-    if (!sessionId) {
-      return jsonWithCors(request, { error: 'sessionId is required' }, 400)
-    }
-
-    // Get existing session
-    const existingSession = await supabaseSessionManager.getSession(sessionId, userId)
-    
-    if (!existingSession) {
-      return jsonWithCors(request, { error: 'Conversation not found' }, 404)
-    }
-
-    // Update session with new metadata
-    const updatedSession = {
-      ...existingSession,
-      ...(updates.title !== undefined && { title: updates.title }),
-      ...(updates.summary !== undefined && { summary: updates.summary }),
-      ...(updates.isArchived !== undefined && { isArchived: updates.isArchived }),
-      updatedAt: new Date()
-    }
-
-    await supabaseSessionManager.saveSession(updatedSession)
-
-    return jsonWithCors(request, { success: true, conversation: updatedSession })
-
-  } catch (error) {
-    console.error('Error updating conversation:', error)
-    return jsonWithCors(request, { error: 'Failed to update conversation' }, 500)
+  if (!sessionId) {
+    const error = new Error('sessionId is required');
+    (error as any).code = '400';
+    throw error;
   }
+
+  const conversationService = createConversationService({ userId });
+  const result = await conversationService.updateConversation(sessionId, updates);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return NextResponse.json({
+    success: true,
+    conversation: result.data
+  });
 }
 
 /**
  * DELETE /api/conversations/[sessionId] - Delete specific conversation
  */
-export async function DELETE(
-  request: NextRequest,
+async function handleDeleteConversation(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ sessionId: string }> }
-) {
-  try {
-    const { sessionId } = await params
-    const body = await request.json().catch(() => ({}))
-    const userId = body.userId
+): Promise<NextResponse> {
+  const { sessionId } = await params;
+  const userId = request.userId!;
 
-    if (!sessionId) {
-      return jsonWithCors(request, { error: 'sessionId is required' }, 400)
-    }
-
-    // Verify ownership if userId provided
-    if (userId) {
-      const session = await supabaseSessionManager.getSession(sessionId, userId)
-      if (!session) {
-        return jsonWithCors(request, { error: 'Conversation not found or access denied' }, 404)
-      }
-    }
-
-    await supabaseSessionManager.deleteSession(sessionId)
-
-    return jsonWithCors(request, { success: true, message: 'Conversation deleted successfully' })
-
-  } catch (error) {
-    console.error('Error deleting conversation:', error)
-    return jsonWithCors(request, { error: 'Failed to delete conversation' }, 500)
+  if (!sessionId) {
+    const error = new Error('sessionId is required');
+    (error as any).code = '400';
+    throw error;
   }
+
+  const conversationService = createConversationService({ userId });
+  const result = await conversationService.deleteConversation(sessionId);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'Conversation deleted successfully'
+  });
 }
+
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetConversation, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300 // High limit for individual conversation views
+  }
+});
+
+export const PATCH = withStandardMiddleware(handleUpdateConversation, {
+  validation: { bodySchema: UpdateConversationSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100 // Moderate limit for updates
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDeleteConversation, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50 // Lower limit for deletions
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

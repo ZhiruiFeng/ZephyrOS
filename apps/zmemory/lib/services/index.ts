@@ -15,6 +15,7 @@ export { HealthServiceImpl } from './health-service';
 export { AgentFeaturesServiceImpl } from './agent-features-service';
 export { AITaskServiceImpl } from './ai-task-service';
 export { CategoryServiceImpl } from './category-service';
+export { ConversationServiceImpl } from './conversation-service';
 export { TaskRelationServiceImpl } from './task-relation-service';
 export { VendorServiceImpl } from './vendor-service';
 export { InteractionTypeServiceImpl } from './interaction-type-service';
@@ -28,6 +29,7 @@ export type { HealthService } from './health-service';
 export type { AgentFeaturesService } from './agent-features-service';
 export type { AITaskService } from './ai-task-service';
 export type { CategoryService } from './category-service';
+export type { ConversationService } from './conversation-service';
 export type { TaskRelationService } from './task-relation-service';
 export type { VendorService } from './vendor-service';
 export type { InteractionTypeService } from './interaction-type-service';
@@ -42,6 +44,7 @@ import { HealthServiceImpl } from './health-service';
 import { AgentFeaturesServiceImpl } from './agent-features-service';
 import { AITaskServiceImpl } from './ai-task-service';
 import { CategoryServiceImpl } from './category-service';
+import { ConversationServiceImpl } from './conversation-service';
 import { TaskRelationServiceImpl } from './task-relation-service';
 import { VendorServiceImpl } from './vendor-service';
 import { InteractionTypeServiceImpl } from './interaction-type-service';
@@ -192,6 +195,19 @@ export function createInteractionTypeService(
     aiTaskRepository: repositories.getAITaskRepository()
   };
   return new InteractionTypeServiceImpl(context, deps);
+}
+
+export function createConversationService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): ConversationServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new ConversationServiceImpl(context, deps);
 }
 
 export function createEnergyDayService(
