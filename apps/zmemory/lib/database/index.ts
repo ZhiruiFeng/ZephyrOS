@@ -13,12 +13,16 @@ export { MemoryRepository } from './repositories/memory-repository';
 export { TaskRepository } from './repositories/task-repository';
 export { ActivityRepository } from './repositories/activity-repository';
 export { AITaskRepositoryImpl as AITaskRepository } from './repositories/ai-task-repository';
+export { CategoryRepositoryImpl as CategoryRepository } from './repositories/category-repository';
+export { TaskRelationRepositoryImpl as TaskRelationRepository } from './repositories/task-relation-repository';
 
 // Type exports for repositories
 export type { Memory, MemoryFilterParams } from './repositories/memory-repository';
 export type { Task, TaskFilterParams, CreateSubtaskRequest, TaskTreeNode } from './repositories/task-repository';
 export type { Activity, ActivityFilterParams } from './repositories/activity-repository';
 export type { AITaskRepository as AITaskRepositoryInterface } from './repositories/ai-task-repository';
+export type { CategoryRepository as CategoryRepositoryInterface } from './repositories/category-repository';
+export type { TaskRelationRepository as TaskRelationRepositoryInterface } from './repositories/task-relation-repository';
 
 // Factory function to create repository instances
 import { getDatabaseClient } from './client';
@@ -26,6 +30,8 @@ import { MemoryRepository } from './repositories/memory-repository';
 import { TaskRepository } from './repositories/task-repository';
 import { ActivityRepository } from './repositories/activity-repository';
 import { AITaskRepositoryImpl } from './repositories/ai-task-repository';
+import { CategoryRepositoryImpl } from './repositories/category-repository';
+import { TaskRelationRepositoryImpl } from './repositories/task-relation-repository';
 
 export function createMemoryRepository() {
   return new MemoryRepository(getDatabaseClient());
@@ -43,12 +49,22 @@ export function createAITaskRepository() {
   return new AITaskRepositoryImpl(getDatabaseClient());
 }
 
+export function createCategoryRepository() {
+  return new CategoryRepositoryImpl(getDatabaseClient());
+}
+
+export function createTaskRelationRepository() {
+  return new TaskRelationRepositoryImpl(getDatabaseClient());
+}
+
 // Repository container for dependency injection
 export class RepositoryContainer {
   private memoryRepo?: MemoryRepository;
   private taskRepo?: TaskRepository;
   private activityRepo?: ActivityRepository;
   private aiTaskRepo?: AITaskRepositoryImpl;
+  private categoryRepo?: CategoryRepositoryImpl;
+  private taskRelationRepo?: TaskRelationRepositoryImpl;
 
   getMemoryRepository(): MemoryRepository {
     if (!this.memoryRepo) {
@@ -76,6 +92,20 @@ export class RepositoryContainer {
       this.aiTaskRepo = createAITaskRepository();
     }
     return this.aiTaskRepo;
+  }
+
+  getCategoryRepository(): CategoryRepositoryImpl {
+    if (!this.categoryRepo) {
+      this.categoryRepo = createCategoryRepository();
+    }
+    return this.categoryRepo;
+  }
+
+  getTaskRelationRepository(): TaskRelationRepositoryImpl {
+    if (!this.taskRelationRepo) {
+      this.taskRelationRepo = createTaskRelationRepository();
+    }
+    return this.taskRelationRepo;
   }
 }
 

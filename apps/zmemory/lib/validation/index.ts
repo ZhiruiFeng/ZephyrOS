@@ -11,6 +11,8 @@ export * from './activities';
 export * from './time-entries';
 export * from './ai-tasks';
 export * from './timers';
+export * from './categories';
+export * from './task-relations';
 
 // Backward compatibility exports - these maintain the exact same export names
 // that were previously available from lib/validators.ts and lib/task-types.ts

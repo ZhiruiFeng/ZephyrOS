@@ -1,61 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-function jsonWithCors(request: NextRequest, body: any, status = 200) {
-  const origin = request.headers.get('origin') || '*';
-  const res = NextResponse.json(body, { status });
-  res.headers.set('Access-Control-Allow-Origin', origin);
-  res.headers.set('Vary', 'Origin');
-  res.headers.set('Access-Control-Allow-Credentials', 'true');
-  res.headers.set('Access-Control-Allow-Methods', 'DELETE, OPTIONS');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return res;
-}
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createTaskRelationService } from '@/services';
 
-export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get('origin') || '*';
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': origin,
-      'Vary': 'Origin',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
-}
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-
-// DELETE /api/task-relations/[id] - 删除任务关系
-export async function DELETE(
-  request: NextRequest,
+/**
+ * DELETE /api/task-relations/[id] - Delete a task relation
+ */
+async function handleDeleteRelation(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
-    const supabase = await getClientForAuthType(request)
-    if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
+  const userId = request.userId!; // Already authenticated by middleware
 
-    const { error } = await supabase
-      .from('task_relations')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
+  const taskRelationService = createTaskRelationService({ userId });
+  const result = await taskRelationService.deleteRelation(id);
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: '任务关系不存在' }, 404);
-      }
-      console.error('删除任务关系失败:', error);
-      return jsonWithCors(request, { error: '删除任务关系失败' }, 500);
-    }
-
-    return jsonWithCors(request, { message: '任务关系删除成功' });
-  } catch (error) {
-    console.error('删除任务关系时发生错误:', error);
-    return jsonWithCors(request, { error: '服务器内部错误' }, 500);
+  if (result.error) {
+    throw result.error; // Middleware will handle error formatting
   }
+
+  return NextResponse.json({ message: '任务关系删除成功' });
 }
+
+// Apply middleware
+export const DELETE = withStandardMiddleware(handleDeleteRelation, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 100 } // 100 deletes per 15 minutes
+});
+
+// Explicit OPTIONS handler for preflight requests
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false,
+  rateLimit: false
+});

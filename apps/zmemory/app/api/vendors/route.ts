@@ -1,74 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest } from '@/auth'
-import { jsonWithCors, createOptionsResponse } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createVendorService } from '@/services';
 
-// Create Supabase client for service operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+/**
+ * GET /api/vendors - Get all available vendors and services
+ */
+async function handleGetVendors(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!; // Already authenticated by middleware
 
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
+  const { searchParams } = new URL(request.url);
+  const includeServices = searchParams.get('include_services') === 'true';
+  const vendorId = searchParams.get('vendor_id');
 
-// GET /api/vendors - Get all available vendors and services
-export async function GET(request: NextRequest) {
-  try {
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database not configured' }, 500)
+  const vendorService = createVendorService({ userId });
+
+  if (vendorId) {
+    // Get specific vendor with services
+    const result = await vendorService.getVendor(vendorId);
+
+    if (result.error) {
+      throw result.error; // Middleware will handle error formatting
     }
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    return NextResponse.json({ vendor: result.data });
+  } else {
+    // Get all vendors
+    const result = await vendorService.getVendors(includeServices);
+
+    if (result.error) {
+      throw result.error; // Middleware will handle error formatting
     }
 
-    const { searchParams } = new URL(request.url)
-    const include_services = searchParams.get('include_services') === 'true'
-    const vendor_id = searchParams.get('vendor_id')
-
-    if (vendor_id) {
-      // Get specific vendor with services
-      const { data: vendor, error: vendorError } = await supabase
-        .from('vendors')
-        .select(`
-          *,
-          vendor_services(*)
-        `)
-        .eq('id', vendor_id)
-        .eq('is_active', true)
-        .single()
-
-      if (vendorError) {
-        console.error('Error fetching vendor:', vendorError)
-        return jsonWithCors(request, { error: 'Failed to fetch vendor' }, 500)
-      }
-
-      return jsonWithCors(request, { vendor })
-    } else {
-      // Get all vendors
-      let query = supabase
-        .from('vendors')
-        .select(include_services ? `*, vendor_services(*)` : '*')
-        .eq('is_active', true)
-        .order('name')
-
-      const { data: vendors, error } = await query
-
-      if (error) {
-        console.error('Error fetching vendors:', error)
-        return jsonWithCors(request, { error: 'Failed to fetch vendors' }, 500)
-      }
-
-      return jsonWithCors(request, { vendors })
-    }
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
+    return NextResponse.json({ vendors: result.data || [] });
   }
 }
 
-// OPTIONS - Handle CORS preflight requests
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetVendors, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 300 } // 300 requests per 15 minutes
+});
+
+// Explicit OPTIONS handler for preflight requests
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false,
+  rateLimit: false
+});

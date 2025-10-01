@@ -14,6 +14,11 @@ export { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 export { HealthServiceImpl } from './health-service';
 export { AgentFeaturesServiceImpl } from './agent-features-service';
 export { AITaskServiceImpl } from './ai-task-service';
+export { CategoryServiceImpl } from './category-service';
+export { TaskRelationServiceImpl } from './task-relation-service';
+export { VendorServiceImpl } from './vendor-service';
+export { InteractionTypeServiceImpl } from './interaction-type-service';
+export { EnergyDayServiceImpl } from './energy-day-service';
 
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';
@@ -22,6 +27,11 @@ export type { ActivityAnalyticsService } from './activity-analytics-service';
 export type { HealthService } from './health-service';
 export type { AgentFeaturesService } from './agent-features-service';
 export type { AITaskService } from './ai-task-service';
+export type { CategoryService } from './category-service';
+export type { TaskRelationService } from './task-relation-service';
+export type { VendorService } from './vendor-service';
+export type { InteractionTypeService } from './interaction-type-service';
+export type { EnergyDayService } from './energy-day-service';
 
 // Service factory functions and dependency injection
 import type { ServiceContext, ServiceDependencies } from './types';
@@ -31,6 +41,11 @@ import { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 import { HealthServiceImpl } from './health-service';
 import { AgentFeaturesServiceImpl } from './agent-features-service';
 import { AITaskServiceImpl } from './ai-task-service';
+import { CategoryServiceImpl } from './category-service';
+import { TaskRelationServiceImpl } from './task-relation-service';
+import { VendorServiceImpl } from './vendor-service';
+import { InteractionTypeServiceImpl } from './interaction-type-service';
+import { EnergyDayServiceImpl } from './energy-day-service';
 import { repositories } from '@/database';
 
 /**
@@ -125,6 +140,71 @@ export function createAITaskService(
     aiTaskRepository: repositories.getAITaskRepository()
   };
   return new AITaskServiceImpl(context, deps);
+}
+
+export function createCategoryService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): CategoryServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new CategoryServiceImpl(context, deps);
+}
+
+export function createTaskRelationService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): TaskRelationServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new TaskRelationServiceImpl(context, deps);
+}
+
+export function createVendorService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): VendorServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new VendorServiceImpl(context, deps);
+}
+
+export function createInteractionTypeService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): InteractionTypeServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new InteractionTypeServiceImpl(context, deps);
+}
+
+export function createEnergyDayService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): EnergyDayServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new EnergyDayServiceImpl(context, deps);
 }
 
 /**

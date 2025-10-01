@@ -49,6 +49,116 @@ as we continue porting endpoints.
 
 ---
 
+## Categories API Migration – Clean CRUD Pattern
+
+The `/api/categories` migration went smoothly with zero issues, demonstrating the maturity of our migration patterns.
+
+### Migration Results
+- **Legacy Code**: 2 route files totaling ~336 lines (route.ts: 133 lines, [id]/route.ts: 203 lines)
+- **New Code**: 2 route files totaling ~128 lines (route.ts: 48 lines, [id]/route.ts: 80 lines)
+- **Code Reduction**: 62% fewer lines in route handlers
+- **Added Infrastructure**: CategoryRepository (206 lines), CategoryService (187 lines), validation schemas (32 lines)
+
+### What Went Well
+1. **Zero Breaking Changes**: All existing functionality preserved exactly
+2. **Clean Architecture**: Repository handles all DB operations, service handles business logic
+3. **Type Safety**: Full TypeScript coverage across all layers
+4. **Automatic Middleware**: Auth, CORS, validation, rate limiting, error handling all automatic
+5. **Testing Success**: Manual testing confirmed identical behavior to legacy routes
+
+### Key Features Preserved
+- All CRUD operations (GET list, GET single, POST, PUT, DELETE)
+- Category-in-use validation before deletion
+- Unique constraint handling (duplicate names)
+- Mock data support when Supabase not configured
+- Chinese localized messages
+- Proper HTTP status codes (201 for create, 404 for not found, 400 for validation errors)
+
+### New Benefits Added
+- **Rate Limiting**: 300 GET/15min, 50 POST/15min, 100 PUT/15min, 50 DELETE/15min
+- **Structured Logging**: Service layer logs all operations with context
+- **Better Error Handling**: Consistent error format across all endpoints
+- **Testability**: Service and repository layers can be easily unit tested
+- **Code Reusability**: CategoryService can be used by other parts of the application
+
+### Lessons Learned
+1. **Simple CRUD migrations are fast**: Following the established pattern, this migration took ~2 hours
+2. **Repository pattern scales well**: The same pattern from AI tasks worked perfectly for categories
+3. **Middleware composition is powerful**: Zero manual CORS/auth/validation code needed
+4. **Type system catches errors early**: TypeScript compilation ensured correctness before testing
+
+### Migration Time Breakdown
+- Analysis & Planning: 15 minutes
+- Repository Implementation: 30 minutes
+- Service Implementation: 25 minutes
+- Validation Schemas: 10 minutes
+- Route Migration: 20 minutes
+- Testing & Verification: 20 minutes
+- Documentation: 10 minutes
+- **Total**: ~2 hours
+
+This migration serves as the template for future simple CRUD endpoints.
+
+---
+
+## Task Relations API Migration – Complex Validation Pattern
+
+The `/api/task-relations` migration successfully handled complex business logic with multiple validation layers.
+
+### Migration Results
+- **Legacy Code**: 2 route files totaling ~215 lines (route.ts: 153 lines, [id]/route.ts: 62 lines)
+- **New Code**: 2 route files totaling ~75 lines (route.ts: 49 lines, [id]/route.ts: 28 lines)
+- **Code Reduction**: 65% fewer lines in route handlers
+- **Added Infrastructure**: TaskRelationRepository (203 lines), TaskRelationService (156 lines), validation schemas (32 lines)
+
+### What Went Well
+1. **Complex Validation Simplified**: Multi-step validation (task existence, duplicate prevention) cleanly encapsulated in service
+2. **Database Joins Preserved**: Repository correctly handles joined task details (parent_task, child_task)
+3. **Zero Breaking Changes**: All Chinese error messages and exact behavior preserved
+4. **Clean Separation**: Repository handles DB ops, service handles business rules
+5. **Type Safety**: Full TypeScript coverage with proper relation type enum
+
+### Key Features Preserved
+- Task existence validation (ensures both tasks exist and belong to user)
+- Duplicate relation prevention (checks if relation already exists)
+- Database joins for task details (id, title, status, priority)
+- Flexible filtering (by task_id, relation_type, parent/child task)
+- Chinese localized error messages
+- Proper HTTP status codes (404 for not found, 400 for validation errors, 201 for created)
+
+### Complex Business Logic Handled
+1. **Task Existence Check**: Validates both parent and child tasks exist before creating relation
+2. **Duplicate Prevention**: Checks for existing identical relation (same parent, child, type)
+3. **Bidirectional Filtering**: Supports querying by either parent or child task ID
+4. **Relationship Types**: Properly validates enum (subtask, related, dependency, blocked_by)
+
+### New Benefits Added
+- **Rate Limiting**: 300 GET/15min, 100 POST/15min, 100 DELETE/15min
+- **Structured Logging**: Service layer logs all validation steps
+- **Better Error Handling**: Consistent error format with detailed context
+- **Testable Validation**: Service methods can be unit tested independently
+- **Reusable Checks**: checkTasksExist and checkRelationExists methods can be used elsewhere
+
+### Lessons Learned
+1. **Complex validation benefits most from service layer**: Multi-step checks are much cleaner when separated
+2. **Database joins work seamlessly**: Repository select strings with joins transfer directly to new pattern
+3. **Chinese messages preserved easily**: Error messages in service layer maintain exact text
+4. **Type safety catches edge cases**: TypeScript enum for relation types prevented invalid values early
+
+### Migration Time Breakdown
+- Analysis & Planning: 10 minutes
+- Entity Types: 10 minutes
+- Repository Implementation: 35 minutes
+- Service Implementation: 30 minutes
+- Validation Schemas: 10 minutes
+- Route Migration: 15 minutes
+- Testing & Documentation: 10 minutes
+- **Total**: ~2 hours
+
+This migration demonstrates the pattern for routes with complex multi-step validation logic.
+
+---
+
 # Migration Comparison: Health Route
 
 This document shows the before/after comparison of migrating the health route from legacy pattern to the new architecture.

@@ -28,10 +28,18 @@ startup instructions for future migration sessions.
 | `/api/docs` | ✅ | Public middleware with unified CORS + logging, removed bespoke response handling |
 | `/api/agent-features` | ✅ | Added auth + validation middleware, service layer, OPTIONS preflight |
 | `/api/ai-tasks` | ✅ | Full repository/service refactor, metadata-driven schema alignment, service-role Supabase client |
+| `/api/categories` | ✅ | CategoryRepository + CategoryService with CRUD operations, rate limiting (300 GET, 50 POST, 100 PUT, 50 DELETE per 15min) |
+| `/api/task-relations` | ✅ | TaskRelationRepository + TaskRelationService with relationship management, task existence validation, duplicate prevention |
+| `/api/vendors` | ✅ | VendorService with vendor/service lookup, optional relationship joins |
+| `/api/interaction-types` | ✅ | InteractionTypeService with category filtering and grouping |
+| `/api/energy-days` | ✅ | EnergyDayService with date-range queries and upsert logic |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).
 - AI task migration established the repository/service pattern including cost analytics, batching, and metadata normalisation.
+- Categories migration demonstrates clean CRUD pattern with usage validation (prevents deletion of in-use categories).
+- Task Relations migration shows complex validation logic (task existence checks, duplicate prevention) cleanly separated into service layer.
+- Lookup endpoints (vendors, interaction-types, energy-days) demonstrate service-only pattern (no repository needed for read-mostly system data).
 - Types were modularised into `/lib/database/types/**` and `/lib/services/types/**`, keeping legacy imports working via index re-exports.
 
 ---
@@ -40,9 +48,9 @@ Highlights:
 
 | API Route | Current Blockers / Notes | Planned Actions |
 |-----------|-------------------------|-----------------|
-| `/api/categories` | Legacy CRUD with inline Supabase calls | Introduce CategoryRepository + CategoryService, wrap with middleware, document delta |
-| `/api/task-relations` | Mixed business logic + DB joins | Extract relationship logic to service, ensure validation + rate limits match legacy |
-| `/api/vendors` / `/api/interaction-types` / `/api/energy-days` | Lightweight public endpoints | Batch migrate using `withPublicMiddleware`, add request validation where missing |
+| `/api/conversations` | 151 lines, CRUD operations | Apply CategoryRepository pattern, migrate to service layer |
+| `/api/core-principles` | 466 lines, complex business logic | Extract to service layer, may need custom repository methods |
+| `/api/daily-strategy` | 424 lines, complex operations | Plan incremental migration approach |
 | `/api/tasks` / `/api/memories` / `/api/activities` | 400–600 line legacy handlers | Break into sub-operations, plan staged rollout with regression coverage |
 
 For detailed sequencing see `MIGRATION_PLAN.md` (Phase 2 & 3 sections).
@@ -52,13 +60,13 @@ For detailed sequencing see `MIGRATION_PLAN.md` (Phase 2 & 3 sections).
 ## 🧭 TODO Checklist (Next Sessions)
 
 ### High Priority
-- [ ] `/api/categories`: stand up repository/service + middleware, capture deltas in `MIGRATION_COMPARISON.md`.
-- [ ] `/api/task-relations`: migrate and document relationship-specific lessons learned.
-- [ ] Update this dashboard after each route to keep status current.
+- [x] `/api/categories`: stand up repository/service + middleware, capture deltas in `MIGRATION_COMPARISON.md`.
+- [x] `/api/task-relations`: migrate and document relationship-specific lessons learned.
+- [x] Update this dashboard after each route to keep status current.
 
 ### Medium Priority
-- [ ] Ensure every Phase 2 route has an explicit validation schema (audit and add where missing).
-- [ ] Batch-migrate lightweight lookup endpoints (`/api/vendors`, `/api/interaction-types`, `/api/energy-days`).
+- [ ] `/api/conversations`: CRUD migration similar to categories pattern.
+- [x] Batch-migrate lightweight lookup endpoints (`/api/vendors`, `/api/interaction-types`, `/api/energy-days`).
 - [ ] Capture a reusable smoke-test checklist in this file once Phase 2 routes land.
 
 ### Long-Term (Phase 3 Prep)

@@ -192,11 +192,6 @@ const generateMockTasks = (): TaskMemory[] => [
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('[TASKS] ========== NEW REQUEST ==========')
-    console.log('[TASKS] Request URL:', request.url)
-    console.log('[TASKS] Authorization header:', request.headers.get('authorization') ? 'PRESENT (Bearer ' + request.headers.get('authorization')?.substring(7, 17) + '...)' : 'MISSING')
-    console.log('[TASKS] Environment:', process.env.NODE_ENV)
-
     // Rate limiting - more permissive for GET requests
     const clientIP = getClientIP(request);
     if (isRateLimited(clientIP, 15 * 60 * 1000, 300)) { // 300 requests per 15 minutes

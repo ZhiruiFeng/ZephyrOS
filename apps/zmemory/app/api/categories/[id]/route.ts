@@ -1,203 +1,87 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { z } from 'zod';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createCategoryService } from '@/services';
+import { UpdateCategorySchema } from '@/validation';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+/**
+ * GET /api/categories/[id] - Get a single category
+ */
+async function handleGetCategory(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!; // Already authenticated by middleware
 
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+  const categoryService = createCategoryService({ userId });
+  const result = await categoryService.getCategory(id);
 
-function jsonWithCors(request: NextRequest, body: any, status = 200) {
-  const origin = request.headers.get('origin') || '*';
-  const res = NextResponse.json(body, { status });
-  res.headers.set('Access-Control-Allow-Origin', origin);
-  res.headers.set('Vary', 'Origin');
-  res.headers.set('Access-Control-Allow-Credentials', 'true');
-  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return res;
+  if (result.error) {
+    throw result.error; // Middleware will handle error formatting
+  }
+
+  return NextResponse.json({ category: result.data });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get('origin') || '*';
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': origin,
-      'Vary': 'Origin',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+/**
+ * PUT /api/categories/[id] - Update a category
+ */
+async function handleUpdateCategory(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!; // Already authenticated by middleware
+  const data = request.validatedBody; // Already validated by middleware
+
+  const categoryService = createCategoryService({ userId });
+  const result = await categoryService.updateCategory(id, data);
+
+  if (result.error) {
+    throw result.error; // Middleware will handle error formatting
+  }
+
+  return NextResponse.json({ category: result.data });
 }
 
-// Validation schema
-const UpdateCategorySchema = z.object({
-  name: z.string().min(1, 'Category name cannot be empty').max(50, 'Category name too long').optional(),
-  description: z.string().optional(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Color format is invalid').optional(),
-  icon: z.string().optional()
+/**
+ * DELETE /api/categories/[id] - Delete a category
+ */
+async function handleDeleteCategory(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!; // Already authenticated by middleware
+
+  const categoryService = createCategoryService({ userId });
+  const result = await categoryService.deleteCategory(id);
+
+  if (result.error) {
+    throw result.error; // Middleware will handle error formatting
+  }
+
+  return NextResponse.json({ message: '分类删除成功' });
+}
+
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetCategory, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 300 } // 300 requests per 15 minutes
 });
 
-// GET /api/categories/[id] - Get single category
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    if (!supabase) {
-      const mockCategory = {
-        id: '1',
-        name: 'Work',
-        description: 'Work related tasks',
-        color: '#3B82F6',
-        icon: 'briefcase'
-      };
-      return jsonWithCors(request, { category: id === '1' ? mockCategory : null });
-    }
+export const PUT = withStandardMiddleware(handleUpdateCategory, {
+  validation: { bodySchema: UpdateCategorySchema },
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 100 } // 100 updates per 15 minutes
+});
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-    const client = await getClientForAuthType(request) || supabase
+export const DELETE = withStandardMiddleware(handleDeleteCategory, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 } // 50 deletes per 15 minutes
+});
 
-    const { data: category, error } = await client
-      .from('categories')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Category not found' }, 404);
-      }
-      console.error('Failed to get category:', error);
-      return jsonWithCors(request, { error: 'Failed to get category' }, 500);
-    }
-
-    return jsonWithCors(request, { category });
-  } catch (error) {
-    console.error('Error occurred while getting category:', error);
-    return jsonWithCors(request, { error: 'Internal server error' }, 500);
-  }
-}
-
-// PUT /api/categories/[id] - Update category
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    
-    if (!supabase) {
-      const validatedData = UpdateCategorySchema.parse(body);
-      const mockCategory = {
-        id,
-        ...validatedData,
-        updated_at: new Date().toISOString()
-      };
-      return jsonWithCors(request, { category: mockCategory });
-    }
-
-    const validatedData = UpdateCategorySchema.parse(body);
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-    const client = await getClientForAuthType(request) || supabase
-
-    const { data: category, error } = await client
-      .from('categories')
-      .update(validatedData)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Category not found' }, 404);
-      }
-      if (error.code === '23505') { // Unique constraint violation
-        return jsonWithCors(request, { error: 'Category name already exists' }, 400);
-      }
-      console.error('Failed to update category:', error);
-      return jsonWithCors(request, { error: 'Failed to update category' }, 500);
-    }
-
-    return jsonWithCors(request, { category });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return jsonWithCors(request, { error: 'Data validation failed', details: error.errors }, 400);
-    }
-    console.error('Error occurred while updating category:', error);
-    return jsonWithCors(request, { error: 'Internal server error' }, 500);
-  }
-}
-
-// DELETE /api/categories/[id] - Delete category
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    if (!supabase) {
-      return jsonWithCors(request, { message: 'Category deleted successfully' });
-    }
-
-    // Check if there are tasks using this category
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-    const client = await getClientForAuthType(request) || supabase
-
-    const { data: tasks, error: tasksError } = await client
-      .from('tasks')
-      .select('id')
-      .eq('category_id', id)
-      .eq('user_id', userId)
-      .limit(1);
-
-    if (tasksError) {
-      console.error('Failed to check category usage:', tasksError);
-      return jsonWithCors(request, { error: 'Failed to check category usage' }, 500);
-    }
-
-    if (tasks && tasks.length > 0) {
-      return jsonWithCors(request, { error: 'Cannot delete category that is in use' }, 400);
-    }
-
-    const { error } = await client
-      .from('categories')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Category not found' }, 404);
-      }
-      console.error('Failed to delete category:', error);
-      return jsonWithCors(request, { error: 'Failed to delete category' }, 500);
-    }
-
-    return jsonWithCors(request, { message: '分类删除成功' });
-  } catch (error) {
-    console.error('Error occurred while deleting category:', error);
-    return jsonWithCors(request, { error: 'Internal server error' }, 500);
-  }
-}
+// Explicit OPTIONS handler for preflight requests
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false,
+  rateLimit: false
+});
