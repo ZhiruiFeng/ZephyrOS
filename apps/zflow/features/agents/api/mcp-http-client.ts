@@ -22,13 +22,10 @@ export class MCPHttpClient {
 
   async connect(): Promise<void> {
     if (this.connected) {
-      console.log(`✅ Already connected to MCP server with session: ${this.sessionId}`)
       return
     }
 
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
-    console.log(`🔌 [MCP-CONNECT] Attempting connection to: ${this.config.baseUrl}`)
-    console.log(`🔌 [MCP-CONNECT] Build time: ${isBuildTime}, NODE_ENV: ${process.env.NODE_ENV}, VERCEL: ${process.env.VERCEL}`)
 
     try {
 
@@ -53,11 +50,6 @@ export class MCPHttpClient {
       // Load available tools
       await this.loadTools()
       this.connected = true
-
-      console.log(`✅ [MCP-CONNECT] Connected successfully!`)
-      console.log(`✅ [MCP-CONNECT] Session ID: ${this.sessionId}`)
-      console.log(`✅ [MCP-CONNECT] Tools loaded: ${this.availableTools.length}`)
-      console.log(`✅ [MCP-CONNECT] Tool names: ${this.availableTools.map(t => t.name).slice(0, 5).join(', ')}...`)
     } catch (error) {
       if (isBuildTime) {
         console.warn('⚠️ MCP server unavailable during build time - this is expected')
@@ -66,7 +58,7 @@ export class MCPHttpClient {
         this.availableTools = []
         return
       }
-      console.error('❌ Failed to connect to HTTP MCP server:', error)
+      console.error('[MCP] Failed to connect:', error instanceof Error ? error.message : error)
       throw new Error(`Failed to connect to HTTP MCP server: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -74,7 +66,6 @@ export class MCPHttpClient {
   async disconnect(): Promise<void> {
     this.connected = false
     this.availableTools = []
-    console.log('🔌 Disconnected from HTTP MCP server')
   }
 
   private async makeRequest(endpoint: string, method: 'GET' | 'POST', body?: any): Promise<Response> {
@@ -127,9 +118,8 @@ export class MCPHttpClient {
     const sessionId = response.headers.get('mcp-session-id')
     if (sessionId) {
       this.sessionId = sessionId
-      console.log(`✅ [MCP-SESSION] Initialized with session ID: ${sessionId}`)
     } else {
-      console.warn(`⚠️ [MCP-SESSION] No session ID received from MCP server!`)
+      console.warn('[MCP] No session ID received from server')
     }
 
     const result = await response.json()
@@ -196,9 +186,6 @@ export class MCPHttpClient {
         // Fallback: assume we have standard zmemory tools
         this.availableTools = this.getDefaultTools()
       }
-
-      console.log(`📋 Loaded ${this.availableTools.length} HTTP MCP tools:`,
-        this.availableTools.map(t => t.name).join(', '))
     } catch (error) {
       console.warn('Failed to load HTTP MCP tools, using defaults:', error)
       this.availableTools = this.getDefaultTools()
@@ -279,26 +266,17 @@ export class MCPHttpClient {
     const token = extractToken(userAuthToken)
     const shouldPrimeAuth = !!token && token !== this.lastAccessToken && name !== 'set_access_token'
 
-    console.log(`🔧 [MCP-TOOL] Calling: ${name}`)
-    console.log(`🔧 [MCP-TOOL] MCP Session ID: ${this.sessionId}`)
-    console.log(`🔧 [MCP-TOOL] Has auth token: ${!!token}`)
-    console.log(`🔧 [MCP-TOOL] Token changed: ${token !== this.lastAccessToken}`)
-    console.log(`🔧 [MCP-TOOL] Should prime auth: ${shouldPrimeAuth}`)
-
     try {
-
       // Prime auth inside MCP session via tool call (server ignores headers for auth)
       if (shouldPrimeAuth) {
         try {
-          console.log(`🔐 [MCP-AUTH] Setting access token for MCP session ${this.sessionId}`)
           await this.sendMCPRequest('tools/call', {
             name: 'set_access_token',
             arguments: { access_token: token }
           }, userAuthToken)
           this.lastAccessToken = token!
-          console.log(`✅ [MCP-AUTH] Access token set successfully`)
         } catch (authErr) {
-          console.warn('⚠️ [MCP-AUTH] Failed to set access token:', authErr)
+          console.warn('[MCP] Failed to set access token:', authErr)
         }
       }
 
@@ -339,11 +317,11 @@ export class MCPHttpClient {
             isError: result.isError || false
           }
         } catch (retryErr) {
-          console.error(`❌ HTTP MCP retry for ${name} failed:`, retryErr)
+          console.error(`[MCP] Tool retry failed for ${name}:`, retryErr)
         }
       }
 
-      console.error(`❌ HTTP MCP tool ${name} failed:`, error)
+      console.error(`[MCP] Tool call failed for ${name}:`, error)
       return {
         content: [{
           type: 'text',

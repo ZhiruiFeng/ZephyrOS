@@ -54,9 +54,7 @@ export const resolveZmemoryOrigin = (fallback?: string): string => {
   // Server-side: check for production environment
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
     // In production without NEXT_PUBLIC_API_BASE set, use production zmemory URL
-    const productionUrl = 'https://zmemory.vercel.app'
-    console.log(`[ZMEMORY-API] Production mode without env var, using: ${productionUrl}`)
-    return productionUrl
+    return 'https://zmemory.vercel.app'
   }
 
   return fallback ? normalizeOrigin(fallback) : ''

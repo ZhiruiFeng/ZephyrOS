@@ -5,15 +5,8 @@ import { AgentProvider, ChatContext, StreamingResponse, ZFlowTool } from './type
 function getZmemoryBase(): string {
   // In production, use environment variable or production URL
   if (process.env.NODE_ENV === 'production') {
-    // Try to get from environment first
     const envBase = process.env.NEXT_PUBLIC_API_BASE || process.env.ZMEMORY_API_URL
-    if (envBase) {
-      console.log(`[OPENAI] Using zmemory base from env: ${envBase}`)
-      return envBase
-    }
-    // Production fallback - use production zmemory URL
-    console.log('[OPENAI] Using production fallback: https://zmemory.vercel.app')
-    return 'https://zmemory.vercel.app'
+    return envBase || 'https://zmemory.vercel.app'
   }
 
   // Development: use localhost or configured origin
@@ -58,7 +51,6 @@ export class OpenAIProvider implements AgentProvider {
 
   registerTool(tool: ZFlowTool): void {
     this.tools.push(tool)
-    console.log(`📋 [OPENAI] Registered tool: ${tool.name} (total: ${this.tools.length})`)
   }
 
   getAvailableModels(): string[] {
@@ -92,15 +84,8 @@ export class OpenAIProvider implements AgentProvider {
     const { sessionId, messages, agent } = context
     const messageId = Math.random().toString(36).substring(2, 15)
 
-    console.log(`🤖 [OPENAI] sendMessage called for session: ${sessionId}`)
-    console.log(`🤖 [OPENAI] Tools available: ${this.tools.length}`)
-    console.log(`🤖 [OPENAI] Tool names: ${this.tools.map(t => t.name).slice(0, 10).join(', ')}${this.tools.length > 10 ? '...' : ''}`)
-    console.log(`🤖 [OPENAI] Agent: ${agent.id}, Model: ${agent.model || 'gpt-4-1106-preview'}`)
-
     if (this.tools.length === 0) {
-      console.error('❌ [OPENAI] CRITICAL: NO TOOLS REGISTERED! Agent will hallucinate!')
-      console.error('❌ [OPENAI] This means MCP bridge initialization FAILED')
-      console.error('❌ [OPENAI] Check logs for MCP connection errors above')
+      console.error(`[OPENAI] ERROR: No tools registered for session ${sessionId}. Agent may hallucinate. Check MCP connection.`)
     }
 
     // Resolve per-user API key first
@@ -249,9 +234,6 @@ Be helpful, concise, and proactive in using tools when appropriate. If users ask
 
         // Check if we need to execute tools
         if (finishReason === 'tool_calls' && toolCalls.length > 0) {
-          console.log(`🔧 [OPENAI] GPT wants to call ${toolCalls.length} tool(s)`)
-          toolCalls.forEach(tc => console.log(`  - ${tc.function.name}`))
-
           // Execute tools and collect results
           const toolResults: OpenAI.ChatCompletionToolMessageParam[] = []
 
@@ -259,8 +241,7 @@ Be helpful, concise, and proactive in using tools when appropriate. If users ask
             const tool = this.tools.find(t => t.name === toolCall.function.name)
 
             if (!tool) {
-              console.error(`❌ [OPENAI] Tool not found: ${toolCall.function.name}`)
-              console.error(`❌ [OPENAI] Available tools: ${this.tools.map(t => t.name).join(', ')}`)
+              console.error(`[OPENAI] Tool not found: ${toolCall.function.name}`)
               toolResults.push({
                 role: 'tool',
                 tool_call_id: toolCall.id,
@@ -271,8 +252,6 @@ Be helpful, concise, and proactive in using tools when appropriate. If users ask
 
             try {
               const args = JSON.parse(toolCall.function.arguments)
-              console.log(`🔧 [OPENAI] Executing tool: ${toolCall.function.name}`)
-              console.log(`🔧 [OPENAI] Arguments:`, JSON.stringify(args, null, 2))
 
               // Emit tool call event
               yield {
