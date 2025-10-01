@@ -10,6 +10,7 @@ export { BaseServiceImpl } from './base-service';
 // Specific service implementations
 export { MemoryAnalysisServiceImpl } from './memory-analysis-service';
 export { TaskWorkflowServiceImpl, TaskHierarchyServiceImpl } from './task-workflow-service';
+export { ActivityServiceImpl } from './activity-service';
 export { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 export { HealthServiceImpl } from './health-service';
 export { AgentFeaturesServiceImpl } from './agent-features-service';
@@ -24,6 +25,7 @@ export { EnergyDayServiceImpl } from './energy-day-service';
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';
 export type { TaskWorkflowService, TaskHierarchyService } from './task-workflow-service';
+export type { ActivityService } from './activity-service';
 export type { ActivityAnalyticsService } from './activity-analytics-service';
 export type { HealthService } from './health-service';
 export type { AgentFeaturesService } from './agent-features-service';
@@ -39,6 +41,7 @@ export type { EnergyDayService } from './energy-day-service';
 import type { ServiceContext, ServiceDependencies } from './types';
 import { MemoryAnalysisServiceImpl } from './memory-analysis-service';
 import { TaskWorkflowServiceImpl, TaskHierarchyServiceImpl } from './task-workflow-service';
+import { ActivityServiceImpl } from './activity-service';
 import { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 import { HealthServiceImpl } from './health-service';
 import { AgentFeaturesServiceImpl } from './agent-features-service';
@@ -91,6 +94,19 @@ export function createTaskHierarchyService(
     aiTaskRepository: repositories.getAITaskRepository()
   };
   return new TaskHierarchyServiceImpl(context, deps);
+}
+
+export function createActivityService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): ActivityServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new ActivityServiceImpl(context, deps);
 }
 
 export function createActivityAnalyticsService(

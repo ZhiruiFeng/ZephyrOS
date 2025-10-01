@@ -32,13 +32,16 @@ export const activitiesApi = {
     const response = await authenticatedFetch(`${API_BASE}/activities?${searchParams}`)
     if (!response.ok) throw new Error('Failed to fetch activities')
     const data = await response.json()
-    return Array.isArray(data) ? data : []
+    // New API wraps response in { activities: [...] }, unwrap for backward compatibility
+    return data.activities || (Array.isArray(data) ? data : [])
   },
 
   async getById(id: string): Promise<any> {
     const response = await authenticatedFetch(`${API_BASE}/activities/${id}`)
     if (!response.ok) throw new Error('Failed to fetch activity')
-    return response.json()
+    const data = await response.json()
+    // New API wraps response in { activity: {...} }, unwrap for backward compatibility
+    return data.activity || data
   },
 
   async create(activity: {
@@ -72,7 +75,9 @@ export const activitiesApi = {
       body: JSON.stringify(activity),
     })
     if (!response.ok) throw new Error('Failed to create activity')
-    return response.json()
+    const data = await response.json()
+    // New API wraps response in { activity: {...} }, unwrap for backward compatibility
+    return data.activity || data
   },
 
   async update(id: string, updates: {
@@ -106,7 +111,9 @@ export const activitiesApi = {
       body: JSON.stringify(updates),
     })
     if (!response.ok) throw new Error('Failed to update activity')
-    return response.json()
+    const data = await response.json()
+    // New API wraps response in { activity: {...} }, unwrap for backward compatibility
+    return data.activity || data
   },
 
   async delete(id: string): Promise<void> {

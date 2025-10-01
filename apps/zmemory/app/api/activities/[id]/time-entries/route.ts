@@ -1,161 +1,192 @@
-import { NextRequest } from 'next/server'
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth'
-import { supabase as serviceClient } from '@/lib/supabase'
-import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation'
-import { createOptionsResponse, jsonWithCors } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createActivityService } from '@/services';
+import { getDatabaseClient } from '@/database';
+import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation';
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id: activityId } = await params
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      if (process.env.NODE_ENV !== 'production') {
-        // Dev fallback: allow UI to work without auth
-        return jsonWithCors(request, { entries: [] })
-      }
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-    const client = await getClientForAuthType(request) || serviceClient
-    if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
+export const dynamic = 'force-dynamic';
 
-    const searchParams = new URL(request.url).searchParams
-    const parsed = TimeEntriesQuerySchema.safeParse(Object.fromEntries(searchParams))
-    if (!parsed.success) return jsonWithCors(request, { error: 'Invalid query', details: parsed.error.errors }, 400)
-    const { from, to, limit, offset } = parsed.data
+/**
+ * GET /api/activities/[id]/time-entries - Get time entries for an activity
+ */
+async function handleGetTimeEntries(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id: activityId } = await params;
+  const query = request.validatedQuery!;
+  const userId = request.userId!;
 
-    let query = client
-      .from('time_entries')
-      .select(`
-        id, timeline_item_id, timeline_item_type, timeline_item_title,
-        start_at, end_at, duration_minutes, note, source,
-        category_id_snapshot,
-        timeline_item:timeline_items(title, type),
-        category:categories(name, color)
-      `)
-      .eq('user_id', userId)
-      .eq('timeline_item_id', activityId)
-      .eq('timeline_item_type', 'activity')
-      .order('start_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (from) query = query.gte('start_at', from)
-    if (to) query = query.lte('start_at', to)
-
-    const { data, error } = await query
-    if (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('activity time-entries GET error (dev fallback):', error)
-        return jsonWithCors(request, { entries: [] })
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch entries' }, 500)
-    }
-
-    // Map to include activity_id for backward compatibility
-    const entries = (data || []).map(entry => ({
-      ...entry,
-      activity_id: entry.timeline_item_id, // For backward compatibility
-    }))
-
-    return jsonWithCors(request, { entries })
-  } catch (error) {
-    console.error('GET activity time-entries error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
+  if (!activityId) {
+    const error = new Error('Activity ID is required');
+    (error as any).code = '400';
+    throw error;
   }
+
+  // Verify activity exists and user owns it
+  const activityService = createActivityService({ userId });
+  const activityResult = await activityService.getActivity(activityId);
+
+  if (activityResult.error) {
+    throw activityResult.error;
+  }
+
+  // Fetch time entries directly from database
+  const client = getDatabaseClient();
+
+  let dbQuery = client
+    .from('time_entries')
+    .select(`
+      id, timeline_item_id, timeline_item_type, timeline_item_title,
+      start_at, end_at, duration_minutes, note, source,
+      category_id_snapshot,
+      timeline_item:timeline_items(title, type),
+      category:categories(name, color)
+    `)
+    .eq('user_id', userId)
+    .eq('timeline_item_id', activityId)
+    .eq('timeline_item_type', 'activity')
+    .order('start_at', { ascending: false })
+    .range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
+
+  if (query.from) dbQuery = dbQuery.gte('start_at', query.from);
+  if (query.to) dbQuery = dbQuery.lte('start_at', query.to);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error fetching time entries:', error);
+    const dbError = new Error('Failed to fetch time entries');
+    (dbError as any).code = '500';
+    throw dbError;
+  }
+
+  // Map to include activity_id for backward compatibility
+  const entries = (data || []).map(entry => ({
+    ...entry,
+    activity_id: entry.timeline_item_id
+  }));
+
+  return NextResponse.json({ entries });
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id: activityId } = await params
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-    const client = await getClientForAuthType(request) || serviceClient
-    if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
+/**
+ * POST /api/activities/[id]/time-entries - Create a time entry for an activity
+ */
+async function handleCreateTimeEntry(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id: activityId } = await params;
+  const data = request.validatedBody!;
+  const userId = request.userId!;
 
-    const body = await request.json()
-    const parsed = TimeEntryCreateSchema.safeParse(body)
-    if (!parsed.success) {
-      return jsonWithCors(request, { error: 'Invalid request body', details: parsed.error.errors }, 400)
-    }
+  if (!activityId) {
+    const error = new Error('Activity ID is required');
+    (error as any).code = '400';
+    throw error;
+  }
 
-    // Verify the activity exists and belongs to the user
-    const { data: activity } = await client
-      .from('activities')
-      .select('id, title')
-      .eq('id', activityId)
+  // Verify activity exists and user owns it
+  const activityService = createActivityService({ userId });
+  const activityResult = await activityService.getActivity(activityId);
+
+  if (activityResult.error) {
+    throw activityResult.error;
+  }
+
+  const client = getDatabaseClient();
+
+  // If this is a timer source and no end_at is provided (starting a timer),
+  // check for running timers and stop them first
+  if (data.source === 'timer' && !data.end_at) {
+    const { data: running, error: runningErr } = await client
+      .from('time_entries')
+      .select('id, timeline_item_id, timeline_item_type')
       .eq('user_id', userId)
-      .single()
+      .is('end_at', null)
+      .maybeSingle();
 
-    if (!activity) {
-      return jsonWithCors(request, { error: 'Activity not found' }, 404)
+    if (runningErr) {
+      console.error('Error checking running timer:', runningErr);
+      const error = new Error('Failed to check running timer');
+      (error as any).code = '500';
+      throw error;
     }
 
-    // If this is a timer source and no end_at is provided (starting a timer), 
-    // check for running timers and stop them first
-    if (parsed.data.source === 'timer' && !parsed.data.end_at) {
-      const { data: running, error: runningErr } = await client
+    // If there's a running timer, stop it first
+    if (running) {
+      const { error: stopErr } = await client
         .from('time_entries')
-        .select('id, timeline_item_id, timeline_item_type')
-        .eq('user_id', userId)
-        .is('end_at', null)
-        .maybeSingle()
+        .update({ end_at: new Date().toISOString() })
+        .eq('id', running.id)
+        .eq('user_id', userId);
 
-      if (runningErr) {
-        return jsonWithCors(request, { error: 'Failed to check running timer' }, 500)
-      }
-
-      // If there's a running timer, stop it first
-      if (running) {
-        const { error: stopErr } = await client
-          .from('time_entries')
-          .update({ end_at: new Date().toISOString() })
-          .eq('id', running.id)
-          .eq('user_id', userId)
-        
-        if (stopErr) {
-          return jsonWithCors(request, { error: 'Failed to stop current timer' }, 500)
-        }
+      if (stopErr) {
+        console.error('Error stopping current timer:', stopErr);
+        const error = new Error('Failed to stop current timer');
+        (error as any).code = '500';
+        throw error;
       }
     }
-
-    const timeEntryData = {
-      ...parsed.data,
-      timeline_item_id: activityId,
-      user_id: userId,
-      source: parsed.data.source || 'manual'
-    }
-
-    const { data, error } = await client
-      .from('time_entries')
-      .insert(timeEntryData)
-      .select(`
-        id, timeline_item_id, timeline_item_type, timeline_item_title,
-        start_at, end_at, duration_minutes, note, source,
-        category_id_snapshot,
-        timeline_item:timeline_items(title, type),
-        category:categories(name, color)
-      `)
-      .single()
-
-    if (error) {
-      console.error('POST activity time-entries error:', error)
-      return jsonWithCors(request, { error: 'Failed to create time entry' }, 500)
-    }
-
-    // Add activity_id for backward compatibility
-    const result = {
-      ...data,
-      activity_id: data.timeline_item_id,
-    }
-
-    return jsonWithCors(request, result, 201)
-  } catch (error) {
-    console.error('POST activity time-entries error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
+
+  const timeEntryData = {
+    ...data,
+    timeline_item_id: activityId,
+    timeline_item_type: 'activity',
+    user_id: userId,
+    source: data.source || 'manual'
+  };
+
+  const { data: result, error } = await client
+    .from('time_entries')
+    .insert(timeEntryData)
+    .select(`
+      id, timeline_item_id, timeline_item_type, timeline_item_title,
+      start_at, end_at, duration_minutes, note, source,
+      category_id_snapshot,
+      timeline_item:timeline_items(title, type),
+      category:categories(name, color)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Database error creating time entry:', error);
+    const dbError = new Error('Failed to create time entry');
+    (dbError as any).code = '500';
+    throw dbError;
+  }
+
+  // Add activity_id for backward compatibility
+  const response = {
+    ...result,
+    activity_id: result.timeline_item_id
+  };
+
+  return NextResponse.json(response, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetTimeEntries, {
+  validation: { querySchema: TimeEntriesQuerySchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300 // Higher limit for listing
+  }
+});
+
+export const POST = withStandardMiddleware(handleCreateTimeEntry, {
+  validation: { bodySchema: TimeEntryCreateSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100 // Moderate limit for creation
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

@@ -12,8 +12,8 @@ startup instructions for future migration sessions.
 |-------|-------|--------|-------|
 | Phase 0 | Project scaffolding & safety rails | ✅ Complete | Path aliases, documentation baseline, zero-breaking-change guardrails |
 | Phase 1 | Quick-win routes & pattern validation | ✅ Complete | `/api/health`, `/api/docs`, `/api/agent-features`, `/api/ai-tasks` |
-| Phase 2 | High-impact support APIs | 🔄 In progress | Next targets: `/api/categories`, `/api/task-relations`, auxiliary lookups |
-| Phase 3 | Core feature APIs | ⏳ Pending | Large surfaces (tasks, memories, activities) to migrate incrementally |
+| Phase 2 | High-impact support APIs | ✅ Complete | `/api/categories`, `/api/task-relations`, `/api/vendors`, `/api/interaction-types`, `/api/energy-days`, `/api/conversations` |
+| Phase 3 | Core feature APIs | 🔄 In progress | First route complete: `/api/activities`. Next: tasks, memories, or daily-strategy |
 
 > Detailed before/after comparisons continue to live in
 > `MIGRATION_COMPARISON.md`. Use this dashboard for actionable next steps.
@@ -34,6 +34,7 @@ startup instructions for future migration sessions.
 | `/api/interaction-types` | ✅ | InteractionTypeService with category filtering and grouping |
 | `/api/energy-days` | ✅ | EnergyDayService with date-range queries and upsert logic |
 | `/api/conversations` | ✅ | ConversationRepository + ConversationService with session/message management, 5 routes migrated (GET, POST, PATCH, DELETE list/detail/messages/search/stats), rate limiting (300 GET, 100 POST, 50 DELETE per 15min) |
+| `/api/activities` | ✅ | ActivityService + ActivityAnalyticsService with CRUD operations, 4 routes migrated (list/create, detail/update/delete, stats, time-entries), rate limiting (300 GET, 100 POST/PUT, 50 DELETE per 15min) |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).
@@ -41,6 +42,7 @@ Highlights:
 - Categories migration demonstrates clean CRUD pattern with usage validation (prevents deletion of in-use categories).
 - Task Relations migration shows complex validation logic (task existence checks, duplicate prevention) cleanly separated into service layer.
 - Conversations migration shows multi-route refactor (5 route files → repository + service pattern), comprehensive session + message management with search and stats.
+- Activities migration demonstrates Phase 3 readiness (4 route files, 950 lines → service + analytics pattern), complex time-entry operations with timer logic, leverages existing ActivityRepository.
 - Lookup endpoints (vendors, interaction-types, energy-days) demonstrate service-only pattern (no repository needed for read-mostly system data).
 - Types were modularised into `/lib/database/types/**` and `/lib/services/types/**`, keeping legacy imports working via index re-exports.
 
@@ -67,8 +69,9 @@ For detailed sequencing see `MIGRATION_PLAN.md` (Phase 2 & 3 sections).
 
 ### Medium Priority
 - [x] `/api/conversations`: CRUD migration with multi-route refactor (5 routes).
+- [x] `/api/activities`: CRUD + analytics migration (4 routes, first Phase 3 route).
 - [x] Batch-migrate lightweight lookup endpoints (`/api/vendors`, `/api/interaction-types`, `/api/energy-days`).
-- [ ] `/api/core-principles`: Extract complex business logic to service layer.
+- [ ] `/api/core-principles`: Extract complex business logic to service layer (1,785 lines across 4 routes - very large).
 - [ ] Capture a reusable smoke-test checklist in this file once Phase 2 routes land.
 
 ### Long-Term (Phase 3 Prep)

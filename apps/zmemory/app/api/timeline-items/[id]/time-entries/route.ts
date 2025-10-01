@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     let query = client
       .from('time_entries')
       .select(`
-        id, timeline_item_id, timeline_item_type, timeline_item_title,
+        id, timeline_item_id,
         start_at, end_at, duration_minutes, note, source,
         category_id_snapshot,
         timeline_item:timeline_items(title, type),
@@ -67,11 +67,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const category = Array.isArray(entry.category) ? entry.category[0] : entry.category
       return {
         ...entry,
-        timeline_item_title: entry.timeline_item_title || timeline_item?.title,
+        timeline_item_type: timeline_item?.type || timelineItem.type,
+        timeline_item_title: timeline_item?.title || timelineItem.title,
         category_name: category?.name,
         category_color: category?.color,
         // For backward compatibility, expose task_id if it's a task
-        ...(entry.timeline_item_type === 'task' && { task_id: entry.timeline_item_id }),
+        ...(timeline_item?.type === 'task' && { task_id: entry.timeline_item_id }),
       }
     })
 
@@ -156,27 +157,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         source: source || 'manual',
       })
       .select(`
-        id, timeline_item_id, timeline_item_type, timeline_item_title,
+        id, timeline_item_id,
         start_at, end_at, duration_minutes, note, source,
         category_id_snapshot,
         timeline_item:timeline_items(title, type),
         category:categories(name, color)
       `)
       .single()
-    if (error) return jsonWithCors(request, { error: 'Failed to create entry' }, 500)
+    if (error) {
+      console.error('Time entry creation error:', error)
+      return jsonWithCors(request, { error: 'Failed to create entry', details: error.message }, 500)
+    }
     
     // Map entry to include joined fields
     const timeline_item = Array.isArray(data.timeline_item) ? data.timeline_item[0] : data.timeline_item
     const category = Array.isArray(data.category) ? data.category[0] : data.category
     const mappedEntry = {
       ...data,
-      timeline_item_title: data.timeline_item_title || timeline_item?.title,
+      timeline_item_type: timeline_item?.type || timelineItem.type,
+      timeline_item_title: timeline_item?.title || timelineItem.title,
       category_name: category?.name,
       category_color: category?.color,
       // For backward compatibility, expose task_id if it's a task
-      ...(data.timeline_item_type === 'task' && { task_id: data.timeline_item_id }),
+      ...((timeline_item?.type || timelineItem.type) === 'task' && { task_id: data.timeline_item_id }),
     }
-    
+
     return jsonWithCors(request, { entry: mappedEntry }, 201)
   } catch (e) {
     return jsonWithCors(request, { error: 'Internal server error' }, 500)
