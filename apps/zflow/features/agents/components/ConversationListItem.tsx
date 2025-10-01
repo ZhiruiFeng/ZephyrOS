@@ -77,6 +77,9 @@ export function ConversationListItem({
   }
 
   const getAgentIcon = (agentId: string) => {
+    if (!agentId) {
+      return <Bot className="w-6 h-6 text-gray-400" />
+    }
     if (agentId.includes('gpt')) {
       return <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center text-white text-xs font-bold">G</div>
     } else if (agentId.includes('claude')) {

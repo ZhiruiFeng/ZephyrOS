@@ -21,7 +21,7 @@ export function withAuth<THandler extends (request: AuthenticatedRequest, ...arg
 ): (request: NextRequest, ...args: any[]) => Promise<NextResponse> {
   const {
     requireAuth = true,
-    devFallbackUserId = '00000000-0000-0000-0000-000000000001',
+    devFallbackUserId = 'dcc1d6b4-43f9-4504-93dc-000361423c93',
     customUnauthorizedResponse
   } = options;
 
@@ -32,6 +32,8 @@ export function withAuth<THandler extends (request: AuthenticatedRequest, ...arg
 
       // Development fallback
       if (!userId && process.env.NODE_ENV !== 'production') {
+        console.log('⚠️  No authentication found, using dev fallback user ID:', devFallbackUserId);
+        console.log('   To fix: Log in to Supabase or provide a Bearer token');
         userId = devFallbackUserId;
       }
 

@@ -41,11 +41,15 @@ export type AuthContext = {
 export async function getAuthContext(request: NextRequest): Promise<AuthContext | null> {
   const token = getBearerToken(request)
   if (!token) {
+    console.log('🔍 No Bearer token found in request')
     return null
   }
 
+  console.log('🔍 Bearer token found:', token.substring(0, 50) + '...')
+
   // API key path: Bearer zm_...
   if (token.startsWith('zm_')) {
+    console.log('🔑 Detected API key authentication')
     if (!supabaseServer) {
       return null
     }
@@ -83,8 +87,10 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
   }
 
   // OAuth path via Supabase JWT
+  console.log('🔐 Attempting OAuth JWT validation')
   const client = createClientForRequest(request)
   if (!client) {
+    console.log('❌ Failed to create Supabase client')
     return null
   }
 
@@ -92,15 +98,19 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
     const { data, error } = await client.auth.getUser()
 
     if (error) {
+      console.log('❌ Supabase auth.getUser() error:', error.message)
       return null
     }
 
     if (!data.user) {
+      console.log('❌ No user in response')
       return null
     }
 
+    console.log('✅ OAuth authenticated! User ID:', data.user.id)
     return { id: data.user.id, authType: 'oauth' }
   } catch (error) {
+    console.log('❌ Exception in OAuth validation:', error)
     return null
   }
 }
