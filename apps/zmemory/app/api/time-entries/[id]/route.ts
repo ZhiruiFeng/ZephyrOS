@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '@/auth'
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth'
 import { supabase as serviceClient } from '@/lib/supabase'
 import { TimeEntryUpdateSchema } from '@/validation'
 import { createOptionsResponse, jsonWithCors } from '@/lib/security'
@@ -9,7 +9,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    const client = createClientForRequest(request) || serviceClient
+    const client = await getClientForAuthType(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
     const body = await request.json()
@@ -45,7 +45,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    const client = createClientForRequest(request) || serviceClient
+    const client = await getClientForAuthType(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
     const { error } = await client

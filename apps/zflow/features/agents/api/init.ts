@@ -19,39 +19,61 @@ export async function initializeAgentSystem(): Promise<void> {
 
 async function performInitialization(): Promise<void> {
   try {
-    console.log('🚀 Initializing ZFlow Agent System...')
+    console.log('🚀 [INIT] Initializing ZFlow Agent System...')
+    console.log('🚀 [INIT] Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      VERCEL: process.env.VERCEL,
+      NEXT_PHASE: process.env.NEXT_PHASE
+    })
 
     // Initialize agent providers (with build-time safety)
     if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === undefined) {
-      console.warn('Providers not initialized during build time')
+      console.warn('⚠️ [INIT] Providers not initialized during build time - exiting early')
       return
     }
 
     // Create provider instances
     if (!openAIProvider) {
+      console.log('🔧 [INIT] Creating OpenAI provider instance...')
       openAIProvider = new OpenAIProvider()
+      console.log(`✅ [INIT] OpenAI provider created`)
+    } else {
+      console.log(`♻️ [INIT] OpenAI provider already exists (reusing singleton)`)
     }
 
     if (!anthropicProvider) {
+      console.log('🔧 [INIT] Creating Anthropic provider instance...')
       anthropicProvider = new AnthropicProvider()
+      console.log(`✅ [INIT] Anthropic provider created`)
+    } else {
+      console.log(`♻️ [INIT] Anthropic provider already exists (reusing singleton)`)
     }
 
     // Initialize MCP bridge and register tools with EXISTING provider instances
     try {
-      console.log('🔧 Setting up MCP integration...')
+      console.log('🔧 [INIT] Setting up MCP integration...')
+      const startTime = Date.now()
       await initializeMCPBridge([openAIProvider, anthropicProvider])
-      console.log(`✅ MCP tools registered with existing provider instances`)
+      const duration = Date.now() - startTime
+      console.log(`✅ [INIT] MCP tools registered (took ${duration}ms)`)
+      console.log(`✅ [INIT] OpenAI now has ${openAIProvider['tools']?.length || 0} tools`)
+      console.log(`✅ [INIT] Anthropic now has ${anthropicProvider['tools']?.length || 0} tools`)
 
     } catch (mcpError) {
-      console.warn('⚠️ MCP initialization failed, continuing without MCP tools:', mcpError)
+      console.error('❌ [INIT] MCP initialization FAILED:', mcpError)
+      console.error('❌ [INIT] Agents will have NO TOOLS and will hallucinate!')
+      console.error('❌ [INIT] Error details:', mcpError instanceof Error ? mcpError.stack : mcpError)
       // Continue without MCP - basic agent functionality will still work
     }
 
     // Register providers with registry (now with MCP tools loaded)
+    console.log('📋 [INIT] Registering providers with agent registry...')
     agentRegistry.registerProvider(openAIProvider)
     agentRegistry.registerProvider(anthropicProvider)
 
-    console.log('✅ ZFlow Agent System initialized successfully')
+    console.log('✅ [INIT] ZFlow Agent System initialized successfully')
+    console.log('✅ [INIT] Final tool counts: OpenAI=' + (openAIProvider['tools']?.length || 0) + ', Anthropic=' + (anthropicProvider['tools']?.length || 0))
 
   } catch (error) {
     console.error('❌ Failed to initialize ZFlow Agent System:', error)

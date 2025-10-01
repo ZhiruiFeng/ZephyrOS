@@ -21,12 +21,16 @@ export class MCPHttpClient {
   }
 
   async connect(): Promise<void> {
-    if (this.connected) return
+    if (this.connected) {
+      console.log(`✅ Already connected to MCP server with session: ${this.sessionId}`)
+      return
+    }
 
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+    console.log(`🔌 [MCP-CONNECT] Attempting connection to: ${this.config.baseUrl}`)
+    console.log(`🔌 [MCP-CONNECT] Build time: ${isBuildTime}, NODE_ENV: ${process.env.NODE_ENV}, VERCEL: ${process.env.VERCEL}`)
 
     try {
-      console.log(`🔌 Connecting to HTTP MCP server: ${this.config.baseUrl}`)
 
       // Test connection with health check (use simple headers for health endpoint)
       const healthUrl = `${this.config.baseUrl.replace(/\/$/, '')}/health`
@@ -50,7 +54,10 @@ export class MCPHttpClient {
       await this.loadTools()
       this.connected = true
 
-      console.log(`✅ Connected to HTTP MCP server with ${this.availableTools.length} tools`)
+      console.log(`✅ [MCP-CONNECT] Connected successfully!`)
+      console.log(`✅ [MCP-CONNECT] Session ID: ${this.sessionId}`)
+      console.log(`✅ [MCP-CONNECT] Tools loaded: ${this.availableTools.length}`)
+      console.log(`✅ [MCP-CONNECT] Tool names: ${this.availableTools.map(t => t.name).slice(0, 5).join(', ')}...`)
     } catch (error) {
       if (isBuildTime) {
         console.warn('⚠️ MCP server unavailable during build time - this is expected')
@@ -120,6 +127,9 @@ export class MCPHttpClient {
     const sessionId = response.headers.get('mcp-session-id')
     if (sessionId) {
       this.sessionId = sessionId
+      console.log(`✅ [MCP-SESSION] Initialized with session ID: ${sessionId}`)
+    } else {
+      console.warn(`⚠️ [MCP-SESSION] No session ID received from MCP server!`)
     }
 
     const result = await response.json()
@@ -269,19 +279,26 @@ export class MCPHttpClient {
     const token = extractToken(userAuthToken)
     const shouldPrimeAuth = !!token && token !== this.lastAccessToken && name !== 'set_access_token'
 
+    console.log(`🔧 [MCP-TOOL] Calling: ${name}`)
+    console.log(`🔧 [MCP-TOOL] MCP Session ID: ${this.sessionId}`)
+    console.log(`🔧 [MCP-TOOL] Has auth token: ${!!token}`)
+    console.log(`🔧 [MCP-TOOL] Token changed: ${token !== this.lastAccessToken}`)
+    console.log(`🔧 [MCP-TOOL] Should prime auth: ${shouldPrimeAuth}`)
+
     try {
-      console.log(`🔧 Calling HTTP MCP tool: ${name}`, arguments_)
 
       // Prime auth inside MCP session via tool call (server ignores headers for auth)
       if (shouldPrimeAuth) {
         try {
+          console.log(`🔐 [MCP-AUTH] Setting access token for MCP session ${this.sessionId}`)
           await this.sendMCPRequest('tools/call', {
             name: 'set_access_token',
             arguments: { access_token: token }
           }, userAuthToken)
           this.lastAccessToken = token!
+          console.log(`✅ [MCP-AUTH] Access token set successfully`)
         } catch (authErr) {
-          console.warn('⚠️ Failed to set access token in HTTP MCP before tool call:', authErr)
+          console.warn('⚠️ [MCP-AUTH] Failed to set access token:', authErr)
         }
       }
 

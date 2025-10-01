@@ -8,25 +8,32 @@ export class MCPBridge {
   private registeredProviders: Set<AgentProvider> = new Set()
 
   async initialize(providers?: AgentProvider[]): Promise<void> {
-    if (this.initialized) return
+    if (this.initialized) {
+      console.log('♻️ [MCP-BRIDGE] Already initialized, skipping...')
+      return
+    }
 
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+    console.log(`🚀 [MCP-BRIDGE] Initializing... (buildTime: ${isBuildTime})`)
 
     try {
-      console.log('🚀 Initializing MCP bridge...')
-
       // Connect to MCP server
+      console.log('🔌 [MCP-BRIDGE] Connecting to MCP server...')
       const mcpClient = await initializeMCPConnection()
+      console.log(`✅ [MCP-BRIDGE] Connected to MCP server`)
 
       // Get available tools from MCP
+      console.log('📋 [MCP-BRIDGE] Creating ZFlow tools from MCP...')
       const mcpTools = mcpClient.createZFlowTools()
-      console.log(`📋 Created ${mcpTools.length} ZFlow tools from MCP`)
+      console.log(`📋 [MCP-BRIDGE] Created ${mcpTools.length} ZFlow tools from MCP`)
+      console.log(`📋 [MCP-BRIDGE] Sample tools: ${mcpTools.slice(0, 5).map(t => t.name).join(', ')}...`)
 
       // Register tools with provided providers or create new ones
+      console.log(`🔧 [MCP-BRIDGE] Registering tools with ${providers?.length || 0} provider(s)...`)
       await this.registerToolsWithProviders(mcpTools, providers)
 
       this.initialized = true
-      console.log('✅ MCP bridge initialized successfully')
+      console.log('✅ [MCP-BRIDGE] Initialized successfully')
     } catch (error) {
       if (isBuildTime) {
         console.warn('⚠️ MCP bridge initialization skipped during build time')
@@ -39,15 +46,23 @@ export class MCPBridge {
   }
 
   private async registerToolsWithProviders(tools: ZFlowTool[], providers?: AgentProvider[]): Promise<void> {
+    console.log(`🔧 [MCP-BRIDGE] registerToolsWithProviders called with ${tools.length} tools`)
+    console.log(`🔧 [MCP-BRIDGE] Providers passed: ${providers?.length || 0}`)
+
     // If providers are passed in, register tools with them directly
     if (providers && providers.length > 0) {
       providers.forEach(provider => {
         try {
-          tools.forEach(tool => provider.registerTool(tool))
+          console.log(`📝 [MCP-BRIDGE] Registering ${tools.length} tools with ${provider.name}...`)
+          let registeredCount = 0
+          tools.forEach(tool => {
+            provider.registerTool(tool)
+            registeredCount++
+          })
           this.registeredProviders.add(provider)
-          console.log(`✅ Registered ${tools.length} tools with ${provider.name} provider`)
+          console.log(`✅ [MCP-BRIDGE] Registered ${registeredCount} tools with ${provider.name} provider`)
         } catch (error) {
-          console.warn(`Failed to register tools with ${provider.name} provider:`, error)
+          console.error(`❌ [MCP-BRIDGE] Failed to register tools with ${provider.name}:`, error)
         }
       })
       return

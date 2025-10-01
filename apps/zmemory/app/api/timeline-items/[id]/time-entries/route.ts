@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '@/auth'
+import { getUserIdFromRequest } from '@/auth'
+import { getClientForAuthType } from '@/lib/auth/index'
 import { supabase as serviceClient } from '@/lib/supabase'
 import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation'
 import { createOptionsResponse, jsonWithCors } from '@/lib/security'
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-    const client = createClientForRequest(request) || serviceClient
+    const client = await getClientForAuthType(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
     const searchParams = new URL(request.url).searchParams
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    const client = createClientForRequest(request) || serviceClient
+    const client = await getClientForAuthType(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
     // Verify timeline item exists and belongs to user

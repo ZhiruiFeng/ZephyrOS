@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   MemoryCreateSchema,
@@ -192,8 +192,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Use service role client to bypass RLS (same issue as POST)
-    const client = supabase;
+    // Use appropriate client based on auth type (supports both OAuth and API keys)
+    const client = await getClientForAuthType(request) || supabase;
     // Build comprehensive Supabase query
     let dbQuery = client
       .from('memories')
@@ -435,8 +435,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Use service role client to bypass RLS during insert (trigger needs elevated permissions)
-    const client = supabase;
+    // Use appropriate client based on auth type (supports both OAuth and API keys)
+    const client = await getClientForAuthType(request) || supabase;
     // Create memory directly - trigger will sync to timeline_items
     // Note: Only include fields that exist in the memories table schema
     const memoryPayload = {

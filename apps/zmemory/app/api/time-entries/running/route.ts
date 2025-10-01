@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClientForRequest, getUserIdFromRequest } from '@/auth'
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth'
 import { supabase as serviceClient } from '@/lib/supabase'
 import { createOptionsResponse, jsonWithCors } from '@/lib/security'
 
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    const client = createClientForRequest(request) || serviceClient
+    const client = await getClientForAuthType(request) || serviceClient
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
 
     const { data, error } = await client

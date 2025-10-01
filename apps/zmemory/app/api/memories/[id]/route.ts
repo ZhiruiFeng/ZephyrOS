@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   MemoryUpdateSchema,
@@ -94,8 +94,8 @@ export async function GET(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    // Use service role client to bypass RLS (consistent with other endpoints)
-    const client = supabase;
+    // Use appropriate client based on auth type (supports both OAuth and API keys)
+    const client = await getClientForAuthType(request) || supabase;
     const { data, error } = await client
       .from('memories')
       .select(`
@@ -256,9 +256,9 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    // Use service role client to bypass RLS (same issue as POST and GET)
-    const client = supabase;
-    console.log('Using service role client for memory update');
+    // Use appropriate client based on auth type (supports both OAuth and API keys)
+    const client = await getClientForAuthType(request) || supabase;
+    console.log('Using client for memory update');
 
     // Prepare update payload - include only explicitly provided fields
     const updatePayload = {
@@ -387,8 +387,8 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    // Use service role client to bypass RLS (consistent with other endpoints)  
-    const client = supabase;
+    // Use appropriate client based on auth type (supports both OAuth and API keys)
+    const client = await getClientForAuthType(request) || supabase;
     
     // Soft delete: set status to 'archived' instead of hard delete
     // Rationale: timeline_items.status doesn't support 'deleted', and triggers
