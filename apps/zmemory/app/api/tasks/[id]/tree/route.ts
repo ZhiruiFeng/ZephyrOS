@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { TaskMemory, SubtaskTreeNode } from '@/validation';
 import { z } from 'zod';
@@ -141,7 +141,7 @@ export async function GET(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request);
+    const client = await getClientForAuthType(request);
     if (!client) {
       return jsonWithCors(request, { error: 'Database connection failed' }, 500);
     }

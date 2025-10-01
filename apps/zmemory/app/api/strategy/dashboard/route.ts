@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, createClientForRequest } from '@/auth'
+import { getUserIdFromRequest, getClientForAuthType } from '@/auth'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 
 // Server-side Supabase client using service role key
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Authentication required' }, 401)
     }
 
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     // Fetch dashboard data using direct queries
     let dashboardData: StrategyDashboard = {

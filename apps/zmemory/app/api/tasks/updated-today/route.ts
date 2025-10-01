@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { TaskMemory } from '@/validation';
 import { nowUTC, convertSearchParamsToUTC, convertFromTimezoneToUTC } from '@/lib/time-utils';
@@ -333,7 +333,7 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Build Supabase query against tasks table for tasks updated today
     let dbQuery = client

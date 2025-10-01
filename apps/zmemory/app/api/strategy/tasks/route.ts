@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, createClientForRequest } from '@/auth'
+import { getUserIdFromRequest, getClientForAuthType } from '@/auth'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 import { z } from 'zod'
 
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
     }
 
     const query = queryResult.data
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     // Build Supabase query with AI delegation info
     let dbQuery = client
@@ -518,7 +518,7 @@ export async function POST(request: NextRequest) {
     }
 
     const taskData = validationResult.data
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     // Verify that the initiative exists and belongs to the user
     const { data: initiative, error: initiativeError } = await client

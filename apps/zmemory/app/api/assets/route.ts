@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   AssetCreateSchema,
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Build query
     let dbQuery = client
@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Check for duplicate hash (if provided)
     if (assetData.hash_sha256) {

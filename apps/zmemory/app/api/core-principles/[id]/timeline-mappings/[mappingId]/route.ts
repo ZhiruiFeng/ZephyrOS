@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   UpdateTimelineMappingSchema,
@@ -107,7 +107,7 @@ export async function GET(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     const { data, error } = await client
       .from('core_principle_timeline_items_mapping')
@@ -246,7 +246,7 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Check if mapping exists and user owns it
     const { data: existingMapping, error: fetchError } = await client
@@ -377,7 +377,7 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Check if mapping exists and user owns it
     const { data: existingMapping, error: fetchError } = await client

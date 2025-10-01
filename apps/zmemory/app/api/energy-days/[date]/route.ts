@@ -1,13 +1,11 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 
-function getSupabaseClient(request: NextRequest) {
-  return createClientForRequest(request) || (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-    : null);
-}
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  : null;
 
 // GET /api/energy-days/[date]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ date: string }> }) {
@@ -20,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const userId = await getUserIdFromRequest(request);
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401);
 
-    const client = getSupabaseClient(request);
+    const client = await getClientForAuthType(request) || supabase;
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
 
     const { date } = await params
@@ -52,7 +50,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const userId = await getUserIdFromRequest(request);
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401);
 
-    const client = getSupabaseClient(request);
+    const client = await getClientForAuthType(request) || supabase;
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
 
     const body = await request.json();
@@ -97,7 +95,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const userId = await getUserIdFromRequest(request);
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401);
 
-    const client = getSupabaseClient(request);
+    const client = await getClientForAuthType(request) || supabase;
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
 
     const body = await request.json();
@@ -183,7 +181,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
     const userId = await getUserIdFromRequest(request);
     if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    const client = getSupabaseClient(request);
+    const client = await getClientForAuthType(request) || supabase;
     if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
 
     const { date } = await params

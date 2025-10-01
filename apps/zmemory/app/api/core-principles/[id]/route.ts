@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   UpdateCorePrincipleSchema,
@@ -108,7 +108,7 @@ export async function GET(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     const { data, error } = await client
       .from('core_principles')
@@ -243,7 +243,7 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Check if principle exists and user owns it (cannot update defaults)
     const { data: existingPrinciple, error: fetchError } = await client
@@ -367,7 +367,7 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Check if principle exists and user owns it (cannot delete defaults)
     const { data: existingPrinciple, error: fetchError } = await client

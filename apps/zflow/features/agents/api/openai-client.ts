@@ -3,6 +3,20 @@ import { resolveZmemoryOrigin } from '@/lib/api/zmemory-api-base'
 import { AgentProvider, ChatContext, StreamingResponse, ZFlowTool } from './types'
 
 function getZmemoryBase(): string {
+  // In production, use environment variable or production URL
+  if (process.env.NODE_ENV === 'production') {
+    // Try to get from environment first
+    const envBase = process.env.NEXT_PUBLIC_API_BASE || process.env.ZMEMORY_API_URL
+    if (envBase) {
+      console.log(`[OPENAI] Using zmemory base from env: ${envBase}`)
+      return envBase
+    }
+    // Production fallback - use production zmemory URL
+    console.log('[OPENAI] Using production fallback: https://zmemory.vercel.app')
+    return 'https://zmemory.vercel.app'
+  }
+
+  // Development: use localhost or configured origin
   return resolveZmemoryOrigin('http://localhost:3001') || 'http://localhost:3001'
 }
 

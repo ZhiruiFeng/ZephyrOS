@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { 
   MemoryAnchorUpdateSchema,
@@ -121,7 +121,7 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Verify memory belongs to user
     const { data: memoryCheck, error: memoryError } = await client
@@ -277,7 +277,7 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request) || supabase;
+    const client = await getClientForAuthType(request) || supabase;
 
     // Verify memory belongs to user
     const { data: memoryCheck, error: memoryError } = await client

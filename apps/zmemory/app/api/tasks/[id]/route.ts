@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { UpdateTaskSchema, TaskMemory } from '@/validation';
 
 // Helper function to get category ID by name
@@ -94,7 +94,7 @@ export async function GET(
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data, error } = await client
       .from('tasks')
@@ -261,7 +261,7 @@ export async function PUT(
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data: existingTask, error: fetchError } = await client
       .from('tasks')
@@ -449,7 +449,7 @@ export async function DELETE(
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { error } = await client
       .from('tasks')

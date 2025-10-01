@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { generateWeeklyReview } from '@/lib/memory-business-logic';
 import { z } from 'zod';
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401);
     }
 
-    const client = createClientForRequest(request);
+    const client = await getClientForAuthType(request);
     if (!client) {
       return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
     }

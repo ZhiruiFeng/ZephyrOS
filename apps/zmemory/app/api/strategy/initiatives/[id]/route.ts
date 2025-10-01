@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, createClientForRequest } from '@/auth'
+import { getUserIdFromRequest, getClientForAuthType } from '@/auth'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 import { z } from 'zod'
 
@@ -94,7 +94,7 @@ export async function GET(
       return jsonWithCors(request, { error: 'Authentication required' }, 401)
     }
 
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
     const { id: initiativeId } = await params
 
     // Validate UUID format
@@ -263,7 +263,7 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Authentication required' }, 401)
     }
 
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
     const { id: initiativeId } = await params
 
     // Validate UUID format
@@ -428,7 +428,7 @@ export async function DELETE(
       return jsonWithCors(request, { error: 'Authentication required' }, 401)
     }
 
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
     const { id: initiativeId } = await params
 
     // Validate UUID format

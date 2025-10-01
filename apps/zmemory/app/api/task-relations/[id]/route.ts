@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 function jsonWithCors(request: NextRequest, body: any, status = 200) {
   const origin = request.headers.get('origin') || '*';
   const res = NextResponse.json(body, { status });
@@ -36,7 +36,8 @@ export async function DELETE(
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
-    const supabase = createClientForRequest(request)!
+    const supabase = await getClientForAuthType(request)
+    if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
 
     const { error } = await supabase
       .from('task_relations')

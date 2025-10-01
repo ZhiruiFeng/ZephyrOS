@@ -113,10 +113,8 @@ export async function getClientForAuthType(request: NextRequest): Promise<Supaba
     // This client bypasses RLS but we already validated the user via the API key
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error('[AUTH] Cannot create service role client - missing env vars')
       return null
     }
-    console.log('[AUTH] getClientForAuthType: Creating service role client for API key auth')
     return createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -126,7 +124,6 @@ export async function getClientForAuthType(request: NextRequest): Promise<Supaba
   }
 
   // For OAuth or unknown auth type, use regular client with user's JWT
-  console.log('[AUTH] getClientForAuthType: Creating user-scoped client for OAuth auth')
   return createClientForRequest(request)
 }
 

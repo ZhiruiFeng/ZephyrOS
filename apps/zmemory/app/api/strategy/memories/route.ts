@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, createClientForRequest } from '@/auth'
+import { getUserIdFromRequest, getClientForAuthType } from '@/auth'
 import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
 import { z } from 'zod'
 
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
     }
 
     const query = queryResult.data
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     // Build Supabase query
     let dbQuery = client
@@ -407,7 +407,7 @@ export async function POST(request: NextRequest) {
     }
 
     const memoryData = validationResult.data
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     // Verify that referenced entities exist and belong to the user
     if (memoryData.initiative_id) {

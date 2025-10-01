@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -67,7 +67,7 @@ export async function GET(
     if (!userId) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data: category, error } = await client
       .from('categories')
@@ -115,7 +115,7 @@ export async function PUT(
     if (!userId) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data: category, error } = await client
       .from('categories')
@@ -163,7 +163,7 @@ export async function DELETE(
     if (!userId) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data: tasks, error: tasksError } = await client
       .from('tasks')

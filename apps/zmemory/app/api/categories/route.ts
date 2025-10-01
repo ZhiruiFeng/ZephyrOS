@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { z } from 'zod';
 
 // Validation schema
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data: categories, error } = await client
       .from('categories')
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-    const client = createClientForRequest(request) || supabase
+    const client = await getClientForAuthType(request) || supabase
 
     const { data: category, error } = await client
       .from('categories')

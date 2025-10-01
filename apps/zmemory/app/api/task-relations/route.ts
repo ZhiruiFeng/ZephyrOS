@@ -23,7 +23,7 @@ export async function OPTIONS(request: NextRequest) {
     },
   });
 }
-import { createClientForRequest, getUserIdFromRequest } from '@/auth';
+import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
 import { z } from 'zod';
 
 // 验证schema
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
-    const supabase = createClientForRequest(request)
+    const supabase = await getClientForAuthType(request)
 
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get('task_id');
@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(request)
     if (!userId) return NextResponse.json({ error: '未授权访问' }, { status: 401 })
-    const supabase = createClientForRequest(request)!
+    const supabase = await getClientForAuthType(request)
+    if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
 
     const body = await request.json();
     const validatedData = CreateTaskRelationSchema.parse(body);
