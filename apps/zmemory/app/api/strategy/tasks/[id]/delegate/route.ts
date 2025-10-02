@@ -198,7 +198,8 @@ export async function POST(
         agent_uuid: agent_id,
         objective: objective,
         mode: mode || 'plan_only',
-        guardrails: guardrails || null
+        guardrails: guardrails || null,
+        p_user_id: userId // Pass user_id for service role support
       })
 
     if (delegateError) {
@@ -209,7 +210,8 @@ export async function POST(
     // Get the updated strategic task with delegation info
     const { data: updatedTask, error: fetchError } = await client
       .rpc('get_strategic_task_with_ai_delegation', {
-        strategic_task_uuid: strategicTaskId
+        strategic_task_uuid: strategicTaskId,
+        p_user_id: userId // Pass user_id for service role support
       })
 
     if (fetchError) {

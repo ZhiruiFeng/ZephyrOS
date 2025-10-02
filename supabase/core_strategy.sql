@@ -541,14 +541,25 @@ CREATE TRIGGER trigger_update_initiative_progress
   EXECUTE FUNCTION update_initiative_progress();
 
 -- Function to get strategic task with AI delegation info
-CREATE OR REPLACE FUNCTION get_strategic_task_with_ai_delegation(strategic_task_uuid UUID)
+CREATE OR REPLACE FUNCTION get_strategic_task_with_ai_delegation(
+  strategic_task_uuid UUID,
+  p_user_id UUID DEFAULT NULL
+)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   result JSON;
+  v_user_id UUID;
 BEGIN
+  -- Use provided user_id or fall back to auth.uid()
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id is required';
+  END IF;
+
   SELECT json_build_object(
     'strategic_task', json_build_object(
       'id', st.id,
@@ -595,7 +606,7 @@ BEGIN
   ) INTO result
   FROM core_strategy_tasks st
   LEFT JOIN tasks t ON t.id = st.task_id
-  WHERE st.id = strategic_task_uuid AND st.user_id = auth.uid();
+  WHERE st.id = strategic_task_uuid AND st.user_id = v_user_id;
 
   RETURN result;
 END;
@@ -607,7 +618,8 @@ CREATE OR REPLACE FUNCTION delegate_strategic_task_to_ai(
   agent_uuid UUID,
   objective TEXT,
   mode TEXT DEFAULT 'plan_only',
-  guardrails JSONB DEFAULT NULL
+  guardrails JSONB DEFAULT NULL,
+  p_user_id UUID DEFAULT NULL
 )
 RETURNS UUID -- Returns ai_task_id
 LANGUAGE plpgsql
@@ -617,11 +629,19 @@ DECLARE
   task_uuid UUID;
   ai_task_uuid UUID;
   strategic_task_rec RECORD;
+  v_user_id UUID;
 BEGIN
+  -- Use provided user_id or fall back to auth.uid()
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id is required';
+  END IF;
+
   -- Get strategic task details
   SELECT * INTO strategic_task_rec
   FROM core_strategy_tasks
-  WHERE id = strategic_task_uuid AND user_id = auth.uid();
+  WHERE id = strategic_task_uuid AND user_id = v_user_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Strategic task not found or access denied';
@@ -640,7 +660,7 @@ BEGIN
       strategic_task_rec.description,
       'pending',
       strategic_task_rec.priority,
-      auth.uid()
+      v_user_id
     ) RETURNING id INTO task_uuid;
 
     -- Link the strategic task to the regular task
@@ -667,7 +687,7 @@ BEGIN
     mode,
     COALESCE(guardrails, '{"requiresHumanApproval": true}'::jsonb),
     'analysis', -- Default task type, could be parameterized
-    auth.uid()
+    v_user_id
   ) RETURNING id INTO ai_task_uuid;
 
   -- Update strategic task to indicate AI delegation
