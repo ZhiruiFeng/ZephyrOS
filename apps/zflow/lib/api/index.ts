@@ -15,6 +15,7 @@ export * from './stats-api'
 export * from './memories-api'
 export * from './narrative-api'
 export * from './zmemory-api-keys-api'
+export * from './executor-api'
 
 // Re-export APIs for direct access
 export { categoriesApi } from './categories-api'
@@ -29,6 +30,7 @@ export { statsApi } from './stats-api'
 export { memoriesApi, useMemoryOperations, MemoryAPIError } from './memories-api'
 export { seasonApi, episodeApi, narrativeApi, narrativeApiClient, NarrativeAPIError } from './narrative-api'
 export { zmemoryApiKeysApi, ZMEMORY_SCOPES } from './zmemory-api-keys-api'
+export { executorApi } from './executor-api'
 
 // Import API modules for legacy compatibility
 import { categoriesApi } from './categories-api'

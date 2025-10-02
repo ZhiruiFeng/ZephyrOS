@@ -113,6 +113,20 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       enableNotifications: true
     },
     fullScreenPath: '/profile/modules/zrelations'
+  },
+  {
+    id: 'executor-monitor',
+    name: 'Executor Monitor',
+    description: 'Monitor executor devices, workspaces, and AI task execution',
+    icon: 'Server',
+    category: 'tools',
+    defaultEnabled: false,
+    defaultConfig: {
+      autoRefresh: true,
+      showMetrics: true,
+      showEvents: true
+    },
+    fullScreenPath: '/profile/modules/executor-monitor'
   }
 ]
 

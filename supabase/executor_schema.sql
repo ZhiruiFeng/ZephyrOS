@@ -677,7 +677,7 @@ SELECT
   d.last_heartbeat_at,
   d.user_id
 FROM executor_devices d
-ORDER BY d.is_online DESC, d.available_slots DESC;
+ORDER BY d.is_online DESC, available_slots DESC;
 
 -- =====================================================
 -- 12. COMMENTS

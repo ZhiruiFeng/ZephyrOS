@@ -18,6 +18,7 @@ const ZMemoryApiKeysModule = React.lazy(() => import('@/features/profile/compone
 const STTConfigModule = React.lazy(() => import('@/features/profile/components/modules/STTConfigModule').then(m => ({ default: m.STTConfigModule })))
 const ZRelationsModule = React.lazy(() => import('@/features/profile/components/modules/ZRelationsModule').then(m => ({ default: m.ZRelationsModule })))
 const AITaskGrantorModule = React.lazy(() => import('@/features/profile/components/modules/AITaskGrantorModule'))
+const ExecutorMonitor = React.lazy(() => import('@/features/profile/components/modules/ExecutorMonitor').then(m => ({ default: m.ExecutorMonitor })))
 
 interface ProfilePageProps {
   className?: string
@@ -186,10 +187,23 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
       case 'agent-directory':
         return (
           <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
-            <AgentDirectory 
+            <AgentDirectory
               config={moduleConfig}
               onConfigChange={(newConfig) => {
                 console.log('Agent Directory config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
+        )
+      case 'executor-monitor':
+        return (
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <ExecutorMonitor
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('Executor Monitor config changed:', newConfig)
               }}
               isFullscreen={isFullscreen}
               onToggleFullscreen={handleToggleFullscreenForModule}

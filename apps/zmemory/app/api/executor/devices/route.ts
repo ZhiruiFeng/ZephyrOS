@@ -45,3 +45,16 @@ export const POST = withStandardMiddleware(handleRegisterDevice, {
   validation: { bodySchema: ExecutorSchemas.Device.Create },
   rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
 });
+
+// Handle CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
