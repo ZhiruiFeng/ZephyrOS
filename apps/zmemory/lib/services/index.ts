@@ -21,6 +21,7 @@ export { TaskRelationServiceImpl } from './task-relation-service';
 export { VendorServiceImpl } from './vendor-service';
 export { InteractionTypeServiceImpl } from './interaction-type-service';
 export { EnergyDayServiceImpl } from './energy-day-service';
+export { ExecutorService, createExecutorService } from './executor-service';
 
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';

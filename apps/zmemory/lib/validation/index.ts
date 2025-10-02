@@ -14,6 +14,7 @@ export * from './timers';
 export * from './categories';
 export * from './conversations';
 export * from './task-relations';
+export * from './executor-schemas';
 
 // Backward compatibility exports - these maintain the exact same export names
 // that were previously available from lib/validators.ts and lib/task-types.ts
