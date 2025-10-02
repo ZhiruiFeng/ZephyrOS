@@ -1120,17 +1120,27 @@ CREATE OR REPLACE FUNCTION update_daily_strategy_status(
   p_mood_impact TEXT DEFAULT NULL,
   p_reflection_notes TEXT DEFAULT NULL,
   p_lessons_learned TEXT DEFAULT NULL,
-  p_next_actions TEXT DEFAULT NULL
+  p_next_actions TEXT DEFAULT NULL,
+  p_user_id UUID DEFAULT NULL
 )
-RETURNS BOOLEAN
+RETURNS TABLE(success BOOLEAN, item_id UUID)
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   updated_rows INTEGER;
+  v_item_id UUID;
+  v_user_id UUID;
 BEGIN
-  UPDATE core_strategy_daily 
-  SET 
+  -- Use provided user_id or fall back to auth.uid()
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id is required';
+  END IF;
+
+  UPDATE core_strategy_daily
+  SET
     status = p_status,
     completion_notes = COALESCE(p_completion_notes, completion_notes),
     actual_energy_used = COALESCE(p_actual_energy_used, actual_energy_used),
@@ -1139,10 +1149,12 @@ BEGIN
     lessons_learned = COALESCE(p_lessons_learned, lessons_learned),
     next_actions = COALESCE(p_next_actions, next_actions),
     updated_at = NOW()
-  WHERE id = p_id AND user_id = auth.uid();
-  
+  WHERE id = p_id AND user_id = v_user_id
+  RETURNING id INTO v_item_id;
+
   GET DIAGNOSTICS updated_rows = ROW_COUNT;
-  RETURN updated_rows > 0;
+
+  RETURN QUERY SELECT (updated_rows > 0), v_item_id;
 END;
 $$;
 

@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const statusData = validationResult.data;
 
     // Use the database function for status update
-    const { data: updateResult, error: updateError } = await client
+    const { data: updateResults, error: updateError } = await client
       .rpc('update_daily_strategy_status', {
         p_id: id,
         p_status: statusData.status,
@@ -97,12 +97,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         p_mood_impact: statusData.mood_impact || null,
         p_reflection_notes: statusData.reflection_notes || null,
         p_lessons_learned: statusData.lessons_learned || null,
-        p_next_actions: statusData.next_actions || null
+        p_next_actions: statusData.next_actions || null,
+        p_user_id: userId // Pass user_id for service role support
       });
 
-    if (updateError || !updateResult) {
+    // The RPC returns an array with one row: [{ success: boolean, item_id: string }]
+    const updateResult = updateResults?.[0];
+
+    if (updateError || !updateResult || !updateResult.success) {
       console.error('Daily strategy status update error:', updateError);
-      if (updateError?.message?.includes('not found')) {
+      if (updateError?.message?.includes('not found') || (updateResult && !updateResult.success)) {
         return jsonWithCors(request, { error: 'Daily strategy item not found' }, 404);
       }
       return jsonWithCors(request, { error: 'Failed to update status' }, 500);
