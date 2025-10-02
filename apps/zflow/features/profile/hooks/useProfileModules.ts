@@ -127,6 +127,21 @@ const AVAILABLE_MODULES: ProfileModule[] = [
       showEvents: true
     },
     fullScreenPath: '/profile/modules/executor-monitor'
+  },
+  {
+    id: 'core-principles',
+    name: 'Core Principles',
+    description: 'Ray Dalio\'s principles and your personal decision-making framework',
+    icon: 'BookMarked',
+    category: 'insights',
+    defaultEnabled: false,
+    defaultConfig: {
+      maxDisplayItems: 10,
+      showQuickActions: true,
+      defaultCategory: 'all',
+      showDefaultPrinciples: true
+    },
+    fullScreenPath: '/profile/modules/core-principles'
   }
 ]
 
@@ -172,6 +187,9 @@ export function useProfileModules() {
     isLoading: true,
     error: null
   })
+
+  console.log('[useProfileModules] Total available modules:', AVAILABLE_MODULES.length)
+  console.log('[useProfileModules] Module IDs:', AVAILABLE_MODULES.map(m => m.id))
 
   // Load user's module preferences
   const loadUserPreferences = useCallback(async () => {

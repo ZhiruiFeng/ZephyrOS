@@ -1,10 +1,11 @@
 'use client'
 
 import React from 'react'
-import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp } from 'lucide-react'
+import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp, Server, BookMarked } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { ModuleSelector } from '@/features/profile/components/ModuleSelector'
+import { ProfileModuleRenderer } from '@/features/profile/components/ProfileModuleRenderer'
 import { EnergySpectrumModule } from '@/features/profile/components/modules/EnergySpectrumModule'
 import AgentDirectory from '@/features/profile/components/modules/AgentDirectory'
 import { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
@@ -13,6 +14,8 @@ import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMem
 import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
 import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
 import AITaskGrantorModule from '@/features/profile/components/modules/AITaskGrantorModule'
+import { CorePrinciplesModule } from '@/features/profile/components/modules/CorePrinciplesModule'
+import { ExecutorMonitor } from '@/features/profile/components/modules/ExecutorMonitor'
 import { useProfileModules } from '@/profile'
 import { FullscreenModal, useFullscreenModal } from '@/shared/components'
 import type { ProfileModule, ProfileModuleConfig } from '@/profile'
@@ -71,8 +74,12 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
   }, [user, t.profile.yourProfile])
 
   const renderModule = (moduleConfig: ProfileModuleConfig) => {
+    console.log('[ProfileDashboard] Rendering module:', moduleConfig.id)
     const moduleDefinition = availableModules.find(m => m.id === moduleConfig.id)
-    if (!moduleDefinition) return null
+    if (!moduleDefinition) {
+      console.warn('[ProfileDashboard] Module definition not found for:', moduleConfig.id)
+      return null
+    }
 
     const isFullscreen = fullscreenModule === moduleConfig.id
     const handleToggleFullscreenForModule = () => handleToggleFullscreen(moduleConfig.id)
@@ -173,6 +180,30 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             onToggleFullscreen={handleToggleFullscreenForModule}
           />
         )
+      case 'executor-monitor':
+        return (
+          <ExecutorMonitor
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Executor Monitor config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
+      case 'core-principles':
+        return (
+          <CorePrinciplesModule
+            key={moduleConfig.id}
+            config={moduleConfig}
+            onConfigChange={(newConfig) => {
+              console.log('Core Principles config changed:', newConfig)
+            }}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreenForModule}
+          />
+        )
       default:
         return null
     }
@@ -264,6 +295,8 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             fullscreenModule === 'memories' ? <BookOpen className="w-6 h-6 text-purple-600" /> :
             fullscreenModule === 'agent-directory' ? <Bot className="w-6 h-6 text-green-600" /> :
             fullscreenModule === 'zrelations' ? <Users className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'executor-monitor' ? <Server className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'core-principles' ? <BookMarked className="w-6 h-6 text-blue-600" /> :
             fullscreenModule === 'stats' ? <TrendingUp className="w-6 h-6 text-green-600" /> :
             <Settings className="w-6 h-6 text-gray-600" />
           }

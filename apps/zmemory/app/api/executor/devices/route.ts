@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { createExecutorService } from '@/services';
 import { ExecutorSchemas } from '@/validation';

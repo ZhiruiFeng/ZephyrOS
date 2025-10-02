@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Suspense } from 'react'
-import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp } from 'lucide-react'
+import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp, Server, BookMarked } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { ModuleSelector } from '@/features/profile/components/ModuleSelector'
@@ -19,6 +19,7 @@ const STTConfigModule = React.lazy(() => import('@/features/profile/components/m
 const ZRelationsModule = React.lazy(() => import('@/features/profile/components/modules/ZRelationsModule').then(m => ({ default: m.ZRelationsModule })))
 const AITaskGrantorModule = React.lazy(() => import('@/features/profile/components/modules/AITaskGrantorModule'))
 const ExecutorMonitor = React.lazy(() => import('@/features/profile/components/modules/ExecutorMonitor').then(m => ({ default: m.ExecutorMonitor })))
+const CorePrinciplesModule = React.lazy(() => import('@/features/profile/components/modules/CorePrinciplesModule').then(m => ({ default: m.CorePrinciplesModule })))
 
 interface ProfilePageProps {
   className?: string
@@ -210,7 +211,21 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
             />
           </Suspense>
         )
+      case 'core-principles':
+        return (
+          <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
+            <CorePrinciplesModule
+              config={moduleConfig}
+              onConfigChange={(newConfig) => {
+                console.log('Core Principles config changed:', newConfig)
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreenForModule}
+            />
+          </Suspense>
+        )
       default:
+        console.warn('[ProfilePage] Unknown module:', moduleConfig.id)
         return null
     }
   }
@@ -301,6 +316,8 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
             fullscreenModule === 'memories' ? <BookOpen className="w-6 h-6 text-purple-600" /> :
             fullscreenModule === 'agent-directory' ? <Bot className="w-6 h-6 text-green-600" /> :
             fullscreenModule === 'zrelations' ? <Users className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'executor-monitor' ? <Server className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'core-principles' ? <BookMarked className="w-6 h-6 text-blue-600" /> :
             fullscreenModule === 'stats' ? <TrendingUp className="w-6 h-6 text-green-600" /> :
             <Settings className="w-6 h-6 text-gray-600" />
           }

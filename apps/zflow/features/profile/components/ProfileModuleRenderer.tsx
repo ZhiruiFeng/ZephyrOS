@@ -8,6 +8,8 @@ import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModu
 import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
 import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
 import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
+import { ExecutorMonitor } from '@/features/profile/components/modules/ExecutorMonitor'
+import { CorePrinciplesModule } from '@/features/profile/components/modules/CorePrinciplesModule'
 import type { ProfileModule, ProfileModuleConfig } from '@/profile'
 
 interface ProfileModuleRendererProps {
@@ -49,6 +51,10 @@ export function ProfileModuleRenderer({
       return <STTConfigModule {...sharedProps} />
     case 'zrelations':
       return <ZRelationsModule {...sharedProps} />
+    case 'executor-monitor':
+      return <ExecutorMonitor {...sharedProps} />
+    case 'core-principles':
+      return <CorePrinciplesModule {...sharedProps} />
     default:
       return null
   }

@@ -1,15 +1,23 @@
 'use client'
 
 import React from 'react'
-import { 
-  Settings, 
-  Plus, 
-  GripVertical, 
-  BarChart3, 
-  TrendingUp, 
+import {
+  Settings,
+  Plus,
+  GripVertical,
+  BarChart3,
+  TrendingUp,
   Activity,
   Check,
-  X
+  X,
+  BookOpen,
+  Bot,
+  Key,
+  Shield,
+  Mic,
+  Users,
+  Server,
+  BookMarked
 } from 'lucide-react'
 import { useTranslation } from '@/contexts/LanguageContext'
 import type { ModuleSelectorProps } from '@/profile'
@@ -18,21 +26,35 @@ const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> =
   'energy-spectrum': BarChart3,
   'stats': TrendingUp,
   'activity-summary': Activity,
+  'memories': BookOpen,
+  'agent-directory': Bot,
+  'ai-task-grantor': Bot,
+  'api-keys': Key,
+  'zmemory-api-keys': Shield,
+  'stt-config': Mic,
+  'zrelations': Users,
+  'executor-monitor': Server,
+  'core-principles': BookMarked,
 }
 
-export function ModuleSelector({ 
-  enabledModules, 
-  availableModules, 
-  onToggleModule, 
+export function ModuleSelector({
+  enabledModules,
+  availableModules,
+  onToggleModule,
   onReorderModules,
-  showAsButton = false 
+  showAsButton = false
 }: ModuleSelectorProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = React.useState(false)
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null)
 
+  console.log('[ModuleSelector] Available modules:', availableModules.map(m => m.id))
+  console.log('[ModuleSelector] Enabled modules:', enabledModules.map(m => m.id))
+
   const enabledModuleIds = new Set(enabledModules.map(m => m.id))
   const availableToEnable = availableModules.filter(m => !enabledModuleIds.has(m.id))
+
+  console.log('[ModuleSelector] Available to enable:', availableToEnable.map(m => m.id))
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
