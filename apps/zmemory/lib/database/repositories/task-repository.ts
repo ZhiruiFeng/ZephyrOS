@@ -369,6 +369,7 @@ export class TaskRepository extends BaseRepository<Task> {
 
   /**
    * Apply task-specific filters to query
+   * Note: Database has flat columns, not JSON content object
    */
   protected applyTaskFilters(query: any, filters: TaskFilterParams): any {
     // Apply base filters first
@@ -376,42 +377,42 @@ export class TaskRepository extends BaseRepository<Task> {
 
     // Priority filtering
     if (filters.priority) {
-      query = query.eq('content->>priority', filters.priority);
+      query = query.eq('priority', filters.priority);
     }
 
-    // Status filtering (override base to use JSON path)
+    // Status filtering
     if (filters.status) {
-      query = query.eq('content->>status', filters.status);
+      query = query.eq('status', filters.status);
     }
 
     // Due date range
     if (filters.due_from) {
-      query = query.gte('content->>due_date', filters.due_from);
+      query = query.gte('due_date', filters.due_from);
     }
     if (filters.due_to) {
-      query = query.lte('content->>due_date', filters.due_to);
+      query = query.lte('due_date', filters.due_to);
     }
 
     // Progress range
     if (filters.progress_min !== undefined) {
-      query = query.gte('content->>progress', filters.progress_min);
+      query = query.gte('progress', filters.progress_min);
     }
     if (filters.progress_max !== undefined) {
-      query = query.lte('content->>progress', filters.progress_max);
+      query = query.lte('progress', filters.progress_max);
     }
 
     // Assignee filtering
     if (filters.assignee) {
-      query = query.eq('content->>assignee', filters.assignee);
+      query = query.eq('assignee', filters.assignee);
     }
 
     // Hierarchy filtering
     if (filters.parent_task_id) {
-      query = query.eq('content->>parent_task_id', filters.parent_task_id);
+      query = query.eq('parent_task_id', filters.parent_task_id);
     }
 
     if (filters.root_tasks_only) {
-      query = query.is('content->>parent_task_id', null);
+      query = query.is('parent_task_id', null);
     }
 
     if (filters.hierarchy_level !== undefined) {
@@ -420,11 +421,11 @@ export class TaskRepository extends BaseRepository<Task> {
 
     // Completion behavior filtering
     if (filters.completion_behavior) {
-      query = query.eq('content->>completion_behavior', filters.completion_behavior);
+      query = query.eq('completion_behavior', filters.completion_behavior);
     }
 
     if (filters.progress_calculation) {
-      query = query.eq('content->>progress_calculation', filters.progress_calculation);
+      query = query.eq('progress_calculation', filters.progress_calculation);
     }
 
     // Overdue filtering

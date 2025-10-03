@@ -9,7 +9,9 @@ export { BaseServiceImpl } from './base-service';
 
 // Specific service implementations
 export { MemoryAnalysisServiceImpl } from './memory-analysis-service';
+export { MemoryServiceImpl } from './memory-service';
 export { TaskWorkflowServiceImpl, TaskHierarchyServiceImpl } from './task-workflow-service';
+export { TaskServiceImpl } from './task-service';
 export { ActivityServiceImpl } from './activity-service';
 export { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 export { HealthServiceImpl } from './health-service';
@@ -25,7 +27,9 @@ export { ExecutorService, createExecutorService } from './executor-service';
 
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';
+export type { MemoryService } from './memory-service';
 export type { TaskWorkflowService, TaskHierarchyService } from './task-workflow-service';
+export type { TaskService } from './task-service';
 export type { ActivityService } from './activity-service';
 export type { ActivityAnalyticsService } from './activity-analytics-service';
 export type { HealthService } from './health-service';
@@ -41,7 +45,9 @@ export type { EnergyDayService } from './energy-day-service';
 // Service factory functions and dependency injection
 import type { ServiceContext, ServiceDependencies } from './types';
 import { MemoryAnalysisServiceImpl } from './memory-analysis-service';
+import { MemoryServiceImpl } from './memory-service';
 import { TaskWorkflowServiceImpl, TaskHierarchyServiceImpl } from './task-workflow-service';
+import { TaskServiceImpl } from './task-service';
 import { ActivityServiceImpl } from './activity-service';
 import { ActivityAnalyticsServiceImpl } from './activity-analytics-service';
 import { HealthServiceImpl } from './health-service';
@@ -71,6 +77,19 @@ export function createMemoryAnalysisService(
   return new MemoryAnalysisServiceImpl(context, deps);
 }
 
+export function createMemoryService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): MemoryServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository()
+  };
+  return new MemoryServiceImpl(context, deps);
+}
+
 export function createTaskWorkflowService(
   context: ServiceContext,
   dependencies?: ServiceDependencies
@@ -95,6 +114,20 @@ export function createTaskHierarchyService(
     aiTaskRepository: repositories.getAITaskRepository()
   };
   return new TaskHierarchyServiceImpl(context, deps);
+}
+
+export function createTaskService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): TaskServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository(),
+    categoryRepository: repositories.getCategoryRepository()
+  };
+  return new TaskServiceImpl(context, deps);
 }
 
 export function createActivityService(

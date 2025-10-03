@@ -8,6 +8,9 @@ import type {
 import { formatPostgreSQLTstzRange, buildBoundingBox } from '../client';
 
 // Memory entity type
+// NOTE: This interface includes fields that DO NOT exist in the database schema
+// Fields that DO NOT exist: source, context, mood, importance_level, related_to
+// Keep interface for TypeScript compatibility but exclude from inserts/updates
 export interface Memory {
   id: string;
   user_id: string;
@@ -25,11 +28,13 @@ export interface Memory {
   longitude?: number;
   is_highlight: boolean;
   salience_score: number;
+  // Fields below DO NOT exist in database - for TS compatibility only
   source?: string;
   context?: string;
   mood?: number;
-  importance_level: 'low' | 'medium' | 'high';
-  related_to: string[];
+  importance_level?: 'low' | 'medium' | 'high';
+  related_to?: string[];
+  // Fields that DO exist
   category_id?: string;
   tags: string[];
   status: 'active' | 'archived' | 'deleted';
@@ -38,9 +43,9 @@ export interface Memory {
 }
 
 // Memory-specific filter parameters
+// NOTE: Removed importance_level, min_mood, related_to - do not exist in database
 export interface MemoryFilterParams extends Omit<FilterParams, 'search_fields'> {
   memory_type?: string;
-  importance_level?: string;
   is_highlight?: boolean;
   captured_from?: string;
   captured_to?: string;
@@ -53,9 +58,7 @@ export interface MemoryFilterParams extends Omit<FilterParams, 'search_fields'> 
   min_emotion_valence?: number;
   max_emotion_valence?: number;
   min_salience?: number;
-  min_mood?: number;
-  related_to?: string;
-  search_fields?: 'note' | 'context' | 'place_name' | 'all';
+  search_fields?: 'note' | 'place_name' | 'all';
 }
 
 export class MemoryRepository extends BaseRepository<Memory> {
@@ -155,15 +158,13 @@ export class MemoryRepository extends BaseRepository<Memory> {
         .eq('user_id', userId);
 
       // Apply search conditions based on search_fields
+      // Note: 'context' field removed - does not exist in database
       if (searchQuery) {
         const searchFields = filters.search_fields || 'all';
         const searchConditions: string[] = [];
 
         if (searchFields === 'all' || searchFields === 'note') {
           searchConditions.push(`note.ilike.%${searchQuery}%`);
-        }
-        if (searchFields === 'all' || searchFields === 'context') {
-          searchConditions.push(`context.ilike.%${searchQuery}%`);
         }
         if (searchFields === 'all' || searchFields === 'place_name') {
           searchConditions.push(`place_name.ilike.%${searchQuery}%`);
@@ -273,7 +274,6 @@ export class MemoryRepository extends BaseRepository<Memory> {
       const stats = {
         total: memories.length,
         by_type: {} as Record<string, number>,
-        by_importance: {} as Record<string, number>,
         by_status: {} as Record<string, number>,
         highlights: memories.filter(m => m.is_highlight).length,
         with_location: memories.filter(m => m.latitude && m.longitude).length,
@@ -288,10 +288,9 @@ export class MemoryRepository extends BaseRepository<Memory> {
         }
       };
 
-      // Count by type
+      // Count by type (removed by_importance as importance_level does not exist)
       memories.forEach(memory => {
         stats.by_type[memory.memory_type] = (stats.by_type[memory.memory_type] || 0) + 1;
-        stats.by_importance[memory.importance_level] = (stats.by_importance[memory.importance_level] || 0) + 1;
         stats.by_status[memory.status] = (stats.by_status[memory.status] || 0) + 1;
       });
 
@@ -314,11 +313,6 @@ export class MemoryRepository extends BaseRepository<Memory> {
     // Memory type filtering
     if (filters.memory_type) {
       query = query.eq('memory_type', filters.memory_type);
-    }
-
-    // Importance level filtering
-    if (filters.importance_level) {
-      query = query.eq('importance_level', filters.importance_level);
     }
 
     // Highlight filtering
@@ -373,15 +367,7 @@ export class MemoryRepository extends BaseRepository<Memory> {
       query = query.gte('salience_score', filters.min_salience);
     }
 
-    // Mood filtering
-    if (filters.min_mood !== undefined) {
-      query = query.gte('mood', filters.min_mood);
-    }
-
-    // Related content filtering
-    if (filters.related_to) {
-      query = query.contains('related_to', [filters.related_to]);
-    }
+    // NOTE: Removed importance_level, mood, related_to filters - columns do not exist in database
 
     return query;
   }

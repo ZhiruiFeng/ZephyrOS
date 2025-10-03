@@ -1,4 +1,4 @@
-import type { MemoryRepository, TaskRepository, ActivityRepository, AITaskRepositoryInterface } from '@/database';
+import type { MemoryRepository, TaskRepository, ActivityRepository, AITaskRepositoryInterface, CategoryRepository } from '@/database';
 
 // Service result types
 export interface ServiceResult<T> {
@@ -27,6 +27,7 @@ export interface ServiceDependencies {
   taskRepository: TaskRepository;
   activityRepository: ActivityRepository;
   aiTaskRepository: AITaskRepositoryInterface;
+  categoryRepository?: CategoryRepository;
   // Add other repositories as needed
 }
 
