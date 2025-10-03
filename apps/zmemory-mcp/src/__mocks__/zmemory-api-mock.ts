@@ -3,10 +3,10 @@
  */
 
 import { AxiosInstance } from 'axios';
-import { AuthState } from '../../src/types.js';
-import tasksFixture from '../fixtures/tasks.json';
-import memoriesFixture from '../fixtures/memories.json';
-import usersFixture from '../fixtures/users.json';
+import { AuthState } from '../types.js';
+import tasksFixture from '../../test/fixtures/tasks.json';
+import memoriesFixture from '../../test/fixtures/memories.json';
+import usersFixture from '../../test/fixtures/users.json';
 
 export class MockZMemoryClient {
   private mockTasks = [...tasksFixture];
@@ -21,7 +21,7 @@ export class MockZMemoryClient {
       expires_in: 3600,
       token_type: 'Bearer',
     },
-    user: mockUsers[0] as any,
+    userInfo: usersFixture[0] as any,
   };
 
   // Task methods
@@ -170,7 +170,7 @@ export class MockZMemoryClient {
 
   // Auth methods
   async getUserInfo() {
-    return this.authState.user;
+    return this.authState.userInfo;
   }
 
   isAuthenticated() {
@@ -191,7 +191,7 @@ export class MockZMemoryClient {
   clearAuth() {
     this.authState.isAuthenticated = false;
     this.authState.tokens = undefined;
-    this.authState.user = undefined;
+    this.authState.userInfo = undefined;
   }
 
   // Reset for testing
@@ -206,7 +206,7 @@ export class MockZMemoryClient {
         expires_in: 3600,
         token_type: 'Bearer',
       },
-      user: mockUsers[0] as any,
+      userInfo: usersFixture[0] as any,
     };
   }
 }

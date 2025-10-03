@@ -3,7 +3,7 @@
  */
 
 import { ActivityHandlers } from '../../../handlers/activity-handlers.js';
-import { createMockClient } from '../../../../test/mocks/zmemory-api-mock.js';
+import { createMockClient } from '../../../__mocks__/zmemory-api-mock.js';
 
 describe('ActivityHandlers', () => {
   let activityHandlers: ActivityHandlers;

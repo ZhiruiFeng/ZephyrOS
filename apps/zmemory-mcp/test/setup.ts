@@ -11,7 +11,7 @@ process.env.ZMEMORY_API_URL = 'http://localhost:3000/api';
 process.env.LOG_LEVEL = 'error'; // Suppress logs during tests
 
 // Global test utilities
-global.testUtils = {
+(global as any).testUtils = {
   mockDate: (date: string) => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(date));
