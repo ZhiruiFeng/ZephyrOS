@@ -170,7 +170,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onClick, isSel
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Folder className="w-4 h-4 text-blue-600" />
-          <span className="font-medium text-sm">{workspace.relative_path}</span>
+          <span className="font-medium text-sm">{workspace.project_name || workspace.relative_path}</span>
         </div>
         <StatusBadge status={workspace.status} />
       </div>
@@ -470,8 +470,12 @@ export function ExecutorMonitor({
               {/* Workspace Info */}
               {selectedWorkspace && (
                 <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <h4 className="font-semibold mb-2">{selectedWorkspace.relative_path}</h4>
+                  <h4 className="font-semibold mb-2">{selectedWorkspace.project_name || selectedWorkspace.relative_path}</h4>
                   <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <Folder className="w-4 h-4" />
+                      <span className="truncate">{selectedWorkspace.relative_path}</span>
+                    </div>
                     {selectedWorkspace.project_type && (
                       <div className="flex items-center gap-2">
                         <FileCode className="w-4 h-4" />

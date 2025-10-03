@@ -6,10 +6,10 @@ import { ServiceUtils } from '@/services';
 
 async function handleGetWorkspaceEvents(
   request: EnhancedRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const userId = request.userId!;
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
   const query = request.validatedQuery || {};
 
   const context = ServiceUtils.createContext(userId, request.headers.get('x-request-id') || undefined);
@@ -26,10 +26,10 @@ async function handleGetWorkspaceEvents(
 
 async function handleLogEvent(
   request: EnhancedRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const userId = request.userId!;
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
   const eventData = request.validatedBody;
 
   const context = ServiceUtils.createContext(userId, request.headers.get('x-request-id') || undefined);
@@ -54,4 +54,10 @@ export const GET = withStandardMiddleware(handleGetWorkspaceEvents, {
 export const POST = withStandardMiddleware(handleLogEvent, {
   validation: { bodySchema: ExecutorSchemas.Event.Create },
   rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 500 }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return NextResponse.json({}, { status: 200 });
+}, {
+  auth: false
 });

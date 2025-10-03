@@ -6,10 +6,10 @@ import { ServiceUtils } from '@/services';
 
 async function handleGetWorkspaceArtifacts(
   request: EnhancedRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const userId = request.userId!;
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
   const query = request.validatedQuery || {};
 
   const context = ServiceUtils.createContext(userId, request.headers.get('x-request-id') || undefined);
@@ -26,10 +26,10 @@ async function handleGetWorkspaceArtifacts(
 
 async function handleUploadArtifact(
   request: EnhancedRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const userId = request.userId!;
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
   const artifactData = request.validatedBody;
 
   const context = ServiceUtils.createContext(userId, request.headers.get('x-request-id') || undefined);
@@ -54,4 +54,10 @@ export const GET = withStandardMiddleware(handleGetWorkspaceArtifacts, {
 export const POST = withStandardMiddleware(handleUploadArtifact, {
   validation: { bodySchema: ExecutorSchemas.Artifact.Create },
   rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 200 }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return NextResponse.json({}, { status: 200 });
+}, {
+  auth: false
 });

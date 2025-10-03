@@ -83,6 +83,9 @@ CREATE TABLE executor_agent_workspaces (
   relative_path TEXT NOT NULL, -- Relative to root_workspace_path
   metadata_path TEXT, -- Path to .zephyr metadata folder
 
+  -- Workspace identification
+  workspace_name TEXT NOT NULL, -- User-friendly name for the workspace
+
   -- Project configuration
   repo_url TEXT, -- Git repository URL
   repo_branch TEXT DEFAULT 'main',
@@ -136,7 +139,8 @@ CREATE TABLE executor_agent_workspaces (
 
   -- Constraints
   UNIQUE(executor_device_id, workspace_path),
-  UNIQUE(executor_device_id, relative_path)
+  UNIQUE(executor_device_id, relative_path),
+  UNIQUE(user_id, workspace_name)
 );
 
 -- =====================================================

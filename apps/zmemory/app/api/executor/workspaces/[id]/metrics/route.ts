@@ -6,10 +6,10 @@ import { ServiceUtils } from '@/services';
 
 async function handleGetWorkspaceMetrics(
   request: EnhancedRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const userId = request.userId!;
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
   const query = request.validatedQuery || {};
 
   const context = ServiceUtils.createContext(userId, request.headers.get('x-request-id') || undefined);
@@ -26,10 +26,10 @@ async function handleGetWorkspaceMetrics(
 
 async function handleRecordMetrics(
   request: EnhancedRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const userId = request.userId!;
-  const workspaceId = params.id;
+  const { id: workspaceId } = await params;
   const metricsData = request.validatedBody;
 
   const context = ServiceUtils.createContext(userId, request.headers.get('x-request-id') || undefined);
@@ -54,4 +54,10 @@ export const GET = withStandardMiddleware(handleGetWorkspaceMetrics, {
 export const POST = withStandardMiddleware(handleRecordMetrics, {
   validation: { bodySchema: ExecutorSchemas.Metric.Create },
   rateLimit: { windowMs: 60 * 1000, maxRequests: 100 } // Higher rate for metrics recording
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return NextResponse.json({}, { status: 200 });
+}, {
+  auth: false
 });
