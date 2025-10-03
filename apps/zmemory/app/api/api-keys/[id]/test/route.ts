@@ -1,9 +1,14 @@
-import { NextRequest } from 'next/server';
-import { getUser } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { apiKeyService } from '@/lib/api-key-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
+ * POST /api/api-keys/[id]/test - Test an API key
+ *
+ * Test if an API key is valid by making a request to the vendor's API
+ *
  * @swagger
  * /api/api-keys/{id}/test:
  *   post:
@@ -30,16 +35,12 @@ import { apiKeyService } from '@/lib/api-key-service';
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 test_success:
  *                   type: boolean
- *                   example: true
  *                 message:
  *                   type: string
- *                   example: "API key is valid"
  *                 error:
  *                   type: string
- *                   example: "OpenAI API returned 401"
  *                   nullable: true
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
@@ -48,47 +49,42 @@ import { apiKeyService } from '@/lib/api-key-service';
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
-
-export async function POST(
-  request: NextRequest,
+async function handleTestApiKey(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getUser(request);
-    if (!user) {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!;
 
-    const { id } = await params;
-    const testResult = await apiKeyService.testApiKey(user.id, id);
+  const testResult = await apiKeyService.testApiKey(userId, id);
 
-    if (testResult.success) {
-      return jsonWithCors(request, {
-        success: true,
-        test_success: true,
-        message: 'API key is valid'
-      });
-    } else {
-      return jsonWithCors(request, {
-        success: true,
-        test_success: false,
-        message: 'API key test failed',
-        error: testResult.error
-      });
-    }
-  } catch (error) {
-    console.error('Error testing API key:', error);
-    
-    const message = error instanceof Error ? error.message : 'Failed to test API key';
-    const status = message.includes('not found') ? 404 : 500;
-
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to test API key'),
-      success: false
-    }, status);
+  if (testResult.success) {
+    return NextResponse.json({
+      success: true,
+      test_success: true,
+      message: 'API key is valid'
+    });
+  } else {
+    return NextResponse.json({
+      success: true,
+      test_success: false,
+      message: 'API key test failed',
+      error: testResult.error
+    });
   }
 }
+
+// Apply middleware
+export const POST = withStandardMiddleware(handleTestApiKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 20 // Low limit for API testing operations
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

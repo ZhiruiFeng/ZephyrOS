@@ -355,7 +355,6 @@ export async function POST(request: NextRequest) {
       is_ai_task: data.is_ai_task,
     } as any;
     
-    console.log('Returning created subtask:', JSON.stringify(mapped, null, 2));
     return jsonWithCors(request, mapped, 201);
   } catch (error) {
     console.error('API error:', error);

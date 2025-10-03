@@ -100,8 +100,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    console.log('=== MEMORY ANALYSIS API DEBUG ===');
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = MemoryAnalysisSchema.safeParse(body);
@@ -129,7 +127,6 @@ export async function POST(request: NextRequest) {
       user_id: userId
     };
 
-    console.log('Analyzing memory:', JSON.stringify(memoryInput, null, 2));
 
     // Perform memory analysis
     const analysisResult = analyzeMemory(memoryInput);
@@ -165,7 +162,6 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    console.log('Analysis complete:', JSON.stringify(response, null, 2));
     return jsonWithCors(request, response);
 
   } catch (error) {

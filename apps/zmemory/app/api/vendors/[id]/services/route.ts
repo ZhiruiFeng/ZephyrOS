@@ -1,8 +1,14 @@
-import { NextRequest } from 'next/server';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { apiKeyService } from '@/lib/api-key-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
+ * GET /api/vendors/[id]/services - Get services for a vendor
+ *
+ * Retrieve all active services for a specific vendor
+ *
  * @swagger
  * /api/vendors/{id}/services:
  *   get:
@@ -31,57 +37,34 @@ import { apiKeyService } from '@/lib/api-key-service';
  *                     $ref: '#/components/schemas/VendorService'
  *                 success:
  *                   type: boolean
- *                   example: true
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
- * 
- * components:
- *   schemas:
- *     VendorService:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           example: "openai_gpt4"
- *         vendor_id:
- *           type: string
- *           example: "openai"
- *         service_name:
- *           type: string
- *           example: "gpt-4"
- *         display_name:
- *           type: string
- *           example: "GPT-4"
- *         description:
- *           type: string
- *           nullable: true
- *           example: "Latest GPT-4 model"
- *         is_active:
- *           type: boolean
- *           example: true
  */
-
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
-
-export async function GET(
-  request: NextRequest,
+async function handleGetVendorServices(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const services = await apiKeyService.getVendorServices(id);
+): Promise<NextResponse> {
+  const { id } = await params;
 
-    return jsonWithCors(request, { 
-      data: services, 
-      success: true 
-    });
-  } catch (error) {
-    console.error('Error fetching vendor services:', error);
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to fetch vendor services'),
-      success: false
-    }, 500);
-  }
+  const services = await apiKeyService.getVendorServices(id);
+
+  return NextResponse.json({
+    data: services,
+    success: true
+  });
 }
+
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetVendorServices, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300 // High limit for lookup operations
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

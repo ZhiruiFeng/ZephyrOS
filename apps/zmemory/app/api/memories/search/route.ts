@@ -174,9 +174,6 @@ export async function GET(request: NextRequest) {
 
     const client = await getClientForAuthType(request) || supabase;
 
-    console.log('=== MEMORY SEARCH DEBUG ===');
-    console.log('Search query:', search.q);
-    console.log('Search type:', search.search_type);
 
     let searchResults: any[] = [];
     let totalCount = 0;
@@ -205,7 +202,6 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    console.log(`Found ${searchResults.length} results for query: "${search.q}"`);
 
     return jsonWithCors(request, {
       results: searchResults,
@@ -230,7 +226,6 @@ export async function GET(request: NextRequest) {
 
 // Full-text search implementation
 async function performFullTextSearch(client: any, userId: string, search: MemorySearch) {
-  console.log('Performing full-text search...');
 
   let query = client
     .from('memories')
@@ -320,7 +315,6 @@ async function performFullTextSearch(client: any, userId: string, search: Memory
 
 // Semantic search placeholder (would use vector embeddings)
 async function performSemanticSearch(client: any, userId: string, search: MemorySearch) {
-  console.log('Performing semantic search (falling back to enhanced full-text)...');
   
   // TODO: Implement actual semantic search with vector embeddings
   // For now, perform enhanced full-text search with synonym expansion
@@ -330,7 +324,6 @@ async function performSemanticSearch(client: any, userId: string, search: Memory
 
 // Hybrid search combining multiple approaches
 async function performHybridSearch(client: any, userId: string, search: MemorySearch) {
-  console.log('Performing hybrid search...');
   
   // Get results from both full-text and semantic search
   const fullTextResults = await performFullTextSearch(client, userId, search);

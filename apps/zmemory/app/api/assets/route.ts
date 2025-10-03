@@ -266,8 +266,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    console.log('=== CREATE ASSET API DEBUG ===');
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = AssetCreateSchema.safeParse(body);
@@ -327,7 +325,6 @@ export async function POST(request: NextRequest) {
     // Add user_id to payload (always needed since we use service role client)
     await addUserIdIfNeeded(insertPayload, userId, request);
 
-    console.log('Creating asset with payload:', JSON.stringify(insertPayload, null, 2));
 
     const { data, error } = await client
       .from('assets')
@@ -340,7 +337,6 @@ export async function POST(request: NextRequest) {
       return jsonWithCors(request, { error: 'Failed to create asset' }, 500);
     }
 
-    console.log('Returning created asset:', JSON.stringify(data, null, 2));
     return jsonWithCors(request, data, 201);
   } catch (error) {
     console.error('API error:', error);

@@ -115,8 +115,6 @@ export async function GET(request: NextRequest) {
 
     const query = queryResult.data;
 
-    console.log('=== HIGHLIGHTS API DEBUG ===');
-    console.log('Query params:', JSON.stringify(query, null, 2));
 
     // Calculate date range based on period
     let fromDate: string;
@@ -308,7 +306,6 @@ export async function GET(request: NextRequest) {
       days_covered: Object.keys(groupedByDay).length
     };
 
-    console.log(`Found ${transformedData.length} highlights for ${query.period} period`);
 
     return jsonWithCors(request, { 
       highlights: transformedData,

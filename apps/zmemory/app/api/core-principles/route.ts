@@ -455,7 +455,6 @@ export async function POST(request: NextRequest) {
       user_id: data.user_id
     };
 
-    console.log('Returning created core principle:', JSON.stringify(mapped, null, 2));
     return jsonWithCors(request, mapped, 201);
   } catch (error) {
     console.error('API error:', error);

@@ -13,7 +13,7 @@ startup instructions for future migration sessions.
 | Phase 0 | Project scaffolding & safety rails | ✅ Complete | Path aliases, documentation baseline, zero-breaking-change guardrails |
 | Phase 1 | Quick-win routes & pattern validation | ✅ Complete | `/api/health`, `/api/docs`, `/api/agent-features`, `/api/ai-tasks` |
 | Phase 2 | High-impact support APIs | ✅ Complete | `/api/categories`, `/api/task-relations`, `/api/vendors`, `/api/interaction-types`, `/api/energy-days`, `/api/conversations` |
-| Phase 3 | Core feature APIs | 🔄 In progress | 5 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`. Next: more sub-routes |
+| Phase 3 | Core feature APIs | 🔄 In progress | 7 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`. Averaging 0.6h per route! |
 
 > Detailed before/after comparisons continue to live in
 > `MIGRATION_COMPARISON.md`. Use this dashboard for actionable next steps.
@@ -39,6 +39,8 @@ startup instructions for future migration sessions.
 | `/api/memories/[id]` | ✅ | Leverages MemoryService for CRUD operations (GET, PUT, DELETE), soft delete to 'archived' status, 430→107 lines (75% reduction), rate limiting (300 GET, 100 PUT, 50 DELETE per 15min) |
 | `/api/tasks/[id]` | ✅ | Leverages TaskService for CRUD operations (GET, PUT, DELETE), 491→110 lines (78% reduction), rate limiting (300 GET, 100 PUT, 50 DELETE per 15min) |
 | `/api/ai-tasks/[id]` | ✅ | Leverages AITaskService for CRUD operations (GET, PUT, DELETE), 144→112 lines (22% reduction), rate limiting (300 GET, 100 PUT, 50 DELETE per 15min) |
+| `/api/api-keys/[id]/test` | ✅ | Uses apiKeyService for testing API keys (POST), 93→91 lines (2% reduction), rate limiting (20 POST per 15min) |
+| `/api/vendors/[id]/services` | ✅ | Uses apiKeyService for vendor service lookup (GET), 87→71 lines (18% reduction), rate limiting (300 GET per 15min) |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).
@@ -48,7 +50,7 @@ Highlights:
 - Conversations migration shows multi-route refactor (5 route files → repository + service pattern), comprehensive session + message management with search and stats.
 - Activities migration demonstrates Phase 3 readiness (4 route files, 950 lines → service + analytics pattern), complex time-entry operations with timer logic, leverages existing ActivityRepository.
 - Memories migration reinforces schema verification lesson (5 non-existent fields discovered), achieved 84% code reduction (507→82 lines), comprehensive filtering with 20+ parameters.
-- Sub-route pattern established: `/api/memories/[id]`, `/api/tasks/[id]`, and `/api/ai-tasks/[id]` achieve 22-78% reduction by leveraging existing services, averaging 0.5h per route.
+- Sub-route pattern established: 5 sub-routes migrated achieving 2-78% reduction by leveraging existing services, averaging 0.3-0.5h per route (total time decreasing as patterns solidify).
 - Lookup endpoints (vendors, interaction-types, energy-days) demonstrate service-only pattern (no repository needed for read-mostly system data).
 - Types were modularised into `/lib/database/types/**` and `/lib/services/types/**`, keeping legacy imports working via index re-exports.
 

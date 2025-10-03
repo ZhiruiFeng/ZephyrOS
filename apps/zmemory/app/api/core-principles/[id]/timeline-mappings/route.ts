@@ -487,7 +487,6 @@ export async function POST(
       timeline_item: data.timeline_item || undefined
     };
 
-    console.log('Returning created timeline mapping:', JSON.stringify(mapped, null, 2));
     return jsonWithCors(request, mapped, 201);
   } catch (error) {
     console.error('API error:', error);

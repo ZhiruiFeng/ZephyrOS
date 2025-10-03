@@ -89,8 +89,6 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     
-    console.log('=== REORDER SUBTASKS API DEBUG ===');
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = ReorderSubtasksSchema.safeParse(body);
@@ -185,7 +183,6 @@ export async function PUT(request: NextRequest) {
       updatedCount++;
     }
 
-    console.log(`Successfully reordered ${updatedCount} subtasks`);
     
     return jsonWithCors(request, { 
       message: 'Subtasks reordered successfully',

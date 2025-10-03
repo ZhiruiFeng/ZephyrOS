@@ -80,10 +80,6 @@ export async function PUT(
 
     const body = await request.json();
     
-    console.log('=== UPDATE MEMORY ANCHOR API DEBUG ===');
-    console.log('Memory ID:', memoryId);
-    console.log('Anchor ID:', anchorId);
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = MemoryAnchorUpdateSchema.safeParse(body);
@@ -162,7 +158,6 @@ export async function PUT(
       }
     }
 
-    console.log('Updating anchor with payload:', JSON.stringify(transformedData, null, 2));
 
     // Update anchor
     const { data, error } = await client
@@ -208,7 +203,6 @@ export async function PUT(
       }
     }
 
-    console.log('Returning updated anchor:', JSON.stringify(data, null, 2));
     return jsonWithCors(request, data);
   } catch (error) {
     console.error('API error:', error);

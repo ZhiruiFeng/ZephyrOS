@@ -83,9 +83,6 @@ export async function GET(request: NextRequest) {
 
     const query = queryResult.data;
 
-    console.log('=== WEEKLY REVIEW API DEBUG ===');
-    console.log('Query params:', JSON.stringify(query, null, 2));
-    console.log('Week offset:', query.week_offset);
 
     // Generate the weekly review
     const reviewData = await generateWeeklyReview(client, userId, query.week_offset);
@@ -142,7 +139,6 @@ export async function GET(request: NextRequest) {
       query_params: query
     };
 
-    console.log(`Generated weekly review for week ${query.week_offset}: ${response.summary_stats.highlights_count} highlights, ${response.summary_stats.insights_count} insights`);
 
     return jsonWithCors(request, response);
 

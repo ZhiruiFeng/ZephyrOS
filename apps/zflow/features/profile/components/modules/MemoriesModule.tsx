@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Plus, Search, Calendar, Star, Heart, Settings, X, Loader2, RefreshCw, Maximize2, Target, Brain, TrendingUp } from 'lucide-react'
+import { BookOpen, Plus, Search, Calendar, Star, Settings, X, Loader2, RefreshCw, Maximize2, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { Memory, MemoryFilters } from '@/types/domain/memory'
@@ -12,39 +12,25 @@ import MemoryCapture from '@/features/memory/components/MemoryCapture'
 import MemoryCard from '@/features/memory/components/MemoryCard'
 import type { ProfileModuleProps } from '@/profile'
 
-// Import memory hooks for anchor data
-import { useMemories } from '@/features/memory/hooks'
-
-// Import organized components
-import { EnhancedMemory, MemoryViewMode, AnchorFilterType } from './memories/types'
-import { hasAnchorType, groupMemoriesByAnchors, formatDateGroup } from './memories/utils'
-import MemoryFiltersPanel from './memories/MemoryFiltersPanel'
-import MemoryViewTabs from './memories/MemoryViewTabs'
-import { AnchoredView, StrategyView, EpisodesView } from './memories/views'
+type SimpleViewMode = 'timeline' | 'search' | 'collections'
 
 export function MemoriesModule({ config, onConfigChange, isFullscreen = false, onToggleFullscreen, fullScreenPath }: ProfileModuleProps) {
   const { user } = useAuth()
   const { t } = useTranslation()
   const router = useRouter()
   const [showSettings, setShowSettings] = React.useState(false)
-  const [selectedView, setSelectedView] = React.useState<MemoryViewMode>(
+  const [selectedView, setSelectedView] = React.useState<SimpleViewMode>(
     config.config.defaultView || 'timeline'
   )
   const [isCaptureOpen, setIsCaptureOpen] = React.useState(false)
   const [editingMemory, setEditingMemory] = React.useState<Memory | undefined>()
-  const [memories, setMemories] = React.useState<EnhancedMemory[]>([])
+  const [memories, setMemories] = React.useState<Memory[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [expandedDescriptions, setExpandedDescriptions] = React.useState<Set<string>>(new Set())
-  const [highlightedMemories, setHighlightedMemories] = React.useState<EnhancedMemory[]>([])
-  const [recentMemories, setRecentMemories] = React.useState<EnhancedMemory[]>([])
+  const [highlightedMemories, setHighlightedMemories] = React.useState<Memory[]>([])
   const [popularTags, setPopularTags] = React.useState<string[]>([])
-
-  // Enhanced filter state
-  const [anchorFilter, setAnchorFilter] = React.useState<AnchorFilterType>('all')
-  const [relationTypeFilter, setRelationTypeFilter] = React.useState<string>('all')
-  const [showFilters, setShowFilters] = React.useState(false)
 
   const [filters, setFilters] = React.useState<MemoryFilters>({
     view: 'timeline',
@@ -66,24 +52,19 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
   const loadInitialData = React.useCallback(async () => {
     setLoading(true)
     try {
-      // Import the enhanced API
-      const { memoryModuleApi } = await import('./memories/api')
+      // Simplified: Only fetch memories once with a reasonable limit
+      const result = await memoriesApi.search({
+        limit: maxDisplayItems * 2
+      })
 
-      // Fetch memories with anchoring information
-      const [highlights, recent, allMemories] = await Promise.all([
-        memoryModuleApi.getHighlightsWithAnchors(maxDisplayItems),
-        memoryModuleApi.getRecentWithAnchors(maxDisplayItems * 2),
-        memoryModuleApi.getMemoriesWithAnchors({
-          limit: maxDisplayItems * 3
-        })
-      ])
+      setMemories(result.memories)
 
+      // Extract highlights from fetched memories
+      const highlights = result.memories.filter(m => m.is_highlight).slice(0, maxDisplayItems)
       setHighlightedMemories(highlights)
-      setRecentMemories(recent.slice(0, maxDisplayItems))
-      setMemories(allMemories)
 
-      // Extract popular tags from recent memories
-      const allTags = recent.flatMap(m => m.tags)
+      // Extract popular tags from all memories
+      const allTags = result.memories.flatMap(m => m.tags)
       const tagCounts = allTags.reduce((acc, tag) => {
         acc[tag] = (acc[tag] || 0) + 1
         return acc
@@ -102,8 +83,6 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
       setLoading(false)
     }
   }, [maxDisplayItems])
-
-  // Note: Helper functions moved to ./memories/utils.ts
 
   // Load initial data
   React.useEffect(() => {
@@ -127,13 +106,11 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
     if (memory.is_highlight) {
       setHighlightedMemories(prev => [memory, ...prev.slice(0, maxDisplayItems - 1)])
     }
-    setRecentMemories(prev => [memory, ...prev.slice(0, maxDisplayItems - 1)])
   }
 
   const handleMemoryUpdated = (memory: Memory) => {
     setMemories(prev => prev.map(m => m.id === memory.id ? memory : m))
     setHighlightedMemories(prev => prev.map(m => m.id === memory.id ? memory : m))
-    setRecentMemories(prev => prev.map(m => m.id === memory.id ? memory : m))
   }
 
   const handleEditMemory = (memory: Memory) => {
@@ -146,7 +123,6 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
       await memoriesApi.delete(memoryId)
       setMemories(prev => prev.filter(m => m.id !== memoryId))
       setHighlightedMemories(prev => prev.filter(m => m.id !== memoryId))
-      setRecentMemories(prev => prev.filter(m => m.id !== memoryId))
     } catch (error) {
       console.error('Failed to delete memory:', error)
     }
@@ -189,7 +165,7 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
     router.push('/memories')
   }
 
-  // Enhanced filtering logic with anchor support
+  // Simplified filtering logic
   const filteredMemories = React.useMemo(() => {
     let filtered = [...memories]
 
@@ -200,25 +176,7 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
         (memory.note ?? '').toLowerCase().includes(query) ||
         (memory.title ?? memory.title_override ?? '').toLowerCase().includes(query) ||
         memory.tags.some(tag => tag.toLowerCase().includes(query)) ||
-        (memory.place_name ?? '').toLowerCase().includes(query) ||
-        // Also search in anchor titles
-        memory.anchors?.some(a => a.timeline_item?.title.toLowerCase().includes(query)) ||
-        memory.episode_anchors?.some(a => a.episode?.title.toLowerCase().includes(query)) ||
-        memory.strategy_anchors?.some(a => a.strategy_item?.timeline_item_title.toLowerCase().includes(query))
-      )
-    }
-
-    // Anchor type filter
-    if (anchorFilter !== 'all') {
-      filtered = filtered.filter(memory => hasAnchorType(memory, anchorFilter))
-    }
-
-    // Relation type filter
-    if (relationTypeFilter !== 'all') {
-      filtered = filtered.filter(memory =>
-        memory.anchors?.some(a => a.relation_type === relationTypeFilter) ||
-        memory.episode_anchors?.some(a => a.relation_type === relationTypeFilter) ||
-        memory.strategy_anchors?.some(a => a.relation_type === relationTypeFilter)
+        (memory.place_name ?? '').toLowerCase().includes(query)
       )
     }
 
@@ -228,11 +186,11 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
     }
 
     return filtered.slice(0, maxDisplayItems)
-  }, [memories, searchQuery, anchorFilter, relationTypeFilter, filters.show_highlights_only, maxDisplayItems])
+  }, [memories, searchQuery, filters.show_highlights_only, maxDisplayItems])
 
   // Group memories by date for timeline view
   const groupedMemories = React.useMemo(() => {
-    const grouped: { [date: string]: EnhancedMemory[] } = {}
+    const grouped: { [date: string]: Memory[] } = {}
 
     filteredMemories.forEach(memory => {
       const date = new Date(memory.created_at).toDateString()
@@ -247,10 +205,21 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
       .slice(0, 3) // Limit to 3 days for module view
   }, [filteredMemories])
 
-  // Group memories by anchor type for anchored view
-  const groupedByAnchors = React.useMemo(() => groupMemoriesByAnchors(filteredMemories), [filteredMemories])
+  // Helper function to format date groups
+  const formatDateGroup = (dateString: string) => {
+    const date = new Date(dateString)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
 
-  // Note: formatDateGroup function moved to ./memories/utils.ts
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today'
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday'
+    } else {
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    }
+  }
 
   if (!user) {
     return (
@@ -379,24 +348,56 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <MemoryViewTabs
-        selectedView={selectedView}
-        setSelectedView={setSelectedView}
-        showCollectionsView={showCollectionsView}
-      />
+      {/* Simple Navigation Tabs */}
+      <div className="flex gap-2 mb-4 border-b border-gray-200">
+        <button
+          onClick={() => setSelectedView('timeline')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            selectedView === 'timeline'
+              ? 'text-purple-600 border-b-2 border-purple-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Timeline
+        </button>
+        <button
+          onClick={() => setSelectedView('search')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            selectedView === 'search'
+              ? 'text-purple-600 border-b-2 border-purple-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Search
+        </button>
+        {showCollectionsView && (
+          <button
+            onClick={() => setSelectedView('collections')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              selectedView === 'collections'
+                ? 'text-purple-600 border-b-2 border-purple-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Collections
+          </button>
+        )}
+      </div>
 
-      {/* Filters Panel */}
-      <MemoryFiltersPanel
-        showFilters={showFilters}
-        setShowFilters={setShowFilters}
-        anchorFilter={anchorFilter}
-        setAnchorFilter={setAnchorFilter}
-        relationTypeFilter={relationTypeFilter}
-        setRelationTypeFilter={setRelationTypeFilter}
-        filters={filters}
-        setFilters={setFilters}
-      />
+      {/* Simple Filters */}
+      {selectedView === 'timeline' && (
+        <div className="mb-4 flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={filters.show_highlights_only}
+              onChange={(e) => setFilters(prev => ({ ...prev, show_highlights_only: e.target.checked }))}
+              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            Highlights only
+          </label>
+        </div>
+      )}
 
       {/* Main Content */}
       {loading && memories.length === 0 ? (
@@ -480,49 +481,6 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
             </div>
           )}
 
-          {/* Anchored View */}
-          {selectedView === 'anchored' && (
-            <AnchoredView
-              groupedByAnchors={groupedByAnchors}
-              isFullscreen={isFullscreen}
-              expandedDescriptions={expandedDescriptions}
-              onMemoryClick={handleMemoryClick}
-              onEditMemory={handleEditMemory}
-              onDeleteMemory={handleDeleteMemory}
-              onToggleHighlight={handleToggleHighlight}
-              onToggleDescription={handleToggleDescription}
-              onTagClick={handleTagClick}
-            />
-          )}
-
-          {/* Strategy View */}
-          {selectedView === 'strategy' && (
-            <StrategyView
-              groupedByAnchors={groupedByAnchors}
-              expandedDescriptions={expandedDescriptions}
-              onMemoryClick={handleMemoryClick}
-              onEditMemory={handleEditMemory}
-              onDeleteMemory={handleDeleteMemory}
-              onToggleHighlight={handleToggleHighlight}
-              onToggleDescription={handleToggleDescription}
-              onTagClick={handleTagClick}
-            />
-          )}
-
-          {/* Episodes View */}
-          {selectedView === 'episodes' && (
-            <EpisodesView
-              groupedByAnchors={groupedByAnchors}
-              expandedDescriptions={expandedDescriptions}
-              onMemoryClick={handleMemoryClick}
-              onEditMemory={handleEditMemory}
-              onDeleteMemory={handleDeleteMemory}
-              onToggleHighlight={handleToggleHighlight}
-              onToggleDescription={handleToggleDescription}
-              onTagClick={handleTagClick}
-            />
-          )}
-
           {selectedView === 'search' && (
             <div className="space-y-4">
               {/* Search Input */}
@@ -549,44 +507,19 @@ export function MemoriesModule({ config, onConfigChange, isFullscreen = false, o
                 ) : (
                   <>
                     {filteredMemories.map((memory) => (
-                      <div key={memory.id} className="space-y-2">
-                        <MemoryCard
-                          memory={memory}
-                          variant="search"
-                          displayMode="list"
-                          expandedDescriptions={expandedDescriptions}
-                          onMemoryClick={handleMemoryClick}
-                          onEditMemory={handleEditMemory}
-                          onDeleteMemory={handleDeleteMemory}
-                          onToggleHighlight={handleToggleHighlight}
-                          onToggleDescription={handleToggleDescription}
-                          onTagClick={handleTagClick}
-                        />
-
-                        {/* Show anchor information in search results */}
-                        {(memory.anchors?.length || memory.episode_anchors?.length || memory.strategy_anchors?.length) ? (
-                          <div className="ml-4 pl-4 border-l-2 border-gray-200">
-                            <p className="text-xs text-gray-500 mb-2">Anchored to:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {memory.anchors?.slice(0, 3).map(anchor => (
-                                <span key={anchor.anchor_item_id} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
-                                  📋 {anchor.timeline_item?.title}
-                                </span>
-                              ))}
-                              {memory.episode_anchors?.slice(0, 3).map(anchor => (
-                                <span key={anchor.episode_id} className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                                  🧠 {anchor.episode?.title}
-                                </span>
-                              ))}
-                              {memory.strategy_anchors?.slice(0, 3).map(anchor => (
-                                <span key={anchor.strategy_item_id} className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
-                                  🎯 {anchor.strategy_item?.strategy_type}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
+                      <MemoryCard
+                        key={memory.id}
+                        memory={memory}
+                        variant="search"
+                        displayMode="list"
+                        expandedDescriptions={expandedDescriptions}
+                        onMemoryClick={handleMemoryClick}
+                        onEditMemory={handleEditMemory}
+                        onDeleteMemory={handleDeleteMemory}
+                        onToggleHighlight={handleToggleHighlight}
+                        onToggleDescription={handleToggleDescription}
+                        onTagClick={handleTagClick}
+                      />
                     ))}
 
                     {memories.length > maxDisplayItems && (

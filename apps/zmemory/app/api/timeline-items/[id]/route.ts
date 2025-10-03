@@ -211,9 +211,6 @@ export async function PUT(
 
     const body = await request.json();
     
-    console.log('=== UPDATE TIMELINE ITEM API DEBUG ===');
-    console.log('Timeline Item ID:', id);
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = TimelineItemUpdateSchema.safeParse(body);
@@ -299,8 +296,6 @@ export async function PUT(
       }
     }
 
-    console.log('Timeline items update:', JSON.stringify(timelineItemsUpdate, null, 2));
-    console.log('Memory update:', JSON.stringify(memoryUpdate, null, 2));
 
     let updatedTimelineItem;
     
@@ -379,7 +374,6 @@ export async function PUT(
       }
     }
 
-    console.log('Returning updated timeline item:', JSON.stringify(updatedTimelineItem, null, 2));
     return jsonWithCors(request, updatedTimelineItem);
 
   } catch (error) {

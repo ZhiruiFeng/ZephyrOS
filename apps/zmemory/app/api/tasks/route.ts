@@ -253,14 +253,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Enforce auth (dev fallback to mock when not authenticated)
-    console.log('[TASKS] Attempting to get user ID from request')
     const userId = await getUserIdFromRequest(request)
-    console.log('[TASKS] getUserIdFromRequest returned:', userId ? `User ID: ${userId}` : 'NULL')
 
     if (!userId) {
       console.error('[TASKS] No user ID - authentication failed')
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[TASKS] Development mode - returning mock data')
         // In development, allow UI to work without auth
         let tasks = generateMockTasks()
         // Apply minimal filtering for better UX
@@ -275,8 +272,6 @@ export async function GET(request: NextRequest) {
       console.error('[TASKS] Production mode - returning 401 Unauthorized')
       return jsonWithCors(request, { error: 'Unauthorized' }, 401)
     }
-
-    console.log('[TASKS] User authenticated, fetching tasks for user:', userId)
 
     // Get appropriate client based on auth type (API key vs OAuth)
     const client = await getClientForAuthType(request) || supabase
@@ -365,7 +360,6 @@ export async function GET(request: NextRequest) {
     // Apply pagination
     dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
 
-    console.log('[TASKS] Executing database query...')
     const { data, error } = await dbQuery;
 
     if (error) {
@@ -377,7 +371,6 @@ export async function GET(request: NextRequest) {
         hint: error.hint
       });
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[TASKS] Development mode - returning mock data after error')
         // Dev fallback: return mock instead of breaking the UI
         let tasks = generateMockTasks();
         const start = query.offset;
@@ -597,8 +590,7 @@ export async function POST(request: NextRequest) {
       subtask_count: data.subtask_count || 0,
       completed_subtask_count: data.completed_subtask_count || 0,
     } as any;
-    
-    console.log('Returning created task:', JSON.stringify(mapped, null, 2));
+
     return jsonWithCors(request, mapped, 201);
   } catch (error) {
     console.error('API error:', error);

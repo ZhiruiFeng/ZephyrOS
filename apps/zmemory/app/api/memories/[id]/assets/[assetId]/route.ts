@@ -66,10 +66,6 @@ export async function PUT(
 
     const body = await request.json();
     
-    console.log('=== UPDATE MEMORY ASSET API DEBUG ===');
-    console.log('Memory ID:', memoryId);
-    console.log('Asset ID:', assetId);
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = MemoryAssetUpdateSchema.safeParse(body);
@@ -146,7 +142,6 @@ export async function PUT(
       }
     }
 
-    console.log('Updating asset attachment with payload:', JSON.stringify(assetData, null, 2));
 
     // Update attachment
     const { data, error } = await client
@@ -174,7 +169,6 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Failed to update asset attachment' }, 500);
     }
 
-    console.log('Returning updated asset attachment:', JSON.stringify(data, null, 2));
     return jsonWithCors(request, data);
   } catch (error) {
     console.error('API error:', error);

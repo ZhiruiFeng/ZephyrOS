@@ -204,9 +204,6 @@ export async function POST(
 
     const body = await request.json();
     
-    console.log('=== ATTACH ASSET TO MEMORY API DEBUG ===');
-    console.log('Memory ID:', memoryId);
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = MemoryAssetCreateSchema.safeParse(body);
@@ -319,7 +316,6 @@ export async function POST(
       created_at: now
     };
 
-    console.log('Creating asset attachment with payload:', JSON.stringify(insertPayload, null, 2));
 
     const { data, error } = await client
       .from('memory_assets')
@@ -344,7 +340,6 @@ export async function POST(
       return jsonWithCors(request, { error: 'Failed to attach asset' }, 500);
     }
 
-    console.log('Returning attached asset:', JSON.stringify(data, null, 2));
     return jsonWithCors(request, data, 201);
   } catch (error) {
     console.error('API error:', error);

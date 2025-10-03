@@ -123,8 +123,6 @@ export async function GET(request: NextRequest) {
 
     const query = queryResult.data;
 
-    console.log('=== MEMORY TIMELINE ITEMS API DEBUG ===');
-    console.log('Query params:', JSON.stringify(query, null, 2));
 
     // Build enhanced query that joins timeline_items with memories table
     let dbQuery = client
@@ -300,7 +298,6 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    console.log(`Found ${transformedData.length} memory timeline items`);
 
     return jsonWithCors(request, { 
       items: transformedData,

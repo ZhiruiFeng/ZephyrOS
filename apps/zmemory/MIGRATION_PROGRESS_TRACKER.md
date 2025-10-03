@@ -4,9 +4,9 @@
 
 Last Updated: 2025-10-03
 Total Routes: 108
-Migrated: 15 (14%)
+Migrated: 17 (16%)
 Infrastructure Ready: 1
-Remaining: 92 (85%)
+Remaining: 90 (83%)
 
 ---
 
@@ -22,7 +22,7 @@ Remaining: 92 (85%)
 
 ---
 
-## ✅ Completed Migrations (15 routes)
+## ✅ Completed Migrations (17 routes)
 
 | Route | Lines Reduced | Time Spent | Date | Pattern | Notes |
 |-------|---------------|------------|------|---------|-------|
@@ -41,10 +41,12 @@ Remaining: 92 (85%)
 | `/api/memories/[id]` | 430 → 107 (75%) | ~1h | Phase 3 | Sub-route | Leverages MemoryService |
 | `/api/tasks/[id]` | 491 → 110 (78%) | ~0.5h | Phase 3 | Sub-route | Leverages TaskService |
 | `/api/ai-tasks/[id]` | 144 → 112 (22%) | ~0.5h | Phase 3 | Sub-route | Leverages AITaskService |
+| `/api/api-keys/[id]/test` | 93 → 91 (2%) | ~0.25h | Phase 3 | Sub-route | Uses apiKeyService |
+| `/api/vendors/[id]/services` | 87 → 71 (18%) | ~0.25h | Phase 3 | Sub-route | Uses apiKeyService |
 
-**Total Lines Reduced**: ~4,124 → ~1,517 (63% average reduction)
-**Total Time Invested**: ~27 hours
-**Average Time per Route**: ~1.8 hours
+**Total Lines Reduced**: ~4,304 → ~1,679 (61% average reduction)
+**Total Time Invested**: ~27.5 hours
+**Average Time per Route**: ~1.6 hours
 
 ---
 
@@ -93,7 +95,7 @@ Remaining: 92 (85%)
 | Simple CRUD | 6 | 60% | 100% ✅ |
 | Lookup/Read-only | 3 | 49% | 100% ✅ |
 | Multi-route | 2 | 58% | 100% ✅ |
-| Sub-route | 3 | 58% | 100% ✅ |
+| Sub-route | 5 | 40% | 100% ✅ |
 | Complex | 0 | N/A | N/A |
 
 ### Time Investment
@@ -102,14 +104,14 @@ Remaining: 92 (85%)
 |-------|--------|------|---------------|
 | Phase 1 | 4 | ~14h | 3.5h |
 | Phase 2 | 6 | ~13h | 2.2h |
-| Phase 3 | 5 | ~4h | 0.8h |
+| Phase 3 | 7 | ~4.5h | 0.6h |
 
-**Trend**: Getting faster with experience (3.5h → 2.2h → 0.8h per route)
+**Trend**: Getting faster with experience (3.5h → 2.2h → 0.6h per route)
 
 ### Success Rate
 
-- Migrations attempted: 15
-- Migrations completed: 15
+- Migrations attempted: 17
+- Migrations completed: 17
 - Migrations deferred: 1 (tasks main route - infrastructure built)
 - Failures requiring rollback: 0
 - **Success Rate**: 100% ✅

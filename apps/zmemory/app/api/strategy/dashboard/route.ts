@@ -266,7 +266,6 @@ export async function GET(request: NextRequest) {
           dashboardData.recent_memories = memoriesData
         }
       } catch (memoryError) {
-        console.log('Strategy memories table not available, using empty array')
         dashboardData.recent_memories = []
       }
 
@@ -303,7 +302,6 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (agentError) {
-        console.log('Agent workload data not available, using empty array')
         dashboardData.agent_workload = []
       }
 

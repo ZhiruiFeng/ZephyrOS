@@ -81,8 +81,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({})); // Default to empty object
     
-    console.log('=== AUTO-ENHANCE API DEBUG ===');
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate request body
     const validationResult = AutoEnhanceSchema.safeParse(body);
@@ -96,7 +94,6 @@ export async function POST(request: NextRequest) {
     
     const params = validationResult.data;
 
-    console.log('Processing auto-enhancement with params:', JSON.stringify(params, null, 2));
 
     // Get memories to process
     let memoryQuery = client
@@ -135,7 +132,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`Processing ${memories.length} memories for enhancement`);
 
     const enhancementResults = [];
     let updatedCount = 0;
@@ -248,7 +244,6 @@ export async function POST(request: NextRequest) {
       processed_at: new Date().toISOString()
     };
 
-    console.log('Auto-enhancement completed:', JSON.stringify(summary, null, 2));
 
     return jsonWithCors(request, response);
 

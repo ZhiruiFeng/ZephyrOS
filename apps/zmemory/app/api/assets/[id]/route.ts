@@ -152,9 +152,6 @@ export async function PUT(
 
     const body = await request.json();
     
-    console.log('=== UPDATE ASSET API DEBUG ===');
-    console.log('Asset ID:', id);
-    console.log('Received body:', JSON.stringify(body, null, 2));
     
     // Validate input data
     const validationResult = AssetUpdateSchema.safeParse(body);
@@ -186,7 +183,6 @@ export async function PUT(
 
     const client = await getClientForAuthType(request) || supabase;
 
-    console.log('Updating asset with payload:', JSON.stringify(assetData, null, 2));
 
     const { data, error } = await client
       .from('assets')
@@ -204,7 +200,6 @@ export async function PUT(
       return jsonWithCors(request, { error: 'Failed to update asset' }, 500);
     }
 
-    console.log('Returning updated asset:', JSON.stringify(data, null, 2));
     return jsonWithCors(request, data);
   } catch (error) {
     console.error('API error:', error);
