@@ -56,6 +56,7 @@ export const ExecutorWorkspaceCreateSchema = z.object({
 });
 
 export const ExecutorWorkspaceUpdateSchema = z.object({
+  workspace_name: z.string().min(1).max(200).optional(),
   status: z.enum([
     'creating', 'initializing', 'cloning', 'ready', 'assigned',
     'running', 'paused', 'completed', 'failed', 'archived', 'cleanup'
@@ -64,7 +65,18 @@ export const ExecutorWorkspaceUpdateSchema = z.object({
   current_phase: z.string().optional(),
   current_step: z.string().optional(),
   disk_usage_bytes: z.number().int().min(0).optional(),
-  file_count: z.number().int().min(0).optional()
+  file_count: z.number().int().min(0).optional(),
+  repo_url: z.string().url().optional().nullable(),
+  repo_branch: z.string().optional(),
+  project_type: z.enum(['swift', 'python', 'nodejs', 'go', 'rust', 'generic']).optional().nullable(),
+  project_name: z.string().optional().nullable(),
+  allowed_commands: z.array(z.string()).optional().nullable(),
+  environment_vars: z.record(z.string()).optional().nullable(),
+  system_prompt: z.string().optional().nullable(),
+  execution_timeout_minutes: z.number().int().min(1).max(300).optional(),
+  enable_network: z.boolean().optional(),
+  enable_git: z.boolean().optional(),
+  max_disk_usage_mb: z.number().int().min(100).max(50000).optional()
 });
 
 export const ExecutorWorkspaceQuerySchema = z.object({
