@@ -13,7 +13,7 @@ startup instructions for future migration sessions.
 | Phase 0 | Project scaffolding & safety rails | ✅ Complete | Path aliases, documentation baseline, zero-breaking-change guardrails |
 | Phase 1 | Quick-win routes & pattern validation | ✅ Complete | `/api/health`, `/api/docs`, `/api/agent-features`, `/api/ai-tasks` |
 | Phase 2 | High-impact support APIs | ✅ Complete | `/api/categories`, `/api/task-relations`, `/api/vendors`, `/api/interaction-types`, `/api/energy-days`, `/api/conversations` |
-| Phase 3 | Core feature APIs | 🔄 In progress | 10 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`, `/api/time-entries/running`, `/api/tasks/[id]/timer/stop`, `/api/internal/resolve-openai-key`. Averaging 0.5h per route! |
+| Phase 3 | Core feature APIs | 🔄 In progress | 15 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`, `/api/time-entries/running`, `/api/tasks/[id]/timer/stop`, `/api/internal/resolve-openai-key`, `/api/internal/resolve-elevenlabs-key`, `/api/docs/spec`, `/api/narrative/seasons/current`, `/api/time-entries/[id]`, `/api/time-entries/day`. Averaging 0.43h per route! |
 
 > Detailed before/after comparisons continue to live in
 > `MIGRATION_COMPARISON.md`. Use this dashboard for actionable next steps.
@@ -44,6 +44,11 @@ startup instructions for future migration sessions.
 | `/api/time-entries/running` | ✅ | Get currently running timer (GET), 38→56 lines, backward compatibility for task_id field, rate limiting (300 GET per 15min) |
 | `/api/tasks/[id]/timer/stop` | ✅ | Stop task timer with validation (POST), 83→97 lines, TimerStopSchema validation, override end time support, rate limiting (60 POST per minute) |
 | `/api/internal/resolve-openai-key` | ✅ | Internal API key resolution (GET), 34→44 lines, CORS disabled for server-to-server only, rate limiting (100 GET per 15min) |
+| `/api/internal/resolve-elevenlabs-key` | ✅ | Internal ElevenLabs API key resolution (GET), 34→44 lines, CORS disabled for server-to-server only, rate limiting (100 GET per 15min) |
+| `/api/docs/spec` | ✅ | Public OpenAPI spec endpoint (GET), 14→24 lines, public middleware with CORS, rate limiting (100 GET per 15min) |
+| `/api/narrative/seasons/current` | ✅ | Current active season lookup (GET), 60→57 lines (5% reduction), rate limiting (100 GET per 15min) |
+| `/api/time-entries/[id]` | ✅ | Time entry update/delete (PUT, DELETE), 67→100 lines, TimeEntryUpdateSchema validation, rate limiting (100 PUT, 50 DELETE per 15min) |
+| `/api/time-entries/day` | ✅ | Day view time entries query (GET), 80→90 lines, from/to time window filtering, rate limiting (300 GET per 15min) |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).

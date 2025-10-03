@@ -1,34 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getUser } from '@/auth'
-import { resolveApiKey } from '@/lib/api-key-resolver'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { resolveApiKey } from '@/lib/api-key-resolver';
 
-// Internal endpoint to resolve the user's ElevenLabs API key.
-// Note: Intentionally DOES NOT include CORS headers to prevent browser access.
-// Server-to-server fetches are not subject to CORS.
+export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getUser(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+/**
+ * GET /api/internal/resolve-elevenlabs-key - Resolve the user's ElevenLabs API key
+ *
+ * Internal endpoint to resolve the user's ElevenLabs API key.
+ * Note: Intentionally DOES NOT include CORS headers to prevent browser access.
+ * Server-to-server fetches are not subject to CORS.
+ */
+async function handleResolveElevenLabsKey(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
 
-    const { searchParams } = new URL(request.url)
-    const service = searchParams.get('service') || undefined
+  const { searchParams } = new URL(request.url);
+  const service = searchParams.get('service') || undefined;
 
-    const resolved = await resolveApiKey(user.id, 'elevenlabs', service)
-    if (!resolved) {
-      return NextResponse.json({ error: 'No ElevenLabs API key configured' }, { status: 404 })
-    }
+  const resolved = await resolveApiKey(userId, 'elevenlabs', service);
 
-    // Return the raw key for server-side use only
-    return NextResponse.json({
-      key: resolved.key,
-      source: resolved.source,
-      keyId: resolved.keyId
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to resolve ElevenLabs API key'
-    return NextResponse.json({ error: message }, { status: 500 })
+  if (!resolved) {
+    return NextResponse.json({ error: 'No ElevenLabs API key configured' }, { status: 404 });
   }
+
+  // Return the raw key for server-side use only
+  return NextResponse.json({
+    key: resolved.key,
+    source: resolved.source,
+    keyId: resolved.keyId
+  });
 }
+
+// Apply middleware
+// Note: This is an internal endpoint, so we don't add CORS headers
+export const GET = withStandardMiddleware(handleResolveElevenLabsKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  },
+  cors: false // Disable CORS for internal endpoints
+});
