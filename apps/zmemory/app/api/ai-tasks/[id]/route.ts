@@ -1,144 +1,112 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { z } from 'zod'
-import { getUserIdFromRequest, getClientForAuthType } from '@/lib/auth/index'
-import { AITaskUpdateSchema } from '@/validation'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { createAITaskService } from '@/services';
+import { AITaskUpdateSchema } from '@/validation';
 
-function addCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  return response
-}
+export const dynamic = 'force-dynamic';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+/**
+ * GET /api/ai-tasks/[id] - Get a specific AI task
+ */
+async function handleGetAITask(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!;
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const params = await context.params
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+  const aiTaskService = createAITaskService({ userId });
+  const result = await aiTaskService.findAITaskById(id);
+
+  if (result.error) {
+    if (result.error.message === 'AI task not found') {
+      return NextResponse.json({ error: 'AI task not found' }, { status: 404 });
     }
-
-    const client = await getClientForAuthType(request) || supabase
-    if (!client) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
-    }
-
-    const { id } = params
-
-    const { data, error } = await client
-      .from('ai_tasks')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single()
-
-    if (error) {
-      return addCorsHeaders(NextResponse.json({ error: 'AI task not found' }, { status: 404 }))
-    }
-
-    return addCorsHeaders(NextResponse.json({ ai_task: data }))
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    throw result.error;
   }
+
+  return NextResponse.json({
+    ai_task: result.data
+  });
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const params = await context.params
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+/**
+ * PUT /api/ai-tasks/[id] - Update an AI task
+ */
+async function handleUpdateAITask(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const updates = request.validatedBody!;
+  const userId = request.userId!;
+
+  const aiTaskService = createAITaskService({ userId });
+  const result = await aiTaskService.updateAITask(id, updates);
+
+  if (result.error) {
+    if (result.error.message === 'AI task not found') {
+      return NextResponse.json({ error: 'AI task not found' }, { status: 404 });
     }
-
-    const client = await getClientForAuthType(request) || supabase
-    if (!client) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
-    }
-
-    const { id } = params
-    const body = await request.json()
-    const updates = AITaskUpdateSchema.parse(body)
-
-    const { data, error } = await client
-      .from('ai_tasks')
-      .update({ ...updates })
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select('*')
-      .single()
-
-    if (error) {
-      console.error('Error updating ai_task:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to update ai_task' }, { status: 500 }))
-    }
-
-    return addCorsHeaders(NextResponse.json({ ai_task: data }))
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return addCorsHeaders(NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 }))
-    }
-    console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    throw result.error;
   }
+
+  return NextResponse.json({
+    ai_task: result.data
+  });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const params = await context.params
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return addCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+/**
+ * DELETE /api/ai-tasks/[id] - Delete an AI task
+ */
+async function handleDeleteAITask(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!;
+
+  const aiTaskService = createAITaskService({ userId });
+  const result = await aiTaskService.deleteAITask(id);
+
+  if (result.error) {
+    if (result.error.message === 'AI task not found') {
+      return NextResponse.json({ error: 'AI task not found' }, { status: 404 });
     }
-
-    const client = await getClientForAuthType(request) || supabase
-    if (!client) {
-      return addCorsHeaders(NextResponse.json({ error: 'Database not configured' }, { status: 500 }))
-    }
-
-    const { id } = params
-
-    const { error } = await client
-      .from('ai_tasks')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('Error deleting ai_task:', error)
-      return addCorsHeaders(NextResponse.json({ error: 'Failed to delete ai_task' }, { status: 500 }))
-    }
-
-    return addCorsHeaders(NextResponse.json({ success: true }))
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return addCorsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+    throw result.error;
   }
+
+  return NextResponse.json({
+    success: true
+  });
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  })
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetAITask, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300 // High limit for individual views
+  }
+});
 
+export const PUT = withStandardMiddleware(handleUpdateAITask, {
+  validation: { bodySchema: AITaskUpdateSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100 // Moderate limit for updates
+  }
+});
 
+export const DELETE = withStandardMiddleware(handleDeleteAITask, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50 // Lower limit for deletions
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

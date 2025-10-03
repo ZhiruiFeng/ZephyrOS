@@ -4,9 +4,9 @@
 
 Last Updated: 2025-10-03
 Total Routes: 108
-Migrated: 14 (13%)
+Migrated: 15 (14%)
 Infrastructure Ready: 1
-Remaining: 93 (86%)
+Remaining: 92 (85%)
 
 ---
 
@@ -22,7 +22,7 @@ Remaining: 93 (86%)
 
 ---
 
-## ✅ Completed Migrations (14 routes)
+## ✅ Completed Migrations (15 routes)
 
 | Route | Lines Reduced | Time Spent | Date | Pattern | Notes |
 |-------|---------------|------------|------|---------|-------|
@@ -40,10 +40,11 @@ Remaining: 93 (86%)
 | `/api/memories` | 507 → 82 (84%) | ~2h | Phase 3 | CRUD | Schema mismatch caught & fixed |
 | `/api/memories/[id]` | 430 → 107 (75%) | ~1h | Phase 3 | Sub-route | Leverages MemoryService |
 | `/api/tasks/[id]` | 491 → 110 (78%) | ~0.5h | Phase 3 | Sub-route | Leverages TaskService |
+| `/api/ai-tasks/[id]` | 144 → 112 (22%) | ~0.5h | Phase 3 | Sub-route | Leverages AITaskService |
 
-**Total Lines Reduced**: ~3,980 → ~1,405 (65% average reduction)
-**Total Time Invested**: ~26.5 hours
-**Average Time per Route**: ~1.9 hours
+**Total Lines Reduced**: ~4,124 → ~1,517 (63% average reduction)
+**Total Time Invested**: ~27 hours
+**Average Time per Route**: ~1.8 hours
 
 ---
 
@@ -92,7 +93,7 @@ Remaining: 93 (86%)
 | Simple CRUD | 6 | 60% | 100% ✅ |
 | Lookup/Read-only | 3 | 49% | 100% ✅ |
 | Multi-route | 2 | 58% | 100% ✅ |
-| Sub-route | 2 | 77% | 100% ✅ |
+| Sub-route | 3 | 58% | 100% ✅ |
 | Complex | 0 | N/A | N/A |
 
 ### Time Investment
@@ -101,14 +102,14 @@ Remaining: 93 (86%)
 |-------|--------|------|---------------|
 | Phase 1 | 4 | ~14h | 3.5h |
 | Phase 2 | 6 | ~13h | 2.2h |
-| Phase 3 | 4 | ~3.5h | 0.9h |
+| Phase 3 | 5 | ~4h | 0.8h |
 
-**Trend**: Getting faster with experience (3.5h → 2.2h → 0.9h per route)
+**Trend**: Getting faster with experience (3.5h → 2.2h → 0.8h per route)
 
 ### Success Rate
 
-- Migrations attempted: 14
-- Migrations completed: 14
+- Migrations attempted: 15
+- Migrations completed: 15
 - Migrations deferred: 1 (tasks main route - infrastructure built)
 - Failures requiring rollback: 0
 - **Success Rate**: 100% ✅
