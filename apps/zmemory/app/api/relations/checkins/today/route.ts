@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
-import { nowUTC } from '@/lib/time-utils';
+
+export const dynamic = 'force-dynamic';
 
 // Query validation schema
 const CheckinQuerySchema = z.object({
@@ -208,180 +208,173 @@ const generateMockCheckins = () => [
  *       500:
  *         description: Server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const rlKey = `${getClientIP(request)}:GET:/api/relations/checkins/today`;
-    if (isRateLimited(rlKey, 15 * 60 * 1000, 100)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+async function handleGetCheckinsToday(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
+
+  // Parse and validate query parameters
+  const queryResult = CheckinQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
+  }
+
+  const query = queryResult.data;
+
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    const mockCheckins = generateMockCheckins();
+    const mockSummary = {
+      total_due: mockCheckins.length,
+      overdue: mockCheckins.filter(c => c.days_overdue > 0).length,
+      due_today: 0,
+      due_soon: 0,
+      average_health_score: mockCheckins.reduce((sum, c) => sum + c.health_score, 0) / mockCheckins.length
+    };
+
+    return NextResponse.json({
+      checkins: mockCheckins.slice(query.offset || 0, (query.offset || 0) + (query.limit || 20)),
+      summary: mockSummary
+    });
+  }
+
+  // Use the pre-built view for check-in queue with additional filtering
+  let dbQuery = supabaseServer
+    .from('checkin_queue')
+    .select(`
+      person_id,
+      name,
+      email,
+      avatar_url,
+      tier,
+      health_score,
+      last_contact_at,
+      cadence_days,
+      next_contact_due,
+      days_overdue,
+      reason_for_tier,
+      relationship_context
+    `);
+    // The view already filters to current user via RLS
+
+  // Apply additional filters
+  if (query.tier) {
+    dbQuery = dbQuery.eq('tier', query.tier);
+  }
+
+  if (query.priority) {
+    switch (query.priority) {
+      case 'overdue':
+        dbQuery = dbQuery.gt('days_overdue', 0);
+        break;
+      case 'due_today':
+        dbQuery = dbQuery.eq('days_overdue', 0);
+        break;
+      case 'due_soon':
+        dbQuery = dbQuery.gte('days_overdue', -3).lt('days_overdue', 0);
+        break;
     }
+  }
 
-    const { searchParams } = new URL(request.url);
+  if (query.min_health_score !== undefined) {
+    dbQuery = dbQuery.gte('health_score', query.min_health_score);
+  }
+  if (query.max_health_score !== undefined) {
+    dbQuery = dbQuery.lte('health_score', query.max_health_score);
+  }
 
-    // Parse and validate query parameters
-    const queryResult = CheckinQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
-    }
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  dbQuery = dbQuery.order(query.sort_by, { ascending });
 
-    const query = queryResult.data;
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 20) - 1);
 
-    // If Supabase is not configured, return mock data
-    if (!supabaseServer) {
+  const { data: checkinData, error: checkinError } = await dbQuery;
+
+  if (checkinError) {
+    console.error('Database error fetching checkin queue:', checkinError);
+    if (process.env.NODE_ENV !== 'production') {
       const mockCheckins = generateMockCheckins();
       const mockSummary = {
         total_due: mockCheckins.length,
-        overdue: mockCheckins.filter(c => c.days_overdue > 0).length,
+        overdue: 2,
         due_today: 0,
         due_soon: 0,
-        average_health_score: mockCheckins.reduce((sum, c) => sum + c.health_score, 0) / mockCheckins.length
+        average_health_score: 55
       };
-
-      return jsonWithCors(request, {
+      return NextResponse.json({
         checkins: mockCheckins.slice(query.offset || 0, (query.offset || 0) + (query.limit || 20)),
         summary: mockSummary
       });
     }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // At this point supabaseServer is guaranteed non-null (mock path returned earlier)
-    const db = supabaseServer!;
-
-    // Use the pre-built view for check-in queue with additional filtering
-    let dbQuery = db
-      .from('checkin_queue')
-      .select(`
-        person_id,
-        name,
-        email,
-        avatar_url,
-        tier,
-        health_score,
-        last_contact_at,
-        cadence_days,
-        next_contact_due,
-        days_overdue,
-        reason_for_tier,
-        relationship_context
-      `)
-      // The view already filters to current user via RLS
-
-    // Add a manual filter for completeness since RLS might not apply to views
-    // Note: In production, ensure the view properly filters by user_id
-
-    // Apply additional filters
-    if (query.tier) {
-      dbQuery = dbQuery.eq('tier', query.tier);
-    }
-
-    if (query.priority) {
-      switch (query.priority) {
-        case 'overdue':
-          dbQuery = dbQuery.gt('days_overdue', 0);
-          break;
-        case 'due_today':
-          dbQuery = dbQuery.eq('days_overdue', 0);
-          break;
-        case 'due_soon':
-          dbQuery = dbQuery.gte('days_overdue', -3).lt('days_overdue', 0);
-          break;
-      }
-    }
-
-    if (query.min_health_score !== undefined) {
-      dbQuery = dbQuery.gte('health_score', query.min_health_score);
-    }
-    if (query.max_health_score !== undefined) {
-      dbQuery = dbQuery.lte('health_score', query.max_health_score);
-    }
-
-    // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    dbQuery = dbQuery.order(query.sort_by, { ascending });
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 20) - 1);
-
-    const { data: checkinData, error: checkinError } = await dbQuery;
-
-    if (checkinError) {
-      console.error('Database error fetching checkin queue:', checkinError);
-      if (process.env.NODE_ENV !== 'production') {
-        const mockCheckins = generateMockCheckins();
-        const mockSummary = {
-          total_due: mockCheckins.length,
-          overdue: 2,
-          due_today: 0,
-          due_soon: 0,
-          average_health_score: 55
-        };
-        return jsonWithCors(request, {
-          checkins: mockCheckins.slice(query.offset || 0, (query.offset || 0) + (query.limit || 20)),
-          summary: mockSummary
-        });
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch check-in queue' }, 500);
-    }
-
-    // Get recent touchpoints for each person in the queue
-    const checkinResults = await Promise.all(
-      (checkinData || []).map(async (checkin) => {
-        // Get the 2 most recent touchpoints for context
-        const { data: touchpoints } = await db
-          .from('relationship_touchpoints')
-          .select('id, summary, channel, sentiment, created_at')
-          .eq('person_id', checkin.person_id)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(2);
-
-        return {
-          person_id: checkin.person_id,
-          person: {
-            id: checkin.person_id,
-            name: checkin.name,
-            email: checkin.email,
-            avatar_url: checkin.avatar_url
-          },
-          tier: checkin.tier,
-          health_score: checkin.health_score,
-          last_contact_at: checkin.last_contact_at,
-          cadence_days: checkin.cadence_days,
-          days_overdue: checkin.days_overdue,
-          reason_for_tier: checkin.reason_for_tier,
-          relationship_context: checkin.relationship_context,
-          recent_touchpoints: touchpoints || []
-        };
-      })
-    );
-
-    // Calculate summary statistics
-    const summary = {
-      total_due: checkinResults.length,
-      overdue: checkinResults.filter(c => c.days_overdue > 0).length,
-      due_today: checkinResults.filter(c => c.days_overdue === 0).length,
-      due_soon: checkinResults.filter(c => c.days_overdue < 0 && c.days_overdue >= -3).length,
-      average_health_score: checkinResults.length > 0
-        ? Math.round(checkinResults.reduce((sum, c) => sum + c.health_score, 0) / checkinResults.length)
-        : 0
-    };
-
-    return jsonWithCors(request, {
-      checkins: checkinResults,
-      summary
-    });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json({ error: 'Failed to fetch check-in queue' }, { status: 500 });
   }
+
+  // Get recent touchpoints for each person in the queue
+  const checkinResults = await Promise.all(
+    (checkinData || []).map(async (checkin) => {
+      // Get the 2 most recent touchpoints for context
+      const { data: touchpoints } = await supabaseServer!
+        .from('relationship_touchpoints')
+        .select('id, summary, channel, sentiment, created_at')
+        .eq('person_id', checkin.person_id)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      return {
+        person_id: checkin.person_id,
+        person: {
+          id: checkin.person_id,
+          name: checkin.name,
+          email: checkin.email,
+          avatar_url: checkin.avatar_url
+        },
+        tier: checkin.tier,
+        health_score: checkin.health_score,
+        last_contact_at: checkin.last_contact_at,
+        cadence_days: checkin.cadence_days,
+        days_overdue: checkin.days_overdue,
+        reason_for_tier: checkin.reason_for_tier,
+        relationship_context: checkin.relationship_context,
+        recent_touchpoints: touchpoints || []
+      };
+    })
+  );
+
+  // Calculate summary statistics
+  const summary = {
+    total_due: checkinResults.length,
+    overdue: checkinResults.filter(c => c.days_overdue > 0).length,
+    due_today: checkinResults.filter(c => c.days_overdue === 0).length,
+    due_soon: checkinResults.filter(c => c.days_overdue < 0 && c.days_overdue >= -3).length,
+    average_health_score: checkinResults.length > 0
+      ? Math.round(checkinResults.reduce((sum, c) => sum + c.health_score, 0) / checkinResults.length)
+      : 0
+  };
+
+  return NextResponse.json({
+    checkins: checkinResults,
+    summary
+  });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetCheckinsToday, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

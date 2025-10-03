@@ -26,6 +26,7 @@ import {
   WorkModeEditor,
   Message
 } from '@/focus'
+import type { TaskWithCategory } from '@/focus'
 
 // Import custom hooks
 import { useWorkModeState } from '@/focus'
@@ -34,6 +35,44 @@ import { useWorkModeState } from '@/focus'
 import { useUpdateTask } from '@/features/tasks/hooks'
 import { useTimer } from '@/hooks/useTimer'
 import { useAutoSave } from '@/hooks/useAutoSave'
+import type { TaskMemory, TaskContent } from '@/lib/api'
+
+const DEFAULT_TASK_CONTENT: TaskContent = {
+  title: '',
+  status: 'pending',
+  priority: 'medium'
+}
+
+function mergeTaskMemory(existing: TaskMemory | null, updated: TaskMemory): TaskMemory {
+  const hasUpdatedContent = !!updated.content
+  const mergedContent = hasUpdatedContent
+    ? {
+        ...(existing?.content ?? {}),
+        ...updated.content!
+      }
+    : existing?.content
+
+  const finalContent = mergedContent
+    ? { ...DEFAULT_TASK_CONTENT, ...mergedContent }
+    : { ...DEFAULT_TASK_CONTENT }
+
+  return {
+    ...(existing ?? {}),
+    ...updated,
+    content: finalContent,
+    tags: updated.tags ?? existing?.tags ?? [],
+  }
+}
+
+function mergeTaskWithCategory(existing: TaskWithCategory | null, updated: TaskMemory): TaskWithCategory {
+  const merged = mergeTaskMemory(existing, updated) as TaskWithCategory
+  merged.category = existing?.category ?? (merged as TaskWithCategory).category
+  merged.category_id =
+    (updated as TaskWithCategory).category_id ??
+    existing?.category_id ??
+    merged.content.category_id
+  return merged
+}
 
 // Create a simplified task operations hook that includes auto-save internally
 function useTaskOperationsWithAutoSave({
@@ -67,14 +106,9 @@ function useTaskOperationsWithAutoSave({
       })
 
       if (selectedSubtask) {
-        setSelectedSubtask(updated)
+        setSelectedSubtask((prev: TaskMemory | null) => mergeTaskMemory(prev ?? selectedSubtask, updated))
       } else if (selectedTask) {
-        const taskWithCategory = {
-          ...updated,
-          category: selectedTask.category,
-          category_id: selectedTask.category_id || selectedTask.content.category_id
-        }
-        setSelectedTask(taskWithCategory)
+        setSelectedTask((prev: TaskWithCategory | null) => mergeTaskWithCategory(prev ?? selectedTask, updated))
       }
       setOriginalNotes(notes)
     } catch (error) {
@@ -114,14 +148,14 @@ function useTaskOperationsWithAutoSave({
       setNotes(taskNotes)
       setOriginalNotes(taskNotes)
       setTaskInfo({
-        title: task.content.title || '',
-        description: task.content.description || '',
-        status: task.content.status || 'pending',
-        priority: task.content.priority || 'medium',
-        progress: task.content.progress || 0,
-        due_date: task.content.due_date ? new Date(task.content.due_date).toISOString().slice(0, 16) : '',
-        estimated_duration: task.content.estimated_duration || 0,
-        assignee: task.content.assignee || '',
+        title: task.content?.title || '',
+        description: task.content?.description || '',
+        status: task.content?.status || 'pending',
+        priority: task.content?.priority || 'medium',
+        progress: task.content?.progress || 0,
+        due_date: task.content?.due_date ? new Date(task.content.due_date).toISOString().slice(0, 16) : '',
+        estimated_duration: task.content?.estimated_duration || 0,
+        assignee: task.content?.assignee || '',
         tags: task.tags || []
       })
     })
@@ -170,14 +204,9 @@ function useTaskOperationsWithAutoSave({
       const updated = await updateTask(targetId, { content: { notes } })
 
       if (selectedSubtask) {
-        setSelectedSubtask(updated)
+        setSelectedSubtask((prev: TaskMemory | null) => mergeTaskMemory(prev ?? selectedSubtask, updated))
       } else if (selectedTask) {
-        const taskWithCategory = {
-          ...updated,
-          category: selectedTask.category,
-          category_id: selectedTask.category_id || selectedTask.content.category_id
-        }
-        setSelectedTask(taskWithCategory)
+        setSelectedTask((prev: TaskWithCategory | null) => mergeTaskWithCategory(prev ?? selectedTask, updated))
       }
       setOriginalNotes(notes)
     } catch (error) {
@@ -205,7 +234,7 @@ function useTaskOperationsWithAutoSave({
         },
         tags: taskInfo.tags
       })
-      setSelectedTask(updatedTask)
+      setSelectedTask((prev: TaskWithCategory | null) => mergeTaskWithCategory(prev ?? selectedTask, updatedTask))
       setEditingTaskInfo(false)
     } catch (error) {
       console.error('Failed to save task info:', error)
@@ -244,13 +273,7 @@ function useTaskOperationsWithAutoSave({
         }
       })
 
-      const taskWithCategory = {
-        ...updatedTask,
-        category: selectedTask.category,
-        category_id: selectedTask.category_id || selectedTask.content.category_id
-      }
-
-      setSelectedTask(taskWithCategory)
+      setSelectedTask((prev: TaskWithCategory | null) => mergeTaskWithCategory(prev ?? selectedTask, updatedTask))
       setTaskInfo((prev: any) => ({
         ...prev,
         status: 'completed',
@@ -281,14 +304,9 @@ function useTaskOperationsWithAutoSave({
       })
 
       if (selectedSubtask) {
-        setSelectedSubtask(updated)
+        setSelectedSubtask((prev: TaskMemory | null) => mergeTaskMemory(prev ?? selectedSubtask, updated))
       } else if (selectedTask) {
-        const taskWithCategory = {
-          ...updated,
-          category: selectedTask.category,
-          category_id: selectedTask.category_id || selectedTask.content.category_id
-        }
-        setSelectedTask(taskWithCategory)
+        setSelectedTask((prev: TaskWithCategory | null) => mergeTaskWithCategory(prev ?? selectedTask, updated))
         setTaskInfo((prev: any) => ({
           ...prev,
           status: newStatus
@@ -489,7 +507,7 @@ function WorkModeViewInner() {
       timestamp: new Date(),
       context: selectedTask ? {
         taskId: selectedTask.id,
-        taskTitle: selectedTask.content.title,
+        taskTitle: selectedTask.content?.title,
         subtaskId: selectedSubtask?.id
       } : undefined
     }
@@ -502,11 +520,11 @@ function WorkModeViewInner() {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: `Thanks for your message! I understand you're working on "${selectedTask?.content.title || 'your current task'}". While I'm not fully connected yet, I'm here to help you stay organized and focused. What would you like to explore about this task?`,
+        content: `Thanks for your message! I understand you're working on "${selectedTask?.content?.title || 'your current task'}". While I'm not fully connected yet, I'm here to help you stay organized and focused. What would you like to explore about this task?`,
         timestamp: new Date(),
         context: selectedTask ? {
           taskId: selectedTask.id,
-          taskTitle: selectedTask.content.title,
+          taskTitle: selectedTask.content?.title,
           subtaskId: selectedSubtask?.id
         } : undefined
       }
@@ -710,7 +728,7 @@ function WorkModeViewInner() {
           isOpen={memoryModalOpen}
           onClose={() => setMemoryModalOpen(false)}
           taskId={selectedTask?.id || ''}
-          taskTitle={selectedTask?.content.title || ''}
+          taskTitle={selectedTask?.content?.title || ''}
           onMemoryCreated={handleMemoryCreated}
           onMemoryLinked={handleMemoryLinked}
           isLoading={memoryActionLoading}

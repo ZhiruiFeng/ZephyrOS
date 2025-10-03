@@ -231,14 +231,14 @@ export function useWorkModeState(tasks: TaskMemory[], categories: Category[]) {
 
       // Also update task info for the selected task
       setTaskInfo({
-        title: selectedTask.content.title || '',
-        description: selectedTask.content.description || '',
-        status: selectedTask.content.status || 'pending',
-        priority: selectedTask.content.priority || 'medium',
-        progress: selectedTask.content.progress || 0,
-        due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
-        estimated_duration: selectedTask.content.estimated_duration || 0,
-        assignee: selectedTask.content.assignee || '',
+        title: selectedTask.content?.title || '',
+        description: selectedTask.content?.description || '',
+        status: selectedTask.content?.status || 'pending',
+        priority: selectedTask.content?.priority || 'medium',
+        progress: selectedTask.content?.progress || 0,
+        due_date: selectedTask.content?.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
+        estimated_duration: selectedTask.content?.estimated_duration || 0,
+        assignee: selectedTask.content?.assignee || '',
         tags: selectedTask.tags || []
       })
     }

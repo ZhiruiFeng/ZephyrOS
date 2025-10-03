@@ -84,7 +84,7 @@ export function useUpdateTask() {
             return {
               ...updatedTask,
               category: task.category,
-              category_id: task.category_id || task.content.category_id
+              category_id: task.category_id || task.content?.category_id
             };
           }
           return task;

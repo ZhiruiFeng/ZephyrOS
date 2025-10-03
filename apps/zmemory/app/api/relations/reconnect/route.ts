@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 // Query validation schema
 const ReconnectQuerySchema = z.object({
@@ -168,184 +169,182 @@ const generateMockReconnections = () => [
  *       500:
  *         description: Server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const rlKey = `${getClientIP(request)}:GET:/api/relations/reconnect`;
-    if (isRateLimited(rlKey, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetReconnect(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
+  // Parse and validate query parameters
+  const queryResult = ReconnectQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
+  }
 
-    // Parse and validate query parameters
-    const queryResult = ReconnectQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
-    }
+  const query = queryResult.data;
 
-    const query = queryResult.data;
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    const mockSuggestions = generateMockReconnections();
+    const mockSummary = {
+      total_dormant: mockSuggestions.length,
+      by_tier: {
+        5: 0,
+        15: 1,
+        50: 1,
+        150: 0
+      },
+      average_dormant_days: 225
+    };
 
-    // If Supabase is not configured, return mock data
-    if (!supabaseServer) {
+    return NextResponse.json({
+      suggestions: mockSuggestions.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10)),
+      summary: mockSummary
+    });
+  }
+
+  // Use the pre-built dormant_tie_suggestions view with additional filtering
+  let dbQuery = supabaseServer
+    .from('dormant_tie_suggestions')
+    .select(`
+      person_id,
+      name,
+      email,
+      avatar_url,
+      tier,
+      last_contact_at,
+      dormant_since,
+      days_since_last_contact,
+      how_met,
+      relationship_context,
+      last_interaction_summary
+    `);
+    // The view already filters by is_dormant = true and user_id via RLS
+
+  // Apply additional filters
+  if (query.min_dormant_days) {
+    dbQuery = dbQuery.gte('days_since_last_contact', query.min_dormant_days);
+  }
+
+  if (query.tier) {
+    dbQuery = dbQuery.eq('tier', query.tier);
+  }
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  if (query.sort_by === 'days_since_last_contact') {
+    dbQuery = dbQuery.order('days_since_last_contact', { ascending });
+  } else {
+    dbQuery = dbQuery.order(query.sort_by, { ascending });
+  }
+
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 10) - 1);
+
+  const { data: dormantData, error: dormantError } = await dbQuery;
+
+  if (dormantError) {
+    console.error('Database error fetching dormant ties:', dormantError);
+    if (process.env.NODE_ENV !== 'production') {
       const mockSuggestions = generateMockReconnections();
       const mockSummary = {
         total_dormant: mockSuggestions.length,
-        by_tier: {
-          5: 0,
-          15: 1,
-          50: 1,
-          150: 0
-        },
+        by_tier: { 5: 0, 15: 1, 50: 1, 150: 0 },
         average_dormant_days: 225
       };
-
-      return jsonWithCors(request, {
+      return NextResponse.json({
         suggestions: mockSuggestions.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10)),
         summary: mockSummary
       });
     }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Use the pre-built dormant_tie_suggestions view with additional filtering
-    let dbQuery = supabaseServer
-      .from('dormant_tie_suggestions')
-      .select(`
-        person_id,
-        name,
-        email,
-        avatar_url,
-        tier,
-        last_contact_at,
-        dormant_since,
-        days_since_last_contact,
-        how_met,
-        relationship_context,
-        last_interaction_summary
-      `)
-      // The view already filters by is_dormant = true and user_id via RLS
-
-    // Apply additional filters
-    if (query.min_dormant_days) {
-      dbQuery = dbQuery.gte('days_since_last_contact', query.min_dormant_days);
-    }
-
-    if (query.tier) {
-      dbQuery = dbQuery.eq('tier', query.tier);
-    }
-
-    // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    if (query.sort_by === 'days_since_last_contact') {
-      dbQuery = dbQuery.order('days_since_last_contact', { ascending });
-    } else {
-      dbQuery = dbQuery.order(query.sort_by, { ascending });
-    }
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 10) - 1);
-
-    const { data: dormantData, error: dormantError } = await dbQuery;
-
-    if (dormantError) {
-      console.error('Database error fetching dormant ties:', dormantError);
-      if (process.env.NODE_ENV !== 'production') {
-        const mockSuggestions = generateMockReconnections();
-        const mockSummary = {
-          total_dormant: mockSuggestions.length,
-          by_tier: { 5: 0, 15: 1, 50: 1, 150: 0 },
-          average_dormant_days: 225
-        };
-        return jsonWithCors(request, {
-          suggestions: mockSuggestions.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10)),
-          summary: mockSummary
-        });
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch dormant tie suggestions' }, 500);
-    }
-
-    // Enhance suggestions with AI-generated conversation starters and channel recommendations
-    const suggestions = (dormantData || []).map(dormant => {
-      // Simple heuristics for suggested openers and channels
-      // In production, this could use LLM to generate personalized openers
-
-      let suggestedOpener = '';
-      const firstName = dormant.name.split(' ')[0];
-
-      if (dormant.last_interaction_summary) {
-        suggestedOpener = `Hi ${firstName}! I was just thinking about our last conversation about ${dormant.last_interaction_summary.toLowerCase()}. How have things been going?`;
-      } else if (dormant.how_met) {
-        suggestedOpener = `Hey ${firstName}! Hope you're doing well. I was reminiscing about when we met at ${dormant.how_met}. Would love to catch up!`;
-      } else {
-        suggestedOpener = `Hi ${firstName}! Hope you're doing well. It's been too long since we last connected. Would love to hear how things are going with you!`;
-      }
-
-      // Channel suggestions based on relationship context and contact info
-      const suggestedChannels = [];
-      if (dormant.email) suggestedChannels.push('email');
-      if (dormant.relationship_context === 'professional') {
-        suggestedChannels.push('social_media'); // LinkedIn
-      } else {
-        suggestedChannels.push('text', 'social_media');
-      }
-
-      // Revival potential score heuristic (would be more sophisticated in production)
-      let revivalPotentialScore = 50;
-      if (dormant.tier <= 15) revivalPotentialScore += 30; // Closer relationships
-      if (dormant.days_since_last_contact < 365) revivalPotentialScore += 20; // Recent enough
-      if (dormant.last_interaction_summary) revivalPotentialScore += 15; // Has context
-      revivalPotentialScore = Math.min(100, revivalPotentialScore);
-
-      return {
-        person_id: dormant.person_id,
-        person: {
-          id: dormant.person_id,
-          name: dormant.name,
-          email: dormant.email,
-          avatar_url: dormant.avatar_url
-        },
-        tier: dormant.tier,
-        last_contact_at: dormant.last_contact_at,
-        days_since_last_contact: dormant.days_since_last_contact,
-        how_met: dormant.how_met,
-        relationship_context: dormant.relationship_context,
-        last_interaction_summary: dormant.last_interaction_summary,
-        suggested_opener: suggestedOpener,
-        suggested_channels: suggestedChannels,
-        revival_potential_score: revivalPotentialScore
-      };
-    });
-
-    // Calculate summary statistics
-    const tierCounts = suggestions.reduce((acc, s) => {
-      acc[s.tier] = (acc[s.tier] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
-
-    const summary = {
-      total_dormant: suggestions.length,
-      by_tier: tierCounts,
-      average_dormant_days: suggestions.length > 0
-        ? Math.round(suggestions.reduce((sum, s) => sum + s.days_since_last_contact, 0) / suggestions.length)
-        : 0
-    };
-
-    return jsonWithCors(request, {
-      suggestions,
-      summary
-    });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json({ error: 'Failed to fetch dormant tie suggestions' }, { status: 500 });
   }
+
+  // Enhance suggestions with AI-generated conversation starters and channel recommendations
+  const suggestions = (dormantData || []).map(dormant => {
+    // Simple heuristics for suggested openers and channels
+    // In production, this could use LLM to generate personalized openers
+
+    let suggestedOpener = '';
+    const firstName = dormant.name.split(' ')[0];
+
+    if (dormant.last_interaction_summary) {
+      suggestedOpener = `Hi ${firstName}! I was just thinking about our last conversation about ${dormant.last_interaction_summary.toLowerCase()}. How have things been going?`;
+    } else if (dormant.how_met) {
+      suggestedOpener = `Hey ${firstName}! Hope you're doing well. I was reminiscing about when we met at ${dormant.how_met}. Would love to catch up!`;
+    } else {
+      suggestedOpener = `Hi ${firstName}! Hope you're doing well. It's been too long since we last connected. Would love to hear how things are going with you!`;
+    }
+
+    // Channel suggestions based on relationship context and contact info
+    const suggestedChannels = [];
+    if (dormant.email) suggestedChannels.push('email');
+    if (dormant.relationship_context === 'professional') {
+      suggestedChannels.push('social_media'); // LinkedIn
+    } else {
+      suggestedChannels.push('text', 'social_media');
+    }
+
+    // Revival potential score heuristic (would be more sophisticated in production)
+    let revivalPotentialScore = 50;
+    if (dormant.tier <= 15) revivalPotentialScore += 30; // Closer relationships
+    if (dormant.days_since_last_contact < 365) revivalPotentialScore += 20; // Recent enough
+    if (dormant.last_interaction_summary) revivalPotentialScore += 15; // Has context
+    revivalPotentialScore = Math.min(100, revivalPotentialScore);
+
+    return {
+      person_id: dormant.person_id,
+      person: {
+        id: dormant.person_id,
+        name: dormant.name,
+        email: dormant.email,
+        avatar_url: dormant.avatar_url
+      },
+      tier: dormant.tier,
+      last_contact_at: dormant.last_contact_at,
+      days_since_last_contact: dormant.days_since_last_contact,
+      how_met: dormant.how_met,
+      relationship_context: dormant.relationship_context,
+      last_interaction_summary: dormant.last_interaction_summary,
+      suggested_opener: suggestedOpener,
+      suggested_channels: suggestedChannels,
+      revival_potential_score: revivalPotentialScore
+    };
+  });
+
+  // Calculate summary statistics
+  const tierCounts = suggestions.reduce((acc, s) => {
+    acc[s.tier] = (acc[s.tier] || 0) + 1;
+    return acc;
+  }, {} as Record<number, number>);
+
+  const summary = {
+    total_dormant: suggestions.length,
+    by_tier: tierCounts,
+    average_dormant_days: suggestions.length > 0
+      ? Math.round(suggestions.reduce((sum, s) => sum + s.days_since_last_contact, 0) / suggestions.length)
+      : 0
+  };
+
+  return NextResponse.json({
+    suggestions,
+    summary
+  });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetReconnect, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

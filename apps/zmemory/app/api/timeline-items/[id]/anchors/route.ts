@@ -1,15 +1,9 @@
-import { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
+import { z } from 'zod';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+export const dynamic = 'force-dynamic';
 
 const VALID_RELATION_TYPES = new Set([
   'context_of',
@@ -20,6 +14,21 @@ const VALID_RELATION_TYPES = new Set([
   'triggered_by',
   'reflects_on'
 ]);
+
+const AnchorQuerySchema = z.object({
+  relation_type: z.string().refine(val => VALID_RELATION_TYPES.has(val), {
+    message: 'Invalid relation_type'
+  }).optional(),
+  min_weight: z.string().transform(val => parseFloat(val)).refine(val => val >= 0 && val <= 10, {
+    message: 'min_weight must be between 0 and 10'
+  }).optional(),
+  limit: z.string().transform(val => parseInt(val) || 50).refine(val => val >= 1 && val <= 100, {
+    message: 'limit must be between 1 and 100'
+  }).optional(),
+  offset: z.string().transform(val => parseInt(val) || 0).refine(val => val >= 0, {
+    message: 'offset must be >= 0'
+  }).optional(),
+});
 
 /**
  * @swagger
@@ -67,191 +76,160 @@ const VALID_RELATION_TYPES = new Set([
  *     responses:
  *       200:
  *         description: List of memory anchors with populated memory data
+ *       400:
+ *         description: Invalid query parameters
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Timeline item belongs to different user
+ *       404:
+ *         description: Timeline item not found
+ *       500:
+ *         description: Server error
  */
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: timelineItemId } = await context.params;
+async function handleGetAnchors(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { id: timelineItemId } = await params;
+  const { searchParams } = new URL(request.url);
 
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
-
-    const { searchParams } = new URL(request.url);
-    const relationType = searchParams.get('relation_type');
-    if (relationType && !VALID_RELATION_TYPES.has(relationType)) {
-      return jsonWithCors(request, { error: 'Invalid relation_type parameter' }, 400);
-    }
-
-    const minWeightParam = searchParams.get('min_weight');
-    let parsedMinWeight: number | null = null;
-    if (minWeightParam !== null) {
-      parsedMinWeight = Number(minWeightParam);
-      if (!Number.isFinite(parsedMinWeight) || parsedMinWeight < 0 || parsedMinWeight > 10) {
-        return jsonWithCors(request, { error: 'min_weight must be a number between 0 and 10' }, 400);
-      }
-    }
-
-    const limitParam = parseInt(searchParams.get('limit') ?? '50', 10);
-    if (!Number.isFinite(limitParam) || limitParam < 1 || limitParam > 100) {
-      return jsonWithCors(request, { error: 'limit must be between 1 and 100' }, 400);
-    }
-
-    const offsetParam = parseInt(searchParams.get('offset') ?? '0', 10);
-    if (!Number.isFinite(offsetParam) || offsetParam < 0) {
-      return jsonWithCors(request, { error: 'offset must be greater than or equal to 0' }, 400);
-    }
-
-    const limit = limitParam;
-    const offset = offsetParam;
-
-    // If Supabase is not configured, return mock anchors
-    if (!supabase) {
-      const mockAnchors = [
-        {
-          memory_id: '1',
-          anchor_item_id: timelineItemId,
-          relation_type: 'about',
-          weight: 5,
-          notes: 'Sample memory anchor',
-          created_at: new Date().toISOString(),
-          memory: {
-            id: '1',
-            title: 'Sample Memory',
-            note: 'This is a sample memory for testing the UI',
-            tags: ['sample', 'test'],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        }
-      ];
-      return jsonWithCors(request, mockAnchors);
-    }
-
-    // Enforce authentication (mock path already handled when supabase unavailable)
-    const userId = await getUserIdFromRequest(request);
-
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Ensure timeline item exists and belongs to current user
-    let timelineLookup;
-    try {
-      timelineLookup = await supabase
-        .from('timeline_items')
-        .select('id, user_id')
-        .eq('id', timelineItemId)
-        .single();
-    } catch (timelineException) {
-      console.error('Timeline item lookup threw:', timelineException);
-      return jsonWithCors(request, { error: 'Timeline item lookup failed' }, 500);
-    }
-
-    const { data: timelineItem, error: timelineError } = timelineLookup;
-
-    if (timelineError) {
-      console.error('Timeline item lookup error:', timelineError);
-      return jsonWithCors(request, { error: `Timeline item lookup failed: ${timelineError.message}` }, 500);
-    }
-
-    if (!timelineItem) {
-      return jsonWithCors(request, { error: 'Timeline item not found' }, 404);
-    }
-
-    if (timelineItem.user_id !== userId) {
-      console.error('Timeline item belongs to different user:', { timelineItemUserId: timelineItem.user_id, requestUserId: userId });
-      return jsonWithCors(request, { error: 'Timeline item belongs to different user' }, 403);
-    }
-
-    // Build query to get memory anchors with memory data
-    let dbQuery = supabase
-      .from('memory_anchors')
-      .select(`
-        *,
-        memory:memories!memory_id (
-          id,
-          user_id,
-          title,
-          title_override,
-          note,
-          tags,
-          created_at,
-          updated_at
-        )
-      `)
-      .eq('anchor_item_id', timelineItemId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (relationType) {
-      dbQuery = dbQuery.eq('relation_type', relationType);
-    }
-
-    if (parsedMinWeight !== null) {
-      dbQuery = dbQuery.gte('weight', parsedMinWeight);
-    }
-
-    let queryResult;
-    try {
-      queryResult = await dbQuery;
-    } catch (queryError) {
-      console.error('Memory anchor query threw:', queryError);
-      return jsonWithCors(request, { error: 'Failed to fetch memory anchors' }, 500);
-    }
-
-    const { data, error } = queryResult;
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: `Database error: ${error.message}` }, 500);
-    }
-
-    // Filter anchors to ensure they belong to the authenticated user (service role bypasses RLS)
-    const userAnchors = (data || []).filter(anchor => anchor.memory?.user_id === userId);
-
-    // Transform local_time_range from database format
-    const transformedData = userAnchors.map(anchor => {
-      if (anchor.local_time_range) {
-        try {
-          const rangeMatch = anchor.local_time_range.match(/^\[(.+),(.+)\)$/);
-          if (rangeMatch) {
-            const [, start, end] = rangeMatch;
-            anchor.local_time_range = {
-              start,
-              end: end !== start ? end : undefined
-            };
-          }
-        } catch (e) {
-          console.warn('Failed to parse local_time_range:', anchor.local_time_range);
-          anchor.local_time_range = null;
-        }
-      }
-
-      // Normalize memory title for display
-      if (anchor.memory) {
-        const fallbackTitle = anchor.memory.title_override || anchor.memory.note?.slice(0, 80) || 'Untitled memory';
-        anchor.memory.title = anchor.memory.title || fallbackTitle;
-        delete (anchor.memory as any).user_id;
-        delete (anchor.memory as any).title_override;
-      }
-
-      return anchor;
-    });
-
-    return jsonWithCors(request, transformedData);
-  } catch (error) {
-    console.error('API error:', error);
-    console.error('Error stack:', (error as Error)?.stack);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: `Internal error: ${errorMessage}` }, 500);
+  const queryResult = AnchorQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
   }
+
+  const { relation_type, min_weight, limit, offset } = queryResult.data;
+
+  // If Supabase is not configured, return mock anchors
+  if (!supabaseServer) {
+    const mockAnchors = [
+      {
+        memory_id: '1',
+        anchor_item_id: timelineItemId,
+        relation_type: 'about',
+        weight: 5,
+        notes: 'Sample memory anchor',
+        created_at: new Date().toISOString(),
+        memory: {
+          id: '1',
+          title: 'Sample Memory',
+          note: 'This is a sample memory for testing the UI',
+          tags: ['sample', 'test'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }
+    ];
+    return NextResponse.json(mockAnchors);
+  }
+
+  // Ensure timeline item exists and belongs to current user
+  const { data: timelineItem, error: timelineError } = await supabaseServer
+    .from('timeline_items')
+    .select('id, user_id')
+    .eq('id', timelineItemId)
+    .single();
+
+  if (timelineError) {
+    console.error('Timeline item lookup error:', timelineError);
+    return NextResponse.json({ error: `Timeline item lookup failed: ${timelineError.message}` }, { status: 500 });
+  }
+
+  if (!timelineItem) {
+    return NextResponse.json({ error: 'Timeline item not found' }, { status: 404 });
+  }
+
+  if (timelineItem.user_id !== userId) {
+    console.error('Timeline item belongs to different user:', { timelineItemUserId: timelineItem.user_id, requestUserId: userId });
+    return NextResponse.json({ error: 'Timeline item belongs to different user' }, { status: 403 });
+  }
+
+  // Build query to get memory anchors with memory data
+  let dbQuery = supabaseServer
+    .from('memory_anchors')
+    .select(`
+      *,
+      memory:memories!memory_id (
+        id,
+        user_id,
+        title,
+        title_override,
+        note,
+        tags,
+        created_at,
+        updated_at
+      )
+    `)
+    .eq('anchor_item_id', timelineItemId)
+    .order('created_at', { ascending: false })
+    .range(offset || 0, (offset || 0) + (limit || 50) - 1);
+
+  if (relation_type) {
+    dbQuery = dbQuery.eq('relation_type', relation_type);
+  }
+
+  if (min_weight !== undefined) {
+    dbQuery = dbQuery.gte('weight', min_weight);
+  }
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
+  }
+
+  // Filter anchors to ensure they belong to the authenticated user (service role bypasses RLS)
+  const userAnchors = (data || []).filter(anchor => anchor.memory?.user_id === userId);
+
+  // Transform local_time_range from database format
+  const transformedData = userAnchors.map(anchor => {
+    if (anchor.local_time_range) {
+      try {
+        const rangeMatch = anchor.local_time_range.match(/^\[(.+),(.+)\)$/);
+        if (rangeMatch) {
+          const [, start, end] = rangeMatch;
+          anchor.local_time_range = {
+            start,
+            end: end !== start ? end : undefined
+          };
+        }
+      } catch (e) {
+        console.warn('Failed to parse local_time_range:', anchor.local_time_range);
+        anchor.local_time_range = null;
+      }
+    }
+
+    // Normalize memory title for display
+    if (anchor.memory) {
+      const fallbackTitle = anchor.memory.title_override || anchor.memory.note?.slice(0, 80) || 'Untitled memory';
+      anchor.memory.title = anchor.memory.title || fallbackTitle;
+      delete (anchor.memory as any).user_id;
+      delete (anchor.memory as any).title_override;
+    }
+
+    return anchor;
+  });
+
+  return NextResponse.json(transformedData);
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetAnchors, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

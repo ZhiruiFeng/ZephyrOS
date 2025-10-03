@@ -98,14 +98,14 @@ export function useFocusTaskOperations({
     setNotes(taskNotes)
     setOriginalNotes(taskNotes)
     setTaskInfo({
-      title: task.content.title || '',
-      description: task.content.description || '',
-      status: task.content.status || 'pending',
-      priority: task.content.priority || 'medium',
-      progress: task.content.progress || 0,
-      due_date: task.content.due_date ? new Date(task.content.due_date).toISOString().slice(0, 16) : '',
-      estimated_duration: task.content.estimated_duration || 0,
-      assignee: task.content.assignee || '',
+      title: task.content?.title || '',
+      description: task.content?.description || '',
+      status: task.content?.status || 'pending',
+      priority: task.content?.priority || 'medium',
+      progress: task.content?.progress || 0,
+      due_date: task.content?.due_date ? new Date(task.content.due_date).toISOString().slice(0, 16) : '',
+      estimated_duration: task.content?.estimated_duration || 0,
+      assignee: task.content?.assignee || '',
       tags: task.tags || []
     })
 
@@ -286,22 +286,22 @@ export function useFocusTaskOperations({
     // Only update notes/taskInfo if not switching manually (to prevent conflicts)
     if (!isSwitchingTaskRef.current) {
       if (selectedSubtask) {
-        const subtaskNotes = selectedSubtask.content.notes || ''
+        const subtaskNotes = selectedSubtask.content?.notes || ''
         setNotes(subtaskNotes)
         setOriginalNotes(subtaskNotes)
       } else if (selectedTask) {
-        const taskNotes = selectedTask.content.notes || ''
+        const taskNotes = selectedTask.content?.notes || ''
         setNotes(taskNotes)
         setOriginalNotes(taskNotes)
         setTaskInfo({
-          title: selectedTask.content.title || '',
-          description: selectedTask.content.description || '',
-          status: selectedTask.content.status || 'pending',
-          priority: selectedTask.content.priority || 'medium',
-          progress: selectedTask.content.progress || 0,
-          due_date: selectedTask.content.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
-          estimated_duration: selectedTask.content.estimated_duration || 0,
-          assignee: selectedTask.content.assignee || '',
+          title: selectedTask.content?.title || '',
+          description: selectedTask.content?.description || '',
+          status: selectedTask.content?.status || 'pending',
+          priority: selectedTask.content?.priority || 'medium',
+          progress: selectedTask.content?.progress || 0,
+          due_date: selectedTask.content?.due_date ? new Date(selectedTask.content.due_date).toISOString().slice(0, 16) : '',
+          estimated_duration: selectedTask.content?.estimated_duration || 0,
+          assignee: selectedTask.content?.assignee || '',
           tags: selectedTask.tags || []
         })
       } else {
