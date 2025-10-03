@@ -15,6 +15,7 @@ export type AITaskForm = {
   deliverables?: string
   context?: string
   acceptance_criteria?: string
+  prompt?: string
   dependencies?: string[]
   mode?: 'plan_only' | 'dry_run' | 'execute'
   guardrails?: { costCapUSD?: number | null; timeCapMin?: number | null; requiresHumanApproval?: boolean; dataScopes?: string[] }
@@ -50,6 +51,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
     deliverables: initial?.deliverables || '',
     context: initial?.context || '',
     acceptance_criteria: initial?.acceptance_criteria || '',
+    prompt: initial?.prompt || '',
     dependencies: initial?.dependencies || [],
     mode: initial?.mode || 'plan_only',
     guardrails: initial?.guardrails,
@@ -74,6 +76,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         deliverables: initial.deliverables || '',
         context: initial.context || '',
         acceptance_criteria: initial.acceptance_criteria || '',
+        prompt: initial.prompt || '',
         dependencies: initial.dependencies || [],
         mode: initial.mode || 'plan_only',
         guardrails: initial.guardrails,
@@ -93,6 +96,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         deliverables: '',
         context: '',
         acceptance_criteria: '',
+        prompt: '',
         dependencies: [],
         mode: 'plan_only',
         guardrails: undefined,
@@ -208,6 +212,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         deliverables: form.deliverables,
         context: form.context,
         acceptance_criteria: form.acceptance_criteria,
+        prompt: form.prompt,
         dependencies: form.dependencies,
         mode: form.mode,
         metadata: form.metadata,
@@ -384,6 +389,21 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
               onChange={e => handleChange({ context: e.target.value })}
               placeholder="Additional context, constraints, links, examples..."
             />
+          </div>
+
+          {/* Prompt */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">AI Prompt (Optional)</label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none font-mono"
+              rows={4}
+              value={form.prompt}
+              onChange={e => handleChange({ prompt: e.target.value })}
+              placeholder="Custom instructions or prompt for the AI agent. Leave empty to use default prompts..."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Override the default agent behavior with custom instructions
+            </p>
           </div>
 
           {/* Acceptance & Dependencies - Compact */}

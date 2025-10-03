@@ -66,6 +66,13 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
       setAgents(agentItems)
       setWorkspaces(workspaceItems)
 
+      // Update selectedTask if it's in the refreshed data
+      setSelectedTask(prev => {
+        if (!prev) return null
+        const updated = allAiTaskItems.find(t => t.id === prev.id)
+        return updated || prev
+      })
+
       // Populate run history with completed and failed tasks
       const historyItems = completedTasks.map(task => {
         const linkedTask = taskItems.find(t => t.id === task.task_id)

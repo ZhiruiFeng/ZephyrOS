@@ -48,13 +48,8 @@ export function ModuleSelector({
   const [isOpen, setIsOpen] = React.useState(false)
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null)
 
-  console.log('[ModuleSelector] Available modules:', availableModules.map(m => m.id))
-  console.log('[ModuleSelector] Enabled modules:', enabledModules.map(m => m.id))
-
   const enabledModuleIds = new Set(enabledModules.map(m => m.id))
   const availableToEnable = availableModules.filter(m => !enabledModuleIds.has(m.id))
-
-  console.log('[ModuleSelector] Available to enable:', availableToEnable.map(m => m.id))
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)

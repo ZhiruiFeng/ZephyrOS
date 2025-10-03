@@ -206,6 +206,7 @@ export class AITaskServiceImpl extends BaseServiceImpl implements AITaskService 
         deliverables: request.deliverables ?? request.description ?? null,
         context: request.context ?? request.description ?? null,
         acceptance_criteria: request.acceptance_criteria ?? null,
+        prompt: request.prompt ?? null,
         task_type: request.task_type as 'generation' | 'analysis' | 'summarization' | 'classification' | 'translation' | 'conversation' | 'coding' | 'reasoning' | 'other',
         dependencies,
         mode: normalizedMode,
@@ -404,6 +405,10 @@ export class AITaskServiceImpl extends BaseServiceImpl implements AITaskService 
 
     if (updates.executor_workspace_id !== undefined) {
       payload.executor_workspace_id = updates.executor_workspace_id;
+    }
+
+    if (updates.prompt !== undefined) {
+      payload.prompt = updates.prompt;
     }
 
     Object.keys(payload).forEach((key) => {

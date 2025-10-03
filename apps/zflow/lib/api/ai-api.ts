@@ -37,6 +37,7 @@ export type AITask = {
   deliverables?: string | null
   context?: string | null
   acceptance_criteria?: string | null
+  prompt?: string | null
   task_type: string
   dependencies?: string[]
   mode: 'plan_only' | 'dry_run' | 'execute'

@@ -188,9 +188,6 @@ export function useProfileModules() {
     error: null
   })
 
-  console.log('[useProfileModules] Total available modules:', AVAILABLE_MODULES.length)
-  console.log('[useProfileModules] Module IDs:', AVAILABLE_MODULES.map(m => m.id))
-
   // Load user's module preferences
   const loadUserPreferences = useCallback(async () => {
     if (!user) {

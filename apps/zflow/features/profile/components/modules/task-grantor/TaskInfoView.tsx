@@ -189,7 +189,7 @@ export default function TaskInfoView({
             <FileText className="w-4 h-4 text-purple-500" /> Preview Generated Brief & Spec
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AIPromptPreview task={task} />
+            <AIPromptPreview task={task} onTaskUpdate={onTaskUpdate} />
             <TaskSpecPreview task={task} />
           </div>
         </div>

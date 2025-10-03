@@ -9,6 +9,7 @@ export interface AITask extends BaseEntity {
   deliverables?: string | null;
   context?: string | null;
   acceptance_criteria?: string | null;
+  prompt?: string | null;
   task_type: 'generation' | 'analysis' | 'summarization' | 'classification' | 'translation' | 'conversation' | 'coding' | 'reasoning' | 'other';
 
   dependencies: string[];
