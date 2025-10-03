@@ -4,9 +4,9 @@
 
 Last Updated: 2025-10-03
 Total Routes: 108
-Migrated: 27 (25%)
+Migrated: 29 (27%)
 Infrastructure Ready: 1
-Remaining: 80 (74%)
+Remaining: 78 (72%)
 
 ---
 
@@ -22,7 +22,7 @@ Remaining: 80 (74%)
 
 ---
 
-## ✅ Completed Migrations (27 routes)
+## ✅ Completed Migrations (29 routes)
 
 | Route | Lines Reduced | Time Spent | Date | Pattern | Notes |
 |-------|---------------|------------|------|---------|-------|
@@ -53,10 +53,12 @@ Remaining: 80 (74%)
 | `/api/time-entries/day` | 80 → 90 | ~0.25h | Phase 3 | Sub-route | Day view time entries query |
 | `/api/tasks/[id]/timer/start` | 109 → 128 | ~0.25h | Phase 3 | Sub-route | Start task timer with autoSwitch |
 | `/api/tasks/[id]/time-entries` | 143 → 165 | ~0.25h | Phase 3 | Sub-route | Task time entries GET/POST |
+| `/api/narrative/seasons` | 159 → 156 (2%) | ~0.5h | Phase 3 | CRUD | Seasons GET/POST with validation |
+| `/api/narrative/episodes` | 173 → 170 (2%) | ~0.5h | Phase 3 | CRUD | Episodes GET/POST with date validation |
 
-**Total Lines Reduced**: ~5,063 → ~2,484 (51% average reduction)
-**Total Time Invested**: ~30 hours
-**Average Time per Route**: ~1.11 hours
+**Total Lines Reduced**: ~5,395 → ~2,810 (48% average reduction)
+**Total Time Invested**: ~31 hours
+**Average Time per Route**: ~1.07 hours
 
 ---
 
@@ -102,7 +104,7 @@ Remaining: 80 (74%)
 
 | Pattern | Routes | Avg Reduction | Success Rate |
 |---------|--------|---------------|--------------|
-| Simple CRUD | 6 | 60% | 100% ✅ |
+| Simple CRUD | 8 | 56% | 100% ✅ |
 | Lookup/Read-only | 3 | 49% | 100% ✅ |
 | Multi-route | 2 | 58% | 100% ✅ |
 | Sub-route | 15 | 26% | 100% ✅ |
@@ -114,14 +116,14 @@ Remaining: 80 (74%)
 |-------|--------|------|---------------|
 | Phase 1 | 4 | ~14h | 3.5h |
 | Phase 2 | 6 | ~13h | 2.2h |
-| Phase 3 | 17 | ~7h | 0.41h |
+| Phase 3 | 19 | ~8h | 0.42h |
 
-**Trend**: Getting faster with experience (3.5h → 2.2h → 0.41h per route)
+**Trend**: Getting faster with experience (3.5h → 2.2h → 0.42h per route)
 
 ### Success Rate
 
-- Migrations attempted: 27
-- Migrations completed: 27
+- Migrations attempted: 29
+- Migrations completed: 29
 - Migrations deferred: 1 (tasks main route - infrastructure built)
 - Failures requiring rollback: 0
 - **Success Rate**: 100% ✅

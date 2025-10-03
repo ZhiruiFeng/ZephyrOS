@@ -13,7 +13,7 @@ startup instructions for future migration sessions.
 | Phase 0 | Project scaffolding & safety rails | ✅ Complete | Path aliases, documentation baseline, zero-breaking-change guardrails |
 | Phase 1 | Quick-win routes & pattern validation | ✅ Complete | `/api/health`, `/api/docs`, `/api/agent-features`, `/api/ai-tasks` |
 | Phase 2 | High-impact support APIs | ✅ Complete | `/api/categories`, `/api/task-relations`, `/api/vendors`, `/api/interaction-types`, `/api/energy-days`, `/api/conversations` |
-| Phase 3 | Core feature APIs | 🔄 In progress | 17 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`, `/api/time-entries/running`, `/api/tasks/[id]/timer/stop`, `/api/internal/resolve-openai-key`, `/api/internal/resolve-elevenlabs-key`, `/api/docs/spec`, `/api/narrative/seasons/current`, `/api/time-entries/[id]`, `/api/time-entries/day`, `/api/tasks/[id]/timer/start`, `/api/tasks/[id]/time-entries`. Averaging 0.41h per route! |
+| Phase 3 | Core feature APIs | 🔄 In progress | 19 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`, `/api/time-entries/running`, `/api/tasks/[id]/timer/stop`, `/api/internal/resolve-openai-key`, `/api/internal/resolve-elevenlabs-key`, `/api/docs/spec`, `/api/narrative/seasons/current`, `/api/time-entries/[id]`, `/api/time-entries/day`, `/api/tasks/[id]/timer/start`, `/api/tasks/[id]/time-entries`, `/api/narrative/seasons`, `/api/narrative/episodes`. Averaging 0.42h per route! |
 
 > Detailed before/after comparisons continue to live in
 > `MIGRATION_COMPARISON.md`. Use this dashboard for actionable next steps.
@@ -51,6 +51,8 @@ startup instructions for future migration sessions.
 | `/api/time-entries/day` | ✅ | Day view time entries query (GET), 80→90 lines, from/to time window filtering, rate limiting (300 GET per 15min) |
 | `/api/tasks/[id]/timer/start` | ✅ | Start task timer (POST), 109→128 lines, TimerStartSchema validation, autoSwitch support, rate limiting (30 POST per minute) |
 | `/api/tasks/[id]/time-entries` | ✅ | Task time entries (GET, POST), 143→165 lines, TimeEntriesQuerySchema + TimeEntryCreateSchema validation, rate limiting (300 GET, 100 POST per 15min) |
+| `/api/narrative/seasons` | ✅ | Seasons CRUD (GET, POST), 159→156 lines (2% reduction), status filtering, active season validation, rate limiting (100 GET, 50 POST per 15min) |
+| `/api/narrative/episodes` | ✅ | Episodes CRUD (GET, POST), 173→170 lines (2% reduction), season filtering, date range validation, rate limiting (100 GET, 50 POST per 15min) |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).
