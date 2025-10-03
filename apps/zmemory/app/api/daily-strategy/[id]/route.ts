@@ -365,8 +365,4 @@ export const DELETE = withStandardMiddleware(handleDeleteDailyStrategyItem, {
 });
 
 // Explicit OPTIONS handler for CORS preflight
-export const OPTIONS = withStandardMiddleware(async () => {
-  return new NextResponse(null, { status: 200 });
-}, {
-  auth: false
-});
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

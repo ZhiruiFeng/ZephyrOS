@@ -49,8 +49,4 @@ export const GET = withStandardMiddleware(handleGetCurrentSeason, {
 });
 
 // Explicit OPTIONS handler for CORS preflight
-export const OPTIONS = withStandardMiddleware(async () => {
-  return new NextResponse(null, { status: 200 });
-}, {
-  auth: false // OPTIONS requests don't need authentication
-});
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

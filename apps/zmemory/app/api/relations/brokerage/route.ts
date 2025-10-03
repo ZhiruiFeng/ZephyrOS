@@ -530,6 +530,4 @@ function generateTags(personA: any, personB: any): string[] {
   return tags;
 }
 
-export const OPTIONS = withStandardMiddleware(async () => new NextResponse(null, { status: 200 }), {
-  auth: false
-})
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

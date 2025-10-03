@@ -197,8 +197,4 @@ export const DELETE = withStandardMiddleware(handleDeleteEpisode, {
 });
 
 // Explicit OPTIONS handler for CORS preflight
-export const OPTIONS = withStandardMiddleware(async () => {
-  return new NextResponse(null, { status: 200 });
-}, {
-  auth: false
-});
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

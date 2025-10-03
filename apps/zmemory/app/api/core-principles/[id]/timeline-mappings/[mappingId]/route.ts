@@ -294,3 +294,5 @@ export const PUT = withStandardMiddleware(handlePut, {
 export const DELETE = withStandardMiddleware(handleDelete, {
   rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
 });
+
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

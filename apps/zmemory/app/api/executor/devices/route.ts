@@ -48,14 +48,4 @@ export const POST = withStandardMiddleware(handleRegisterDevice, {
 });
 
 // Handle CORS preflight
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
-    },
-  });
-}
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

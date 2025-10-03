@@ -235,6 +235,15 @@ export function createMiddlewareComposition(defaultOptions: MiddlewareOptions) {
 }
 
 /**
+ * Standard OPTIONS handler for CORS preflight requests
+ * All OPTIONS requests should be unauthenticated to support CORS preflight
+ */
+export const OPTIONS_HANDLER = withStandardMiddleware(
+  async () => new NextResponse(null, { status: 200 }),
+  { auth: false }
+);
+
+/**
  * Utility functions for middleware management
  */
 export const MiddlewareUtils = {

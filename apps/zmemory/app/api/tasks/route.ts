@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getUserIdFromRequest, getAuthContext, getClientForAuthType, addUserIdIfNeeded } from '@/lib/auth/index';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { jsonWithCors, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import {
   CreateTaskSchema,
   TaskQuerySchema,
@@ -598,6 +598,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

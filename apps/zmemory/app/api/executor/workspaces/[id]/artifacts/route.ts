@@ -56,8 +56,4 @@ export const POST = withStandardMiddleware(handleUploadArtifact, {
   rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 200 }
 });
 
-export const OPTIONS = withStandardMiddleware(async () => {
-  return NextResponse.json({}, { status: 200 });
-}, {
-  auth: false
-});
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

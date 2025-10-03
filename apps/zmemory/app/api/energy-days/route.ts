@@ -50,9 +50,4 @@ export const POST = withStandardMiddleware(handleUpsertEnergyDay, {
 });
 
 // Explicit OPTIONS handler for preflight requests
-export const OPTIONS = withStandardMiddleware(async () => {
-  return new NextResponse(null, { status: 200 });
-}, {
-  auth: false,
-  rateLimit: false
-});
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

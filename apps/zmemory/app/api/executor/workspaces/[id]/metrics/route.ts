@@ -56,8 +56,4 @@ export const POST = withStandardMiddleware(handleRecordMetrics, {
   rateLimit: { windowMs: 60 * 1000, maxRequests: 100 } // Higher rate for metrics recording
 });
 
-export const OPTIONS = withStandardMiddleware(async () => {
-  return NextResponse.json({}, { status: 200 });
-}, {
-  auth: false
-});
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';

@@ -361,6 +361,4 @@ export const POST = withStandardMiddleware(handlePost, {
   rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
 });
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 200 });
-}
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';
