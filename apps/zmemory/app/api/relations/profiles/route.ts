@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
 import { nowUTC } from '@/lib/time-utils';
+
+export const dynamic = 'force-dynamic';
 
 // Validation schemas
 const RelationshipProfileCreateSchema = z.object({
@@ -13,15 +14,6 @@ const RelationshipProfileCreateSchema = z.object({
   reason_for_tier: z.string().optional(),
   relationship_context: z.string().optional(),
   how_met: z.string().optional(),
-});
-
-const RelationshipProfileUpdateSchema = z.object({
-  tier: z.number().int().refine(val => [5, 15, 50, 150].includes(val), 'Tier must be 5, 15, 50, or 150').optional(),
-  cadence_days: z.number().int().min(1).max(365).optional(),
-  reason_for_tier: z.string().optional(),
-  relationship_context: z.string().optional(),
-  how_met: z.string().optional(),
-  is_dormant: z.boolean().optional(),
 });
 
 const ProfileQuerySchema = z.object({
@@ -143,37 +135,6 @@ const generateMockProfiles = () => [
  *     responses:
  *       200:
  *         description: List of relationship profiles
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   person_id:
- *                     type: string
- *                   tier:
- *                     type: integer
- *                     enum: [5, 15, 50, 150]
- *                   health_score:
- *                     type: integer
- *                   last_contact_at:
- *                     type: string
- *                   cadence_days:
- *                     type: integer
- *                   is_dormant:
- *                     type: boolean
- *                   person:
- *                     type: object
- *                     properties:
- *                       name:
- *                         type: string
- *                       email:
- *                         type: string
- *                       company:
- *                         type: string
  *       400:
  *         description: Invalid query parameters
  *       401:
@@ -181,106 +142,76 @@ const generateMockProfiles = () => [
  *       500:
  *         description: Server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const rlKey = `${getClientIP(request)}:GET:/api/relations/profiles`;
-    if (isRateLimited(rlKey, 15 * 60 * 1000, 200)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetProfiles(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
-
-    // Parse and validate query parameters
-    const queryResult = ProfileQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
-    }
-
-    const query = queryResult.data;
-
-    // If Supabase is not configured, return mock data
-    if (!supabaseServer) {
-      let profiles = generateMockProfiles();
-
-      // Apply basic filters to mock data
-      if (query.tier) {
-        profiles = profiles.filter(p => p.tier === query.tier);
-      }
-      if (query.is_dormant !== undefined) {
-        profiles = profiles.filter(p => p.is_dormant === query.is_dormant);
-      }
-      if (query.min_health_score !== undefined) {
-        profiles = profiles.filter(p => p.health_score >= query.min_health_score!);
-      }
-      if (query.max_health_score !== undefined) {
-        profiles = profiles.filter(p => p.health_score <= query.max_health_score!);
-      }
-
-      return jsonWithCors(request, profiles.slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Build Supabase query with person data
-    let dbQuery = supabaseServer
-      .from('relationship_profiles')
-      .select(`
-        *,
-        person:people(
-          id,
-          name,
-          email,
-          phone,
-          company,
-          job_title,
-          location,
-          avatar_url
-        )
-      `)
-      .eq('user_id', userId);
-
-    // Apply filters
-    if (query.tier) {
-      dbQuery = dbQuery.eq('tier', query.tier);
-    }
-    if (query.is_dormant !== undefined) {
-      dbQuery = dbQuery.eq('is_dormant', query.is_dormant);
-    }
-    if (query.min_health_score !== undefined) {
-      dbQuery = dbQuery.gte('health_score', query.min_health_score);
-    }
-    if (query.max_health_score !== undefined) {
-      dbQuery = dbQuery.lte('health_score', query.max_health_score);
-    }
-
-    // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    dbQuery = dbQuery.order(query.sort_by, { ascending });
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
-
-    const { data, error } = await dbQuery;
-
-    if (error) {
-      console.error('Database error:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockProfiles().slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch relationship profiles' }, 500);
-    }
-
-    return jsonWithCors(request, data || []);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  const queryResult = ProfileQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
   }
+
+  const query = queryResult.data;
+
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    let profiles = generateMockProfiles();
+
+    if (query.tier) profiles = profiles.filter(p => p.tier === query.tier);
+    if (query.is_dormant !== undefined) profiles = profiles.filter(p => p.is_dormant === query.is_dormant);
+    if (query.min_health_score !== undefined) profiles = profiles.filter(p => p.health_score >= query.min_health_score!);
+    if (query.max_health_score !== undefined) profiles = profiles.filter(p => p.health_score <= query.max_health_score!);
+
+    return NextResponse.json(profiles.slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
+  }
+
+  // Build Supabase query with person data
+  let dbQuery = supabaseServer
+    .from('relationship_profiles')
+    .select(`
+      *,
+      person:people(
+        id,
+        name,
+        email,
+        phone,
+        company,
+        job_title,
+        location,
+        avatar_url
+      )
+    `)
+    .eq('user_id', userId);
+
+  // Apply filters
+  if (query.tier) dbQuery = dbQuery.eq('tier', query.tier);
+  if (query.is_dormant !== undefined) dbQuery = dbQuery.eq('is_dormant', query.is_dormant);
+  if (query.min_health_score !== undefined) dbQuery = dbQuery.gte('health_score', query.min_health_score);
+  if (query.max_health_score !== undefined) dbQuery = dbQuery.lte('health_score', query.max_health_score);
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  dbQuery = dbQuery.order(query.sort_by, { ascending });
+
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json(generateMockProfiles().slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
+    }
+    return NextResponse.json({ error: 'Failed to fetch relationship profiles' }, { status: 500 });
+  }
+
+  return NextResponse.json(data || []);
 }
 
 /**
@@ -300,34 +231,21 @@ export async function GET(request: NextRequest) {
  *               person_id:
  *                 type: string
  *                 format: uuid
- *                 description: ID of the person (required)
  *               tier:
  *                 type: integer
  *                 enum: [5, 15, 50, 150]
- *                 description: Dunbar tier (5=intimate, 15=close, 50=meaningful, 150=stable)
  *               cadence_days:
  *                 type: integer
  *                 minimum: 1
  *                 maximum: 365
  *                 default: 30
- *                 description: How often to check in (days)
  *               reason_for_tier:
  *                 type: string
- *                 description: Why this person is in this tier
  *               relationship_context:
  *                 type: string
- *                 description: Context of relationship (work, personal, etc.)
  *               how_met:
  *                 type: string
- *                 description: How you met this person
  *             required: [person_id, tier]
- *             example:
- *               person_id: "123e4567-e89b-12d3-a456-426614174000"
- *               tier: 50
- *               cadence_days: 30
- *               reason_for_tier: "Professional colleague with good collaboration"
- *               relationship_context: "work"
- *               how_met: "Conference networking event"
  *     responses:
  *       201:
  *         description: Relationship profile created successfully
@@ -336,103 +254,95 @@ export async function GET(request: NextRequest) {
  *       401:
  *         description: Unauthorized
  *       409:
- *         description: Profile already exists for this person
+ *         description: Profile already exists
  *       500:
  *         description: Server error
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const postKey = `${getClientIP(request)}:POST:/api/relations/profiles`;
-    if (isRateLimited(postKey, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleCreateProfile(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const profileData = request.validatedBody!;
+  const now = nowUTC();
 
-    const body = await request.json();
-
-    // Validate request body
-    const validationResult = RelationshipProfileCreateSchema.safeParse(body);
-    if (!validationResult.success) {
-      return jsonWithCors(request, { error: 'Invalid profile data', details: validationResult.error.errors }, 400);
-    }
-
-    const profileData = validationResult.data;
-    const now = nowUTC();
-
-    // If Supabase is not configured, return mock response
-    if (!supabaseServer) {
-      const mockProfile = {
-        id: Date.now().toString(),
-        user_id: 'mock-user',
-        ...profileData,
-        health_score: 100,
-        reciprocity_balance: 0,
-        is_dormant: false,
-        created_at: now,
-        updated_at: now
-      };
-      return jsonWithCors(request, mockProfile, 201);
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Set default cadence based on tier if not provided
-    let cadenceDays = profileData.cadence_days;
-    if (!cadenceDays) {
-      const defaultCadences = { 5: 7, 15: 14, 50: 30, 150: 90 };
-      cadenceDays = defaultCadences[profileData.tier as keyof typeof defaultCadences];
-    }
-
-    // Create relationship profile
-    const profilePayload = {
+  // If Supabase is not configured, return mock response
+  if (!supabaseServer) {
+    const mockProfile = {
+      id: Date.now().toString(),
+      user_id: 'mock-user',
       ...profileData,
-      cadence_days: cadenceDays,
-      health_score: 100, // New relationships start with perfect health
+      health_score: 100,
       reciprocity_balance: 0,
       is_dormant: false,
       created_at: now,
       updated_at: now
     };
-
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(profilePayload, userId, request);
-
-    const { data, error } = await supabaseServer
-      .from('relationship_profiles')
-      .insert(profilePayload)
-      .select(`
-        *,
-        person:people(
-          id,
-          name,
-          email,
-          company,
-          job_title,
-          avatar_url
-        )
-      `)
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      if (error.code === '23505') { // Unique constraint violation
-        return jsonWithCors(request, { error: 'Relationship profile already exists for this person' }, 409);
-      }
-      return jsonWithCors(request, { error: 'Failed to create relationship profile' }, 500);
-    }
-
-    return jsonWithCors(request, data, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(mockProfile, { status: 201 });
   }
+
+  // Set default cadence based on tier if not provided
+  let cadenceDays = profileData.cadence_days;
+  if (!cadenceDays) {
+    const defaultCadences = { 5: 7, 15: 14, 50: 30, 150: 90 };
+    cadenceDays = defaultCadences[profileData.tier as keyof typeof defaultCadences];
+  }
+
+  // Create relationship profile
+  const profilePayload = {
+    ...profileData,
+    user_id: userId,
+    cadence_days: cadenceDays,
+    health_score: 100, // New relationships start with perfect health
+    reciprocity_balance: 0,
+    is_dormant: false,
+    created_at: now,
+    updated_at: now
+  };
+
+  const { data, error } = await supabaseServer
+    .from('relationship_profiles')
+    .insert(profilePayload)
+    .select(`
+      *,
+      person:people(
+        id,
+        name,
+        email,
+        company,
+        job_title,
+        avatar_url
+      )
+    `)
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      return NextResponse.json({ error: 'Relationship profile already exists for this person' }, { status: 409 });
+    }
+    return NextResponse.json({ error: 'Failed to create relationship profile' }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGetProfiles, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 200
+  }
+});
+
+export const POST = withStandardMiddleware(handleCreateProfile, {
+  validation: { bodySchema: RelationshipProfileCreateSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { 
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
+import {
   MemoryAnchorUpdateSchema,
   type MemoryAnchorUpdateBody
 } from '@/validation';
 import { nowUTC } from '../../../../../../lib/time-utils';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+export const dynamic = 'force-dynamic';
 
 /**
  * @swagger
@@ -66,149 +62,110 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  *       404:
  *         description: Anchor not found
  */
-export async function PUT(
-  request: NextRequest,
+async function handlePut(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string; anchorId: string }> }
-) {
+): Promise<NextResponse> {
   const { id: memoryId, anchorId } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
+  const anchorData = request.validatedBody!;
 
-    const body = await request.json();
-    
-    
-    // Validate request body
-    const validationResult = MemoryAnchorUpdateSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('UPDATE ANCHOR Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid anchor data', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const anchorData = validationResult.data;
-
-    // Transform local_time_range for database storage
-    let transformedData = { ...anchorData };
-    if (anchorData.local_time_range) {
-      const start = anchorData.local_time_range.start;
-      const end = anchorData.local_time_range.end;
-      transformedData.local_time_range = `[${start},${end || start})` as any;
-    }
-
-    // If no database configuration, return mock response
-    if (!supabase) {
-      const mockUpdatedAnchor = {
-        memory_id: memoryId,
-        anchor_item_id: anchorId,
-        ...transformedData
-      };
-      return jsonWithCors(request, mockUpdatedAnchor);
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Verify memory belongs to user
-    const { data: memoryCheck, error: memoryError } = await client
-      .from('memories')
-      .select('id')
-      .eq('id', memoryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (memoryError || !memoryCheck) {
-      return jsonWithCors(request, { error: 'Memory not found' }, 404);
-    }
-
-    // Check if the specific anchor exists
-    const { data: existingAnchor, error: anchorError } = await client
-      .from('memory_anchors')
-      .select('memory_id, anchor_item_id, relation_type')
-      .eq('memory_id', memoryId)
-      .eq('anchor_item_id', anchorId)
-      .single();
-
-    if (anchorError || !existingAnchor) {
-      return jsonWithCors(request, { error: 'Anchor not found' }, 404);
-    }
-
-    // If relation_type is being changed, check for conflicts
-    if (anchorData.relation_type && anchorData.relation_type !== existingAnchor.relation_type) {
-      const { data: conflictCheck } = await client
-        .from('memory_anchors')
-        .select('memory_id')
-        .eq('memory_id', memoryId)
-        .eq('anchor_item_id', anchorId)
-        .eq('relation_type', anchorData.relation_type)
-        .single();
-
-      if (conflictCheck) {
-        return jsonWithCors(request, { error: 'Anchor with this relation type already exists' }, 409);
-      }
-    }
-
-
-    // Update anchor
-    const { data, error } = await client
-      .from('memory_anchors')
-      .update(transformedData)
-      .eq('memory_id', memoryId)
-      .eq('anchor_item_id', anchorId)
-      .eq('relation_type', existingAnchor.relation_type) // Use original relation_type for WHERE
-      .select(`
-        *,
-        timeline_item:timeline_items!anchor_item_id (
-          id,
-          type,
-          title,
-          description,
-          status,
-          priority,
-          category_id,
-          tags
-        )
-      `)
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to update anchor' }, 500);
-    }
-
-    // Transform local_time_range back for response
-    if (data.local_time_range) {
-      try {
-        const rangeMatch = data.local_time_range.match(/^\[(.+),(.+)\)$/);
-        if (rangeMatch) {
-          const [, start, end] = rangeMatch;
-          data.local_time_range = {
-            start,
-            end: end !== start ? end : undefined
-          };
-        }
-      } catch (e) {
-        console.warn('Failed to parse local_time_range:', data.local_time_range);
-        data.local_time_range = null;
-      }
-    }
-
-    return jsonWithCors(request, data);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  // Transform local_time_range for database storage
+  let transformedData = { ...anchorData };
+  if (anchorData.local_time_range) {
+    const start = anchorData.local_time_range.start;
+    const end = anchorData.local_time_range.end;
+    transformedData.local_time_range = `[${start},${end || start})` as any;
+  }
+
+  // Verify memory belongs to user
+  const { data: memoryCheck, error: memoryError } = await supabaseServer
+    .from('memories')
+    .select('id')
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memoryError || !memoryCheck) {
+    return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+  }
+
+  // Check if the specific anchor exists
+  const { data: existingAnchor, error: anchorError } = await supabaseServer
+    .from('memory_anchors')
+    .select('memory_id, anchor_item_id, relation_type')
+    .eq('memory_id', memoryId)
+    .eq('anchor_item_id', anchorId)
+    .single();
+
+  if (anchorError || !existingAnchor) {
+    return NextResponse.json({ error: 'Anchor not found' }, { status: 404 });
+  }
+
+  // If relation_type is being changed, check for conflicts
+  if (anchorData.relation_type && anchorData.relation_type !== existingAnchor.relation_type) {
+    const { data: conflictCheck } = await supabaseServer
+      .from('memory_anchors')
+      .select('memory_id')
+      .eq('memory_id', memoryId)
+      .eq('anchor_item_id', anchorId)
+      .eq('relation_type', anchorData.relation_type)
+      .single();
+
+    if (conflictCheck) {
+      return NextResponse.json({ error: 'Anchor with this relation type already exists' }, { status: 409 });
+    }
+  }
+
+  // Update anchor
+  const { data, error } = await supabaseServer
+    .from('memory_anchors')
+    .update(transformedData)
+    .eq('memory_id', memoryId)
+    .eq('anchor_item_id', anchorId)
+    .eq('relation_type', existingAnchor.relation_type) // Use original relation_type for WHERE
+    .select(`
+      *,
+      timeline_item:timeline_items!anchor_item_id (
+        id,
+        type,
+        title,
+        description,
+        status,
+        priority,
+        category_id,
+        tags
+      )
+    `)
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to update anchor' }, { status: 500 });
+  }
+
+  // Transform local_time_range back for response
+  if (data.local_time_range) {
+    try {
+      const rangeMatch = data.local_time_range.match(/^\[(.+),(.+)\)$/);
+      if (rangeMatch) {
+        const [, start, end] = rangeMatch;
+        data.local_time_range = {
+          start,
+          end: end !== start ? end : undefined
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to parse local_time_range:', data.local_time_range);
+      data.local_time_range = null;
+    }
+  }
+
+  return NextResponse.json(data);
 }
 
 /**
@@ -245,73 +202,71 @@ export async function PUT(
  *       404:
  *         description: Anchor not found
  */
-export async function DELETE(
-  request: NextRequest,
+async function handleDelete(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string; anchorId: string }> }
-) {
+): Promise<NextResponse> {
   const { id: memoryId, anchorId } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
 
-    const { searchParams } = new URL(request.url);
-    const relationTypeFilter = searchParams.get('relation_type');
-
-    // If no database configuration, return mock response
-    if (!supabase) {
-      return jsonWithCors(request, { message: 'Anchor deleted successfully (mock)' });
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Verify memory belongs to user
-    const { data: memoryCheck, error: memoryError } = await client
-      .from('memories')
-      .select('id')
-      .eq('id', memoryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (memoryError || !memoryCheck) {
-      return jsonWithCors(request, { error: 'Memory not found' }, 404);
-    }
-
-    // Build delete query
-    let deleteQuery = client
-      .from('memory_anchors')
-      .delete()
-      .eq('memory_id', memoryId)
-      .eq('anchor_item_id', anchorId);
-
-    // If specific relation type is provided, filter by it
-    if (relationTypeFilter) {
-      deleteQuery = deleteQuery.eq('relation_type', relationTypeFilter);
-    }
-
-    const { error } = await deleteQuery;
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to delete anchor' }, 500);
-    }
-
-    return jsonWithCors(request, { message: 'Anchor deleted successfully' });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const relationTypeFilter = searchParams.get('relation_type');
+
+  // Verify memory belongs to user
+  const { data: memoryCheck, error: memoryError } = await supabaseServer
+    .from('memories')
+    .select('id')
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memoryError || !memoryCheck) {
+    return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+  }
+
+  // Build delete query
+  let deleteQuery = supabaseServer
+    .from('memory_anchors')
+    .delete()
+    .eq('memory_id', memoryId)
+    .eq('anchor_item_id', anchorId);
+
+  // If specific relation type is provided, filter by it
+  if (relationTypeFilter) {
+    deleteQuery = deleteQuery.eq('relation_type', relationTypeFilter);
+  }
+
+  const { error } = await deleteQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to delete anchor' }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: 'Anchor deleted successfully' });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const PUT = withStandardMiddleware(handlePut, {
+  validation: { bodySchema: MemoryAnchorUpdateSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDelete, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30
+  }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

@@ -1,16 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { 
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
+import {
   MemoryAssetUpdateSchema,
   type MemoryAssetUpdateBody
 } from '@/validation';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+export const dynamic = 'force-dynamic';
 
 /**
  * @swagger
@@ -52,129 +48,90 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  *       404:
  *         description: Asset attachment not found
  */
-export async function PUT(
-  request: NextRequest,
+async function handlePut(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string; assetId: string }> }
-) {
+): Promise<NextResponse> {
   const { id: memoryId, assetId } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
+  const assetData = request.validatedBody!;
 
-    const body = await request.json();
-    
-    
-    // Validate request body
-    const validationResult = MemoryAssetUpdateSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('UPDATE ASSET Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid asset data', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const assetData = validationResult.data;
-
-    // If no database configuration, return mock response
-    if (!supabase) {
-      const mockUpdatedAsset = {
-        memory_id: memoryId,
-        asset_id: assetId,
-        ...assetData
-      };
-      return jsonWithCors(request, mockUpdatedAsset);
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Verify memory belongs to user
-    const { data: memoryCheck, error: memoryError } = await client
-      .from('memories')
-      .select('id')
-      .eq('id', memoryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (memoryError || !memoryCheck) {
-      return jsonWithCors(request, { error: 'Memory not found' }, 404);
-    }
-
-    // Check if the asset attachment exists
-    const { data: existingAttachment, error: attachmentError } = await client
-      .from('memory_assets')
-      .select('memory_id, asset_id, order_index')
-      .eq('memory_id', memoryId)
-      .eq('asset_id', assetId)
-      .single();
-
-    if (attachmentError || !existingAttachment) {
-      return jsonWithCors(request, { error: 'Asset attachment not found' }, 404);
-    }
-
-    // If order_index is being changed, handle conflicts
-    let finalOrderIndex = assetData.order_index;
-    if (finalOrderIndex !== undefined && finalOrderIndex !== existingAttachment.order_index) {
-      const { data: conflictCheck } = await client
-        .from('memory_assets')
-        .select('asset_id')
-        .eq('memory_id', memoryId)
-        .eq('order_index', finalOrderIndex)
-        .neq('asset_id', assetId)
-        .single();
-
-      if (conflictCheck) {
-        // Swap order indices
-        await client
-          .from('memory_assets')
-          .update({ order_index: existingAttachment.order_index })
-          .eq('memory_id', memoryId)
-          .eq('asset_id', conflictCheck.asset_id);
-      }
-    }
-
-
-    // Update attachment
-    const { data, error } = await client
-      .from('memory_assets')
-      .update(assetData)
-      .eq('memory_id', memoryId)
-      .eq('asset_id', assetId)
-      .select(`
-        *,
-        asset:assets (
-          id,
-          url,
-          mime_type,
-          kind,
-          duration_seconds,
-          file_size_bytes,
-          hash_sha256,
-          created_at
-        )
-      `)
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to update asset attachment' }, 500);
-    }
-
-    return jsonWithCors(request, data);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  // Verify memory belongs to user
+  const { data: memoryCheck, error: memoryError } = await supabaseServer
+    .from('memories')
+    .select('id')
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memoryError || !memoryCheck) {
+    return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+  }
+
+  // Check if the asset attachment exists
+  const { data: existingAttachment, error: attachmentError } = await supabaseServer
+    .from('memory_assets')
+    .select('memory_id, asset_id, order_index')
+    .eq('memory_id', memoryId)
+    .eq('asset_id', assetId)
+    .single();
+
+  if (attachmentError || !existingAttachment) {
+    return NextResponse.json({ error: 'Asset attachment not found' }, { status: 404 });
+  }
+
+  // If order_index is being changed, handle conflicts
+  let finalOrderIndex = assetData.order_index;
+  if (finalOrderIndex !== undefined && finalOrderIndex !== existingAttachment.order_index) {
+    const { data: conflictCheck } = await supabaseServer
+      .from('memory_assets')
+      .select('asset_id')
+      .eq('memory_id', memoryId)
+      .eq('order_index', finalOrderIndex)
+      .neq('asset_id', assetId)
+      .single();
+
+    if (conflictCheck) {
+      // Swap order indices
+      await supabaseServer
+        .from('memory_assets')
+        .update({ order_index: existingAttachment.order_index })
+        .eq('memory_id', memoryId)
+        .eq('asset_id', conflictCheck.asset_id);
+    }
+  }
+
+  // Update attachment
+  const { data, error } = await supabaseServer
+    .from('memory_assets')
+    .update(assetData)
+    .eq('memory_id', memoryId)
+    .eq('asset_id', assetId)
+    .select(`
+      *,
+      asset:assets (
+        id,
+        url,
+        mime_type,
+        kind,
+        duration_seconds,
+        file_size_bytes,
+        hash_sha256,
+        created_at
+      )
+    `)
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to update asset attachment' }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
 }
 
 /**
@@ -205,95 +162,93 @@ export async function PUT(
  *       404:
  *         description: Asset attachment not found
  */
-export async function DELETE(
-  request: NextRequest,
+async function handleDelete(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string; assetId: string }> }
-) {
+): Promise<NextResponse> {
   const { id: memoryId, assetId } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
 
-    // If no database configuration, return mock response
-    if (!supabase) {
-      return jsonWithCors(request, { message: 'Asset detached successfully (mock)' });
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Verify memory belongs to user
-    const { data: memoryCheck, error: memoryError } = await client
-      .from('memories')
-      .select('id')
-      .eq('id', memoryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (memoryError || !memoryCheck) {
-      return jsonWithCors(request, { error: 'Memory not found' }, 404);
-    }
-
-    // Get the attachment to check if it exists and get its order_index
-    const { data: attachment, error: getError } = await client
-      .from('memory_assets')
-      .select('order_index')
-      .eq('memory_id', memoryId)
-      .eq('asset_id', assetId)
-      .single();
-
-    if (getError || !attachment) {
-      return jsonWithCors(request, { error: 'Asset attachment not found' }, 404);
-    }
-
-    // Delete the attachment
-    const { error } = await client
-      .from('memory_assets')
-      .delete()
-      .eq('memory_id', memoryId)
-      .eq('asset_id', assetId);
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to detach asset' }, 500);
-    }
-
-    // Reorder remaining assets to fill gaps
-    const { data: remainingAssets, error: remainingError } = await client
-      .from('memory_assets')
-      .select('asset_id, order_index')
-      .eq('memory_id', memoryId)
-      .gt('order_index', attachment.order_index)
-      .order('order_index');
-
-    if (!remainingError && remainingAssets && remainingAssets.length > 0) {
-      // Update order indices to remove gap
-      for (let i = 0; i < remainingAssets.length; i++) {
-        const asset = remainingAssets[i];
-        await client
-          .from('memory_assets')
-          .update({ order_index: attachment.order_index + i })
-          .eq('memory_id', memoryId)
-          .eq('asset_id', asset.asset_id);
-      }
-    }
-
-    return jsonWithCors(request, { message: 'Asset detached successfully' });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  // Verify memory belongs to user
+  const { data: memoryCheck, error: memoryError } = await supabaseServer
+    .from('memories')
+    .select('id')
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memoryError || !memoryCheck) {
+    return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+  }
+
+  // Get the attachment to check if it exists and get its order_index
+  const { data: attachment, error: getError } = await supabaseServer
+    .from('memory_assets')
+    .select('order_index')
+    .eq('memory_id', memoryId)
+    .eq('asset_id', assetId)
+    .single();
+
+  if (getError || !attachment) {
+    return NextResponse.json({ error: 'Asset attachment not found' }, { status: 404 });
+  }
+
+  // Delete the attachment
+  const { error } = await supabaseServer
+    .from('memory_assets')
+    .delete()
+    .eq('memory_id', memoryId)
+    .eq('asset_id', assetId);
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to detach asset' }, { status: 500 });
+  }
+
+  // Reorder remaining assets to fill gaps
+  const { data: remainingAssets, error: remainingError } = await supabaseServer
+    .from('memory_assets')
+    .select('asset_id, order_index')
+    .eq('memory_id', memoryId)
+    .gt('order_index', attachment.order_index)
+    .order('order_index');
+
+  if (!remainingError && remainingAssets && remainingAssets.length > 0) {
+    // Update order indices to remove gap
+    for (let i = 0; i < remainingAssets.length; i++) {
+      const asset = remainingAssets[i];
+      await supabaseServer
+        .from('memory_assets')
+        .update({ order_index: attachment.order_index + i })
+        .eq('memory_id', memoryId)
+        .eq('asset_id', asset.asset_id);
+    }
+  }
+
+  return NextResponse.json({ message: 'Asset detached successfully' });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const PUT = withStandardMiddleware(handlePut, {
+  validation: { bodySchema: MemoryAssetUpdateSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDelete, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30
+  }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

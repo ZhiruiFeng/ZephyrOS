@@ -1,16 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { 
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
+import {
   AssetUpdateSchema,
   type AssetUpdateBody
 } from '@/validation';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+export const dynamic = 'force-dynamic';
 
 /**
  * @swagger
@@ -33,70 +29,33 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  *       404:
  *         description: Asset not found
  */
-export async function GET(
-  request: NextRequest,
+async function handleGet(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
 
-    // If no database configuration, return mock data
-    if (!supabase) {
-      const mockAsset = {
-        id,
-        url: 'https://example.com/sample.jpg',
-        mime_type: 'image/jpeg',
-        kind: 'image',
-        duration_seconds: null,
-        file_size_bytes: 1024000,
-        hash_sha256: 'sample-hash',
-        user_id: 'mock-user',
-        created_at: new Date().toISOString()
-      };
-      return jsonWithCors(request, mockAsset);
-    }
-
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      if (process.env.NODE_ENV !== 'production') {
-        const mockAsset = {
-          id,
-          url: 'https://example.com/dev-sample.jpg',
-          mime_type: 'image/jpeg',
-          kind: 'image'
-        };
-        return jsonWithCors(request, mockAsset);
-      }
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-    const { data, error } = await client
-      .from('assets')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Asset not found' }, 404);
-      }
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to fetch asset' }, 500);
-    }
-
-    return jsonWithCors(request, data);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  const { data, error } = await supabaseServer
+    .from('assets')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to fetch asset' }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
 }
 
 /**
@@ -138,74 +97,35 @@ export async function GET(
  *       404:
  *         description: Asset not found
  */
-export async function PUT(
-  request: NextRequest,
+async function handlePut(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
+  const assetData = request.validatedBody!;
 
-    const body = await request.json();
-    
-    
-    // Validate input data
-    const validationResult = AssetUpdateSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('UPDATE ASSET Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid asset data', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
-    
-    const assetData = validationResult.data;
-
-    // If no database configuration, return mock response
-    if (!supabase) {
-      const mockUpdatedAsset = {
-        id,
-        ...assetData,
-        url: 'https://example.com/sample.jpg',
-        user_id: 'mock-user'
-      };
-      return jsonWithCors(request, mockUpdatedAsset);
-    }
-    
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-
-    const { data, error } = await client
-      .from('assets')
-      .update(assetData)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Asset not found' }, 404);
-      }
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to update asset' }, 500);
-    }
-
-    return jsonWithCors(request, data);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  const { data, error } = await supabaseServer
+    .from('assets')
+    .update(assetData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
 }
 
 /**
@@ -229,62 +149,68 @@ export async function PUT(
  *       404:
  *         description: Asset not found
  */
-export async function DELETE(
-  request: NextRequest,
+async function handleDelete(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+  const userId = request.userId!;
 
-    // If no database configuration, return mock response
-    if (!supabase) {
-      return jsonWithCors(request, { message: 'Asset deleted successfully (mock)' });
-    }
-
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-    
-    // Check if asset exists and belongs to user
-    const { data: assetCheck, error: checkError } = await client
-      .from('assets')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-
-    if (checkError || !assetCheck) {
-      return jsonWithCors(request, { error: 'Asset not found' }, 404);
-    }
-
-    // Delete the asset (this will cascade delete memory_assets due to foreign key)
-    const { error } = await client
-      .from('assets')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to delete asset' }, 500);
-    }
-
-    return jsonWithCors(request, { message: 'Asset deleted successfully' });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  // Check if asset exists and belongs to user
+  const { data: assetCheck, error: checkError } = await supabaseServer
+    .from('assets')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (checkError || !assetCheck) {
+    return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+  }
+
+  // Delete the asset (this will cascade delete memory_assets due to foreign key)
+  const { error } = await supabaseServer
+    .from('assets')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to delete asset' }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: 'Asset deleted successfully' });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+export const PUT = withStandardMiddleware(handlePut, {
+  validation: { bodySchema: AssetUpdateSchema },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDelete, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30
+  }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});
