@@ -42,6 +42,7 @@ export interface ExecutorWorkspace {
   workspace_path: string
   relative_path: string
   metadata_path?: string
+  workspace_name: string
   repo_url?: string
   repo_branch: string
   project_type?: 'swift' | 'python' | 'nodejs' | 'go' | 'rust' | 'generic'

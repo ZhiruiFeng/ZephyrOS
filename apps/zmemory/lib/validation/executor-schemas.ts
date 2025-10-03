@@ -42,6 +42,7 @@ export const ExecutorWorkspaceCreateSchema = z.object({
   workspace_path: z.string().min(1),
   relative_path: z.string().min(1),
   metadata_path: z.string().optional(),
+  workspace_name: z.string().min(1).max(200),
   repo_url: z.string().url().optional(),
   repo_branch: z.string().default('main'),
   project_type: z.enum(['swift', 'python', 'nodejs', 'go', 'rust', 'generic']).optional(),
