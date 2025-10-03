@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withPublicMiddleware } from '@/middleware';
-import { getApiDocs } from '@/lib/swagger';
+import { getApiDocs } from '@/lib/config/swagger';
 
 export const dynamic = 'force-dynamic';
 

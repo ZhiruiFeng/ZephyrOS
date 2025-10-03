@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   UpdateDailyStrategySchema,
   DailyStrategyItemWithDetails
-} from '@/lib/daily-strategy-types';
+} from '@/lib/types/daily-strategy-types';
 
 export const dynamic = 'force-dynamic';
 

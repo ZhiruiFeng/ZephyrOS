@@ -8,7 +8,7 @@ import {
   TaskPriority,
   CompletionBehavior,
   ProgressCalculation
-} from '../../lib/task-types';
+} from '../../lib/types/task-types';
 
 describe('Task Types Validation Schemas', () => {
   describe('TaskContentSchema', () => {

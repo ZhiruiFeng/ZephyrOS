@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { consumeAuthorizationCode, findClient, hashCodeVerifier } from '../../../lib/oauth'
+import { consumeAuthorizationCode, findClient, hashCodeVerifier } from '@/lib/auth/oauth'
 import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined

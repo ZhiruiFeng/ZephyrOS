@@ -4,7 +4,7 @@ import { getClientForAuthType } from '@/auth';
 import {
   UpdateDailyStrategyStatusSchema,
   DailyStrategyItemWithDetails
-} from '@/lib/daily-strategy-types';
+} from '@/lib/types/daily-strategy-types';
 
 export const dynamic = 'force-dynamic';
 

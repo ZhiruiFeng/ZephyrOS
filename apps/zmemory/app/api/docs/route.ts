@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withPublicMiddleware, type EnhancedRequest } from '@/middleware';
-import { getApiDocs } from '@/lib/swagger';
+import { getApiDocs } from '@/lib/config/swagger';
 
 /**
  * Handle API documentation request

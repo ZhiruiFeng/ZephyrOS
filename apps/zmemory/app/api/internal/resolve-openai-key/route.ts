@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { resolveOpenAIKey } from '@/lib/api-key-resolver';
+import { resolveOpenAIKey } from '@/lib/services/api-key-resolver';
 
 export const dynamic = 'force-dynamic';
 

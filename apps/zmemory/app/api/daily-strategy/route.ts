@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/config/supabase-server';
 import {
   DailyStrategyQuerySchema,
   CreateDailyStrategySchema,
   DailyStrategyItemWithDetails,
   type DailyStrategyQuery
-} from '@/lib/daily-strategy-types';
+} from '@/lib/types/daily-strategy-types';
 
 export const dynamic = 'force-dynamic';
 

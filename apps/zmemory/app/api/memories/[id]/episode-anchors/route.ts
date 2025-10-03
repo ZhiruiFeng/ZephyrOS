@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/config/supabase-server';
 import {
   MemoryEpisodeAnchorCreateSchema,
   MemoryEpisodeAnchorsQuerySchema,
   type MemoryEpisodeAnchorCreateBody,
   type MemoryEpisodeAnchorsQuery
 } from '@/validation';
-import { nowUTC } from '@/lib/time-utils';
+import { nowUTC } from '@/lib/utils/time-utils';
 
 export const dynamic = 'force-dynamic';
 

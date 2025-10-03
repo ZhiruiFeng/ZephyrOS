@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/auth';
-import { jsonWithCors } from '@/lib/security';
+import { jsonWithCors } from '@/lib/utils/security';
 
 export interface AuthenticatedRequest extends NextRequest {
   userId?: string;

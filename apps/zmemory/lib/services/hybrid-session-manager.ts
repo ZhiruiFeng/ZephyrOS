@@ -1,5 +1,5 @@
-import { ChatSession, AgentMessage } from '../types/agents'
-import { supabaseSessionManager } from './supabase-session-manager'
+import { ChatSession, AgentMessage } from '@/types/agents'
+import { supabaseSessionManager } from '@/lib/auth/supabase-session-manager'
 
 // Mock Redis manager types - you'll import from your zflow app
 interface RedisSessionManager {

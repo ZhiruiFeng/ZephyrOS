@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodSchema, ZodError } from 'zod';
-import { jsonWithCors } from '@/lib/security';
+import { jsonWithCors } from '@/lib/utils/security';
 
 export interface ValidatedRequest<TBody = any, TQuery = any, TParams = any> extends NextRequest {
   validatedBody?: TBody;

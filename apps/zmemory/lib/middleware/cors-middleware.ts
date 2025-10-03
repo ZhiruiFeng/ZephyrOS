@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jsonWithCors, createOptionsResponse, getAllowedOrigins } from '@/lib/security';
+import { jsonWithCors, createOptionsResponse, getAllowedOrigins } from '@/lib/utils/security';
 
 export interface CorsMiddlewareOptions {
   allowedOrigins?: string[];

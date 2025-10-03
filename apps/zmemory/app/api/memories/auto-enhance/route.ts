@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
-import { analyzeMemory, type MemoryAnalysisInput } from '@/lib/memory-business-logic';
+import { supabaseServer } from '@/lib/config/supabase-server';
+import { analyzeMemory, type MemoryAnalysisInput } from '@/lib/services/memory-business-logic';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';

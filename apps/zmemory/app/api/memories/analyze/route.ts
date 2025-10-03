@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { getClientForAuthType } from '@/auth';
-import { analyzeMemory, findPotentialAnchors, type MemoryAnalysisInput } from '@/lib/memory-business-logic';
+import { analyzeMemory, findPotentialAnchors, type MemoryAnalysisInput } from '@/lib/services/memory-business-logic';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';

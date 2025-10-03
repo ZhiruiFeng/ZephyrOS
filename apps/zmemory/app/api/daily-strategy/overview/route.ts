@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { getClientForAuthType } from '@/auth';
 import { z } from 'zod';
-import { DailyStrategyOverview } from '@/lib/daily-strategy-types';
+import { DailyStrategyOverview } from '@/lib/types/daily-strategy-types';
 
 export const dynamic = 'force-dynamic';
 

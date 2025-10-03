@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { apiKeyService } from '@/lib/api-key-service';
+import { apiKeyService } from '@/lib/services/api-key-service';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';

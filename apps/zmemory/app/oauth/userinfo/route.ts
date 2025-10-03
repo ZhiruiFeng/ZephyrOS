@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest, getAuthContext } from '../../../lib/auth'
-import { supabaseServer } from '../../../lib/supabase-server'
+import { supabaseServer } from '@/lib/config/supabase-server'
 
 export const runtime = 'nodejs'
 

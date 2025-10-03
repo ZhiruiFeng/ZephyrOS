@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jsonWithCors, getClientIP, isRateLimited } from '@/lib/security';
+import { jsonWithCors, getClientIP, isRateLimited } from '@/lib/utils/security';
 
 export interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds

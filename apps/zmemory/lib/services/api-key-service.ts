@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from './database.types';
-import { encryptApiKey, decryptApiKey, generateKeyPreview, validateApiKeyFormat } from './encryption';
+import type { Database } from '@/lib/types/database.types';
+import { encryptApiKey, decryptApiKey, generateKeyPreview, validateApiKeyFormat } from '@/lib/utils/encryption';
 
 /**
  * API Key Management Service

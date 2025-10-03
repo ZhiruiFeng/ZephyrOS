@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { hashApiKey } from '@/lib/crypto-utils';
+import { hashApiKey } from '@/lib/utils/crypto-utils';
 import { getUser } from './index';
 
 const supabase = createClient(

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabase as serviceClient } from '@/lib/supabase';
+import { supabase as serviceClient } from '@/lib/config/supabase';
 import { getClientForAuthType } from '@/auth';
 import { z } from 'zod';
 import type {

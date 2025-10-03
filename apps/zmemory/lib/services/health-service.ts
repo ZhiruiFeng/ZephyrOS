@@ -4,8 +4,8 @@ import type {
   ServiceDependencies,
   ServiceResult
 } from './types';
-import { APIMonitoring } from '@/lib/monitoring';
-import { checkEnvironment } from '@/lib/env-check';
+import { APIMonitoring } from '@/lib/config/monitoring';
+import { checkEnvironment } from '@/lib/utils/env-check';
 
 export interface HealthStatus {
   service: string;

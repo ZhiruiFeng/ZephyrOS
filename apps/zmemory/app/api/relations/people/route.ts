@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/config/supabase-server';
 import { addUserIdIfNeeded } from '@/auth';
 import { PersonCreateSchema, PersonQuerySchema } from '@/validation/relations';
-import { nowUTC } from '@/lib/time-utils';
+import { nowUTC } from '@/lib/utils/time-utils';
 
 export const dynamic = 'force-dynamic';
 

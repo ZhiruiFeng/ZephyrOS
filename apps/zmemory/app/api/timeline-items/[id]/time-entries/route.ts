@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/config/supabase-server';
 import { TimeEntriesQuerySchema, TimeEntryCreateSchema } from '@/validation';
 
 export const dynamic = 'force-dynamic';

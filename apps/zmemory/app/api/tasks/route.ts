@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getUserIdFromRequest, getAuthContext, getClientForAuthType, addUserIdIfNeeded } from '@/lib/auth/index';
-import { jsonWithCors, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { jsonWithCors, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/utils/security';
 import {
   CreateTaskSchema,
   TaskQuerySchema,
@@ -10,7 +10,7 @@ import {
   TaskPriority,
   TaskCategory
 } from '@/validation';
-import { nowUTC, convertSearchParamsToUTC } from '@/lib/time-utils';
+import { nowUTC, convertSearchParamsToUTC } from '@/lib/utils/time-utils';
 
 // Helper function to get category ID by name for current user
 async function getCategoryIdByName(client: SupabaseClient, userId: string, categoryName: string): Promise<string | null> {

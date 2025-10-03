@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabase as serviceClient } from '@/lib/supabase';
+import { supabase as serviceClient } from '@/lib/config/supabase';
 import { getAuthContext } from '@/auth';
-import { generateSecureToken, hashApiKey } from '@/lib/crypto-utils';
+import { generateSecureToken, hashApiKey } from '@/lib/utils/crypto-utils';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';

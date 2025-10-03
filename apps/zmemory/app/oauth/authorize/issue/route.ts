@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest, getUserIdFromRequest } from '../../../../lib/auth'
-import { findClient, generateRandomString, isRedirectUriAllowed, saveAuthorizationCode } from '../../../../lib/oauth'
+import { findClient, generateRandomString, isRedirectUriAllowed, saveAuthorizationCode } from '@/lib/auth/oauth'
 
 export const runtime = 'nodejs'
 

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { supabaseServer } from '@/lib/supabase-server'
-import { hashApiKey } from '@/lib/crypto-utils'
+import { supabaseServer } from '@/lib/config/supabase-server'
+import { hashApiKey } from '@/lib/utils/crypto-utils'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined

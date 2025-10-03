@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/config/supabase-server';
 import {
   CreateTimelineMappingSchema,
   TimelineMappingQuerySchema,
   TimelineMappingMemory,
   ApplicationType
-} from '@/lib/core-principles-types';
-import { nowUTC } from '@/lib/time-utils';
+} from '@/lib/types/core-principles-types';
+import { nowUTC } from '@/lib/utils/time-utils';
 
 /**
  * @swagger

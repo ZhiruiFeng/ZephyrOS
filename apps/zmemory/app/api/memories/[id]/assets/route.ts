@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/lib/middleware';
-import { supabaseServer } from '@/lib/supabase-server';
+import { supabaseServer } from '@/lib/config/supabase-server';
 import {
   MemoryAssetCreateSchema,
   type MemoryAssetCreateBody
 } from '@/validation';
-import { nowUTC } from '@/lib/time-utils';
+import { nowUTC } from '@/lib/utils/time-utils';
 
 // Mock data for development/testing
 const generateMockAssets = (memoryId: string) => [

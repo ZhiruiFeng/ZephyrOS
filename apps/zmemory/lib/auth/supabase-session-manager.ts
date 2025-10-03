@@ -1,4 +1,4 @@
-import { supabaseServer, supabaseAuth, ChatSessionRow, ChatMessageRow } from '@/lib/supabase-server'
+import { supabaseServer, supabaseAuth, ChatSessionRow, ChatMessageRow } from '@/lib/config/supabase-server'
 import { ChatSession, AgentMessage } from '@/types/agents'
 
 export class SupabaseSessionManager {

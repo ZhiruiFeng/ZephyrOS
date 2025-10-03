@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jsonWithCors, sanitizeErrorMessage } from '@/lib/security';
+import { jsonWithCors, sanitizeErrorMessage } from '@/lib/utils/security';
 import { ZodError } from 'zod';
 
 export interface ErrorHandlingOptions {

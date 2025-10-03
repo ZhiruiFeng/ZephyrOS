@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { getClientForAuthType } from '@/auth';
-import { supabase as serviceClient } from '@/lib/supabase';
+import { supabase as serviceClient } from '@/lib/config/supabase';
 import { TaskMemory } from '@/validation';
-import { nowUTC, convertFromTimezoneToUTC } from '@/lib/time-utils';
+import { nowUTC, convertFromTimezoneToUTC } from '@/lib/utils/time-utils';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
