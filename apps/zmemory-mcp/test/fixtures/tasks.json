@@ -1,0 +1,38 @@
+[
+  {
+    "id": "task-001",
+    "title": "Complete project documentation",
+    "description": "Write comprehensive documentation for the ZMemory MCP server",
+    "status": "pending",
+    "priority": "high",
+    "category": "documentation",
+    "tags": ["docs", "priority"],
+    "dueDate": "2025-10-15T00:00:00Z",
+    "createdAt": "2025-10-01T10:00:00Z",
+    "updatedAt": "2025-10-01T10:00:00Z"
+  },
+  {
+    "id": "task-002",
+    "title": "Fix authentication bug",
+    "description": "Resolve OAuth token refresh issue",
+    "status": "in_progress",
+    "priority": "urgent",
+    "category": "bug",
+    "tags": ["auth", "critical"],
+    "dueDate": "2025-10-05T00:00:00Z",
+    "createdAt": "2025-09-28T14:30:00Z",
+    "updatedAt": "2025-10-02T09:15:00Z"
+  },
+  {
+    "id": "task-003",
+    "title": "Review pull request #123",
+    "description": "Code review for new feature implementation",
+    "status": "completed",
+    "priority": "medium",
+    "category": "review",
+    "tags": ["review", "feature"],
+    "completedAt": "2025-10-01T16:45:00Z",
+    "createdAt": "2025-09-30T11:00:00Z",
+    "updatedAt": "2025-10-01T16:45:00Z"
+  }
+]

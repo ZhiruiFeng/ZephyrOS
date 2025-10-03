@@ -12,7 +12,9 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "vercel-build": "tsc",
-    "test": "jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:oauth": "node scripts/test-oauth.js",
     "test:mcp": "node scripts/test-mcp.js",
     "test:create-task": "node test-create-task.js",
@@ -40,8 +42,10 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.0.0",
-    "jest": "^29.0.0",
+    "@types/jest": "^29.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "@testing-library/jest-dom": "^6.1.0",
     "tsx": "^4.6.0"
   },
   "engines": {

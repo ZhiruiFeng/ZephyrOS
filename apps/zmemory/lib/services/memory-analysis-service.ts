@@ -394,7 +394,7 @@ export class MemoryAnalysisServiceImpl extends BaseServiceImpl implements Memory
             energy_delta: memory.energy_delta,
             place_name: memory.place_name,
             tags: memory.tags,
-            importance_level: memory.importance_level,
+            importance_level: memory.importance_level || 'medium',
             captured_at: memory.captured_at
           };
 

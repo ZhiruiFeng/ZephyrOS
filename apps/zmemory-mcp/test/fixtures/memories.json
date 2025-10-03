@@ -1,0 +1,37 @@
+[
+  {
+    "id": "mem-001",
+    "content": "Learned about MCP protocol integration patterns",
+    "type": "knowledge",
+    "tags": ["mcp", "learning"],
+    "metadata": {
+      "source": "documentation",
+      "importance": "high"
+    },
+    "createdAt": "2025-10-01T12:00:00Z",
+    "updatedAt": "2025-10-01T12:00:00Z"
+  },
+  {
+    "id": "mem-002",
+    "content": "Meeting notes: Discussed Q4 roadmap with team",
+    "type": "note",
+    "tags": ["meeting", "planning", "q4"],
+    "metadata": {
+      "participants": ["alice", "bob", "charlie"],
+      "duration": "60min"
+    },
+    "createdAt": "2025-09-30T15:00:00Z",
+    "updatedAt": "2025-09-30T15:00:00Z"
+  },
+  {
+    "id": "mem-003",
+    "content": "Remember to update dependencies before next release",
+    "type": "reminder",
+    "tags": ["maintenance", "release"],
+    "metadata": {
+      "priority": "medium"
+    },
+    "createdAt": "2025-09-29T09:30:00Z",
+    "updatedAt": "2025-09-29T09:30:00Z"
+  }
+]

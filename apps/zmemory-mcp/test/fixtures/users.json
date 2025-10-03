@@ -1,0 +1,17 @@
+[
+  {
+    "id": "user-001",
+    "email": "test@example.com",
+    "name": "Test User",
+    "workspaceId": "ws-001",
+    "createdAt": "2025-09-01T00:00:00Z"
+  },
+  {
+    "id": "user-002",
+    "email": "admin@example.com",
+    "name": "Admin User",
+    "workspaceId": "ws-001",
+    "role": "admin",
+    "createdAt": "2025-09-01T00:00:00Z"
+  }
+]
