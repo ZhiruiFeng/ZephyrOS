@@ -4,9 +4,9 @@
 
 Last Updated: 2025-10-03
 Total Routes: 108
-Migrated: 17 (16%)
+Migrated: 20 (19%)
 Infrastructure Ready: 1
-Remaining: 90 (83%)
+Remaining: 87 (81%)
 
 ---
 
@@ -22,7 +22,7 @@ Remaining: 90 (83%)
 
 ---
 
-## ✅ Completed Migrations (17 routes)
+## ✅ Completed Migrations (20 routes)
 
 | Route | Lines Reduced | Time Spent | Date | Pattern | Notes |
 |-------|---------------|------------|------|---------|-------|
@@ -43,10 +43,13 @@ Remaining: 90 (83%)
 | `/api/ai-tasks/[id]` | 144 → 112 (22%) | ~0.5h | Phase 3 | Sub-route | Leverages AITaskService |
 | `/api/api-keys/[id]/test` | 93 → 91 (2%) | ~0.25h | Phase 3 | Sub-route | Uses apiKeyService |
 | `/api/vendors/[id]/services` | 87 → 71 (18%) | ~0.25h | Phase 3 | Sub-route | Uses apiKeyService |
+| `/api/time-entries/running` | 38 → 56 | ~0.25h | Phase 3 | Sub-route | Timer query endpoint |
+| `/api/tasks/[id]/timer/stop` | 83 → 97 | ~0.25h | Phase 3 | Sub-route | Timer control + validation |
+| `/api/internal/resolve-openai-key` | 34 → 44 | ~0.25h | Phase 3 | Sub-route | Internal endpoint, CORS disabled |
 
-**Total Lines Reduced**: ~4,304 → ~1,679 (61% average reduction)
-**Total Time Invested**: ~27.5 hours
-**Average Time per Route**: ~1.6 hours
+**Total Lines Reduced**: ~4,556 → ~1,876 (59% average reduction)
+**Total Time Invested**: ~28.25 hours
+**Average Time per Route**: ~1.4 hours
 
 ---
 
@@ -95,7 +98,7 @@ Remaining: 90 (83%)
 | Simple CRUD | 6 | 60% | 100% ✅ |
 | Lookup/Read-only | 3 | 49% | 100% ✅ |
 | Multi-route | 2 | 58% | 100% ✅ |
-| Sub-route | 5 | 40% | 100% ✅ |
+| Sub-route | 8 | 35% | 100% ✅ |
 | Complex | 0 | N/A | N/A |
 
 ### Time Investment
@@ -104,14 +107,14 @@ Remaining: 90 (83%)
 |-------|--------|------|---------------|
 | Phase 1 | 4 | ~14h | 3.5h |
 | Phase 2 | 6 | ~13h | 2.2h |
-| Phase 3 | 7 | ~4.5h | 0.6h |
+| Phase 3 | 10 | ~5.25h | 0.5h |
 
-**Trend**: Getting faster with experience (3.5h → 2.2h → 0.6h per route)
+**Trend**: Getting faster with experience (3.5h → 2.2h → 0.5h per route)
 
 ### Success Rate
 
-- Migrations attempted: 17
-- Migrations completed: 17
+- Migrations attempted: 20
+- Migrations completed: 20
 - Migrations deferred: 1 (tasks main route - infrastructure built)
 - Failures requiring rollback: 0
 - **Success Rate**: 100% ✅

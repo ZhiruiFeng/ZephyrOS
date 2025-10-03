@@ -262,8 +262,8 @@ export abstract class BaseServiceImpl implements BaseService {
     operation: string,
     details?: Record<string, any>
   ): void {
-    // Only log in development or when debug flag is set
-    const shouldLog = process.env.NODE_ENV === 'development' || process.env.DEBUG_SERVICES === 'true';
+    // Only log when debug flag is set
+    const shouldLog = process.env.DEBUG_SERVICES === 'true';
 
     if (!shouldLog && level === 'info') {
       return; // Skip info logs in production unless debug is enabled

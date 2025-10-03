@@ -1,38 +1,55 @@
-import { NextRequest } from 'next/server'
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth'
-import { supabase as serviceClient } from '@/lib/supabase'
-import { createOptionsResponse, jsonWithCors } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabase as serviceClient } from '@/lib/supabase';
+import { getClientForAuthType } from '@/auth';
 
-export async function GET(request: NextRequest) {
-  try {
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    const client = await getClientForAuthType(request) || serviceClient
-    if (!client) return jsonWithCors(request, { error: 'Supabase not configured' }, 500)
+export const dynamic = 'force-dynamic';
 
-    const { data, error } = await client
-      .from('time_entries')
-      .select('id, timeline_item_id, timeline_item_type, start_at')
-      .eq('user_id', userId)
-      .is('end_at', null)
-      .maybeSingle()
-    if (error) return jsonWithCors(request, { error: 'Failed to fetch running timer' }, 500)
-    
-    // Add backward compatibility field for frontend
-    const responseData = data ? {
-      ...data,
-      // For backward compatibility, expose task_id if it's a task
-      task_id: data.timeline_item_type === 'task' ? data.timeline_item_id : undefined,
-    } : null;
-    
-    return jsonWithCors(request, { entry: responseData })
-  } catch (e) {
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
+/**
+ * GET /api/time-entries/running - Get the currently running time entry
+ */
+async function handleGetRunningEntry(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const client = await getClientForAuthType(request) || serviceClient;
+
+  if (!client) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  const { data, error } = await client
+    .from('time_entries')
+    .select('id, timeline_item_id, timeline_item_type, start_at')
+    .eq('user_id', userId)
+    .is('end_at', null)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch running timer' }, { status: 500 });
+  }
+
+  // Add backward compatibility field for frontend
+  const responseData = data ? {
+    ...data,
+    // For backward compatibility, expose task_id if it's a task
+    task_id: data.timeline_item_type === 'task' ? data.timeline_item_id : undefined,
+  } : null;
+
+  return NextResponse.json({ entry: responseData });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetRunningEntry, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300 // High limit for timer checks
+  }
+});
 
-
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false // OPTIONS requests don't need authentication
+});

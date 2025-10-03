@@ -97,7 +97,10 @@ export class TaskRepository extends BaseRepository<Task> {
       };
     }
 
-    return this.create(userId, taskData);
+    // Flatten content object to match database schema
+    const flattenedData = this.flattenTaskData(taskData);
+
+    return this.create(userId, flattenedData);
   }
 
   /**
@@ -122,7 +125,43 @@ export class TaskRepository extends BaseRepository<Task> {
       };
     }
 
-    return this.updateByUserAndId(userId, id, taskData);
+    // Flatten content object to match database schema
+    const flattenedData = this.flattenTaskData(taskData);
+
+    return this.updateByUserAndId(userId, id, flattenedData);
+  }
+
+  /**
+   * Flatten Task data structure to match database schema
+   * Transforms nested content object to flat columns
+   */
+  private flattenTaskData(data: Partial<Task>): any {
+    const { content, ...rest } = data;
+
+    if (!content) {
+      return rest;
+    }
+
+    // Map content fields to flat database columns
+    const flattened: any = { ...rest };
+
+    if (content.title !== undefined) flattened.title = content.title;
+    if (content.description !== undefined) flattened.description = content.description;
+    if (content.status !== undefined) flattened.status = content.status;
+    if (content.priority !== undefined) flattened.priority = content.priority;
+    if (content.category_id !== undefined) flattened.category_id = content.category_id;
+    if (content.due_date !== undefined) flattened.due_date = content.due_date;
+    if (content.estimated_duration !== undefined) flattened.estimated_duration = content.estimated_duration;
+    if (content.progress !== undefined) flattened.progress = content.progress;
+    if (content.assignee !== undefined) flattened.assignee = content.assignee;
+    if (content.notes !== undefined) flattened.notes = content.notes;
+    if (content.completion_behavior !== undefined) flattened.completion_behavior = content.completion_behavior;
+    if (content.progress_calculation !== undefined) flattened.progress_calculation = content.progress_calculation;
+    if (content.parent_task_id !== undefined) flattened.parent_task_id = content.parent_task_id;
+    if (content.subtask_order !== undefined) flattened.subtask_order = content.subtask_order;
+    if (content.completion_date !== undefined) flattened.completion_date = content.completion_date;
+
+    return flattened;
   }
 
   /**
