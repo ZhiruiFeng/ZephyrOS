@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { 
-  CreateSubtaskRequest,
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { getClientForAuthType, addUserIdIfNeeded } from '@/auth';
+import {
   SubtaskTreeNode,
   TaskMemory
 } from '@/validation';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 // Validation schemas
 const taskDataSchema = z.object({
@@ -98,79 +99,64 @@ const SubtaskQuerySchema = z.object({
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetSubtasks(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
+  const userId = request.userId!;
 
-    const { searchParams } = new URL(request.url);
-    
-    // Parse and validate query parameters
-    const queryResult = SubtaskQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, 
-        { error: 'Invalid query parameters', details: queryResult.error.errors }, 
-        400
-      );
-    }
-
-    const query = queryResult.data;
-
-    // Enforce auth
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Database connection failed' }, 500);
-    }
-
-    // First verify the parent task exists and belongs to the user
-    const { data: parentTask, error: parentError } = await client
-      .from('tasks')
-      .select('id')
-      .eq('id', query.parent_task_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (parentError || !parentTask) {
-      return jsonWithCors(request, { error: 'Parent task not found' }, 404);
-    }
-
-    // Use the database function to get subtask tree
-    const { data: subtaskTree, error: treeError } = await client
-      .rpc('get_subtask_tree', {
-        root_task_id: query.parent_task_id,
-        max_depth: query.max_depth
-      });
-
-    if (treeError) {
-      console.error('Database error:', treeError);
-      return jsonWithCors(request, { error: 'Failed to fetch subtask tree' }, 500);
-    }
-
-    // Filter out completed tasks if requested
-    let filteredTree = subtaskTree || [];
-    if (!query.include_completed) {
-      filteredTree = filteredTree.filter((node: SubtaskTreeNode) => node.status !== 'completed');
-    }
-
-    // Remove the root task from the tree (we only want its subtasks)
-    const subtasksOnly = filteredTree.filter((node: SubtaskTreeNode) => 
-      node.task_id !== query.parent_task_id
+  // Parse and validate query parameters
+  const queryResult = SubtaskQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json(
+      { error: 'Invalid query parameters', details: queryResult.error.errors },
+      { status: 400 }
     );
-
-    return jsonWithCors(request, subtasksOnly);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
   }
+
+  const query = queryResult.data;
+
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+  }
+
+  // First verify the parent task exists and belongs to the user
+  const { data: parentTask, error: parentError } = await client
+    .from('tasks')
+    .select('id')
+    .eq('id', query.parent_task_id)
+    .eq('user_id', userId)
+    .single();
+
+  if (parentError || !parentTask) {
+    return NextResponse.json({ error: 'Parent task not found' }, { status: 404 });
+  }
+
+  // Use the database function to get subtask tree
+  const { data: subtaskTree, error: treeError } = await client
+    .rpc('get_subtask_tree', {
+      root_task_id: query.parent_task_id,
+      max_depth: query.max_depth
+    });
+
+  if (treeError) {
+    console.error('Database error:', treeError);
+    return NextResponse.json({ error: 'Failed to fetch subtask tree' }, { status: 500 });
+  }
+
+  // Filter out completed tasks if requested
+  let filteredTree = subtaskTree || [];
+  if (!query.include_completed) {
+    filteredTree = filteredTree.filter((node: SubtaskTreeNode) => node.status !== 'completed');
+  }
+
+  // Remove the root task from the tree (we only want its subtasks)
+  const subtasksOnly = filteredTree.filter((node: SubtaskTreeNode) =>
+    node.task_id !== query.parent_task_id
+  );
+
+  return NextResponse.json(subtasksOnly);
 }
 
 /**
@@ -211,158 +197,154 @@ export async function GET(request: NextRequest) {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) { // Stricter limit for POST
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleCreateSubtask(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const body = request.validatedBody!;
 
-    const body = await request.json();
-    
-    // Validate request body
-    const validationResult = CreateSubtaskSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('CREATE SUBTASK Validation failed:', validationResult.error.errors);
-      return jsonWithCors(request,
-        { error: 'Invalid subtask data', details: validationResult.error.errors },
-        400
-      );
-    }
-
-    const subtaskData = validationResult.data;
-    const now = new Date().toISOString();
-
-    // Ensure task_data exists (should be guaranteed by validation)
-    if (!subtaskData.task_data) {
-      return jsonWithCors(request, { error: 'task_data is required' }, 400);
-    }
-
-    // Enforce auth
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Database connection failed' }, 500);
-    }
-
-    // Verify the parent task exists and belongs to the user
-    const { data: parentTask, error: parentError } = await client
-      .from('tasks')
-      .select('id, hierarchy_level')
-      .eq('id', subtaskData.parent_task_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (parentError || !parentTask) {
-      return jsonWithCors(request, { error: 'Parent task not found' }, 404);
-    }
-
-    // Check hierarchy depth limit (prevent too deep nesting)
-    if (parentTask.hierarchy_level >= 9) { // Allow max 10 levels (0-9)
-      return jsonWithCors(request, 
-        { error: 'Maximum hierarchy depth exceeded' }, 
-        400
-      );
-    }
-
-    // If no subtask_order provided, get the next order number
-    let subtaskOrder = subtaskData.subtask_order || 0;
-    if (subtaskOrder === 0) {
-      const { data: maxOrderData } = await client
-        .from('tasks')
-        .select('subtask_order')
-        .eq('parent_task_id', subtaskData.parent_task_id)
-        .order('subtask_order', { ascending: false })
-        .limit(1)
-        .single();
-      
-      subtaskOrder = (maxOrderData?.subtask_order || 0) + 1;
-    }
-
-    // Build the insert payload
-    const insertPayload = {
-      title: subtaskData.task_data.content.title,
-      description: subtaskData.task_data.content.description || null,
-      status: subtaskData.task_data.content.status,
-      priority: subtaskData.task_data.content.priority,
-      category_id: subtaskData.task_data.content.category_id || null,
-      due_date: subtaskData.task_data.content.due_date || null,
-      estimated_duration: subtaskData.task_data.content.estimated_duration || null,
-      progress: subtaskData.task_data.content.progress || 0,
-      assignee: subtaskData.task_data.content.assignee || null,
-      notes: subtaskData.task_data.content.notes || null,
-      tags: subtaskData.task_data.tags || [],
-      created_at: now,
-      updated_at: now,
-
-      // Subtask-specific fields
-      parent_task_id: subtaskData.parent_task_id,
-      subtask_order: subtaskOrder,
-      completion_behavior: subtaskData.task_data.content.completion_behavior || 'manual',
-      progress_calculation: subtaskData.task_data.content.progress_calculation || 'manual',
-    };
-
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(insertPayload, userId, request);
-
-    const { data, error } = await client
-      .from('tasks')
-      .insert(insertPayload)
-      .select(`
-        *,
-        is_ai_task,
-        category:categories(id, name, color, icon)
-      `)
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to create subtask' }, 500);
-    }
-
-    const mapped: TaskMemory = {
-      id: data.id,
-      type: 'task',
-      content: {
-        title: data.title,
-        description: data.description || undefined,
-        status: data.status,
-        priority: data.priority,
-        category: data.category?.name,
-        due_date: data.due_date || undefined,
-        estimated_duration: data.estimated_duration || undefined,
-        progress: data.progress || 0,
-        assignee: data.assignee || undefined,
-        notes: data.notes || undefined,
-        parent_task_id: data.parent_task_id,
-        subtask_order: data.subtask_order || 0,
-        completion_behavior: data.completion_behavior || 'manual',
-        progress_calculation: data.progress_calculation || 'manual',
-      },
-      tags: data.tags || [],
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      category_id: data.category_id,
-      hierarchy_level: data.hierarchy_level,
-      hierarchy_path: data.hierarchy_path,
-      subtask_count: data.subtask_count || 0,
-      completed_subtask_count: data.completed_subtask_count || 0,
-      is_ai_task: data.is_ai_task,
-    } as any;
-    
-    return jsonWithCors(request, mapped, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  // Ensure task_data exists (should be guaranteed by validation)
+  if (!body.task_data) {
+    return NextResponse.json({ error: 'task_data is required' }, { status: 400 });
   }
+
+  const subtaskData = body;
+  const now = new Date().toISOString();
+
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+  }
+
+  // Verify the parent task exists and belongs to the user
+  const { data: parentTask, error: parentError } = await client
+    .from('tasks')
+    .select('id, hierarchy_level')
+    .eq('id', subtaskData.parent_task_id)
+    .eq('user_id', userId)
+    .single();
+
+  if (parentError || !parentTask) {
+    return NextResponse.json({ error: 'Parent task not found' }, { status: 404 });
+  }
+
+  // Check hierarchy depth limit (prevent too deep nesting)
+  if (parentTask.hierarchy_level >= 9) { // Allow max 10 levels (0-9)
+    return NextResponse.json(
+      { error: 'Maximum hierarchy depth exceeded' },
+      { status: 400 }
+    );
+  }
+
+  // If no subtask_order provided, get the next order number
+  let subtaskOrder = subtaskData.subtask_order || 0;
+  if (subtaskOrder === 0) {
+    const { data: maxOrderData } = await client
+      .from('tasks')
+      .select('subtask_order')
+      .eq('parent_task_id', subtaskData.parent_task_id)
+      .order('subtask_order', { ascending: false })
+      .limit(1)
+      .single();
+
+    subtaskOrder = (maxOrderData?.subtask_order || 0) + 1;
+  }
+
+  // Build the insert payload
+  const insertPayload = {
+    title: subtaskData.task_data.content.title,
+    description: subtaskData.task_data.content.description || null,
+    status: subtaskData.task_data.content.status,
+    priority: subtaskData.task_data.content.priority,
+    category_id: subtaskData.task_data.content.category_id || null,
+    due_date: subtaskData.task_data.content.due_date || null,
+    estimated_duration: subtaskData.task_data.content.estimated_duration || null,
+    progress: subtaskData.task_data.content.progress || 0,
+    assignee: subtaskData.task_data.content.assignee || null,
+    notes: subtaskData.task_data.content.notes || null,
+    tags: subtaskData.task_data.tags || [],
+    created_at: now,
+    updated_at: now,
+
+    // Subtask-specific fields
+    parent_task_id: subtaskData.parent_task_id,
+    subtask_order: subtaskOrder,
+    completion_behavior: subtaskData.task_data.content.completion_behavior || 'manual',
+    progress_calculation: subtaskData.task_data.content.progress_calculation || 'manual',
+  };
+
+  // Add user_id to payload (always needed since we use service role client)
+  await addUserIdIfNeeded(insertPayload, userId, request);
+
+  const { data, error } = await client
+    .from('tasks')
+    .insert(insertPayload)
+    .select(`
+      *,
+      is_ai_task,
+      category:categories(id, name, color, icon)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to create subtask' }, { status: 500 });
+  }
+
+  const mapped: TaskMemory = {
+    id: data.id,
+    type: 'task',
+    content: {
+      title: data.title,
+      description: data.description || undefined,
+      status: data.status,
+      priority: data.priority,
+      category: data.category?.name,
+      due_date: data.due_date || undefined,
+      estimated_duration: data.estimated_duration || undefined,
+      progress: data.progress || 0,
+      assignee: data.assignee || undefined,
+      notes: data.notes || undefined,
+      parent_task_id: data.parent_task_id,
+      subtask_order: data.subtask_order || 0,
+      completion_behavior: data.completion_behavior || 'manual',
+      progress_calculation: data.progress_calculation || 'manual',
+    },
+    tags: data.tags || [],
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    category_id: data.category_id,
+    hierarchy_level: data.hierarchy_level,
+    hierarchy_path: data.hierarchy_path,
+    subtask_count: data.subtask_count || 0,
+    completed_subtask_count: data.completed_subtask_count || 0,
+    is_ai_task: data.is_ai_task,
+  } as any;
+
+  return NextResponse.json(mapped, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetSubtasks, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+export const POST = withStandardMiddleware(handleCreateSubtask, {
+  validation: {
+    bodySchema: CreateSubtaskSchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { getClientForAuthType } from '@/auth';
+import { z } from 'zod';
 import {
   UpdateDailyStrategySchema,
-  UpdateDailyStrategyStatusSchema,
   DailyStrategyItemWithDetails
 } from '@/lib/daily-strategy-types';
 
-interface RouteParams {
-  params: Promise<{
-    id: string;
-  }>;
-}
+export const dynamic = 'force-dynamic';
+
+// Query schema for GET requests
+const GetQuerySchema = z.object({
+  include_timeline_item: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
+  include_season: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
+  include_initiative: z.enum(['true', 'false']).transform(val => val === 'true').default('false')
+});
 
 /**
  * @swagger
@@ -57,109 +60,103 @@ interface RouteParams {
  *       500:
  *         description: Internal server error
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetDailyStrategyItem(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { id } = await params;
+  const { searchParams } = new URL(request.url);
 
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
-    }
-
-    const { id } = await params;
-    
-    const { searchParams } = new URL(request.url);
-    const includeTimelineItem = searchParams.get('include_timeline_item') === 'true';
-    const includeSeason = searchParams.get('include_season') === 'true';
-    const includeInitiative = searchParams.get('include_initiative') === 'true';
-
-    // Build selection based on includes
-    let selectClause = '*';
-    
-    if (includeTimelineItem) {
-      selectClause += `,timeline_item:timeline_items!inner(
-        id,
-        type,
-        title,
-        description,
-        status,
-        priority,
-        tags,
-        metadata,
-        category:categories(id, name, color, icon)
-      )`;
-    }
-    
-    if (includeSeason) {
-      selectClause += `,season:seasons(id, title, theme, status)`;
-    }
-    
-    if (includeInitiative) {
-      selectClause += `,initiative:core_strategy_initiatives(id, title, status, priority)`;
-    }
-
-    const { data, error } = await client
-      .from('core_strategy_daily')
-      .select(selectClause)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Daily strategy item not found' }, 404);
-      }
-      console.error('Daily strategy item query error:', error);
-      return jsonWithCors(request, { error: 'Failed to fetch daily strategy item' }, 500);
-    }
-
-    // Transform response if includes are requested
-    let responseItem: DailyStrategyItemWithDetails = {
-      ...(data as any),
-      timeline_item: undefined,
-      season: undefined,
-      initiative: undefined
-    };
-
-    if (includeTimelineItem && (data as any).timeline_item) {
-      const timelineItem = Array.isArray((data as any).timeline_item) ? (data as any).timeline_item[0] : (data as any).timeline_item;
-      responseItem.timeline_item = timelineItem ? {
-        id: timelineItem.id,
-        type: timelineItem.type,
-        title: timelineItem.title,
-        description: timelineItem.description,
-        status: timelineItem.status,
-        priority: timelineItem.priority,
-        category: timelineItem.category,
-        tags: timelineItem.tags || [],
-        metadata: timelineItem.metadata || {}
-      } : undefined;
-    }
-
-    if (includeSeason && (data as any).season) {
-      const season = Array.isArray((data as any).season) ? (data as any).season[0] : (data as any).season;
-      responseItem.season = season || undefined;
-    }
-
-    if (includeInitiative && (data as any).initiative) {
-      const initiative = Array.isArray((data as any).initiative) ? (data as any).initiative[0] : (data as any).initiative;
-      responseItem.initiative = initiative || undefined;
-    }
-
-    return jsonWithCors(request, { item: responseItem });
-  } catch (error) {
-    console.error('Daily strategy GET API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  const queryResult = GetQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
   }
+
+  const query = queryResult.data;
+
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+  }
+
+  // Build selection based on includes
+  let selectClause = '*';
+
+  if (query.include_timeline_item) {
+    selectClause += `,timeline_item:timeline_items!inner(
+      id,
+      type,
+      title,
+      description,
+      status,
+      priority,
+      tags,
+      metadata,
+      category:categories(id, name, color, icon)
+    )`;
+  }
+
+  if (query.include_season) {
+    selectClause += `,season:seasons(id, title, theme, status)`;
+  }
+
+  if (query.include_initiative) {
+    selectClause += `,initiative:core_strategy_initiatives(id, title, status, priority)`;
+  }
+
+  const { data, error } = await client
+    .from('core_strategy_daily')
+    .select(selectClause)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return NextResponse.json({ error: 'Daily strategy item not found' }, { status: 404 });
+    }
+    console.error('Daily strategy item query error:', error);
+    return NextResponse.json({ error: 'Failed to fetch daily strategy item' }, { status: 500 });
+  }
+
+  // Transform response if includes are requested
+  let responseItem: DailyStrategyItemWithDetails = {
+    ...(data as any),
+    timeline_item: undefined,
+    season: undefined,
+    initiative: undefined
+  };
+
+  if (query.include_timeline_item && (data as any).timeline_item) {
+    const timelineItem = Array.isArray((data as any).timeline_item) ? (data as any).timeline_item[0] : (data as any).timeline_item;
+    responseItem.timeline_item = timelineItem ? {
+      id: timelineItem.id,
+      type: timelineItem.type,
+      title: timelineItem.title,
+      description: timelineItem.description,
+      status: timelineItem.status,
+      priority: timelineItem.priority,
+      category: timelineItem.category,
+      tags: timelineItem.tags || [],
+      metadata: timelineItem.metadata || {}
+    } : undefined;
+  }
+
+  if (query.include_season && (data as any).season) {
+    const season = Array.isArray((data as any).season) ? (data as any).season[0] : (data as any).season;
+    responseItem.season = season || undefined;
+  }
+
+  if (query.include_initiative && (data as any).initiative) {
+    const initiative = Array.isArray((data as any).initiative) ? (data as any).initiative[0] : (data as any).initiative;
+    responseItem.initiative = initiative || undefined;
+  }
+
+  return NextResponse.json({ item: responseItem });
 }
 
 /**
@@ -205,102 +202,80 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  *       500:
  *         description: Internal server error
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  try {
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 100)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleUpdateDailyStrategyItem(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { id } = await params;
+  const updateData = request.validatedBody!;
 
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
-    }
-
-    const { id } = await params;
-    const body = await request.json();
-    const validationResult = UpdateDailyStrategySchema.safeParse(body);
-
-    if (!validationResult.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid update data',
-        details: validationResult.error.errors
-      }, 400);
-    }
-
-    const updateData = validationResult.data;
-
-    // Build update payload (only include fields that are provided)
-    const updatePayload: any = {
-      updated_at: new Date().toISOString()
-    };
-
-    // Add provided fields to the update payload
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key as keyof typeof updateData] !== undefined) {
-        updatePayload[key] = updateData[key as keyof typeof updateData];
-      }
-    });
-
-    const { data, error } = await client
-      .from('core_strategy_daily')
-      .update(updatePayload)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select(`
-        *,
-        timeline_item:timeline_items!inner(
-          id,
-          type,
-          title,
-          description,
-          status,
-          priority,
-          tags,
-          metadata,
-          category:categories(id, name, color, icon)
-        )
-      `)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return jsonWithCors(request, { error: 'Daily strategy item not found' }, 404);
-      }
-      console.error('Daily strategy update error:', error);
-      return jsonWithCors(request, { error: 'Failed to update daily strategy item' }, 500);
-    }
-
-    // Transform response
-    const timelineItem = Array.isArray((data as any).timeline_item) ? (data as any).timeline_item[0] : (data as any).timeline_item;
-    const responseItem: DailyStrategyItemWithDetails = {
-      ...(data as any),
-      timeline_item: timelineItem ? {
-        id: timelineItem.id,
-        type: timelineItem.type,
-        title: timelineItem.title,
-        description: timelineItem.description,
-        status: timelineItem.status,
-        priority: timelineItem.priority,
-        category: timelineItem.category,
-        tags: timelineItem.tags || [],
-        metadata: timelineItem.metadata || {}
-      } : undefined,
-      season: undefined,
-      initiative: undefined
-    };
-
-    return jsonWithCors(request, { item: responseItem });
-  } catch (error) {
-    console.error('Daily strategy PUT API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  // Build update payload (only include fields that are provided)
+  const updatePayload: any = {
+    updated_at: new Date().toISOString()
+  };
+
+  // Add provided fields to the update payload
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key as keyof typeof updateData] !== undefined) {
+      updatePayload[key] = updateData[key as keyof typeof updateData];
+    }
+  });
+
+  const { data, error } = await client
+    .from('core_strategy_daily')
+    .update(updatePayload)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select(`
+      *,
+      timeline_item:timeline_items!inner(
+        id,
+        type,
+        title,
+        description,
+        status,
+        priority,
+        tags,
+        metadata,
+        category:categories(id, name, color, icon)
+      )
+    `)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return NextResponse.json({ error: 'Daily strategy item not found' }, { status: 404 });
+    }
+    console.error('Daily strategy update error:', error);
+    return NextResponse.json({ error: 'Failed to update daily strategy item' }, { status: 500 });
+  }
+
+  // Transform response
+  const timelineItem = Array.isArray((data as any).timeline_item) ? (data as any).timeline_item[0] : (data as any).timeline_item;
+  const responseItem: DailyStrategyItemWithDetails = {
+    ...(data as any),
+    timeline_item: timelineItem ? {
+      id: timelineItem.id,
+      type: timelineItem.type,
+      title: timelineItem.title,
+      description: timelineItem.description,
+      status: timelineItem.status,
+      priority: timelineItem.priority,
+      category: timelineItem.category,
+      tags: timelineItem.tags || [],
+      metadata: timelineItem.metadata || {}
+    } : undefined,
+    season: undefined,
+    initiative: undefined
+  };
+
+  return NextResponse.json({ item: responseItem });
 }
 
 /**
@@ -336,45 +311,62 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  *       500:
  *         description: Internal server error
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 100)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleDeleteDailyStrategyItem(
+  request: EnhancedRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { id } = await params;
 
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
-    }
-
-    const { id } = await params;
-    const { error } = await client
-      .from('core_strategy_daily')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Daily strategy delete error:', error);
-      return jsonWithCors(request, { error: 'Failed to delete daily strategy item' }, 500);
-    }
-
-    return jsonWithCors(request, { 
-      message: 'Daily strategy item deleted successfully' 
-    });
-  } catch (error) {
-    console.error('Daily strategy DELETE API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  const { error } = await client
+    .from('core_strategy_daily')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Daily strategy delete error:', error);
+    return NextResponse.json({ error: 'Failed to delete daily strategy item' }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    message: 'Daily strategy item deleted successfully'
+  });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetDailyStrategyItem, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+export const PUT = withStandardMiddleware(handleUpdateDailyStrategyItem, {
+  validation: {
+    bodySchema: UpdateDailyStrategySchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDeleteDailyStrategyItem, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

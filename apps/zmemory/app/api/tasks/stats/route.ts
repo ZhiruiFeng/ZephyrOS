@@ -1,14 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabase as serviceClient } from '@/lib/supabase';
 import { TaskStats, TaskStatus, TaskPriority, TaskCategory } from '@/validation';
+import { z } from 'zod';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const dynamic = 'force-dynamic';
 
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+// Query validation schema
+const StatsQuerySchema = z.object({
+  from_date: z.string().datetime().optional(),
+  to_date: z.string().datetime().optional(),
+  assignee: z.string().optional()
+});
 
 // Generate mock statistics
 const generateMockStats = (): TaskStats => {
@@ -161,154 +164,161 @@ const generateMockStats = (): TaskStats => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const fromDate = searchParams.get('from_date');
-    const toDate = searchParams.get('to_date');
-    const assignee = searchParams.get('assignee');
+async function handleGetTaskStats(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
+  const userId = request.userId!;
 
-    // If Supabase is not configured, return mock statistics
-    if (!supabase) {
-      return NextResponse.json(generateMockStats());
-    }
-
-    // Build base query
-    let query = supabase
-      .from('tasks')
-      .select('*');
-
-    // Apply date filters
-    if (fromDate) {
-      query = query.gte('created_at', fromDate);
-    }
-    if (toDate) {
-      query = query.lte('created_at', toDate);
-    }
-    // tasks 表目前未包含 assignee，忽略该过滤
-
-    const { data: tasks, error } = await query;
-
-    if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch task statistics' },
-        { status: 500 }
-      );
-    }
-
-    if (!tasks) {
-      return NextResponse.json(generateMockStats());
-    }
-
-    // Calculate statistics
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    const stats: TaskStats = {
-      total: tasks.length,
-      by_status: {
-        [TaskStatus.PENDING]: 0,
-        [TaskStatus.IN_PROGRESS]: 0,
-        [TaskStatus.COMPLETED]: 0,
-        [TaskStatus.CANCELLED]: 0,
-        [TaskStatus.ON_HOLD]: 0
-      },
-      by_priority: {
-        [TaskPriority.LOW]: 0,
-        [TaskPriority.MEDIUM]: 0,
-        [TaskPriority.HIGH]: 0,
-        [TaskPriority.URGENT]: 0
-      },
-      by_category: {
-        [TaskCategory.WORK]: 0,
-        [TaskCategory.PERSONAL]: 0,
-        [TaskCategory.PROJECT]: 0,
-        [TaskCategory.MEETING]: 0,
-        [TaskCategory.LEARNING]: 0,
-        [TaskCategory.MAINTENANCE]: 0,
-        [TaskCategory.OTHER]: 0
-      },
-      overdue: 0,
-      due_today: 0,
-      due_this_week: 0,
-      completion_rate: 0,
-      average_completion_time: 0
-    };
-
-    let totalCompletionTime = 0;
-    let completedTasksWithTime = 0;
-
-    tasks.forEach((task: any) => {
-      // Count by status
-      if (task.status && stats.by_status.hasOwnProperty(task.status)) {
-        stats.by_status[task.status as TaskStatus]++;
-      }
-
-      // Count by priority
-      if (task.priority && stats.by_priority.hasOwnProperty(task.priority)) {
-        stats.by_priority[task.priority as TaskPriority]++;
-      }
-
-      // tasks 表没有 category，计入 OTHER
-      stats.by_category[TaskCategory.OTHER]++;
-
-      // Check due dates
-      if (task.due_date) {
-        const dueDate = new Date(task.due_date);
-        
-        if (dueDate < now && task.status !== TaskStatus.COMPLETED) {
-          stats.overdue++;
-        }
-        
-        if (dueDate >= today && dueDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)) {
-          stats.due_today++;
-        }
-        
-        if (dueDate >= today && dueDate <= weekFromNow) {
-          stats.due_this_week++;
-        }
-      }
-
-      // Calculate completion time for completed tasks
-      if (task.status === TaskStatus.COMPLETED && task.updated_at) {
-        const createdDate = new Date(task.created_at);
-        const completedDate = new Date(task.updated_at);
-        const completionTime = (completedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
-        totalCompletionTime += completionTime;
-        completedTasksWithTime++;
-      }
-    });
-
-    // Calculate completion rate
-    stats.completion_rate = tasks.length > 0 
-      ? Math.round((stats.by_status[TaskStatus.COMPLETED] / tasks.length) * 100)
-      : 0;
-
-    // Calculate average completion time
-    stats.average_completion_time = completedTasksWithTime > 0
-      ? Math.round((totalCompletionTime / completedTasksWithTime) * 10) / 10
-      : 0;
-
-    return NextResponse.json(stats);
-  } catch (error) {
-    console.error('API error:', error);
+  // Parse and validate query parameters
+  const queryResult = StatsQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Invalid query parameters', details: queryResult.error.errors },
+      { status: 400 }
+    );
+  }
+
+  const { from_date, to_date, assignee } = queryResult.data;
+
+  // If Supabase is not configured, return mock statistics
+  if (!serviceClient) {
+    return NextResponse.json(generateMockStats());
+  }
+
+  // Build base query
+  let query = serviceClient
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId);
+
+  // Apply date filters
+  if (from_date) {
+    query = query.gte('created_at', from_date);
+  }
+  if (to_date) {
+    query = query.lte('created_at', to_date);
+  }
+  // tasks table does not include assignee column, ignore this filter
+
+  const { data: tasks, error } = await query;
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch task statistics' },
       { status: 500 }
     );
   }
+
+  if (!tasks) {
+    return NextResponse.json(generateMockStats());
+  }
+
+  // Calculate statistics
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const stats: TaskStats = {
+    total: tasks.length,
+    by_status: {
+      [TaskStatus.PENDING]: 0,
+      [TaskStatus.IN_PROGRESS]: 0,
+      [TaskStatus.COMPLETED]: 0,
+      [TaskStatus.CANCELLED]: 0,
+      [TaskStatus.ON_HOLD]: 0
+    },
+    by_priority: {
+      [TaskPriority.LOW]: 0,
+      [TaskPriority.MEDIUM]: 0,
+      [TaskPriority.HIGH]: 0,
+      [TaskPriority.URGENT]: 0
+    },
+    by_category: {
+      [TaskCategory.WORK]: 0,
+      [TaskCategory.PERSONAL]: 0,
+      [TaskCategory.PROJECT]: 0,
+      [TaskCategory.MEETING]: 0,
+      [TaskCategory.LEARNING]: 0,
+      [TaskCategory.MAINTENANCE]: 0,
+      [TaskCategory.OTHER]: 0
+    },
+    overdue: 0,
+    due_today: 0,
+    due_this_week: 0,
+    completion_rate: 0,
+    average_completion_time: 0
+  };
+
+  let totalCompletionTime = 0;
+  let completedTasksWithTime = 0;
+
+  tasks.forEach((task: any) => {
+    // Count by status
+    if (task.status && stats.by_status.hasOwnProperty(task.status)) {
+      stats.by_status[task.status as TaskStatus]++;
+    }
+
+    // Count by priority
+    if (task.priority && stats.by_priority.hasOwnProperty(task.priority)) {
+      stats.by_priority[task.priority as TaskPriority]++;
+    }
+
+    // tasks table doesn't have category, count as OTHER
+    stats.by_category[TaskCategory.OTHER]++;
+
+    // Check due dates
+    if (task.due_date) {
+      const dueDate = new Date(task.due_date);
+
+      if (dueDate < now && task.status !== TaskStatus.COMPLETED) {
+        stats.overdue++;
+      }
+
+      if (dueDate >= today && dueDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)) {
+        stats.due_today++;
+      }
+
+      if (dueDate >= today && dueDate <= weekFromNow) {
+        stats.due_this_week++;
+      }
+    }
+
+    // Calculate completion time for completed tasks
+    if (task.status === TaskStatus.COMPLETED && task.updated_at) {
+      const createdDate = new Date(task.created_at);
+      const completedDate = new Date(task.updated_at);
+      const completionTime = (completedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+      totalCompletionTime += completionTime;
+      completedTasksWithTime++;
+    }
+  });
+
+  // Calculate completion rate
+  stats.completion_rate = tasks.length > 0
+    ? Math.round((stats.by_status[TaskStatus.COMPLETED] / tasks.length) * 100)
+    : 0;
+
+  // Calculate average completion time
+  stats.average_completion_time = completedTasksWithTime > 0
+    ? Math.round((totalCompletionTime / completedTasksWithTime) * 10) / 10
+    : 0;
+
+  return NextResponse.json(stats);
 }
 
-// OPTIONS - Handle CORS preflight requests
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetTaskStats, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

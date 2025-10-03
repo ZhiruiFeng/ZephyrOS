@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { getClientForAuthType } from '@/auth';
 import { analyzeMemory, findPotentialAnchors, type MemoryAnalysisInput } from '@/lib/memory-business-logic';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 // Schema for memory analysis request
 const MemoryAnalysisSchema = z.object({
@@ -80,97 +82,85 @@ const MemoryAnalysisSchema = z.object({
  *       200:
  *         description: Memory analysis results with recommendations
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 5 * 60 * 1000, 30)) { // 30 requests per 5 minutes
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleAnalyzeMemory(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const body = request.validatedBody!;
+  const client = await getClientForAuthType(request);
 
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
-    }
-
-    const body = await request.json();
-    
-    
-    // Validate request body
-    const validationResult = MemoryAnalysisSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('MEMORY ANALYSIS Validation failed:', validationResult.error.errors);
-      return jsonWithCors(request, { error: 'Invalid analysis data', details: validationResult.error.errors }, 400);
-    }
-    
-    const analysisData = validationResult.data;
-
-    // Prepare memory data for analysis
-    const memoryInput: MemoryAnalysisInput = {
-      id: analysisData.memory_id,
-      note: analysisData.note,
-      title: analysisData.title,
-      memory_type: analysisData.memory_type,
-      emotion_valence: analysisData.emotion_valence,
-      emotion_arousal: analysisData.emotion_arousal,
-      energy_delta: analysisData.energy_delta,
-      place_name: analysisData.place_name,
-      context: analysisData.context,
-      tags: analysisData.tags,
-      captured_at: analysisData.captured_at || new Date().toISOString(),
-      importance_level: analysisData.importance_level,
-      user_id: userId
-    };
-
-
-    // Perform memory analysis
-    const analysisResult = analyzeMemory(memoryInput);
-
-    // Find potential anchors if requested
-    let potentialAnchors: any[] = [];
-    if (analysisData.include_anchor_suggestions) {
-      try {
-        potentialAnchors = await findPotentialAnchors(client, memoryInput, 5);
-      } catch (error) {
-        console.warn('Failed to find potential anchors:', error);
-        // Continue without anchor suggestions
-      }
-    }
-
-    const response = {
-      analysis: analysisResult,
-      potential_anchors: potentialAnchors,
-      recommendations: {
-        // Actionable recommendations based on analysis
-        update_salience: analysisResult.salience_score !== (memoryInput.id ? 0 : undefined),
-        set_highlight: analysisResult.is_highlight && !analysisData.memory_id, // Only for new memories
-        update_importance: analysisResult.suggested_importance_level !== analysisData.importance_level,
-        add_tags: analysisResult.suggested_tags?.filter(tag => 
-          !analysisData.tags.includes(tag)
-        ) || [],
-        create_anchors: potentialAnchors.filter(anchor => anchor.confidence >= 0.6).length > 0
-      },
-      metadata: {
-        analyzed_at: new Date().toISOString(),
-        analysis_version: '1.0',
-        user_id: userId
-      }
-    };
-
-    return jsonWithCors(request, response);
-
-  } catch (error) {
-    console.error('Memory analysis API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  if (!client) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
+
+  // Prepare memory data for analysis
+  const memoryInput: MemoryAnalysisInput = {
+    id: body.memory_id,
+    note: body.note,
+    title: body.title,
+    memory_type: body.memory_type,
+    emotion_valence: body.emotion_valence,
+    emotion_arousal: body.emotion_arousal,
+    energy_delta: body.energy_delta,
+    place_name: body.place_name,
+    context: body.context,
+    tags: body.tags,
+    captured_at: body.captured_at || new Date().toISOString(),
+    importance_level: body.importance_level,
+    user_id: userId
+  };
+
+  // Perform memory analysis
+  const analysisResult = analyzeMemory(memoryInput);
+
+  // Find potential anchors if requested
+  let potentialAnchors: any[] = [];
+  if (body.include_anchor_suggestions) {
+    try {
+      potentialAnchors = await findPotentialAnchors(client, memoryInput, 5);
+    } catch (error) {
+      console.warn('Failed to find potential anchors:', error);
+      // Continue without anchor suggestions
+    }
+  }
+
+  const response = {
+    analysis: analysisResult,
+    potential_anchors: potentialAnchors,
+    recommendations: {
+      // Actionable recommendations based on analysis
+      update_salience: analysisResult.salience_score !== (memoryInput.id ? 0 : undefined),
+      set_highlight: analysisResult.is_highlight && !body.memory_id, // Only for new memories
+      update_importance: analysisResult.suggested_importance_level !== body.importance_level,
+      add_tags: analysisResult.suggested_tags?.filter(tag =>
+        !body.tags.includes(tag)
+      ) || [],
+      create_anchors: potentialAnchors.filter(anchor => anchor.confidence >= 0.6).length > 0
+    },
+    metadata: {
+      analyzed_at: new Date().toISOString(),
+      analysis_version: '1.0',
+      user_id: userId
+    }
+  };
+
+  return NextResponse.json(response);
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware with custom rate limit for analysis endpoint
+export const POST = withStandardMiddleware(handleAnalyzeMemory, {
+  validation: {
+    bodySchema: MemoryAnalysisSchema
+  },
+  rateLimit: {
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxRequests: 30
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

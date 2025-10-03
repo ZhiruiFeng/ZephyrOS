@@ -4,9 +4,9 @@
 
 Last Updated: 2025-10-03
 Total Routes: 108
-Migrated: 40 (37%)
+Migrated: 52 (48%)
 Infrastructure Ready: 1
-Remaining: 67 (62%)
+Remaining: 55 (51%)
 
 ---
 
@@ -18,11 +18,11 @@ Remaining: 67 (62%)
 
 **Phase 1**: ████████████████████ 100% ✅
 **Phase 2**: ████████████████████ 100% ✅
-**Phase 3**: ██████░░░░░░░░░░░░░░ 30% 🔄
+**Phase 3**: █████████░░░░░░░░░░░ 42% 🔄
 
 ---
 
-## ✅ Completed Migrations (40 routes)
+## ✅ Completed Migrations (42 routes)
 
 | Route | Lines Reduced | Time Spent | Date | Pattern | Notes |
 |-------|---------------|------------|------|---------|-------|
@@ -66,10 +66,22 @@ Remaining: 67 (62%)
 | `/api/api-keys/[id]` | 254 → 241 (5%) | ~0.25h | Phase 3 | Sub-route | API key detail GET/PUT/DELETE with validation |
 | `/api/episodes/[id]/anchors` | 111 → 101 (9%) | ~0.25h | Phase 3 | Sub-route | Episode memory anchors with filtering |
 | `/api/memories/reviews/weekly` | 154 → 155 | ~0.25h | Phase 3 | CRUD | Weekly memory review with query transforms |
+| `/api/narrative/seasons/[id]/recap` | 168 → 163 (3%) | ~0.25h | Phase 3 | Sub-route | Season recap generation with statistics |
+| `/api/memories/analyze` | 176 → 167 (5%) | ~0.25h | Phase 3 | CRUD | Memory analysis with business logic |
+| `/api/tasks/[id]/tree` | 279 → 275 (1%) | ~0.25h | Phase 3 | Sub-route | Task tree retrieval with tree/flat format support |
+| `/api/tasks/stats` | 313 → 325 | ~0.25h | Phase 3 | Sub-route | Task statistics calculation with date filtering |
+| `/api/tasks/updated-today` | 438 → 426 (3%) | ~0.5h | Phase 3 | Sub-route | Tasks updated today with timezone support |
+| `/api/subtasks` | 367 → 350 (5%) | ~0.5h | Phase 3 | CRUD | Subtasks GET/POST with hierarchy validation |
+| `/api/daily-strategy/[id]/status` | 178 → 167 (6%) | ~0.25h | Phase 3 | Sub-route | Daily strategy status update with RPC |
+| `/api/daily-strategy/overview` | 199 → 201 | ~0.25h | Phase 3 | Sub-route | Daily strategy overview with energy/completion stats |
+| `/api/daily-strategy/date/[date]` | 277 → 273 (1%) | ~0.25h | Phase 3 | Sub-route | Daily strategy by date with complex filtering |
+| `/api/ai-agents` | 350 → 345 (1%) | ~0.5h | Phase 3 | CRUD | AI agents GET/POST/PUT/DELETE with feature mappings |
+| `/api/daily-strategy/[id]` | 380 → 373 (2%) | ~0.5h | Phase 3 | Sub-route | Daily strategy item GET/PUT/DELETE with optional joins |
+| `/api/relations/people` | 365 → 355 (3%) | ~0.5h | Phase 3 | CRUD | People/contacts GET/POST with relationship profile joins |
 
-**Total Lines Reduced**: ~7,485 → ~4,803 (36% average reduction)
-**Total Time Invested**: ~35.5 hours
-**Average Time per Route**: ~0.89 hours
+**Total Lines Reduced**: ~10,975 → ~8,223 (25% average reduction)
+**Total Time Invested**: ~39.75 hours
+**Average Time per Route**: ~0.77 hours
 
 ---
 
@@ -127,14 +139,14 @@ Remaining: 67 (62%)
 |-------|--------|------|---------------|
 | Phase 1 | 4 | ~14h | 3.5h |
 | Phase 2 | 6 | ~13h | 2.2h |
-| Phase 3 | 30 | ~12.5h | 0.42h |
+| Phase 3 | 42 | ~16.75h | 0.40h |
 
-**Trend**: Getting faster with experience (3.5h → 2.2h → 0.42h per route)
+**Trend**: Getting faster with experience (3.5h → 2.2h → 0.39h per route)
 
 ### Success Rate
 
-- Migrations attempted: 40
-- Migrations completed: 40
+- Migrations attempted: 52
+- Migrations completed: 52
 - Migrations deferred: 1 (tasks main route - infrastructure built)
 - Failures requiring rollback: 0
 - **Success Rate**: 100% ✅

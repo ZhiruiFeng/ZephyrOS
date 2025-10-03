@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { PersonCreateSchema, PersonUpdateSchema, PersonQuerySchema } from '@/validation/relations';
+import { addUserIdIfNeeded } from '@/auth';
+import { PersonCreateSchema, PersonQuerySchema } from '@/validation/relations';
 import { nowUTC } from '@/lib/time-utils';
+
+export const dynamic = 'force-dynamic';
 
 // Mock data for development
 const generateMockPeople = () => [
@@ -121,107 +123,95 @@ const generateMockPeople = () => [
  *       500:
  *         description: Server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const rlKey = `${getClientIP(request)}:GET:/api/relations/people`;
-    if (isRateLimited(rlKey, 15 * 60 * 1000, 200)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetPeople(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
+  // Parse and validate query parameters
+  const queryResult = PersonQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
+  }
 
-    // Parse and validate query parameters
-    const queryResult = PersonQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
-    }
+  const query = queryResult.data;
 
-    const query = queryResult.data;
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    let people = generateMockPeople();
 
-    // If Supabase is not configured, return mock data
-    if (!supabaseServer) {
-      let people = generateMockPeople();
-
-      // Apply basic filters to mock data
-      if (query.search) {
-        const searchLower = query.search.toLowerCase();
-        people = people.filter(p =>
-          p.name.toLowerCase().includes(searchLower) ||
-          (p.email && p.email.toLowerCase().includes(searchLower)) ||
-          (p.company && p.company.toLowerCase().includes(searchLower))
-        );
-      }
-      if (query.company) {
-        people = people.filter(p => p.company && p.company.toLowerCase().includes(query.company!.toLowerCase()));
-      }
-      if (query.location) {
-        people = people.filter(p => p.location && p.location.toLowerCase().includes(query.location!.toLowerCase()));
-      }
-
-      return jsonWithCors(request, people.slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Build Supabase query with relationship profile data
-    let dbQuery = supabaseServer
-      .from('people')
-      .select(`
-        *,
-        relationship_profile:relationship_profiles(
-          id,
-          tier,
-          health_score,
-          last_contact_at,
-          is_dormant,
-          cadence_days,
-          reason_for_tier,
-          relationship_context
-        )
-      `)
-      .eq('user_id', userId);
-
-    // Apply filters
+    // Apply basic filters to mock data
     if (query.search) {
-      dbQuery = dbQuery.or(
-        `name.ilike.%${query.search}%,email.ilike.%${query.search}%,company.ilike.%${query.search}%`
+      const searchLower = query.search.toLowerCase();
+      people = people.filter(p =>
+        p.name.toLowerCase().includes(searchLower) ||
+        (p.email && p.email.toLowerCase().includes(searchLower)) ||
+        (p.company && p.company.toLowerCase().includes(searchLower))
       );
     }
     if (query.company) {
-      dbQuery = dbQuery.ilike('company', `%${query.company}%`);
+      people = people.filter(p => p.company && p.company.toLowerCase().includes(query.company!.toLowerCase()));
     }
     if (query.location) {
-      dbQuery = dbQuery.ilike('location', `%${query.location}%`);
+      people = people.filter(p => p.location && p.location.toLowerCase().includes(query.location!.toLowerCase()));
     }
 
-    // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    dbQuery = dbQuery.order(query.sort_by, { ascending });
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
-
-    const { data, error } = await dbQuery;
-
-    if (error) {
-      console.error('Database error:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockPeople().slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch people' }, 500);
-    }
-
-    return jsonWithCors(request, data || []);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(people.slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
   }
+
+  // Build Supabase query with relationship profile data
+  let dbQuery = supabaseServer
+    .from('people')
+    .select(`
+      *,
+      relationship_profile:relationship_profiles(
+        id,
+        tier,
+        health_score,
+        last_contact_at,
+        is_dormant,
+        cadence_days,
+        reason_for_tier,
+        relationship_context
+      )
+    `)
+    .eq('user_id', userId);
+
+  // Apply filters
+  if (query.search) {
+    dbQuery = dbQuery.or(
+      `name.ilike.%${query.search}%,email.ilike.%${query.search}%,company.ilike.%${query.search}%`
+    );
+  }
+  if (query.company) {
+    dbQuery = dbQuery.ilike('company', `%${query.company}%`);
+  }
+  if (query.location) {
+    dbQuery = dbQuery.ilike('location', `%${query.location}%`);
+  }
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  dbQuery = dbQuery.order(query.sort_by, { ascending });
+
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json(generateMockPeople().slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
+    }
+    return NextResponse.json({ error: 'Failed to fetch people' }, { status: 500 });
+  }
+
+  return NextResponse.json(data || []);
 }
 
 /**
@@ -295,72 +285,70 @@ export async function GET(request: NextRequest) {
  *       500:
  *         description: Server error
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const postKey = `${getClientIP(request)}:POST:/api/relations/people`;
-    if (isRateLimited(postKey, 15 * 60 * 1000, 30)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleCreatePerson(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const personData = request.validatedBody!;
+  const now = nowUTC();
 
-    const body = await request.json();
-
-    // Validate request body
-    const validationResult = PersonCreateSchema.safeParse(body);
-    if (!validationResult.success) {
-      return jsonWithCors(request, { error: 'Invalid person data', details: validationResult.error.errors }, 400);
-    }
-
-    const personData = validationResult.data;
-    const now = nowUTC();
-
-    // If Supabase is not configured, return mock response
-    if (!supabaseServer) {
-      const mockPerson = {
-        id: Date.now().toString(),
-        user_id: 'mock-user',
-        ...personData,
-        created_at: now,
-        updated_at: now
-      };
-      return jsonWithCors(request, mockPerson, 201);
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Create person
-    const personPayload = {
+  // If Supabase is not configured, return mock response
+  if (!supabaseServer) {
+    const mockPerson = {
+      id: Date.now().toString(),
+      user_id: 'mock-user',
       ...personData,
       created_at: now,
       updated_at: now
     };
-
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(personPayload, userId, request);
-
-    const { data, error } = await supabaseServer
-      .from('people')
-      .insert(personPayload)
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to create person' }, 500);
-    }
-
-    return jsonWithCors(request, data, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(mockPerson, { status: 201 });
   }
+
+  // Create person
+  const personPayload = {
+    ...personData,
+    created_at: now,
+    updated_at: now
+  };
+
+  // Add user_id to payload (always needed since we use service role client)
+  await addUserIdIfNeeded(personPayload, userId, request);
+
+  const { data, error } = await supabaseServer
+    .from('people')
+    .insert(personPayload)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to create person' }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetPeople, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 200
+  }
+});
+
+export const POST = withStandardMiddleware(handleCreatePerson, {
+  validation: {
+    bodySchema: PersonCreateSchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

@@ -1,35 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { getClientForAuthType } from '@/auth';
+import { supabase as serviceClient } from '@/lib/supabase';
 import { TaskMemory } from '@/validation';
-import { nowUTC, convertSearchParamsToUTC, convertFromTimezoneToUTC } from '@/lib/time-utils';
+import { nowUTC, convertFromTimezoneToUTC } from '@/lib/time-utils';
+import { z } from 'zod';
 
-// Create Supabase client (service key only for mock fallback; real requests use bearer token)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const dynamic = 'force-dynamic';
 
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+// Query validation schema
+const UpdatedTodayQuerySchema = z.object({
+  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled', 'on_hold']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  category: z.string().optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).default('100'),
+  offset: z.string().regex(/^\d+$/).transform(Number).default('0'),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
+  timezone: z.string().optional()
+});
 
 // Helper function to get start and end of a specific date in ISO format
 function getTodayDateRangeForDate(dateStr: string, timezone: string) {
   try {
-    // Use the convertFromTimezoneToUTC helper to properly convert timezone-aware dates
     const startOfDayInTZ = `${dateStr}T00:00:00`;
     const endOfDayInTZ = `${dateStr}T23:59:59.999`;
-    
-    // For proper timezone conversion, we need to create dates that represent 
-    // the exact moments when it's start/end of day in the target timezone
+
     const startUTC = convertFromTimezoneToUTC(startOfDayInTZ, timezone);
     const endUTC = convertFromTimezoneToUTC(endOfDayInTZ, timezone);
-    
+
     return {
       start: startUTC,
       end: endUTC
     };
-    
+
   } catch (error) {
     console.warn(`Failed to calculate date range for date "${dateStr}" in timezone "${timezone}":`, error);
     // Fallback to UTC interpretation
@@ -44,44 +48,38 @@ function getTodayDateRangeForDate(dateStr: string, timezone: string) {
 function getTodayDateRange(timezone?: string) {
   if (timezone) {
     try {
-      // Get current date in the specified timezone
       const now = new Date();
-      
-      // Use Intl.DateTimeFormat to get the date in the specified timezone
+
       const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: timezone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       });
-      
+
       const todayInTimezone = formatter.format(now); // Returns YYYY-MM-DD format
-      
-      // Use the convertFromTimezoneToUTC helper to properly convert timezone-aware dates
+
       const startOfDayInTZ = `${todayInTimezone}T00:00:00`;
       const endOfDayInTZ = `${todayInTimezone}T23:59:59.999`;
-      
-      // For proper timezone conversion, we need to create dates that represent 
-      // the exact moments when it's start/end of day in the target timezone
+
       const startUTC = convertFromTimezoneToUTC(startOfDayInTZ, timezone);
       const endUTC = convertFromTimezoneToUTC(endOfDayInTZ, timezone);
-      
+
       return {
         start: startUTC,
         end: endUTC
       };
-      
+
     } catch (error) {
       console.warn(`Failed to calculate date range for timezone "${timezone}":`, error);
-      // Fall back to server timezone
     }
   }
-  
-  // Fallback to server local timezone (existing behavior)
+
+  // Fallback to server local timezone
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
-  
+
   return {
     start: startOfToday.toISOString(),
     end: endOfToday.toISOString()
@@ -92,7 +90,7 @@ function getTodayDateRange(timezone?: string) {
 const generateMockTasksUpdatedToday = (timezone?: string): TaskMemory[] => {
   const todayRange = getTodayDateRange(timezone);
   const now = nowUTC();
-  
+
   return [
     {
       id: '1',
@@ -240,200 +238,188 @@ const generateMockTasksUpdatedToday = (timezone?: string): TaskMemory[] => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetTasksUpdatedToday(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
+  const userId = request.userId!;
 
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
-    const category = searchParams.get('category');
-    const limit = parseInt(searchParams.get('limit') || '100', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
-    const timezone = searchParams.get('timezone'); // Accept timezone parameter
+  // Parse and validate query parameters
+  const queryResult = UpdatedTodayQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json(
+      { error: 'Invalid query parameters', details: queryResult.error.errors },
+      { status: 400 }
+    );
+  }
 
-    // Use custom date range if provided, otherwise default to today
-    let dateRange;
-    if (startDate && endDate) {
-      // Convert date range using timezone if provided
-      if (timezone) {
-        // Handle start_date and end_date differently to get proper day boundaries
-        let startUTC: string;
-        let endUTC: string;
-        
-        if (startDate === endDate) {
-          // Same date - get start and end of that day in the specified timezone
-          const dayRange = getTodayDateRangeForDate(startDate, timezone);
-          startUTC = dayRange.start;
-          endUTC = dayRange.end;
-        } else {
-          // Different dates - convert each to appropriate time
-          startUTC = convertFromTimezoneToUTC(
-            startDate.includes('T') ? startDate : `${startDate}T00:00:00`, 
-            timezone
-          );
-          endUTC = convertFromTimezoneToUTC(
-            endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`, 
-            timezone
-          );
-        }
-        
-        dateRange = {
-          start: startUTC,
-          end: endUTC
-        };
+  const { status, priority, category, limit, offset, start_date, end_date, timezone } = queryResult.data;
+
+  // Use custom date range if provided, otherwise default to today
+  let dateRange;
+  if (start_date && end_date) {
+    if (timezone) {
+      let startUTC: string;
+      let endUTC: string;
+
+      if (start_date === end_date) {
+        const dayRange = getTodayDateRangeForDate(start_date, timezone);
+        startUTC = dayRange.start;
+        endUTC = dayRange.end;
       } else {
-        // If no timezone provided, assume dates are already in UTC (legacy behavior)
-        const start = startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`;
-        const end = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`;
-        dateRange = {
-          start: new Date(start).toISOString(),
-          end: new Date(end).toISOString()
-        };
+        startUTC = convertFromTimezoneToUTC(
+          start_date.includes('T') ? start_date : `${start_date}T00:00:00`,
+          timezone
+        );
+        endUTC = convertFromTimezoneToUTC(
+          end_date.includes('T') ? end_date : `${end_date}T23:59:59.999`,
+          timezone
+        );
       }
+
+      dateRange = {
+        start: startUTC,
+        end: endUTC
+      };
     } else {
-      // Default to "today" in the specified timezone, or server timezone if none provided
-      dateRange = getTodayDateRange(timezone || undefined);
+      const start = start_date.includes('T') ? start_date : `${start_date}T00:00:00.000Z`;
+      const end = end_date.includes('T') ? end_date : `${end_date}T23:59:59.999Z`;
+      dateRange = {
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString()
+      };
     }
+  } else {
+    dateRange = getTodayDateRange(timezone || undefined);
+  }
 
-    // If Supabase is not configured, return filtered mock data
-    if (!supabase) {
-      let tasks = generateMockTasksUpdatedToday(timezone || undefined);
-
-      // Apply filters
-      if (status) {
-        tasks = tasks.filter(task => task.content.status === status);
-      }
-      if (priority) {
-        tasks = tasks.filter(task => task.content.priority === priority);
-      }
-      if (category) {
-        tasks = tasks.filter(task => task.content.category === category);
-      }
-
-      // Apply pagination
-      const paginatedTasks = tasks.slice(offset, offset + limit);
-
-      return jsonWithCors(request, {
-        tasks: paginatedTasks,
-        total: tasks.length,
-        date_range: dateRange
-      });
-    }
-
-    // Enforce auth
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Build Supabase query against tasks table for tasks updated today
-    let dbQuery = client
-      .from('tasks')
-      .select(`
-        *,
-        is_ai_task,
-        category:categories(id, name, color, icon)
-      `)
-      .eq('user_id', userId)
-      .gte('updated_at', dateRange.start)
-      .lte('updated_at', dateRange.end);
+  // If Supabase is not configured, return filtered mock data
+  if (!serviceClient) {
+    let tasks = generateMockTasksUpdatedToday(timezone || undefined);
 
     // Apply filters
     if (status) {
-      dbQuery = dbQuery.eq('status', status);
+      tasks = tasks.filter(task => task.content.status === status);
     }
     if (priority) {
-      dbQuery = dbQuery.eq('priority', priority);
+      tasks = tasks.filter(task => task.content.priority === priority);
     }
     if (category) {
-      dbQuery = dbQuery.eq('category_id', category);
+      tasks = tasks.filter(task => task.content.category === category);
     }
 
-    // Apply sorting by updated_at descending (most recently updated first)
-    dbQuery = dbQuery.order('updated_at', { ascending: false });
+    const paginatedTasks = tasks.slice(offset, offset + limit);
 
-    // Apply pagination
-    dbQuery = dbQuery.range(offset, offset + limit - 1);
-
-    const { data, error } = await dbQuery;
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to fetch tasks updated today' }, 500);
-    }
-
-    // Get total count for pagination info
-    let countQuery = client
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('updated_at', dateRange.start)
-      .lte('updated_at', dateRange.end);
-
-    // Apply same filters for count
-    if (status) {
-      countQuery = countQuery.eq('status', status);
-    }
-    if (priority) {
-      countQuery = countQuery.eq('priority', priority);
-    }
-    if (category) {
-      countQuery = countQuery.eq('category_id', category);
-    }
-
-    const { count, error: countError } = await countQuery;
-
-    if (countError) {
-      console.error('Count query error:', countError);
-      // Continue with partial data if count fails
-    }
-
-    // Map tasks rows to TaskMemory shape for compatibility
-    const mappedTasks = (data || []).map((row: any) => ({
-      id: row.id,
-      type: 'task' as const,
-      content: {
-        title: row.title,
-        description: row.description || undefined,
-        status: row.status,
-        priority: row.priority,
-        category: row.category?.name,
-        due_date: row.due_date || undefined,
-        estimated_duration: row.estimated_duration || undefined,
-        progress: row.progress || 0,
-        assignee: row.assignee || undefined,
-        completion_date: row.completion_date || undefined,
-        notes: row.notes || undefined,
-      },
-      tags: row.tags || [],
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      // surface category_id for frontend filtering
-      category_id: row.category_id,
-      is_ai_task: row.is_ai_task,
-    }));
-
-    return jsonWithCors(request, {
-      tasks: mappedTasks,
-      total: count || mappedTasks.length,
+    return NextResponse.json({
+      tasks: paginatedTasks,
+      total: tasks.length,
       date_range: dateRange
     });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
   }
+
+  const client = await getClientForAuthType(request) || serviceClient;
+
+  // Build Supabase query against tasks table for tasks updated today
+  let dbQuery = client
+    .from('tasks')
+    .select(`
+      *,
+      is_ai_task,
+      category:categories(id, name, color, icon)
+    `)
+    .eq('user_id', userId)
+    .gte('updated_at', dateRange.start)
+    .lte('updated_at', dateRange.end);
+
+  // Apply filters
+  if (status) {
+    dbQuery = dbQuery.eq('status', status);
+  }
+  if (priority) {
+    dbQuery = dbQuery.eq('priority', priority);
+  }
+  if (category) {
+    dbQuery = dbQuery.eq('category_id', category);
+  }
+
+  // Apply sorting and pagination
+  dbQuery = dbQuery
+    .order('updated_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to fetch tasks updated today' }, { status: 500 });
+  }
+
+  // Get total count for pagination info
+  let countQuery = client
+    .from('tasks')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('updated_at', dateRange.start)
+    .lte('updated_at', dateRange.end);
+
+  if (status) {
+    countQuery = countQuery.eq('status', status);
+  }
+  if (priority) {
+    countQuery = countQuery.eq('priority', priority);
+  }
+  if (category) {
+    countQuery = countQuery.eq('category_id', category);
+  }
+
+  const { count, error: countError } = await countQuery;
+
+  if (countError) {
+    console.error('Count query error:', countError);
+  }
+
+  // Map tasks rows to TaskMemory shape for compatibility
+  const mappedTasks = (data || []).map((row: any) => ({
+    id: row.id,
+    type: 'task' as const,
+    content: {
+      title: row.title,
+      description: row.description || undefined,
+      status: row.status,
+      priority: row.priority,
+      category: row.category?.name,
+      due_date: row.due_date || undefined,
+      estimated_duration: row.estimated_duration || undefined,
+      progress: row.progress || 0,
+      assignee: row.assignee || undefined,
+      completion_date: row.completion_date || undefined,
+      notes: row.notes || undefined,
+    },
+    tags: row.tags || [],
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    category_id: row.category_id,
+    is_ai_task: row.is_ai_task,
+  }));
+
+  return NextResponse.json({
+    tasks: mappedTasks,
+    total: count || mappedTasks.length,
+    date_range: dateRange
+  });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetTasksUpdatedToday, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

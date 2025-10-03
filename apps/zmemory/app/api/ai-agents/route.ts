@@ -1,24 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { z } from 'zod'
-import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth'
-import { AIAgent, CreateAIAgentRequest, UpdateAIAgentRequest } from '../../../types'
-import { jsonWithCors, createOptionsResponse } from '@/lib/security'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabase as serviceClient } from '@/lib/supabase';
+import { addUserIdIfNeeded } from '@/auth';
+import { z } from 'zod';
 
-// Create Supabase client for service operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export const dynamic = 'force-dynamic';
 
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
-
-// Validation schemas for new extensible schema
+// Validation schemas
 const CreateAgentSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
-  vendor_id: z.string().min(1), // References vendors table
-  service_id: z.string().optional(), // References vendor_services table
+  vendor_id: z.string().min(1),
+  service_id: z.string().optional(),
   model_name: z.string().optional(),
   system_prompt: z.string().optional(),
   configuration: z.record(z.any()).default({}),
@@ -28,323 +21,324 @@ const CreateAgentSchema = z.object({
   activity_score: z.number().min(0).max(1).default(0.2),
   is_active: z.boolean().default(true),
   is_favorite: z.boolean().default(false),
-  feature_ids: z.array(z.string()).optional() // For creating feature mappings
-})
+  feature_ids: z.array(z.string()).optional()
+});
 
-const UpdateAgentSchema = CreateAgentSchema.partial()
+const UpdateAgentSchema = CreateAgentSchema.partial().extend({
+  id: z.string().min(1)
+});
 
-// Agent feature mapping schema
-const CreateFeatureMappingSchema = z.object({
-  feature_id: z.string().min(1),
-  is_primary: z.boolean().default(false)
-})
+const DeleteQuerySchema = z.object({
+  id: z.string().min(1)
+});
 
-// GET /api/ai-agents - Get all AI agents for the user
-export async function GET(request: NextRequest) {
-  try {
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database not configured' }, 500)
-    }
+const GetQuerySchema = z.object({
+  vendor_id: z.string().optional(),
+  service_id: z.string().optional(),
+  feature_id: z.string().optional(),
+  is_active: z.string().optional(),
+  is_favorite: z.string().optional(),
+  tags: z.string().optional(),
+  search: z.string().optional(),
+  sort_by: z.string().default('activity_score'),
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
+  limit: z.string().regex(/^\d+$/).transform(Number).default('50'),
+  offset: z.string().regex(/^\d+$/).transform(Number).default('0')
+});
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
+/**
+ * GET /api/ai-agents - Get all AI agents for the user
+ */
+async function handleGetAIAgents(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url)
-    const vendor_id = searchParams.get('vendor_id')
-    const service_id = searchParams.get('service_id')
-    const feature_id = searchParams.get('feature_id')
-    const is_active = searchParams.get('is_active')
-    const is_favorite = searchParams.get('is_favorite')
-    const tags = searchParams.get('tags')
-    const search = searchParams.get('search')
-    const sort_by = searchParams.get('sort_by') || 'activity_score'
-    const sort_order = searchParams.get('sort_order') || 'desc'
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
-
-    // Use the agent_summary view for enriched data
-    let query = supabase
-      .from('agent_summary')
-      .select('*')
-      .eq('user_id', userId)
-      .range(offset, offset + limit - 1)
-
-    // Apply filters
-    if (vendor_id) {
-      query = query.eq('vendor_id', vendor_id)
-    }
-
-    if (service_id) {
-      query = query.eq('service_id', service_id)
-    }
-
-    if (is_active !== null) {
-      query = query.eq('is_active', is_active === 'true')
-    }
-
-    if (is_favorite !== null) {
-      query = query.eq('is_favorite', is_favorite === 'true')
-    }
-
-    if (tags) {
-      // Search for any of the comma-separated tags
-      const tagList = tags.split(',').map(t => t.trim())
-      query = query.overlaps('tags', tagList)
-    }
-
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,notes.ilike.%${search}%`)
-    }
-
-    // Handle feature filtering (requires join with agent_feature_mappings)
-    if (feature_id) {
-      // We'll need to filter this after the query since we're using the view
-    }
-
-    // Apply sorting
-    const ascending = sort_order === 'asc'
-    query = query.order(sort_by as any, { ascending })
-
-    const { data: agents, error } = await query
-
-    if (error) {
-      console.error('Error fetching AI agents:', error)
-      return jsonWithCors(request, { error: 'Failed to fetch agents' }, 500)
-    }
-
-    // Filter by feature if specified (post-query filtering)
-    let filteredAgents = agents || []
-    if (feature_id && filteredAgents.length > 0) {
-      filteredAgents = filteredAgents.filter((agent: any) => {
-        const features = agent.features || []
-        return features.some((f: any) => f.id === feature_id)
-      })
-    }
-
-    return jsonWithCors(request, { agents: filteredAgents })
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
+  const queryResult = GetQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
   }
+
+  const query = queryResult.data;
+
+  if (!serviceClient) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+
+  // Use the agent_summary view for enriched data
+  let dbQuery = serviceClient
+    .from('agent_summary')
+    .select('*')
+    .eq('user_id', userId)
+    .range(query.offset, query.offset + query.limit - 1);
+
+  // Apply filters
+  if (query.vendor_id) {
+    dbQuery = dbQuery.eq('vendor_id', query.vendor_id);
+  }
+  if (query.service_id) {
+    dbQuery = dbQuery.eq('service_id', query.service_id);
+  }
+  if (query.is_active !== undefined) {
+    dbQuery = dbQuery.eq('is_active', query.is_active === 'true');
+  }
+  if (query.is_favorite !== undefined) {
+    dbQuery = dbQuery.eq('is_favorite', query.is_favorite === 'true');
+  }
+  if (query.tags) {
+    const tagList = query.tags.split(',').map(t => t.trim());
+    dbQuery = dbQuery.overlaps('tags', tagList);
+  }
+  if (query.search) {
+    dbQuery = dbQuery.or(`name.ilike.%${query.search}%,description.ilike.%${query.search}%,notes.ilike.%${query.search}%`);
+  }
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  dbQuery = dbQuery.order(query.sort_by as any, { ascending });
+
+  const { data: agents, error } = await dbQuery;
+
+  if (error) {
+    console.error('Error fetching AI agents:', error);
+    return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 });
+  }
+
+  // Filter by feature if specified (post-query filtering)
+  let filteredAgents = agents || [];
+  if (query.feature_id && filteredAgents.length > 0) {
+    filteredAgents = filteredAgents.filter((agent: any) => {
+      const features = agent.features || [];
+      return features.some((f: any) => f.id === query.feature_id);
+    });
+  }
+
+  return NextResponse.json({ agents: filteredAgents });
 }
 
-// POST /api/ai-agents - Create a new AI agent
-export async function POST(request: NextRequest) {
-  try {
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database not configured' }, 500)
+/**
+ * POST /api/ai-agents - Create a new AI agent
+ */
+async function handleCreateAIAgent(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const body = request.validatedBody!;
+  const { feature_ids, ...agentData } = body;
+
+  if (!serviceClient) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+
+  const agentPayload = { ...agentData };
+  await addUserIdIfNeeded(agentPayload, userId, request);
+
+  const { data: agent, error: agentError } = await serviceClient
+    .from('ai_agents')
+    .insert(agentPayload)
+    .select()
+    .single();
+
+  if (agentError) {
+    console.error('Error creating AI agent:', agentError);
+    return NextResponse.json({ error: 'Failed to create agent' }, { status: 500 });
+  }
+
+  // Create feature mappings if provided
+  if (feature_ids && feature_ids.length > 0 && agent) {
+    const featureMappings = feature_ids.map((featureId: string, index: number) => ({
+      agent_id: agent.id,
+      feature_id: featureId,
+      is_primary: index === 0
+    }));
+
+    for (const mapping of featureMappings) {
+      await addUserIdIfNeeded(mapping, userId, request);
     }
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
+    const { error: mappingError } = await serviceClient
+      .from('agent_feature_mappings')
+      .insert(featureMappings);
+
+    if (mappingError) {
+      console.error('Error creating feature mappings:', mappingError);
     }
+  }
 
-    const body = await request.json()
-    const { feature_ids, ...agentData } = CreateAgentSchema.parse(body)
+  // Return enriched agent data
+  const { data: enrichedAgent } = await serviceClient
+    .from('agent_summary')
+    .select('*')
+    .eq('id', agent.id)
+    .eq('user_id', userId)
+    .single();
 
-    // Start a transaction-like process
-    const agentPayload = {
-      ...agentData
-    };
+  const finalAgent = enrichedAgent || agent;
 
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(agentPayload, userId, request);
+  return NextResponse.json({ agent: finalAgent }, { status: 201 });
+}
 
-    const { data: agent, error: agentError } = await supabase
-      .from('ai_agents')
-      .insert(agentPayload)
-      .select()
-      .single()
+/**
+ * PUT /api/ai-agents - Update an AI agent
+ */
+async function handleUpdateAIAgent(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const body = request.validatedBody!;
+  const { id, feature_ids, ...updateData } = body;
 
-    if (agentError) {
-      console.error('Error creating AI agent:', agentError)
-      return jsonWithCors(request, { error: 'Failed to create agent' }, 500)
-    }
+  if (!serviceClient) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
 
-    // Create feature mappings if provided
-    if (feature_ids && feature_ids.length > 0 && agent) {
-      const featureMappings = feature_ids.map((featureId, index) => ({
-        agent_id: agent.id,
+  // Update the agent
+  const { data: agent, error: updateError } = await serviceClient
+    .from('ai_agents')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error('Error updating AI agent:', updateError);
+    return NextResponse.json({ error: 'Failed to update agent' }, { status: 500 });
+  }
+
+  if (!agent) {
+    return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  }
+
+  // Update feature mappings if provided
+  if (feature_ids !== undefined) {
+    await serviceClient
+      .from('agent_feature_mappings')
+      .delete()
+      .eq('agent_id', id)
+      .eq('user_id', userId);
+
+    if (feature_ids.length > 0) {
+      const featureMappings = feature_ids.map((featureId: string, index: number) => ({
+        agent_id: id,
         feature_id: featureId,
-        is_primary: index === 0 // First feature is primary
-      }))
+        is_primary: index === 0
+      }));
 
-      // Add user_id to each mapping
       for (const mapping of featureMappings) {
         await addUserIdIfNeeded(mapping, userId, request);
       }
 
-      const { error: mappingError } = await supabase
+      const { error: mappingError } = await serviceClient
         .from('agent_feature_mappings')
-        .insert(featureMappings)
+        .insert(featureMappings);
 
       if (mappingError) {
-        console.error('Error creating feature mappings:', mappingError)
-        // Continue anyway, don't fail the agent creation
+        console.error('Error updating feature mappings:', mappingError);
       }
     }
-
-    // Return the created agent with features
-    const { data: enrichedAgent, error: enrichError } = await supabase
-      .from('agent_summary')
-      .select('*')
-      .eq('id', agent.id)
-      .eq('user_id', userId)
-      .single()
-
-    const finalAgent = enrichedAgent || agent
-
-    return jsonWithCors(request, { agent: finalAgent }, 201)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400)
-    }
-    console.error('Unexpected error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
   }
+
+  // Return enriched agent data
+  const { data: enrichedAgent } = await serviceClient
+    .from('agent_summary')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  const finalAgent = enrichedAgent || agent;
+
+  return NextResponse.json({ agent: finalAgent });
 }
 
-// PUT /api/ai-agents - Update an AI agent
-export async function PUT(request: NextRequest) {
-  try {
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database not configured' }, 500)
-    }
+/**
+ * DELETE /api/ai-agents - Delete an AI agent
+ */
+async function handleDeleteAIAgent(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-
-    const body = await request.json()
-    const { id, feature_ids, ...updateData } = body
-
-    if (!id) {
-      return jsonWithCors(request, { error: 'Agent ID is required' }, 400)
-    }
-
-    const validatedData = UpdateAgentSchema.parse(updateData)
-
-    // Update the agent
-    const { data: agent, error: updateError } = await supabase
-      .from('ai_agents')
-      .update(validatedData)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single()
-
-    if (updateError) {
-      console.error('Error updating AI agent:', updateError)
-      return jsonWithCors(request, { error: 'Failed to update agent' }, 500)
-    }
-
-    if (!agent) {
-      return jsonWithCors(request, { error: 'Agent not found' }, 404)
-    }
-
-    // Update feature mappings if provided
-    if (feature_ids !== undefined) {
-      // Remove existing mappings
-      await supabase
-        .from('agent_feature_mappings')
-        .delete()
-        .eq('agent_id', id)
-        .eq('user_id', userId)
-
-      // Add new mappings if any
-      if (feature_ids.length > 0) {
-        const featureMappings = feature_ids.map((featureId: string, index: number) => ({
-          agent_id: id,
-          feature_id: featureId,
-          is_primary: index === 0
-        }))
-
-        // Add user_id to each mapping
-        for (const mapping of featureMappings) {
-          await addUserIdIfNeeded(mapping, userId, request);
-        }
-
-        const { error: mappingError } = await supabase
-          .from('agent_feature_mappings')
-          .insert(featureMappings)
-
-        if (mappingError) {
-          console.error('Error updating feature mappings:', mappingError)
-          // Continue anyway
-        }
-      }
-    }
-
-    // Return enriched agent data
-    const { data: enrichedAgent, error: enrichError } = await supabase
-      .from('agent_summary')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single()
-
-    const finalAgent = enrichedAgent || agent
-
-    return jsonWithCors(request, { agent: finalAgent })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return jsonWithCors(request, { error: 'Invalid input data', details: error.errors }, 400)
-    }
-    console.error('Unexpected error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
+  const queryResult = DeleteQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
   }
-}
 
-// DELETE /api/ai-agents - Delete an AI agent
-export async function DELETE(request: NextRequest) {
-  try {
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database not configured' }, 500)
-    }
+  const { id } = queryResult.data;
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401)
-    }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) {
-      return jsonWithCors(request, { error: 'Agent ID is required' }, 400)
-    }
-
-    // Delete feature mappings first (cascade should handle this, but let's be explicit)
-    await supabase
-      .from('agent_feature_mappings')
-      .delete()
-      .eq('agent_id', id)
-      .eq('user_id', userId)
-
-    // Delete the agent (interactions will be cascade deleted)
-    const { error } = await supabase
-      .from('ai_agents')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('Error deleting AI agent:', error)
-      return jsonWithCors(request, { error: 'Failed to delete agent' }, 500)
-    }
-
-    return jsonWithCors(request, { success: true })
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return jsonWithCors(request, { error: 'Internal server error' }, 500)
+  if (!serviceClient) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
+
+  // Delete feature mappings first
+  await serviceClient
+    .from('agent_feature_mappings')
+    .delete()
+    .eq('agent_id', id)
+    .eq('user_id', userId);
+
+  // Delete the agent
+  const { error } = await serviceClient
+    .from('ai_agents')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error deleting AI agent:', error);
+    return NextResponse.json({ error: 'Failed to delete agent' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
 }
 
-// OPTIONS - Handle CORS preflight requests
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetAIAgents, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+export const POST = withStandardMiddleware(handleCreateAIAgent, {
+  validation: {
+    bodySchema: CreateAgentSchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+export const PUT = withStandardMiddleware(handleUpdateAIAgent, {
+  validation: {
+    bodySchema: UpdateAgentSchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDeleteAIAgent, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

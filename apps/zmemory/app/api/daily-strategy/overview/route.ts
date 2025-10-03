@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { getClientForAuthType } from '@/auth';
 import { z } from 'zod';
 import { DailyStrategyOverview } from '@/lib/daily-strategy-types';
+
+export const dynamic = 'force-dynamic';
 
 // Query schema for overview endpoint
 const OverviewQuerySchema = z.object({
@@ -90,94 +92,60 @@ const OverviewQuerySchema = z.object({
  *       500:
  *         description: Internal server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 300)) { // 300 requests per 15 minutes
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGetDailyStrategyOverview(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
+  const queryResult = OverviewQuerySchema.safeParse(Object.fromEntries(searchParams));
 
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Supabase not configured' }, 500);
-    }
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 });
+  }
 
-    const { searchParams } = new URL(request.url);
-    const queryResult = OverviewQuerySchema.safeParse(Object.fromEntries(searchParams));
-    
-    if (!queryResult.success) {
-      return jsonWithCors(request, { 
-        error: 'Invalid query parameters', 
-        details: queryResult.error.errors 
-      }, 400);
-    }
+  const query = queryResult.data;
 
-    const query = queryResult.data;
-    
-    // Use current date if not provided
-    const targetDate = query.date || new Date().toISOString().split('T')[0];
-    const targetTimezone = query.timezone;
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+  }
 
-    // Use the database function to get the overview
-    const { data: overviewData, error: overviewError } = await client
-      .rpc('get_daily_strategy_overview', {
-        user_uuid: userId,
-        target_date: targetDate,
-        target_tz: targetTimezone
-      });
+  // Use current date if not provided
+  const targetDate = query.date || new Date().toISOString().split('T')[0];
+  const targetTimezone = query.timezone;
 
-    if (overviewError) {
-      console.error('Daily strategy overview error:', overviewError);
-      return jsonWithCors(request, { error: 'Failed to fetch daily strategy overview' }, 500);
-    }
+  // Use the database function to get the overview
+  const { data: overviewData, error: overviewError } = await client
+    .rpc('get_daily_strategy_overview', {
+      user_uuid: userId,
+      target_date: targetDate,
+      target_tz: targetTimezone
+    });
 
-    // If the function returns null or no data, create an empty overview
-    if (!overviewData) {
-      const emptyOverview: DailyStrategyOverview = {
-        date: targetDate,
-        timezone: targetTimezone,
-        priorities: [],
-        planning_items: [],
-        reflections: [],
-        adventures: [],
-        energy_summary: {
-          total_planned_energy: 0,
-          total_used_energy: 0,
-          energy_efficiency: undefined
-        },
-        completion_stats: {
-          total_items: 0,
-          completed_items: 0,
-          in_progress_items: 0,
-          deferred_items: 0,
-          completion_rate: 0
-        }
-      };
-      return jsonWithCors(request, emptyOverview);
-    }
+  if (overviewError) {
+    console.error('Daily strategy overview error:', overviewError);
+    return NextResponse.json({ error: 'Failed to fetch daily strategy overview' }, { status: 500 });
+  }
 
-    // Parse the JSON response from the database function
-    const overview = typeof overviewData === 'string' ? JSON.parse(overviewData) : overviewData;
-
-    // Ensure all arrays exist (database function might return null for empty arrays)
-    const normalizedOverview: DailyStrategyOverview = {
+  // If the function returns null or no data, create an empty overview
+  if (!overviewData) {
+    const emptyOverview: DailyStrategyOverview = {
       date: targetDate,
       timezone: targetTimezone,
-      priorities: overview.priorities || [],
-      planning_items: overview.planning_items || [],
-      reflections: overview.reflections || [],
-      adventures: overview.adventures || [],
-      energy_summary: overview.energy_summary || {
+      priorities: [],
+      planning_items: [],
+      reflections: [],
+      adventures: [],
+      energy_summary: {
         total_planned_energy: 0,
         total_used_energy: 0,
         energy_efficiency: undefined
       },
-      completion_stats: overview.completion_stats || {
+      completion_stats: {
         total_items: 0,
         completed_items: 0,
         in_progress_items: 0,
@@ -185,15 +153,48 @@ export async function GET(request: NextRequest) {
         completion_rate: 0
       }
     };
-
-    return jsonWithCors(request, normalizedOverview);
-  } catch (error) {
-    console.error('Daily strategy overview API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(emptyOverview);
   }
+
+  // Parse the JSON response from the database function
+  const overview = typeof overviewData === 'string' ? JSON.parse(overviewData) : overviewData;
+
+  // Ensure all arrays exist (database function might return null for empty arrays)
+  const normalizedOverview: DailyStrategyOverview = {
+    date: targetDate,
+    timezone: targetTimezone,
+    priorities: overview.priorities || [],
+    planning_items: overview.planning_items || [],
+    reflections: overview.reflections || [],
+    adventures: overview.adventures || [],
+    energy_summary: overview.energy_summary || {
+      total_planned_energy: 0,
+      total_used_energy: 0,
+      energy_efficiency: undefined
+    },
+    completion_stats: overview.completion_stats || {
+      total_items: 0,
+      completed_items: 0,
+      in_progress_items: 0,
+      deferred_items: 0,
+      completion_rate: 0
+    }
+  };
+
+  return NextResponse.json(normalizedOverview);
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetDailyStrategyOverview, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

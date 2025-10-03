@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { TaskMemory, SubtaskTreeNode } from '@/validation';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { getClientForAuthType } from '@/auth';
+import { TaskMemory } from '@/validation';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 // Query validation schema
 const TreeQuerySchema = z.object({
@@ -18,16 +20,16 @@ interface TaskWithSubtasks extends TaskMemory {
 // Build nested tree structure from flat list
 function buildTaskTree(flatTasks: TaskMemory[], rootTaskId: string): TaskWithSubtasks | null {
   const taskMap = new Map<string, TaskWithSubtasks>();
-  
+
   // Create map of all tasks
   flatTasks.forEach(task => {
     taskMap.set(task.id, { ...task, subtasks: [] });
   });
-  
+
   // Find root task
   const rootTask = taskMap.get(rootTaskId);
   if (!rootTask) return null;
-  
+
   // Build parent-child relationships
   flatTasks.forEach(task => {
     if (task.content.parent_task_id && task.id !== rootTaskId) {
@@ -39,7 +41,7 @@ function buildTaskTree(flatTasks: TaskMemory[], rootTaskId: string): TaskWithSub
       }
     }
   });
-  
+
   // Sort subtasks by order
   function sortSubtasks(task: TaskWithSubtasks) {
     if (task.subtasks) {
@@ -47,7 +49,7 @@ function buildTaskTree(flatTasks: TaskMemory[], rootTaskId: string): TaskWithSub
       task.subtasks.forEach(sortSubtasks);
     }
   }
-  
+
   sortSubtasks(rootTask);
   return rootTask;
 }
@@ -104,177 +106,169 @@ function buildTaskTree(flatTasks: TaskMemory[], rootTaskId: string): TaskWithSub
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function GET(
-  request: NextRequest,
+async function handleGetTaskTree(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
-    
-    // Parse and validate query parameters
-    const queryResult = TreeQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, 
-        { error: 'Invalid query parameters', details: queryResult.error.errors }, 
-        400
-      );
-    }
+  // Parse and validate query parameters
+  const queryResult = TreeQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json(
+      { error: 'Invalid query parameters', details: queryResult.error.errors },
+      { status: 400 }
+    );
+  }
 
-    const query = queryResult.data;
-    const resolvedParams = await params;
-    const taskId = resolvedParams.id;
+  const query = queryResult.data;
+  const { id: taskId } = await params;
+  const userId = request.userId!;
 
-    // Validate task ID format
-    if (!/^[0-9a-fA-F-]{36}$/.test(taskId)) {
-      return jsonWithCors(request, { error: 'Invalid task ID format' }, 400);
-    }
+  // Validate task ID format
+  if (!/^[0-9a-fA-F-]{36}$/.test(taskId)) {
+    return NextResponse.json({ error: 'Invalid task ID format' }, { status: 400 });
+  }
 
-    // Enforce auth
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
+  const client = await getClientForAuthType(request);
+  if (!client) {
+    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+  }
 
-    const client = await getClientForAuthType(request);
-    if (!client) {
-      return jsonWithCors(request, { error: 'Database connection failed' }, 500);
-    }
+  // First verify the task exists and belongs to the user
+  const { data: rootTask, error: rootError } = await client
+    .from('tasks')
+    .select('id')
+    .eq('id', taskId)
+    .eq('user_id', userId)
+    .single();
 
-    // First verify the task exists and belongs to the user
-    const { data: rootTask, error: rootError } = await client
-      .from('tasks')
-      .select('id')
-      .eq('id', taskId)
-      .eq('user_id', userId)
-      .single();
+  if (rootError || !rootTask) {
+    return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  }
 
-    if (rootError || !rootTask) {
-      return jsonWithCors(request, { error: 'Task not found' }, 404);
-    }
-
-    // Use the database function to get complete subtask tree
-    const { data: subtaskTree, error: treeError } = await client
-      .rpc('get_subtask_tree', {
-        root_task_id: taskId,
-        max_depth: query.max_depth
-      });
-
-    if (treeError) {
-      console.error('Database error:', treeError);
-      return jsonWithCors(request, { error: 'Failed to fetch task tree' }, 500);
-    }
-
-    // Get full task details for each task in the tree
-    const taskIds = (subtaskTree || []).map((node: SubtaskTreeNode) => node.task_id);
-    
-    if (taskIds.length === 0) {
-      return jsonWithCors(request, query.format === 'tree' ? null : []);
-    }
-
-    const { data: taskDetails, error: detailsError } = await client
-      .from('tasks')
-      .select(`
-        *,
-        is_ai_task,
-        category:categories(id, name, color, icon)
-      `)
-      .in('id', taskIds)
-      .eq('user_id', userId);
-
-    if (detailsError) {
-      console.error('Database error:', detailsError);
-      return jsonWithCors(request, { error: 'Failed to fetch task details' }, 500);
-    }
-
-    // Map to TaskMemory format
-    let tasks: TaskMemory[] = (taskDetails || []).map((row: any) => ({
-      id: row.id,
-      type: 'task' as const,
-      content: {
-        title: row.title,
-        description: row.description || undefined,
-        status: row.status,
-        priority: row.priority,
-        category: row.category?.name,
-        due_date: row.due_date || undefined,
-        estimated_duration: row.estimated_duration || undefined,
-        progress: row.progress || 0,
-        assignee: row.assignee || undefined,
-        completion_date: row.completion_date || undefined,
-        notes: row.notes || undefined,
-        parent_task_id: row.parent_task_id || undefined,
-        subtask_order: row.subtask_order || 0,
-        completion_behavior: row.completion_behavior || 'manual',
-        progress_calculation: row.progress_calculation || 'manual',
-      },
-      tags: row.tags || [],
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      category_id: row.category_id,
-      hierarchy_level: row.hierarchy_level,
-      hierarchy_path: row.hierarchy_path,
-      subtask_count: row.subtask_count || 0,
-      completed_subtask_count: row.completed_subtask_count || 0,
-      is_ai_task: row.is_ai_task,
-    }));
-
-    // Filter out completed tasks if requested
-    if (!query.include_completed) {
-      tasks = tasks.filter(task => task.content.status !== 'completed');
-    }
-
-    // Sort by hierarchy path to maintain proper parent-child relationships
-    tasks.sort((a, b) => {
-      const pathA = a.hierarchy_path || '';
-      const pathB = b.hierarchy_path || '';
-      
-      // Split paths into components
-      const componentsA = pathA.split('/').filter(Boolean);
-      const componentsB = pathB.split('/').filter(Boolean);
-      
-      // Compare path components level by level
-      const minLength = Math.min(componentsA.length, componentsB.length);
-      for (let i = 0; i < minLength; i++) {
-        if (componentsA[i] !== componentsB[i]) {
-          // At this level, sort by subtask_order within the same parent
-          const taskA = tasks.find(t => t.id === componentsA[i]);
-          const taskB = tasks.find(t => t.id === componentsB[i]);
-          const orderA = taskA?.content.subtask_order || 0;
-          const orderB = taskB?.content.subtask_order || 0;
-          return orderA - orderB;
-        }
-      }
-      
-      // If one path is a prefix of another, shorter path comes first
-      if (componentsA.length !== componentsB.length) {
-        return componentsA.length - componentsB.length;
-      }
-      
-      // Fallback to subtask_order if paths are identical (shouldn't happen)
-      return (a.content.subtask_order || 0) - (b.content.subtask_order || 0);
+  // Use the database function to get complete subtask tree
+  const { data: subtaskTree, error: treeError } = await client
+    .rpc('get_subtask_tree', {
+      root_task_id: taskId,
+      max_depth: query.max_depth
     });
 
-    // Return based on requested format
-    if (query.format === 'tree') {
-      const treeStructure = buildTaskTree(tasks, taskId);
-      return jsonWithCors(request, treeStructure);
-    } else {
-      return jsonWithCors(request, tasks);
+  if (treeError) {
+    console.error('Database error:', treeError);
+    return NextResponse.json({ error: 'Failed to fetch task tree' }, { status: 500 });
+  }
+
+  // Get full task details for each task in the tree
+  const taskIds = (subtaskTree || []).map((node: any) => node.task_id);
+
+  if (taskIds.length === 0) {
+    return NextResponse.json(query.format === 'tree' ? null : []);
+  }
+
+  const { data: taskDetails, error: detailsError } = await client
+    .from('tasks')
+    .select(`
+      *,
+      is_ai_task,
+      category:categories(id, name, color, icon)
+    `)
+    .in('id', taskIds)
+    .eq('user_id', userId);
+
+  if (detailsError) {
+    console.error('Database error:', detailsError);
+    return NextResponse.json({ error: 'Failed to fetch task details' }, { status: 500 });
+  }
+
+  // Map to TaskMemory format
+  let tasks: TaskMemory[] = (taskDetails || []).map((row: any) => ({
+    id: row.id,
+    type: 'task' as const,
+    content: {
+      title: row.title,
+      description: row.description || undefined,
+      status: row.status,
+      priority: row.priority,
+      category: row.category?.name,
+      due_date: row.due_date || undefined,
+      estimated_duration: row.estimated_duration || undefined,
+      progress: row.progress || 0,
+      assignee: row.assignee || undefined,
+      completion_date: row.completion_date || undefined,
+      notes: row.notes || undefined,
+      parent_task_id: row.parent_task_id || undefined,
+      subtask_order: row.subtask_order || 0,
+      completion_behavior: row.completion_behavior || 'manual',
+      progress_calculation: row.progress_calculation || 'manual',
+    },
+    tags: row.tags || [],
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    category_id: row.category_id,
+    hierarchy_level: row.hierarchy_level,
+    hierarchy_path: row.hierarchy_path,
+    subtask_count: row.subtask_count || 0,
+    completed_subtask_count: row.completed_subtask_count || 0,
+    is_ai_task: row.is_ai_task,
+  }));
+
+  // Filter out completed tasks if requested
+  if (!query.include_completed) {
+    tasks = tasks.filter(task => task.content.status !== 'completed');
+  }
+
+  // Sort by hierarchy path to maintain proper parent-child relationships
+  tasks.sort((a, b) => {
+    const pathA = a.hierarchy_path || '';
+    const pathB = b.hierarchy_path || '';
+
+    // Split paths into components
+    const componentsA = pathA.split('/').filter(Boolean);
+    const componentsB = pathB.split('/').filter(Boolean);
+
+    // Compare path components level by level
+    const minLength = Math.min(componentsA.length, componentsB.length);
+    for (let i = 0; i < minLength; i++) {
+      if (componentsA[i] !== componentsB[i]) {
+        // At this level, sort by subtask_order within the same parent
+        const taskA = tasks.find(t => t.id === componentsA[i]);
+        const taskB = tasks.find(t => t.id === componentsB[i]);
+        const orderA = taskA?.content.subtask_order || 0;
+        const orderB = taskB?.content.subtask_order || 0;
+        return orderA - orderB;
+      }
     }
 
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    // If one path is a prefix of another, shorter path comes first
+    if (componentsA.length !== componentsB.length) {
+      return componentsA.length - componentsB.length;
+    }
+
+    // Fallback to subtask_order if paths are identical (shouldn't happen)
+    return (a.content.subtask_order || 0) - (b.content.subtask_order || 0);
+  });
+
+  // Return based on requested format
+  if (query.format === 'tree') {
+    const treeStructure = buildTaskTree(tasks, taskId);
+    return NextResponse.json(treeStructure);
+  } else {
+    return NextResponse.json(tasks);
   }
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetTaskTree, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 300
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});
