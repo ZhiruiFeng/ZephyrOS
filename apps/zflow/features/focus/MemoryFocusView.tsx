@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Calendar, MapPin, Star, Tag, Trash2, Info, ChevronDown, Plus } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Star, Tag, Trash2, Info, ChevronDown, Plus, BookOpen, X } from 'lucide-react'
 import { NotionEditor } from '@/shared/components/editors'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
@@ -11,6 +11,8 @@ import { memoriesApi } from '@/lib/api/memories-api'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useCategories } from '@/hooks/useCategories'
 import { TimelineItemSelector, type TimelineItem, type TimelineItemType } from '@/shared/components/selectors'
+import { PrincipleSelectorModal, CorePrincipleMemory } from '@/shared/components/selectors/PrincipleSelector'
+import { corePrinciplesApi } from '@/lib/api/core-principles-api'
 
 function formatDateTime(ts?: string | null) {
   if (!ts) return '—'
@@ -65,6 +67,11 @@ function MemoryFocusViewContent() {
   const [showDescription, setShowDescription] = useState(false)
   const [editingDescription, setEditingDescription] = useState(false)
   const [showTimelineSelector, setShowTimelineSelector] = useState(false)
+
+  // Principles
+  const [showPrincipleSelector, setShowPrincipleSelector] = useState(false)
+  const [selectedPrinciples, setSelectedPrinciples] = useState<CorePrincipleMemory[]>([])
+  const [principleMappings, setPrincipleMappings] = useState<Map<string, string>>(new Map())
 
   // Load memory detail
   useEffect(() => {
@@ -292,6 +299,81 @@ function MemoryFocusViewContent() {
     }
   }
 
+  // Load principle mappings for this memory
+  useEffect(() => {
+    const loadPrincipleMappings = async () => {
+      if (!memoryId) {
+        setSelectedPrinciples([])
+        setPrincipleMappings(new Map())
+        return
+      }
+
+      try {
+        const userPrinciples = await corePrinciplesApi.getCustom()
+        const mappedPrinciples: CorePrincipleMemory[] = []
+        const mappings = new Map<string, string>()
+
+        for (const principle of userPrinciples) {
+          try {
+            const principleMappings = await corePrinciplesApi.getTimelineMappings(
+              principle.id,
+              memoryId
+            )
+            if (principleMappings && principleMappings.length > 0) {
+              mappedPrinciples.push(principle as any)
+              mappings.set(principle.id, principleMappings[0].id)
+            }
+          } catch (err) {
+            // Principle has no mappings for this memory, skip
+          }
+        }
+
+        setSelectedPrinciples(mappedPrinciples as any)
+        setPrincipleMappings(mappings)
+      } catch (err) {
+        console.error('Failed to load principle mappings:', err)
+      }
+    }
+
+    loadPrincipleMappings()
+  }, [memoryId])
+
+  const handleSelectPrinciple = async (principle: CorePrincipleMemory) => {
+    if (!selectedPrinciples.find(p => p.id === principle.id) && memoryId) {
+      try {
+        const mapping = await corePrinciplesApi.createTimelineMapping(
+          principle.id,
+          memoryId,
+          'post_reflection'
+        )
+
+        setSelectedPrinciples([...selectedPrinciples, principle])
+        setPrincipleMappings(prev => new Map(prev).set(principle.id, mapping.id))
+      } catch (err) {
+        console.error('Failed to create principle mapping:', err)
+        alert('Failed to add principle. Please try again.')
+      }
+    }
+  }
+
+  const handleRemovePrinciple = async (principleId: string) => {
+    const mappingId = principleMappings.get(principleId)
+    if (mappingId) {
+      try {
+        await corePrinciplesApi.deleteTimelineMapping(principleId, mappingId)
+        setSelectedPrinciples(selectedPrinciples.filter(p => p.id !== principleId))
+        setPrincipleMappings(prev => {
+          const next = new Map(prev)
+          next.delete(principleId)
+          return next
+        })
+      } catch (err) {
+        console.error('Failed to delete principle mapping:', err)
+        alert('Failed to remove principle. Please try again.')
+      }
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -370,6 +452,39 @@ function MemoryFocusViewContent() {
           </div>
         </div>
       </div>
+
+      {/* Principles Section - Under Header */}
+      {selectedPrinciples.length > 0 || true ? (
+        <div className="max-w-5xl mx-auto px-4 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2 flex-wrap">
+            {selectedPrinciples.map((principle) => (
+              <div
+                key={principle.id}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs border border-purple-200 hover:bg-purple-100 transition-colors"
+                title={principle.content.description}
+              >
+                <BookOpen className="w-3 h-3" />
+                <span className="max-w-[120px] truncate">{principle.content.title}</span>
+                <button
+                  onClick={() => handleRemovePrinciple(principle.id)}
+                  className="ml-0.5 hover:text-purple-900 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+
+            {/* Add Principle Button */}
+            <button
+              onClick={() => setShowPrincipleSelector(true)}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-purple-700 rounded-full text-xs border border-gray-300 hover:border-purple-300 transition-colors"
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Add Principle</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {showDescription && (
         <div className="max-w-5xl mx-auto px-4 pt-3">
@@ -593,6 +708,24 @@ function MemoryFocusViewContent() {
             statuses: ['active', 'completed']
           }
         }}
+      />
+
+      {/* Principle Selector Modal */}
+      <PrincipleSelectorModal
+        isOpen={showPrincipleSelector}
+        onSelectPrinciple={(principle) => {
+          handleSelectPrinciple(principle)
+          setShowPrincipleSelector(false)
+        }}
+        onCancel={() => setShowPrincipleSelector(false)}
+        title="Select a Principle for this Memory"
+        config={{
+          statuses: ['active'],
+          sources: ['user_custom'],
+          sortBy: 'importance_level',
+          sortOrder: 'desc'
+        }}
+        showCreateNew={false}
       />
     </div>
   )

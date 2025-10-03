@@ -263,6 +263,70 @@ export const corePrinciplesApi = {
       sort_order: 'desc',
     })
   },
+
+  /**
+   * Create a mapping between a principle and a timeline item (task)
+   */
+  async createTimelineMapping(
+    principleId: string,
+    timelineItemId: string,
+    applicationType: 'pre_decision' | 'post_reflection' | 'learning' | 'validation' = 'pre_decision'
+  ): Promise<any> {
+    return corePrincipleApiRequest(`/${principleId}/timeline-mappings`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'principle_timeline_mapping',
+        content: {
+          principle_id: principleId,
+          timeline_item_id: timelineItemId,
+          application_type: applicationType,
+        }
+      }),
+    })
+  },
+
+  /**
+   * Get timeline mappings for a specific timeline item (task)
+   */
+  async getTimelineMappings(principleId: string, timelineItemId?: string): Promise<any[]> {
+    const searchParams = new URLSearchParams()
+    if (timelineItemId) {
+      searchParams.append('timeline_item_id', timelineItemId)
+    }
+    const queryString = searchParams.toString()
+    const endpoint = `/${principleId}/timeline-mappings${queryString ? `?${queryString}` : ''}`
+    return corePrincipleApiRequest(endpoint)
+  },
+
+  /**
+   * Delete a timeline mapping
+   */
+  async deleteTimelineMapping(principleId: string, mappingId: string): Promise<{ message: string }> {
+    return corePrincipleApiRequest(`/${principleId}/timeline-mappings/${mappingId}`, {
+      method: 'DELETE',
+    })
+  },
+
+  /**
+   * Get all principles mapped to a specific timeline item
+   */
+  async getPrinciplesForTimelineItem(timelineItemId: string): Promise<CorePrinciple[]> {
+    // We need to fetch all principles and their mappings
+    // This is a helper method to get principles for a specific timeline item
+    const url = `${ZMEMORY_API_BASE}/timeline-items/${timelineItemId}/principles`
+    const response = await authenticatedFetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new CorePrincipleAPIError(response.status, errorData.error || 'Failed to fetch principles for timeline item')
+    }
+
+    return response.json()
+  },
 }
 
 // Export default

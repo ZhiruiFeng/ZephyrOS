@@ -173,10 +173,11 @@ CREATE OR REPLACE FUNCTION validate_mapping_user_ownership()
 RETURNS TRIGGER AS $$
 DECLARE
   principle_user_id UUID;
+  principle_is_default BOOLEAN;
   timeline_user_id UUID;
 BEGIN
-  -- Get principle owner
-  SELECT user_id INTO principle_user_id
+  -- Get principle owner and default status
+  SELECT user_id, is_default INTO principle_user_id, principle_is_default
   FROM core_principles
   WHERE id = NEW.principle_id;
 
@@ -186,8 +187,14 @@ BEGIN
   WHERE id = NEW.timeline_item_id;
 
   -- Validate ownership
-  IF principle_user_id != NEW.user_id OR timeline_user_id != NEW.user_id THEN
-    RAISE EXCEPTION 'User can only map their own principles to their own timeline items';
+  -- Allow if: principle is default OR principle belongs to user
+  -- AND timeline item belongs to user
+  IF timeline_user_id != NEW.user_id THEN
+    RAISE EXCEPTION 'User can only map principles to their own timeline items';
+  END IF;
+
+  IF NOT principle_is_default AND principle_user_id != NEW.user_id THEN
+    RAISE EXCEPTION 'User can only map their own principles or default principles';
   END IF;
 
   RETURN NEW;

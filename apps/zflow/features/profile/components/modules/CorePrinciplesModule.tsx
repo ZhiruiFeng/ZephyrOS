@@ -250,6 +250,19 @@ export function CorePrinciplesModule({
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [expandedPrinciples, setExpandedPrinciples] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingPrinciple, setEditingPrinciple] = useState<CorePrinciple | null>(null)
+  const [defaultPrinciples, setDefaultPrinciples] = useState<CorePrinciple[]>([])
+  const [showRecommendations, setShowRecommendations] = useState(true)
+  const [createFormData, setCreateFormData] = useState({
+    title: '',
+    description: '',
+    category: 'custom' as CorePrincipleCategory,
+    trigger_questions: [''],
+    application_examples: [''],
+    personal_notes: '',
+    importance_level: 3
+  })
 
   // Configuration
   const maxDisplayItems = isFullscreen
@@ -257,7 +270,7 @@ export function CorePrinciplesModule({
     : (config.config.maxDisplayItems || 10)
   const showQuickActions = config.config.showQuickActions !== false
 
-  // Fetch principles
+  // Fetch principles (only user's own)
   const fetchPrinciples = useCallback(async () => {
     console.log('[CorePrinciples] Fetching principles...')
     setLoading(true)
@@ -268,6 +281,7 @@ export function CorePrinciplesModule({
         sort_by: 'importance_level',
         sort_order: 'desc',
         status: 'active',
+        source: 'user_custom', // Only fetch user's own principles
         ...(categoryFilter !== 'all' && { category: categoryFilter as CorePrincipleCategory }),
         ...(searchQuery && { search: searchQuery })
       })
@@ -283,9 +297,28 @@ export function CorePrinciplesModule({
     }
   }, [maxDisplayItems, categoryFilter, searchQuery])
 
+  // Fetch default principles for recommendations
+  const fetchDefaultPrinciples = useCallback(async () => {
+    try {
+      const defaults = await corePrinciplesApi.getDefaults()
+      // Filter out defaults that user has already copied
+      const userPrincipleTitles = new Set(principles.map(p => p.content.title))
+      const availableDefaults = defaults.filter(d => !userPrincipleTitles.has(d.content.title))
+      setDefaultPrinciples(availableDefaults)
+    } catch (err) {
+      console.error('[CorePrinciples] Failed to load default principles:', err)
+    }
+  }, [principles])
+
   useEffect(() => {
     fetchPrinciples()
   }, [fetchPrinciples])
+
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchDefaultPrinciples()
+    }
+  }, [showCreateModal, fetchDefaultPrinciples])
 
   const handleConfigChange = (key: string, value: any) => {
     onConfigChange({
@@ -319,6 +352,137 @@ export function CorePrinciplesModule({
       console.error('Failed to delete principle:', err)
       alert('Failed to delete principle. Please try again.')
     }
+  }
+
+  const handleCreatePrinciple = async () => {
+    try {
+      if (editingPrinciple) {
+        // Update existing principle
+        const updatedPrinciple = await corePrinciplesApi.update(editingPrinciple.id, {
+          content: {
+            title: createFormData.title,
+            description: createFormData.description || undefined,
+            category: createFormData.category,
+            trigger_questions: createFormData.trigger_questions.filter(q => q.trim()),
+            application_examples: createFormData.application_examples.filter(e => e.trim()),
+            personal_notes: createFormData.personal_notes || undefined,
+            importance_level: createFormData.importance_level
+          }
+        })
+
+        setPrinciples(prev => prev.map(p => p.id === updatedPrinciple.id ? updatedPrinciple : p))
+      } else {
+        // Create new principle
+        const newPrinciple = await corePrinciplesApi.create({
+          type: 'core_principle',
+          content: {
+            title: createFormData.title,
+            description: createFormData.description || undefined,
+            category: createFormData.category,
+            trigger_questions: createFormData.trigger_questions.filter(q => q.trim()),
+            application_examples: createFormData.application_examples.filter(e => e.trim()),
+            personal_notes: createFormData.personal_notes || undefined,
+            importance_level: createFormData.importance_level
+          }
+        })
+
+        setPrinciples(prev => [newPrinciple, ...prev])
+      }
+
+      setShowCreateModal(false)
+      setEditingPrinciple(null)
+      setShowRecommendations(true)
+      setCreateFormData({
+        title: '',
+        description: '',
+        category: 'custom',
+        trigger_questions: [''],
+        application_examples: [''],
+        personal_notes: '',
+        importance_level: 3
+      })
+    } catch (err) {
+      console.error('Failed to save principle:', err)
+      alert('Failed to save principle. Please try again.')
+    }
+  }
+
+  const handleCopyDefaultPrinciple = (defaultPrinciple: CorePrinciple) => {
+    setShowRecommendations(false)
+    setCreateFormData({
+      title: defaultPrinciple.content.title,
+      description: defaultPrinciple.content.description || '',
+      category: defaultPrinciple.content.category,
+      trigger_questions: defaultPrinciple.content.trigger_questions.length > 0
+        ? defaultPrinciple.content.trigger_questions
+        : [''],
+      application_examples: defaultPrinciple.content.application_examples.length > 0
+        ? defaultPrinciple.content.application_examples
+        : [''],
+      personal_notes: '',
+      importance_level: defaultPrinciple.content.importance_level
+    })
+  }
+
+  const handleEdit = (principle: CorePrinciple) => {
+    setEditingPrinciple(principle)
+    setShowRecommendations(false)
+    setCreateFormData({
+      title: principle.content.title,
+      description: principle.content.description || '',
+      category: principle.content.category,
+      trigger_questions: principle.content.trigger_questions.length > 0
+        ? principle.content.trigger_questions
+        : [''],
+      application_examples: principle.content.application_examples.length > 0
+        ? principle.content.application_examples
+        : [''],
+      personal_notes: principle.content.personal_notes || '',
+      importance_level: principle.content.importance_level
+    })
+    setShowCreateModal(true)
+  }
+
+  const addTriggerQuestion = () => {
+    setCreateFormData(prev => ({
+      ...prev,
+      trigger_questions: [...prev.trigger_questions, '']
+    }))
+  }
+
+  const removeTriggerQuestion = (index: number) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      trigger_questions: prev.trigger_questions.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateTriggerQuestion = (index: number, value: string) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      trigger_questions: prev.trigger_questions.map((q, i) => i === index ? value : q)
+    }))
+  }
+
+  const addApplicationExample = () => {
+    setCreateFormData(prev => ({
+      ...prev,
+      application_examples: [...prev.application_examples, '']
+    }))
+  }
+
+  const removeApplicationExample = (index: number) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      application_examples: prev.application_examples.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateApplicationExample = (index: number, value: string) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      application_examples: prev.application_examples.map((e, i) => i === index ? value : e)
+    }))
   }
 
   // Calculate stats
@@ -359,7 +523,7 @@ export function CorePrinciplesModule({
         <div className="flex items-center gap-2">
           {showQuickActions && (
             <button
-              onClick={() => alert('Create principle functionality coming soon')}
+              onClick={() => setShowCreateModal(true)}
               className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
               title="New Principle"
             >
@@ -568,11 +732,14 @@ export function CorePrinciplesModule({
       ) : principles.length === 0 ? (
         <div className="text-center py-12">
           <BookMarked className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No principles found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No principles created yet</h3>
           <p className="text-gray-600 mb-4 text-sm">
             {searchQuery || categoryFilter !== 'all'
               ? 'Try adjusting your filters'
-              : 'Start by exploring Ray Dalio\'s default principles'}
+              : 'Create your first principle by clicking the + button above'}
+          </p>
+          <p className="text-sm text-blue-600 mb-4">
+            💡 Tip: You can quickly copy from Ray Dalio's principles when creating new ones
           </p>
         </div>
       ) : (
@@ -584,6 +751,7 @@ export function CorePrinciplesModule({
                 principle={principle}
                 isExpanded={expandedPrinciples.has(principle.id)}
                 onToggleExpand={() => handleToggleExpand(principle.id)}
+                onEdit={handleEdit}
                 onDelete={handleDelete}
               />
             ))}
@@ -598,6 +766,245 @@ export function CorePrinciplesModule({
           )}
         </div>
       )}
+
+      {/* Create Principle Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {editingPrinciple ? 'Edit Principle' : 'Create New Principle'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setEditingPrinciple(null)
+                    setShowRecommendations(true)
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Ray Dalio Recommendations - only show when creating, not editing */}
+              {!editingPrinciple && showRecommendations && defaultPrinciples.length > 0 && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                      <BookMarked className="w-4 h-4" />
+                      Ray Dalio's Principles - Quick Copy
+                    </h4>
+                    <button
+                      onClick={() => setShowRecommendations(false)}
+                      className="text-blue-600 hover:text-blue-800 text-xs"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {defaultPrinciples.slice(0, 5).map((principle) => (
+                      <button
+                        key={principle.id}
+                        onClick={() => handleCopyDefaultPrinciple(principle)}
+                        className="w-full text-left p-3 bg-white rounded border border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm text-gray-900">{principle.content.title}</div>
+                            {principle.content.description && (
+                              <div className="text-xs text-gray-600 mt-1 line-clamp-2">{principle.content.description}</div>
+                            )}
+                          </div>
+                          <Star className="w-4 h-4 text-amber-500 fill-current ml-2 flex-shrink-0" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-blue-700 mt-2">Click any principle to copy it and customize for yourself</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={createFormData.title}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter principle title..."
+                    required
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={createFormData.description}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={3}
+                    placeholder="Describe this principle..."
+                  />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={createFormData.category}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, category: e.target.value as CorePrincipleCategory }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="work_principles">💼 Work Principles</option>
+                    <option value="life_principles">🌟 Life Principles</option>
+                    <option value="decision_making">🎯 Decision Making</option>
+                    <option value="relationships">🤝 Relationships</option>
+                    <option value="learning">📚 Learning</option>
+                    <option value="leadership">👑 Leadership</option>
+                    <option value="custom">✨ Custom</option>
+                  </select>
+                </div>
+
+                {/* Importance Level */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Importance Level: {createFormData.importance_level}/5
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={createFormData.importance_level}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, importance_level: parseInt(e.target.value) }))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Low</span>
+                    <span>High</span>
+                  </div>
+                </div>
+
+                {/* Trigger Questions */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Questions</label>
+                  <div className="space-y-2">
+                    {createFormData.trigger_questions.map((question, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={question}
+                          onChange={(e) => updateTriggerQuestion(index, e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="What question triggers this principle?"
+                        />
+                        {createFormData.trigger_questions.length > 1 && (
+                          <button
+                            onClick={() => removeTriggerQuestion(index)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={addTriggerQuestion}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Question
+                    </button>
+                  </div>
+                </div>
+
+                {/* Application Examples */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Application Examples</label>
+                  <div className="space-y-2">
+                    {createFormData.application_examples.map((example, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={example}
+                          onChange={(e) => updateApplicationExample(index, e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="How to apply this principle?"
+                        />
+                        {createFormData.application_examples.length > 1 && (
+                          <button
+                            onClick={() => removeApplicationExample(index)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={addApplicationExample}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Example
+                    </button>
+                  </div>
+                </div>
+
+                {/* Personal Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Personal Notes</label>
+                  <textarea
+                    value={createFormData.personal_notes}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, personal_notes: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={2}
+                    placeholder="Any personal notes about this principle..."
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      setEditingPrinciple(null)
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreatePrinciple}
+                    disabled={!createFormData.title.trim()}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {editingPrinciple ? 'Update Principle' : 'Create Principle'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

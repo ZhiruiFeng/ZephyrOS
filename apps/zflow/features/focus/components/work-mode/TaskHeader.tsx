@@ -1,11 +1,11 @@
 'use client'
 
-import React, { memo } from 'react'
+import React, { memo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Menu, PanelLeftClose, PanelLeftOpen, KanbanSquare,
   Clock, Play, Square, CheckCircle, Settings, ListTodo, Save,
-  ChevronDown, Info
+  ChevronDown, Info, BookOpen, X
 } from 'lucide-react'
 import { TaskMemory } from '@/lib/api'
 import { useTranslation } from '@/contexts/LanguageContext'
@@ -14,6 +14,8 @@ import { useAutoSave } from '@/hooks/useAutoSave'
 import MemoryAnchorButton from '@/features/memory/components/MemoryAnchorButton'
 import ConversationButton from './ConversationButton'
 import { TaskWithCategory } from './TaskSidebar'
+import { PrincipleSelectorModal, CorePrincipleMemory } from '@/shared/components/selectors/PrincipleSelector'
+import { corePrinciplesApi } from '@/lib/api/core-principles-api'
 
 interface TaskHeaderProps {
   selectedTask: TaskWithCategory | null
@@ -73,6 +75,89 @@ const TaskHeader = memo(function TaskHeader({
   messageCount
 }: TaskHeaderProps) {
   const { t } = useTranslation()
+  const [showPrincipleSelector, setShowPrincipleSelector] = useState(false)
+  const [selectedPrinciples, setSelectedPrinciples] = useState<CorePrincipleMemory[]>([])
+  const [principleMappings, setPrincipleMappings] = useState<Map<string, string>>(new Map()) // principleId -> mappingId
+
+  // Load existing principle mappings when task changes
+  useEffect(() => {
+    const loadPrincipleMappings = async () => {
+      if (!selectedTask) {
+        setSelectedPrinciples([])
+        setPrincipleMappings(new Map())
+        return
+      }
+
+      try {
+        // Fetch mappings for this timeline item
+        // Only fetch user's custom principles
+        const userPrinciples = await corePrinciplesApi.getCustom()
+        const mappedPrinciples: CorePrincipleMemory[] = []
+        const mappings = new Map<string, string>()
+
+        for (const principle of userPrinciples) {
+          try {
+            const principleMappings = await corePrinciplesApi.getTimelineMappings(
+              principle.id,
+              selectedTask.id
+            )
+            if (principleMappings && principleMappings.length > 0) {
+              mappedPrinciples.push(principle as any)
+              mappings.set(principle.id, principleMappings[0].id)
+            }
+          } catch (err) {
+            // Principle has no mappings for this task, skip
+          }
+        }
+
+        setSelectedPrinciples(mappedPrinciples as any)
+        setPrincipleMappings(mappings)
+      } catch (err) {
+        console.error('Failed to load principle mappings:', err)
+      }
+    }
+
+    loadPrincipleMappings()
+  }, [selectedTask?.id])
+
+  const handleSelectPrinciple = async (principle: CorePrincipleMemory) => {
+    // Add principle if not already selected
+    if (!selectedPrinciples.find(p => p.id === principle.id) && selectedTask) {
+      try {
+        // Create the mapping in the database
+        const mapping = await corePrinciplesApi.createTimelineMapping(
+          principle.id,
+          selectedTask.id,
+          'pre_decision'
+        )
+
+        setSelectedPrinciples([...selectedPrinciples, principle])
+        setPrincipleMappings(prev => new Map(prev).set(principle.id, mapping.id))
+      } catch (err) {
+        console.error('Failed to create principle mapping:', err)
+        alert('Failed to add principle. Please try again.')
+      }
+    }
+  }
+
+  const handleRemovePrinciple = async (principleId: string) => {
+    const mappingId = principleMappings.get(principleId)
+    if (mappingId) {
+      try {
+        // Delete the mapping from the database
+        await corePrinciplesApi.deleteTimelineMapping(principleId, mappingId)
+        setSelectedPrinciples(selectedPrinciples.filter(p => p.id !== principleId))
+        setPrincipleMappings(prev => {
+          const next = new Map(prev)
+          next.delete(principleId)
+          return next
+        })
+      } catch (err) {
+        console.error('Failed to delete principle mapping:', err)
+        alert('Failed to remove principle. Please try again.')
+      }
+    }
+  }
 
   return (
     <>
@@ -143,21 +228,18 @@ const TaskHeader = memo(function TaskHeader({
               {selectedSubtask ? selectedSubtask.content.description : selectedTask.content.description}
             </p>
           )}
-          {selectedTask.category && (
-            <div className="flex items-center gap-2 mt-2">
-              <span
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: selectedTask.category.color }}
-              />
-              <span className="text-sm text-gray-500">{selectedTask.category.name}</span>
-            </div>
-          )}
-        </div>
+          {/* Category, Timer, and Start/Stop Section */}
+          <div className="flex items-center gap-4 mt-2 flex-wrap">
+            {selectedTask.category && (
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: selectedTask.category.color }}
+                />
+                <span className="text-sm text-gray-500">{selectedTask.category.name}</span>
+              </div>
+            )}
 
-        {/* Controls Section */}
-        <div className="flex flex-wrap items-center gap-1 md:gap-2 min-h-[36px] sm:min-h-[40px]">
-          {/* Timer and Controls - Compact Row */}
-          <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 overflow-x-auto">
             {/* Ultra-compact Timer */}
             <div className="flex items-center gap-0 sm:gap-1 px-1 py-0.5 bg-gray-100 rounded text-xs min-w-[45px] sm:min-w-[120px]">
               <Clock className="w-3 h-3 text-gray-600 flex-shrink-0" />
@@ -194,19 +276,13 @@ const TaskHeader = memo(function TaskHeader({
                 </>
               )}
             </button>
+          </div>
+        </div>
 
-            {/* Complete Button - Only show if task is not already completed */}
-            {selectedTask.content.status !== 'completed' && (
-              <button
-                onClick={handleCompleteTask}
-                disabled={isSaving}
-                className="flex items-center justify-center px-2 py-2 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[36px] disabled:opacity-50"
-              >
-                <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                <span className="hidden sm:inline ml-1 truncate">{t.task.markCompleted}</span>
-              </button>
-            )}
-
+        {/* Controls Section */}
+        <div className="flex flex-wrap items-center gap-1 md:gap-2 min-h-[36px] sm:min-h-[40px] mt-3">
+          {/* Left Side Controls */}
+          <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 overflow-x-auto">
             {/* Task Info Button */}
             <button
               onClick={() => setShowTaskInfo(!showTaskInfo)}
@@ -254,8 +330,8 @@ const TaskHeader = memo(function TaskHeader({
             />
           </div>
 
-          {/* Save Controls - Right Side (wraps below on mobile) */}
-          <div className="flex items-center ml-0 md:ml-auto gap-1 md:gap-2 w-full md:w-auto justify-end mt-2 md:mt-0">
+          {/* Save Controls - Right Side */}
+          <div className="flex items-center ml-auto gap-1 md:gap-2">
             {/* Auto-save indicator - Hidden on mobile */}
             <div className="hidden sm:flex items-center text-xs text-gray-400 min-w-[140px] justify-end">
               {autoSave.status === 'error' ? (
@@ -268,6 +344,18 @@ const TaskHeader = memo(function TaskHeader({
               ) : null}
             </div>
 
+            {/* Complete Button - Only show if task is not already completed */}
+            {selectedTask.content.status !== 'completed' && (
+              <button
+                onClick={handleCompleteTask}
+                disabled={isSaving}
+                className="flex items-center justify-center px-3 py-2 sm:px-4 sm:py-2 text-white bg-green-600 hover:bg-green-700 rounded transition-colors text-xs min-w-[50px] sm:min-w-[100px] disabled:opacity-50"
+              >
+                <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                <span className="hidden sm:inline ml-1 truncate">{t.task.markCompleted}</span>
+              </button>
+            )}
+
             {/* Save Button */}
             <button
               onClick={handleSaveNotes}
@@ -279,8 +367,55 @@ const TaskHeader = memo(function TaskHeader({
             </button>
           </div>
         </div>
+
+        {/* Principles Section - New Row */}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {selectedPrinciples.map((principle) => (
+            <div
+              key={principle.id}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs border border-purple-200 hover:bg-purple-100 transition-colors"
+              title={principle.content.description}
+            >
+              <BookOpen className="w-3 h-3" />
+              <span className="max-w-[120px] truncate">{principle.content.title}</span>
+              <button
+                onClick={() => handleRemovePrinciple(principle.id)}
+                className="ml-0.5 hover:text-purple-900 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+
+          {/* Add Principle Button */}
+          <button
+            onClick={() => setShowPrincipleSelector(true)}
+            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-purple-700 rounded-full text-xs border border-gray-300 hover:border-purple-300 transition-colors"
+          >
+            <BookOpen className="w-3 h-3" />
+            <span>Add Principle</span>
+          </button>
+        </div>
         </div>
       )}
+
+      {/* Principle Selector Modal */}
+      <PrincipleSelectorModal
+        isOpen={showPrincipleSelector}
+        onSelectPrinciple={(principle) => {
+          handleSelectPrinciple(principle)
+          setShowPrincipleSelector(false)
+        }}
+        onCancel={() => setShowPrincipleSelector(false)}
+        title="Select a Principle for this Task"
+        config={{
+          statuses: ['active'],
+          sources: ['user_custom'], // Only show user's own principles
+          sortBy: 'importance_level',
+          sortOrder: 'desc'
+        }}
+        showCreateNew={false}
+      />
     </>
   )
 })
