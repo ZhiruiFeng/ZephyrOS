@@ -1,9 +1,11 @@
-import { NextRequest } from 'next/server'
-import { getAuthContext } from '@/auth'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security'
-import { createClient } from '@supabase/supabase-js'
-import { generateSecureToken, hashApiKey } from '@/lib/crypto-utils'
-import { z } from 'zod'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabase as serviceClient } from '@/lib/supabase';
+import { getAuthContext } from '@/auth';
+import { generateSecureToken, hashApiKey } from '@/lib/crypto-utils';
+import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * @swagger
@@ -121,125 +123,149 @@ const createApiKeySchema = z.object({
   expires_in_days: z.number().min(1).max(3650).optional() // Max 10 years
 });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
+/**
+ * GET /api/user/api-keys - List user's ZMemory API keys
+ *
+ * OAuth-only endpoint for listing user's own API keys.
+ */
+async function handleListUserApiKeys(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  // Special auth check: OAuth only
+  const auth = await getAuthContext(request);
+  if (!auth || auth.authType !== 'oauth') {
+    return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
   }
-);
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const auth = await getAuthContext(request);
-    // Only allow OAuth-authenticated users to list keys
-    if (!auth || auth.authType !== 'oauth') {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
-
-    // Get user's ZMemory API keys from a dedicated table
-    const { data, error } = await supabase
-      .from('zmemory_api_keys')
-      .select('id, name, key_preview, scopes, is_active, last_used_at, expires_at, created_at')
-      .eq('user_id', auth.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch API keys: ${error.message}`);
-    }
-
-    return jsonWithCors(request, {
-      data: data || [],
-      success: true
-    });
-  } catch (error) {
-    console.error('Error fetching ZMemory API keys:', error);
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to fetch API keys'),
+  if (!serviceClient) {
+    return NextResponse.json({
+      error: 'Database not configured',
       success: false
-    }, 500);
+    }, { status: 500 });
   }
+
+  // Get user's ZMemory API keys from a dedicated table
+  const { data, error } = await serviceClient
+    .from('zmemory_api_keys')
+    .select('id, name, key_preview, scopes, is_active, last_used_at, expires_at, created_at')
+    .eq('user_id', auth.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return NextResponse.json({
+      error: `Failed to fetch API keys: ${error.message}`,
+      success: false
+    }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    data: data || [],
+    success: true
+  });
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const auth = await getAuthContext(request);
-    // Only allow OAuth-authenticated users to create keys
-    if (!auth || auth.authType !== 'oauth') {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
+/**
+ * POST /api/user/api-keys - Create a new ZMemory API key
+ *
+ * OAuth-only endpoint for creating user's own API keys.
+ */
+async function handleCreateUserApiKey(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  // Special auth check: OAuth only
+  const auth = await getAuthContext(request);
+  if (!auth || auth.authType !== 'oauth') {
+    return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
+  }
 
-    const body = await request.json();
+  const body = await request.json();
 
-    // Validate request body
-    const validation = createApiKeySchema.safeParse(body);
-    if (!validation.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid request data',
-        details: validation.error.errors,
+  // Validate request body
+  const validation = createApiKeySchema.safeParse(body);
+  if (!validation.success) {
+    return NextResponse.json({
+      error: 'Invalid request data',
+      details: validation.error.errors,
+      success: false
+    }, { status: 400 });
+  }
+
+  const { name, scopes, expires_in_days } = validation.data;
+
+  if (!serviceClient) {
+    return NextResponse.json({
+      error: 'Database not configured',
+      success: false
+    }, { status: 500 });
+  }
+
+  // Generate a secure API key
+  const apiKey = `zm_${generateSecureToken(32)}`;
+  const keyPreview = `zm_***${apiKey.slice(-6)}`;
+
+  // Calculate expiration date
+  let expiresAt = null;
+  if (expires_in_days) {
+    expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expires_in_days);
+  }
+
+  // Insert the new API key
+  const { data, error } = await serviceClient
+    .from('zmemory_api_keys')
+    .insert({
+      user_id: auth.id,
+      name,
+      api_key_hash: await hashApiKey(apiKey), // Store hashed version
+      key_preview: keyPreview,
+      scopes,
+      expires_at: expiresAt?.toISOString()
+    })
+    .select('id, name, key_preview, scopes, is_active, last_used_at, expires_at, created_at')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      return NextResponse.json({
+        error: 'API key with this name already exists',
         success: false
-      }, 400);
+      }, { status: 409 });
     }
-
-    const { name, scopes, expires_in_days } = validation.data;
-
-    // Generate a secure API key
-    const apiKey = `zm_${generateSecureToken(32)}`;
-    const keyPreview = `zm_***${apiKey.slice(-6)}`;
-
-    // Calculate expiration date
-    let expiresAt = null;
-    if (expires_in_days) {
-      expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expires_in_days);
-    }
-
-    // Insert the new API key
-    const { data, error } = await supabase
-      .from('zmemory_api_keys')
-      .insert({
-        user_id: auth.id,
-        name,
-        api_key_hash: await hashApiKey(apiKey), // Store hashed version
-        key_preview: keyPreview,
-        scopes,
-        expires_at: expiresAt?.toISOString()
-      })
-      .select('id, name, key_preview, scopes, is_active, last_used_at, expires_at, created_at')
-      .single();
-
-    if (error) {
-      if (error.code === '23505') { // Unique constraint violation
-        throw new Error('API key with this name already exists');
-      }
-      throw new Error(`Failed to create API key: ${error.message}`);
-    }
-
-    return jsonWithCors(request, {
-      data: {
-        ...data,
-        api_key: apiKey // Return the actual key only once
-      },
-      success: true
-    }, 201);
-  } catch (error) {
-    console.error('Error creating ZMemory API key:', error);
-
-    const message = error instanceof Error ? error.message : 'Failed to create API key';
-    const status = message.includes('already exists') ? 409 :
-                  message.includes('not found') || message.includes('Invalid') ? 400 : 500;
-
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to create API key'),
+    return NextResponse.json({
+      error: `Failed to create API key: ${error.message}`,
       success: false
-    }, status);
+    }, { status: 500 });
   }
+
+  return NextResponse.json({
+    data: {
+      ...data,
+      api_key: apiKey // Return the actual key only once
+    },
+    success: true
+  }, { status: 201 });
 }
 
+// Apply middleware with auth disabled (handled manually for OAuth-specific logic)
+export const GET = withStandardMiddleware(handleListUserApiKeys, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  },
+  auth: false // Handled manually in handler for OAuth-specific logic
+});
+
+export const POST = withStandardMiddleware(handleCreateUserApiKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 20
+  },
+  auth: false // Handled manually in handler for OAuth-specific logic
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

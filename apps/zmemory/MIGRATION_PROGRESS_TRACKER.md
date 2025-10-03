@@ -4,9 +4,9 @@
 
 Last Updated: 2025-10-03
 Total Routes: 108
-Migrated: 29 (27%)
+Migrated: 40 (37%)
 Infrastructure Ready: 1
-Remaining: 78 (72%)
+Remaining: 67 (62%)
 
 ---
 
@@ -18,11 +18,11 @@ Remaining: 78 (72%)
 
 **Phase 1**: ████████████████████ 100% ✅
 **Phase 2**: ████████████████████ 100% ✅
-**Phase 3**: ████░░░░░░░░░░░░░░░░ 22% 🔄
+**Phase 3**: ██████░░░░░░░░░░░░░░ 30% 🔄
 
 ---
 
-## ✅ Completed Migrations (29 routes)
+## ✅ Completed Migrations (40 routes)
 
 | Route | Lines Reduced | Time Spent | Date | Pattern | Notes |
 |-------|---------------|------------|------|---------|-------|
@@ -55,10 +55,21 @@ Remaining: 78 (72%)
 | `/api/tasks/[id]/time-entries` | 143 → 165 | ~0.25h | Phase 3 | Sub-route | Task time entries GET/POST |
 | `/api/narrative/seasons` | 159 → 156 (2%) | ~0.5h | Phase 3 | CRUD | Seasons GET/POST with validation |
 | `/api/narrative/episodes` | 173 → 170 (2%) | ~0.5h | Phase 3 | CRUD | Episodes GET/POST with date validation |
+| `/api/subtasks/reorder` | 200 → 131 (35%) | ~0.5h | Phase 3 | Sub-route | Reorder subtasks with validation |
+| `/api/ai-usage-stats` | 172 → 161 (6%) | ~0.5h | Phase 3 | CRUD | AI usage stats GET/POST with analytics |
+| `/api/user/api-keys/[id]` | 122 → 138 | ~0.5h | Phase 3 | Sub-route | OAuth-only API key update/delete |
+| `/api/tasks/[id]/status` | 206 → 176 (15%) | ~0.5h | Phase 3 | Sub-route | Task status update with validation |
+| `/api/user/api-keys` | 245 → 258 | ~0.5h | Phase 3 | CRUD | OAuth-only API key management GET/POST |
+| `/api/narrative/seasons/[id]` | 238 → 232 (3%) | ~0.5h | Phase 3 | Sub-route | Season detail GET/PATCH/DELETE with episodes |
+| `/api/narrative/episodes/[id]` | 189 → 205 | ~0.5h | Phase 3 | Sub-route | Episode detail GET/PATCH/DELETE with date validation |
+| `/api/api-keys` | 199 → 195 (2%) | ~0.25h | Phase 3 | CRUD | API keys GET/POST using apiKeyService |
+| `/api/api-keys/[id]` | 254 → 241 (5%) | ~0.25h | Phase 3 | Sub-route | API key detail GET/PUT/DELETE with validation |
+| `/api/episodes/[id]/anchors` | 111 → 101 (9%) | ~0.25h | Phase 3 | Sub-route | Episode memory anchors with filtering |
+| `/api/memories/reviews/weekly` | 154 → 155 | ~0.25h | Phase 3 | CRUD | Weekly memory review with query transforms |
 
-**Total Lines Reduced**: ~5,395 → ~2,810 (48% average reduction)
-**Total Time Invested**: ~31 hours
-**Average Time per Route**: ~1.07 hours
+**Total Lines Reduced**: ~7,485 → ~4,803 (36% average reduction)
+**Total Time Invested**: ~35.5 hours
+**Average Time per Route**: ~0.89 hours
 
 ---
 
@@ -104,10 +115,10 @@ Remaining: 78 (72%)
 
 | Pattern | Routes | Avg Reduction | Success Rate |
 |---------|--------|---------------|--------------|
-| Simple CRUD | 8 | 56% | 100% ✅ |
+| Simple CRUD | 9 | 54% | 100% ✅ |
 | Lookup/Read-only | 3 | 49% | 100% ✅ |
 | Multi-route | 2 | 58% | 100% ✅ |
-| Sub-route | 15 | 26% | 100% ✅ |
+| Sub-route | 17 | 26% | 100% ✅ |
 | Complex | 0 | N/A | N/A |
 
 ### Time Investment
@@ -116,14 +127,14 @@ Remaining: 78 (72%)
 |-------|--------|------|---------------|
 | Phase 1 | 4 | ~14h | 3.5h |
 | Phase 2 | 6 | ~13h | 2.2h |
-| Phase 3 | 19 | ~8h | 0.42h |
+| Phase 3 | 30 | ~12.5h | 0.42h |
 
 **Trend**: Getting faster with experience (3.5h → 2.2h → 0.42h per route)
 
 ### Success Rate
 
-- Migrations attempted: 29
-- Migrations completed: 29
+- Migrations attempted: 40
+- Migrations completed: 40
 - Migrations deferred: 1 (tasks main route - infrastructure built)
 - Failures requiring rollback: 0
 - **Success Rate**: 100% ✅

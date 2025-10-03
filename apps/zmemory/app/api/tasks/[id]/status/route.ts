@@ -1,15 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabase as serviceClient } from '@/lib/supabase';
+import { getClientForAuthType } from '@/auth';
 import { z } from 'zod';
 import { TaskStatus } from '@/validation';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+export const dynamic = 'force-dynamic';
 
 // Status update schema (allow all status)
 const StatusUpdateSchema = z.object({
@@ -76,132 +72,104 @@ const StatusUpdateSchema = z.object({
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function PUT(
-  request: NextRequest,
+async function handleUpdateTaskStatus(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    const body = await request.json();
-    
-    // Validate request body
-    const validationResult = StatusUpdateSchema.safeParse(body);
-    if (!validationResult.success) {
+  const userId = request.userId!;
+  const { status, notes, progress } = request.validatedBody!;
+  const client = await getClientForAuthType(request) || serviceClient;
+
+  if (!client) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+
+  const now = new Date().toISOString();
+
+  // First, get the existing task
+  const { data: existingTask, error: fetchError } = await client
+    .from('tasks')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError) {
+    if (fetchError.code === 'PGRST116') {
       return NextResponse.json(
-        { error: 'Invalid status update data', details: validationResult.error.errors },
-        { status: 400 }
+        { error: 'Task not found' },
+        { status: 404 }
       );
     }
-
-    const { status, notes, progress } = validationResult.data;
-    const now = new Date().toISOString();
-
-    // If Supabase is not configured, return mock response
-    if (!supabase) {
-      if (id === '1') {
-        const mockTask = {
-          id: '1',
-          type: 'task',
-          content: {
-            title: 'Implement task management API',
-            description: 'Create comprehensive REST API for task operations',
-            status: status,
-            priority: 'high',
-            category: 'work',
-            progress: progress !== undefined ? progress : (status === 'completed' ? 100 : 75),
-            estimated_duration: 480,
-            notes: notes || 'Status updated via API',
-            completion_date: status === 'completed' ? now : undefined
-          },
-          tags: ['api', 'development', 'high-priority'],
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          updated_at: now
-        };
-        return NextResponse.json(mockTask);
-      } else {
-        return NextResponse.json(
-          { error: 'Task not found' },
-          { status: 404 }
-        );
-      }
-    }
-
-    // First, get the existing task
-    const { data: existingTask, error: fetchError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) {
-      if (fetchError.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Task not found' },
-          { status: 404 }
-        );
-      }
-      console.error('Database error:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to fetch task' },
-        { status: 500 }
-      );
-    }
-
-    // Prepare updated content
-    const updateObject: any = { status, updated_at: now };
-    if (status === TaskStatus.COMPLETED) {
-      updateObject.completion_date = now;
-      if (updateObject.progress === undefined) updateObject.progress = 100;
-    }
-    if (progress !== undefined) updateObject.progress = progress;
-    if (notes !== undefined) updateObject.description = existingTask.description ? `${existingTask.description}\n${notes}` : notes;
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .update(updateObject)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to update task status' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      id: data.id,
-      type: 'task',
-      content: {
-        title: data.title,
-        description: data.description || undefined,
-        status: data.status,
-        priority: data.priority,
-        due_date: data.due_date || undefined,
-      },
-      tags: data.tags || [],
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-    });
-  } catch (error) {
-    console.error('API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch task' },
       { status: 500 }
     );
   }
-}
 
-// OPTIONS - Handle CORS preflight requests
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'PUT, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  // Prepare updated content
+  const updateObject: any = { status, updated_at: now };
+  if (status === TaskStatus.COMPLETED) {
+    updateObject.completion_date = now;
+    if (progress === undefined) {
+      updateObject.progress = 100;
+    }
+  }
+  if (progress !== undefined) {
+    updateObject.progress = progress;
+  }
+  if (notes !== undefined) {
+    updateObject.description = existingTask.description
+      ? `${existingTask.description}\n${notes}`
+      : notes;
+  }
+
+  const { data, error } = await client
+    .from('tasks')
+    .update(updateObject)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { error: 'Failed to update task status' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    id: data.id,
+    type: 'task',
+    content: {
+      title: data.title,
+      description: data.description || undefined,
+      status: data.status,
+      priority: data.priority,
+      due_date: data.due_date || undefined,
     },
+    tags: data.tags || [],
+    created_at: data.created_at,
+    updated_at: data.updated_at,
   });
 }
+
+// Apply middleware
+export const PUT = withStandardMiddleware(handleUpdateTaskStatus, {
+  validation: {
+    bodySchema: StatusUpdateSchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

@@ -1,8 +1,10 @@
-import { NextRequest } from 'next/server'
-import { getAuthContext } from '@/auth'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security'
-import { createClient } from '@supabase/supabase-js'
-import { z } from 'zod'
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabase as serviceClient } from '@/lib/supabase';
+import { getAuthContext } from '@/auth';
+import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const updateApiKeySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name too long').optional(),
@@ -10,114 +12,140 @@ const updateApiKeySchema = z.object({
   scopes: z.array(z.string()).optional()
 });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
-
-export async function PUT(
-  request: NextRequest,
+/**
+ * PUT /api/user/api-keys/[id] - Update a user API key
+ *
+ * OAuth-only endpoint for managing user's own API keys.
+ */
+async function handleUpdateUserApiKey(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    const auth = await getAuthContext(request);
-    // Only allow OAuth-authenticated users to update keys
-    if (!auth || auth.authType !== 'oauth') {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
 
-    const body = await request.json();
-    const validation = updateApiKeySchema.safeParse(body);
-    if (!validation.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid request data',
-        details: validation.error.errors,
-        success: false
-      }, 400);
-    }
-
-    const updates = validation.data;
-    if (Object.keys(updates).length === 0) {
-      return jsonWithCors(request, {
-        error: 'No updates provided',
-        success: false
-      }, 400);
-    }
-
-    const { data, error } = await supabase
-      .from('zmemory_api_keys')
-      .update(updates)
-      .eq('id', id)
-      .eq('user_id', auth.id)
-      .select('id, name, key_preview, scopes, is_active, last_used_at, expires_at, created_at')
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update API key: ${error.message}`);
-    }
-
-    if (!data) {
-      return jsonWithCors(request, {
-        error: 'API key not found',
-        success: false
-      }, 404);
-    }
-
-    return jsonWithCors(request, {
-      data,
-      success: true
-    });
-  } catch (error) {
-    console.error('Error updating ZMemory API key:', error);
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to update API key'),
-      success: false
-    }, 500);
+  // Special auth check: OAuth only
+  const auth = await getAuthContext(request);
+  if (!auth || auth.authType !== 'oauth') {
+    return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
   }
+
+  const body = await request.json();
+  const validation = updateApiKeySchema.safeParse(body);
+
+  if (!validation.success) {
+    return NextResponse.json({
+      error: 'Invalid request data',
+      details: validation.error.errors,
+      success: false
+    }, { status: 400 });
+  }
+
+  const updates = validation.data;
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({
+      error: 'No updates provided',
+      success: false
+    }, { status: 400 });
+  }
+
+  if (!serviceClient) {
+    return NextResponse.json({
+      error: 'Database not configured',
+      success: false
+    }, { status: 500 });
+  }
+
+  const { data, error } = await serviceClient
+    .from('zmemory_api_keys')
+    .update(updates)
+    .eq('id', id)
+    .eq('user_id', auth.id)
+    .select('id, name, key_preview, scopes, is_active, last_used_at, expires_at, created_at')
+    .single();
+
+  if (error) {
+    return NextResponse.json({
+      error: `Failed to update API key: ${error.message}`,
+      success: false
+    }, { status: 500 });
+  }
+
+  if (!data) {
+    return NextResponse.json({
+      error: 'API key not found',
+      success: false
+    }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    data,
+    success: true
+  });
 }
 
-export async function DELETE(
-  request: NextRequest,
+/**
+ * DELETE /api/user/api-keys/[id] - Delete a user API key
+ *
+ * OAuth-only endpoint for deleting user's own API keys.
+ */
+async function handleDeleteUserApiKey(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const { id } = await params;
-  try {
-    const auth = await getAuthContext(request);
-    // Only allow OAuth-authenticated users to delete keys
-    if (!auth || auth.authType !== 'oauth') {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
 
-    const { error } = await supabase
-      .from('zmemory_api_keys')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', auth.id);
-
-    if (error) {
-      throw new Error(`Failed to delete API key: ${error.message}`);
-    }
-
-    return jsonWithCors(request, {
-      success: true,
-      message: 'API key deleted successfully'
-    });
-  } catch (error) {
-    console.error('Error deleting ZMemory API key:', error);
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to delete API key'),
-      success: false
-    }, 500);
+  // Special auth check: OAuth only
+  const auth = await getAuthContext(request);
+  if (!auth || auth.authType !== 'oauth') {
+    return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
   }
+
+  if (!serviceClient) {
+    return NextResponse.json({
+      error: 'Database not configured',
+      success: false
+    }, { status: 500 });
+  }
+
+  const { error } = await serviceClient
+    .from('zmemory_api_keys')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', auth.id);
+
+  if (error) {
+    return NextResponse.json({
+      error: `Failed to delete API key: ${error.message}`,
+      success: false
+    }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'API key deleted successfully'
+  });
 }
+
+// Apply middleware (auth check happens inside handlers for OAuth-only requirement)
+export const PUT = withStandardMiddleware(handleUpdateUserApiKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  },
+  auth: false // Handled manually in handler for OAuth-specific logic
+});
+
+export const DELETE = withStandardMiddleware(handleDeleteUserApiKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 20
+  },
+  auth: false // Handled manually in handler for OAuth-specific logic
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

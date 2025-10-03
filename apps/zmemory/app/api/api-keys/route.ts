@@ -1,8 +1,9 @@
-import { NextRequest } from 'next/server';
-import { getUser } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { apiKeyService } from '@/lib/api-key-service';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * @swagger
@@ -65,7 +66,7 @@ import { z } from 'zod';
  *         description: API key already exists for this vendor/service
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
- * 
+ *
  * components:
  *   schemas:
  *     ApiKeyWithDetails:
@@ -104,7 +105,7 @@ import { z } from 'zod';
  *         service_display_name:
  *           type: string
  *           nullable: true
- *     
+ *
  *     CreateApiKeyRequest:
  *       type: object
  *       required:
@@ -134,67 +135,60 @@ const createApiKeySchema = z.object({
   display_name: z.string().optional()
 });
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
+/**
+ * GET /api/api-keys - Get user's API keys
+ */
+async function handleGetApiKeys(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+
+  const apiKeys = await apiKeyService.getUserApiKeys(userId);
+
+  return NextResponse.json({
+    data: apiKeys,
+    success: true
+  });
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getUser(request);
-    if (!user) {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
+/**
+ * POST /api/api-keys - Create a new API key
+ */
+async function handleCreateApiKey(
+  request: EnhancedRequest
+): Promise<NextResponse> {
+  const userId = request.userId!;
+  const data = request.validatedBody!;
 
-    const apiKeys = await apiKeyService.getUserApiKeys(user.id);
+  const apiKey = await apiKeyService.createApiKey(userId, data);
 
-    return jsonWithCors(request, { 
-      data: apiKeys, 
-      success: true 
-    });
-  } catch (error) {
-    console.error('Error fetching API keys:', error);
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to fetch API keys'),
-      success: false
-    }, 500);
+  return NextResponse.json({
+    data: apiKey,
+    success: true
+  }, { status: 201 });
+}
+
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetApiKeys, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const user = await getUser(request);
-    if (!user) {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
-
-    const body = await request.json();
-    
-    // Validate request body
-    const validation = createApiKeySchema.safeParse(body);
-    if (!validation.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid request data',
-        details: validation.error.errors,
-        success: false
-      }, 400);
-    }
-
-    const apiKey = await apiKeyService.createApiKey(user.id, validation.data);
-
-    return jsonWithCors(request, { 
-      data: apiKey, 
-      success: true 
-    }, 201);
-  } catch (error) {
-    console.error('Error creating API key:', error);
-    
-    const message = error instanceof Error ? error.message : 'Failed to create API key';
-    const status = message.includes('already exists') ? 409 : 
-                  message.includes('not found') || message.includes('Invalid') ? 400 : 500;
-
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to create API key'),
-      success: false
-    }, status);
+export const POST = withStandardMiddleware(handleCreateApiKey, {
+  validation: {
+    bodySchema: createApiKeySchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 20
   }
-}
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});

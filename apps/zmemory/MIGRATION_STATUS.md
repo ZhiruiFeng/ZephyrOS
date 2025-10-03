@@ -13,7 +13,7 @@ startup instructions for future migration sessions.
 | Phase 0 | Project scaffolding & safety rails | ✅ Complete | Path aliases, documentation baseline, zero-breaking-change guardrails |
 | Phase 1 | Quick-win routes & pattern validation | ✅ Complete | `/api/health`, `/api/docs`, `/api/agent-features`, `/api/ai-tasks` |
 | Phase 2 | High-impact support APIs | ✅ Complete | `/api/categories`, `/api/task-relations`, `/api/vendors`, `/api/interaction-types`, `/api/energy-days`, `/api/conversations` |
-| Phase 3 | Core feature APIs | 🔄 In progress | 19 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`, `/api/time-entries/running`, `/api/tasks/[id]/timer/stop`, `/api/internal/resolve-openai-key`, `/api/internal/resolve-elevenlabs-key`, `/api/docs/spec`, `/api/narrative/seasons/current`, `/api/time-entries/[id]`, `/api/time-entries/day`, `/api/tasks/[id]/timer/start`, `/api/tasks/[id]/time-entries`, `/api/narrative/seasons`, `/api/narrative/episodes`. Averaging 0.42h per route! |
+| Phase 3 | Core feature APIs | 🔄 In progress | 30 routes complete: `/api/activities`, `/api/memories`, `/api/memories/[id]`, `/api/tasks/[id]`, `/api/ai-tasks/[id]`, `/api/api-keys/[id]/test`, `/api/vendors/[id]/services`, `/api/time-entries/running`, `/api/tasks/[id]/timer/stop`, `/api/internal/resolve-openai-key`, `/api/internal/resolve-elevenlabs-key`, `/api/docs/spec`, `/api/narrative/seasons/current`, `/api/time-entries/[id]`, `/api/time-entries/day`, `/api/tasks/[id]/timer/start`, `/api/tasks/[id]/time-entries`, `/api/narrative/seasons`, `/api/narrative/episodes`, `/api/subtasks/reorder`, `/api/ai-usage-stats`, `/api/user/api-keys/[id]`, `/api/tasks/[id]/status`, `/api/user/api-keys`, `/api/narrative/seasons/[id]`, `/api/narrative/episodes/[id]`, `/api/api-keys`, `/api/api-keys/[id]`, `/api/episodes/[id]/anchors`, `/api/memories/reviews/weekly`. Averaging 0.38h per route! |
 
 > Detailed before/after comparisons continue to live in
 > `MIGRATION_COMPARISON.md`. Use this dashboard for actionable next steps.
@@ -53,6 +53,15 @@ startup instructions for future migration sessions.
 | `/api/tasks/[id]/time-entries` | ✅ | Task time entries (GET, POST), 143→165 lines, TimeEntriesQuerySchema + TimeEntryCreateSchema validation, rate limiting (300 GET, 100 POST per 15min) |
 | `/api/narrative/seasons` | ✅ | Seasons CRUD (GET, POST), 159→156 lines (2% reduction), status filtering, active season validation, rate limiting (100 GET, 50 POST per 15min) |
 | `/api/narrative/episodes` | ✅ | Episodes CRUD (GET, POST), 173→170 lines (2% reduction), season filtering, date range validation, rate limiting (100 GET, 50 POST per 15min) |
+| `/api/subtasks/reorder` | ✅ | Reorder subtasks (PUT), 200→131 lines (35% reduction), parent task validation, subtask verification, rate limiting (20 PUT per 15min) |
+| `/api/tasks/[id]/status` | ✅ | Task status update (PUT), 206→176 lines (15% reduction), StatusUpdateSchema validation, completion date handling, rate limiting (100 PUT per 15min) |
+| `/api/user/api-keys` | ✅ | User API keys CRUD (GET, POST), 245→258 lines, OAuth-only endpoints with manual auth check, secure key generation with hashing, rate limiting (100 GET, 20 POST per 15min) |
+| `/api/narrative/seasons/[id]` | ✅ | Season detail CRUD (GET, PATCH, DELETE), 238→232 lines (3% reduction), UpdateSeasonSchema validation, include_episodes query param, active season validation, rate limiting (100 GET, 50 PATCH, 20 DELETE per 15min) |
+| `/api/narrative/episodes/[id]` | ✅ | Episode detail CRUD (GET, PATCH, DELETE), 189→205 lines, UpdateEpisodeSchema validation with date range checks, rate limiting (100 GET, 50 PATCH, 20 DELETE per 15min) |
+| `/api/api-keys` | ✅ | API keys CRUD (GET, POST), 199→195 lines (2% reduction), uses apiKeyService for vendor/service API key management, rate limiting (100 GET, 20 POST per 15min) |
+| `/api/api-keys/[id]` | ✅ | API key detail CRUD (GET, PUT, DELETE), 254→241 lines (5% reduction), updateApiKeySchema with .refine() validation, uses apiKeyService, rate limiting (100 GET, 50 PUT, 20 DELETE per 15min) |
+| `/api/episodes/[id]/anchors` | ✅ | Episode memory anchors (GET), 111→101 lines (9% reduction), episode ownership validation, query params for filtering (relation_type, min_weight), rate limiting (100 GET per 15min) |
+| `/api/memories/reviews/weekly` | ✅ | Weekly memory review (GET), 154→155 lines, WeeklyReviewQuerySchema with transforms, uses generateWeeklyReview business logic, rate limiting (20 GET per 10min) |
 
 Highlights:
 - All migrated routes now rely on the standard middleware pipeline (auth, validation, CORS, rate limiting, error handling).

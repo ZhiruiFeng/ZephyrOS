@@ -1,8 +1,9 @@
-import { NextRequest } from 'next/server';
-import { getUser } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { apiKeyService } from '@/lib/api-key-service';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * @swagger
@@ -115,7 +116,7 @@ import { z } from 'zod';
  *         description: API key not found
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
- * 
+ *
  * components:
  *   schemas:
  *     UpdateApiKeyRequest:
@@ -143,113 +144,97 @@ const updateApiKeySchema = z.object({
   message: 'At least one field must be provided for update'
 });
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
-
-export async function GET(
-  request: NextRequest,
+/**
+ * GET /api/api-keys/[id] - Get a specific API key
+ */
+async function handleGetApiKey(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getUser(request);
-    if (!user) {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!;
 
-    const { id } = await params;
-    const apiKeys = await apiKeyService.getUserApiKeys(user.id);
-    const apiKey = apiKeys.find(key => key.id === id);
+  const apiKeys = await apiKeyService.getUserApiKeys(userId);
+  const apiKey = apiKeys.find(key => key.id === id);
 
-    if (!apiKey) {
-      return jsonWithCors(request, { 
-        error: 'API key not found', 
-        success: false 
-      }, 404);
-    }
-
-    return jsonWithCors(request, { 
-      data: apiKey, 
-      success: true 
-    });
-  } catch (error) {
-    console.error('Error fetching API key:', error);
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to fetch API key'),
+  if (!apiKey) {
+    return NextResponse.json({
+      error: 'API key not found',
       success: false
-    }, 500);
+    }, { status: 404 });
   }
+
+  return NextResponse.json({
+    data: apiKey,
+    success: true
+  });
 }
 
-export async function PUT(
-  request: NextRequest,
+/**
+ * PUT /api/api-keys/[id] - Update an API key
+ */
+async function handleUpdateApiKey(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getUser(request);
-    if (!user) {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!;
+  const data = request.validatedBody!;
 
-    const { id } = await params;
-    const body = await request.json();
-    
-    // Validate request body
-    const validation = updateApiKeySchema.safeParse(body);
-    if (!validation.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid request data',
-        details: validation.error.errors,
-        success: false
-      }, 400);
-    }
+  const apiKey = await apiKeyService.updateApiKey(userId, id, data);
 
-    const apiKey = await apiKeyService.updateApiKey(user.id, id, validation.data);
-
-    return jsonWithCors(request, { 
-      data: apiKey, 
-      success: true 
-    });
-  } catch (error) {
-    console.error('Error updating API key:', error);
-    
-    const message = error instanceof Error ? error.message : 'Failed to update API key';
-    const status = message.includes('not found') ? 404 : 
-                  message.includes('Invalid') ? 400 : 500;
-
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to update API key'),
-      success: false
-    }, status);
-  }
+  return NextResponse.json({
+    data: apiKey,
+    success: true
+  });
 }
 
-export async function DELETE(
-  request: NextRequest,
+/**
+ * DELETE /api/api-keys/[id] - Delete an API key
+ */
+async function handleDeleteApiKey(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getUser(request);
-    if (!user) {
-      return jsonWithCors(request, { error: 'Unauthorized', success: false }, 401);
-    }
+): Promise<NextResponse> {
+  const { id } = await params;
+  const userId = request.userId!;
 
-    const { id } = await params;
-    await apiKeyService.deleteApiKey(user.id, id);
+  await apiKeyService.deleteApiKey(userId, id);
 
-    return jsonWithCors(request, { 
-      success: true,
-      message: 'API key deleted successfully'
-    });
-  } catch (error) {
-    console.error('Error deleting API key:', error);
-    
-    const message = error instanceof Error ? error.message : 'Failed to delete API key';
-    const status = message.includes('not found') ? 404 : 500;
-
-    return jsonWithCors(request, {
-      error: sanitizeErrorMessage(error, 'Failed to delete API key'),
-      success: false
-    }, status);
-  }
+  return NextResponse.json({
+    success: true,
+    message: 'API key deleted successfully'
+  });
 }
+
+// Apply middleware
+export const GET = withStandardMiddleware(handleGetApiKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100
+  }
+});
+
+export const PUT = withStandardMiddleware(handleUpdateApiKey, {
+  validation: {
+    bodySchema: updateApiKeySchema
+  },
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50
+  }
+});
+
+export const DELETE = withStandardMiddleware(handleDeleteApiKey, {
+  rateLimit: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 20
+  }
+});
+
+// Explicit OPTIONS handler for CORS preflight
+export const OPTIONS = withStandardMiddleware(async () => {
+  return new NextResponse(null, { status: 200 });
+}, {
+  auth: false
+});
