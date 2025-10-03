@@ -1,66 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
 import {
   CreateCorePrincipleSchema,
   CorePrincipleQuerySchema,
-  CorePrincipleMemory,
-  CorePrincipleStatus,
-  CorePrincipleCategory,
-  CorePrincipleSource
+  CorePrincipleMemory
 } from '@/lib/core-principles-types';
 import { nowUTC } from '@/lib/time-utils';
-
-// Create Supabase client (service key only for mock fallback; real requests use bearer token)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
-
-// Mock data for when Supabase is not configured
-const generateMockPrinciples = (): CorePrincipleMemory[] => [
-  {
-    id: '1',
-    type: 'core_principle',
-    content: {
-      title: 'Be radically transparent',
-      description: 'Share your thoughts and encourage others to do the same. This creates an environment where the best ideas can emerge.',
-      category: CorePrincipleCategory.WORK_PRINCIPLES,
-      status: CorePrincipleStatus.ACTIVE,
-      is_default: true,
-      source: CorePrincipleSource.RAY_DALIO,
-      trigger_questions: ['What am I not saying that could be helpful?', 'Am I being completely honest about this situation?'],
-      application_examples: ['Share concerns openly in meetings', 'Give direct feedback without sugar-coating'],
-      importance_level: 5,
-      application_count: 15
-    },
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    updated_at: new Date().toISOString(),
-    user_id: 'mock-user'
-  },
-  {
-    id: '2',
-    type: 'core_principle',
-    content: {
-      title: 'Embrace reality and deal with it',
-      description: 'See things as they are, not as you wish they were. Accept the truth and work with it rather than against it.',
-      category: CorePrincipleCategory.LIFE_PRINCIPLES,
-      status: CorePrincipleStatus.ACTIVE,
-      is_default: true,
-      source: CorePrincipleSource.RAY_DALIO,
-      trigger_questions: ['What is really happening here?', 'Am I seeing this situation clearly?'],
-      application_examples: ['Face difficult conversations directly', 'Acknowledge failed strategies'],
-      importance_level: 5,
-      application_count: 8
-    },
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-    updated_at: new Date(Date.now() - 43200000).toISOString(),
-    user_id: 'mock-user'
-  }
-];
 
 /**
  * @swagger
@@ -145,176 +91,101 @@ const generateMockPrinciples = (): CorePrincipleMemory[] => [
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting - more permissive for GET requests
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 300)) { // 300 requests per 15 minutes
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGet(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
-
-    // Parse and validate query parameters
-    const queryResult = CorePrincipleQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryResult.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const query = queryResult.data;
-
-    // If Supabase is not configured, return filtered mock data
-    if (!supabase) {
-      let principles = generateMockPrinciples();
-
-      // Apply filters
-      if (query.category) {
-        principles = principles.filter(principle => principle.content.category === query.category);
-      }
-      if (query.status) {
-        principles = principles.filter(principle => principle.content.status === query.status);
-      }
-      if (query.source) {
-        principles = principles.filter(principle => principle.content.source === query.source);
-      }
-      if (query.is_default !== undefined) {
-        principles = principles.filter(principle => principle.content.is_default === query.is_default);
-      }
-      if (query.importance_level) {
-        principles = principles.filter(principle => principle.content.importance_level === query.importance_level);
-      }
-      if (query.search) {
-        const searchLower = query.search.toLowerCase();
-        principles = principles.filter(principle =>
-          principle.content.title.toLowerCase().includes(searchLower) ||
-          (principle.content.description && principle.content.description.toLowerCase().includes(searchLower))
-        );
-      }
-
-      // Apply pagination
-      const start = query.offset;
-      const end = start + query.limit;
-      principles = principles.slice(start, end);
-
-      return jsonWithCors(request, principles);
-    }
-
-    // Enforce auth (dev fallback to mock when not authenticated)
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      if (process.env.NODE_ENV !== 'production') {
-        // In development, allow UI to work without auth
-        let principles = generateMockPrinciples();
-        // Apply minimal filtering for better UX
-        if (query.category) principles = principles.filter(p => p.content.category === query.category);
-        if (query.status) principles = principles.filter(p => p.content.status === query.status);
-        if (query.source) principles = principles.filter(p => p.content.source === query.source);
-        const start = query.offset;
-        const end = start + query.limit;
-        principles = principles.slice(start, end);
-        return jsonWithCors(request, principles);
-      }
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Build Supabase query against core_principles table
-    let dbQuery = client
-      .from('core_principles')
-      .select('*')
-      .or(`user_id.eq.${userId},is_default.eq.true`); // User's principles + defaults
-
-    // Apply filters
-    if (query.category) {
-      dbQuery = dbQuery.eq('category', query.category);
-    }
-    if (query.status) {
-      dbQuery = dbQuery.eq('status', query.status);
-    }
-    if (query.source) {
-      dbQuery = dbQuery.eq('source', query.source);
-    }
-    if (query.is_default !== undefined) {
-      dbQuery = dbQuery.eq('is_default', query.is_default);
-    }
-    if (query.importance_level) {
-      dbQuery = dbQuery.eq('importance_level', query.importance_level);
-    }
-    if (query.search) {
-      dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
-    }
-
-    // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    if (query.sort_by === 'title') {
-      dbQuery = dbQuery.order('title', { ascending });
-    } else if (query.sort_by === 'importance_level') {
-      dbQuery = dbQuery.order('importance_level', { ascending });
-    } else if (query.sort_by === 'application_count') {
-      dbQuery = dbQuery.order('application_count', { ascending });
-    } else if (query.sort_by === 'last_applied_at') {
-      dbQuery = dbQuery.order('last_applied_at', { ascending, nullsFirst: false });
-    } else {
-      dbQuery = dbQuery.order(query.sort_by, { ascending });
-    }
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
-
-    const { data, error } = await dbQuery;
-
-    if (error) {
-      console.error('Database error:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        // Dev fallback: return mock instead of breaking the UI
-        let principles = generateMockPrinciples();
-        const start = query.offset;
-        const end = start + query.limit;
-        principles = principles.slice(start, end);
-        return jsonWithCors(request, principles);
-      }
-      return NextResponse.json(
-        { error: 'Failed to fetch core principles' },
-        { status: 500 }
-      );
-    }
-
-    // Map core_principles rows to CorePrincipleMemory shape
-    const mapped = (data || []).map((row: any) => ({
-      id: row.id,
-      type: 'core_principle' as const,
-      content: {
-        title: row.title,
-        description: row.description || undefined,
-        category: row.category,
-        status: row.status,
-        is_default: row.is_default,
-        source: row.source,
-        trigger_questions: row.trigger_questions || [],
-        application_examples: row.application_examples || [],
-        personal_notes: row.personal_notes || undefined,
-        importance_level: row.importance_level,
-        application_count: row.application_count,
-        last_applied_at: row.last_applied_at || undefined,
-        deprecated_at: row.deprecated_at || undefined,
-        deprecation_reason: row.deprecation_reason || undefined
-      },
-      metadata: row.metadata || {},
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      user_id: row.user_id
-    }));
-
-    return jsonWithCors(request, mapped);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  // Parse and validate query parameters
+  const queryResult = CorePrincipleQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json(
+      { error: 'Invalid query parameters', details: queryResult.error.errors },
+      { status: 400 }
+    );
   }
+
+  const query = queryResult.data;
+
+  // Build Supabase query against core_principles table
+  let dbQuery = supabaseServer!
+    .from('core_principles')
+    .select('*')
+    .or(`user_id.eq.${userId},is_default.eq.true`); // User's principles + defaults
+
+  // Apply filters
+  if (query.category) {
+    dbQuery = dbQuery.eq('category', query.category);
+  }
+  if (query.status) {
+    dbQuery = dbQuery.eq('status', query.status);
+  }
+  if (query.source) {
+    dbQuery = dbQuery.eq('source', query.source);
+  }
+  if (query.is_default !== undefined) {
+    dbQuery = dbQuery.eq('is_default', query.is_default);
+  }
+  if (query.importance_level) {
+    dbQuery = dbQuery.eq('importance_level', query.importance_level);
+  }
+  if (query.search) {
+    dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
+  }
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  if (query.sort_by === 'title') {
+    dbQuery = dbQuery.order('title', { ascending });
+  } else if (query.sort_by === 'importance_level') {
+    dbQuery = dbQuery.order('importance_level', { ascending });
+  } else if (query.sort_by === 'application_count') {
+    dbQuery = dbQuery.order('application_count', { ascending });
+  } else if (query.sort_by === 'last_applied_at') {
+    dbQuery = dbQuery.order('last_applied_at', { ascending, nullsFirst: false });
+  } else {
+    dbQuery = dbQuery.order(query.sort_by, { ascending });
+  }
+
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch core principles' },
+      { status: 500 }
+    );
+  }
+
+  // Map core_principles rows to CorePrincipleMemory shape
+  const mapped = (data || []).map((row: any) => ({
+    id: row.id,
+    type: 'core_principle' as const,
+    content: {
+      title: row.title,
+      description: row.description || undefined,
+      category: row.category,
+      status: row.status,
+      is_default: row.is_default,
+      source: row.source,
+      trigger_questions: row.trigger_questions || [],
+      application_examples: row.application_examples || [],
+      personal_notes: row.personal_notes || undefined,
+      importance_level: row.importance_level,
+      application_count: row.application_count,
+      last_applied_at: row.last_applied_at || undefined,
+      deprecated_at: row.deprecated_at || undefined,
+      deprecation_reason: row.deprecation_reason || undefined
+    },
+    metadata: row.metadata || {},
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    user_id: row.user_id
+  }));
+
+  return NextResponse.json(mapped);
 }
 
 /**
@@ -351,118 +222,92 @@ export async function GET(request: NextRequest) {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) { // Stricter limit for POST
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handlePost(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
+  const body = await request.json();
 
-    const body = await request.json();
-
-    // Validate request body
-    const validationResult = CreateCorePrincipleSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('CREATE CORE PRINCIPLE Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid core principle data', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const principleData = validationResult.data;
-    const now = nowUTC();
-
-    // If Supabase is not configured, return mock response
-    if (!supabase) {
-      const mockPrinciple: CorePrincipleMemory = {
-        id: Date.now().toString(),
-        type: 'core_principle',
-        content: principleData.content,
-        metadata: principleData.metadata,
-        created_at: now,
-        updated_at: now,
-        user_id: 'mock-user'
-      };
-      return jsonWithCors(request, mockPrinciple, 201);
-    }
-
-    // Enforce auth
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    const insertPayload: any = {
-      title: principleData.content.title,
-      description: principleData.content.description || null,
-      category: principleData.content.category,
-      status: principleData.content.status || 'active',
-      is_default: principleData.content.is_default || false,
-      source: principleData.content.source || 'user_custom',
-      trigger_questions: principleData.content.trigger_questions || [],
-      application_examples: principleData.content.application_examples || [],
-      personal_notes: principleData.content.personal_notes || null,
-      importance_level: principleData.content.importance_level || 1,
-      application_count: principleData.content.application_count || 0,
-      last_applied_at: principleData.content.last_applied_at || null,
-      deprecated_at: principleData.content.deprecated_at || null,
-      deprecation_reason: principleData.content.deprecation_reason || null,
-      metadata: principleData.metadata || {},
-      created_at: now,
-      updated_at: now
-    };
-
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(insertPayload, userId, request);
-
-    const { data, error } = await client
-      .from('core_principles')
-      .insert(insertPayload)
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to create core principle' }, 500);
-    }
-
-    const mapped: CorePrincipleMemory = {
-      id: data.id,
-      type: 'core_principle',
-      content: {
-        title: data.title,
-        description: data.description || undefined,
-        category: data.category,
-        status: data.status,
-        is_default: data.is_default,
-        source: data.source,
-        trigger_questions: data.trigger_questions || [],
-        application_examples: data.application_examples || [],
-        personal_notes: data.personal_notes || undefined,
-        importance_level: data.importance_level,
-        application_count: data.application_count,
-        last_applied_at: data.last_applied_at || undefined,
-        deprecated_at: data.deprecated_at || undefined,
-        deprecation_reason: data.deprecation_reason || undefined
-      },
-      metadata: data.metadata || {},
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      user_id: data.user_id
-    };
-
-    return jsonWithCors(request, mapped, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  // Validate request body
+  const validationResult = CreateCorePrincipleSchema.safeParse(body);
+  if (!validationResult.success) {
+    console.error('CREATE CORE PRINCIPLE Validation failed:', validationResult.error.errors);
+    return NextResponse.json(
+      { error: 'Invalid core principle data', details: validationResult.error.errors },
+      { status: 400 }
+    );
   }
+
+  const principleData = validationResult.data;
+  const now = nowUTC();
+
+  const insertPayload: any = {
+    title: principleData.content.title,
+    description: principleData.content.description || null,
+    category: principleData.content.category,
+    status: principleData.content.status || 'active',
+    is_default: principleData.content.is_default || false,
+    source: principleData.content.source || 'user_custom',
+    trigger_questions: principleData.content.trigger_questions || [],
+    application_examples: principleData.content.application_examples || [],
+    personal_notes: principleData.content.personal_notes || null,
+    importance_level: principleData.content.importance_level || 1,
+    application_count: principleData.content.application_count || 0,
+    last_applied_at: principleData.content.last_applied_at || null,
+    deprecated_at: principleData.content.deprecated_at || null,
+    deprecation_reason: principleData.content.deprecation_reason || null,
+    metadata: principleData.metadata || {},
+    user_id: userId,
+    created_at: now,
+    updated_at: now
+  };
+
+  const { data, error } = await supabaseServer!
+    .from('core_principles')
+    .insert(insertPayload)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to create core principle' }, { status: 500 });
+  }
+
+  const mapped: CorePrincipleMemory = {
+    id: data.id,
+    type: 'core_principle',
+    content: {
+      title: data.title,
+      description: data.description || undefined,
+      category: data.category,
+      status: data.status,
+      is_default: data.is_default,
+      source: data.source,
+      trigger_questions: data.trigger_questions || [],
+      application_examples: data.application_examples || [],
+      personal_notes: data.personal_notes || undefined,
+      importance_level: data.importance_level,
+      application_count: data.application_count,
+      last_applied_at: data.last_applied_at || undefined,
+      deprecated_at: data.deprecated_at || undefined,
+      deprecation_reason: data.deprecation_reason || undefined
+    },
+    metadata: data.metadata || {},
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    user_id: data.user_id
+  };
+
+  return NextResponse.json(mapped, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 300 }
+});
+
+export const POST = withStandardMiddleware(handlePost, {
+  validation: { bodySchema: CreateCorePrincipleSchema },
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => new NextResponse(null, { status: 200 }), {
+  auth: false
+});

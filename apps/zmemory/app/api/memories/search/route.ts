@@ -1,16 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/lib/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
 import { z } from 'zod';
-
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
 
 // Search query validation schema
 const MemorySearchSchema = z.object({
@@ -49,7 +40,7 @@ const generateMockSearchResults = (query: string) => [
     highlights: [`Found relevant content about <mark>${query}</mark>`]
   },
   {
-    id: 'search-2', 
+    id: 'search-2',
     note: 'Another memory that relates to your search query through contextual matching.',
     memory_type: 'thought',
     captured_at: new Date(Date.now() - 7200000).toISOString(),
@@ -127,106 +118,76 @@ const generateMockSearchResults = (query: string) => [
  *       200:
  *         description: Search results with relevance scores and highlights
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 100)) { // More permissive for search
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGet(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
-    
-    // Parse and validate search parameters
-    const searchResult = MemorySearchSchema.safeParse(Object.fromEntries(searchParams));
-    if (!searchResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid search parameters', details: searchResult.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const search = searchResult.data;
-
-    // If Supabase is not configured, return mock search results
-    if (!supabase) {
-      const mockResults = generateMockSearchResults(search.q);
-      return jsonWithCors(request, {
-        results: mockResults.slice(search.offset, search.offset + search.limit),
-        total_count: mockResults.length,
-        search_type: search.search_type,
-        query: search.q
-      });
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      if (process.env.NODE_ENV !== 'production') {
-        const mockResults = generateMockSearchResults(search.q);
-        return jsonWithCors(request, {
-          results: mockResults.slice(search.offset, search.offset + search.limit),
-          total_count: mockResults.length
-        });
-      }
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-
-    let searchResults: any[] = [];
-    let totalCount = 0;
-
-    // Perform different types of search based on search_type
-    switch (search.search_type) {
-      case 'full_text':
-        const fullTextResults = await performFullTextSearch(client, userId, search);
-        searchResults = fullTextResults.results;
-        totalCount = fullTextResults.totalCount;
-        break;
-        
-      case 'semantic':
-        // For semantic search, we would use vector embeddings
-        // For now, fall back to enhanced full-text search
-        const semanticResults = await performSemanticSearch(client, userId, search);
-        searchResults = semanticResults.results;
-        totalCount = semanticResults.totalCount;
-        break;
-        
-      case 'hybrid':
-        // Combine full-text and semantic results
-        const hybridResults = await performHybridSearch(client, userId, search);
-        searchResults = hybridResults.results;
-        totalCount = hybridResults.totalCount;
-        break;
-    }
-
-
-    return jsonWithCors(request, {
-      results: searchResults,
-      total_count: totalCount,
-      search_type: search.search_type,
-      query: search.q,
-      filters: {
-        memory_type: search.memory_type,
-        importance_level: search.importance_level,
-        is_highlight: search.is_highlight,
-        from_date: search.from_date,
-        to_date: search.to_date
-      }
-    });
-
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  // Parse and validate search parameters
+  const searchResult = MemorySearchSchema.safeParse(Object.fromEntries(searchParams));
+  if (!searchResult.success) {
+    return NextResponse.json(
+      { error: 'Invalid search parameters', details: searchResult.error.errors },
+      { status: 400 }
+    );
   }
+
+  const search = searchResult.data;
+
+  // If Supabase is not configured, return mock search results
+  if (!supabaseServer) {
+    const mockResults = generateMockSearchResults(search.q);
+    return NextResponse.json({
+      results: mockResults.slice(search.offset, search.offset + search.limit),
+      total_count: mockResults.length,
+      search_type: search.search_type,
+      query: search.q
+    });
+  }
+
+  let searchResults: any[] = [];
+  let totalCount = 0;
+
+  // Perform different types of search based on search_type
+  switch (search.search_type) {
+    case 'full_text':
+      const fullTextResults = await performFullTextSearch(supabaseServer, userId, search);
+      searchResults = fullTextResults.results;
+      totalCount = fullTextResults.totalCount;
+      break;
+
+    case 'semantic':
+      // For semantic search, we would use vector embeddings
+      // For now, fall back to enhanced full-text search
+      const semanticResults = await performSemanticSearch(supabaseServer, userId, search);
+      searchResults = semanticResults.results;
+      totalCount = semanticResults.totalCount;
+      break;
+
+    case 'hybrid':
+      // Combine full-text and semantic results
+      const hybridResults = await performHybridSearch(supabaseServer, userId, search);
+      searchResults = hybridResults.results;
+      totalCount = hybridResults.totalCount;
+      break;
+  }
+
+  return NextResponse.json({
+    results: searchResults,
+    total_count: totalCount,
+    search_type: search.search_type,
+    query: search.q,
+    filters: {
+      memory_type: search.memory_type,
+      importance_level: search.importance_level,
+      is_highlight: search.is_highlight,
+      from_date: search.from_date,
+      to_date: search.to_date
+    }
+  });
 }
 
 // Full-text search implementation
 async function performFullTextSearch(client: any, userId: string, search: MemorySearch) {
-
   let query = client
     .from('memories')
     .select(`
@@ -237,24 +198,24 @@ async function performFullTextSearch(client: any, userId: string, search: Memory
 
   // Build search conditions
   const searchTerms = search.q.toLowerCase().split(' ').filter(term => term.length > 2);
-  
+
   // Create search conditions for multiple fields
   const searchConditions: string[] = [];
-  
+
   // Search in note content (primary)
   searchConditions.push(`note.ilike.%${search.q}%`);
-  
+
   if (search.include_context) {
     searchConditions.push(`context.ilike.%${search.q}%`);
   }
-  
+
   if (search.include_place) {
     searchConditions.push(`place_name.ilike.%${search.q}%`);
   }
-  
+
   // Search in source field
   searchConditions.push(`source.ilike.%${search.q}%`);
-  
+
   // Apply search conditions
   if (searchConditions.length > 0) {
     query = query.or(searchConditions.join(','));
@@ -286,11 +247,11 @@ async function performFullTextSearch(client: any, userId: string, search: Memory
 
   // Order by relevance (salience_score) and recency
   query = query.order('salience_score', { ascending: false })
-                .order('captured_at', { ascending: false })
-                .range(search.offset, search.offset + search.limit - 1);
+    .order('captured_at', { ascending: false })
+    .range(search.offset, search.offset + search.limit - 1);
 
   const { data, error } = await query;
-  
+
   if (error) {
     console.error('Full-text search error:', error);
     throw error;
@@ -315,67 +276,65 @@ async function performFullTextSearch(client: any, userId: string, search: Memory
 
 // Semantic search placeholder (would use vector embeddings)
 async function performSemanticSearch(client: any, userId: string, search: MemorySearch) {
-  
   // TODO: Implement actual semantic search with vector embeddings
   // For now, perform enhanced full-text search with synonym expansion
-  
+
   return performFullTextSearch(client, userId, search);
 }
 
 // Hybrid search combining multiple approaches
 async function performHybridSearch(client: any, userId: string, search: MemorySearch) {
-  
   // Get results from both full-text and semantic search
   const fullTextResults = await performFullTextSearch(client, userId, search);
   // const semanticResults = await performSemanticSearch(client, userId, search);
-  
+
   // For now, just return full-text results
   // TODO: Implement proper result fusion and ranking
-  
+
   return fullTextResults;
 }
 
 // Calculate relevance score based on multiple factors
 function calculateRelevanceScore(memory: any, query: string): number {
   let score = 0;
-  
+
   const queryLower = query.toLowerCase();
   const noteLower = (memory.note || '').toLowerCase();
   const contextLower = (memory.context || '').toLowerCase();
   const placeLower = (memory.place_name || '').toLowerCase();
-  
+
   // Exact match in note (highest weight)
   if (noteLower.includes(queryLower)) score += 1.0;
-  
+
   // Match in context
   if (contextLower.includes(queryLower)) score += 0.7;
-  
+
   // Match in place name
   if (placeLower.includes(queryLower)) score += 0.5;
-  
+
   // Boost for highlights
   if (memory.is_highlight) score += 0.3;
-  
+
   // Boost for high salience
   score += (memory.salience_score || 0) * 0.2;
-  
+
   // Recency boost (newer memories get slight boost)
   const daysSinceCapture = (Date.now() - new Date(memory.captured_at).getTime()) / (1000 * 60 * 60 * 24);
   if (daysSinceCapture < 7) score += 0.1;
   else if (daysSinceCapture < 30) score += 0.05;
-  
+
   return Math.min(1.0, score); // Cap at 1.0
 }
 
 // Determine primary match type
 function determineMatchType(memory: any, query: string): string {
   const queryLower = query.toLowerCase();
-  
+
   if ((memory.note || '').toLowerCase().includes(queryLower)) return 'content';
   if ((memory.context || '').toLowerCase().includes(queryLower)) return 'context';
   if ((memory.place_name || '').toLowerCase().includes(queryLower)) return 'location';
   if ((memory.source || '').toLowerCase().includes(queryLower)) return 'source';
-  
+
   return 'other';
 }
 
@@ -383,25 +342,25 @@ function determineMatchType(memory: any, query: string): string {
 function generateHighlights(memory: any, query: string): string[] {
   const highlights: string[] = [];
   const queryLower = query.toLowerCase();
-  
+
   // Highlight in note content
   if (memory.note && memory.note.toLowerCase().includes(queryLower)) {
     const highlighted = highlightText(memory.note, query);
     highlights.push(highlighted);
   }
-  
+
   // Highlight in context
   if (memory.context && memory.context.toLowerCase().includes(queryLower)) {
     const highlighted = highlightText(memory.context, query);
     highlights.push(`Context: ${highlighted}`);
   }
-  
+
   // Highlight in place name
   if (memory.place_name && memory.place_name.toLowerCase().includes(queryLower)) {
     const highlighted = highlightText(memory.place_name, query);
     highlights.push(`Location: ${highlighted}`);
   }
-  
+
   return highlights;
 }
 
@@ -411,6 +370,6 @@ function highlightText(text: string, query: string): string {
   return text.replace(regex, '<mark>$1</mark>');
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 100 }
+});

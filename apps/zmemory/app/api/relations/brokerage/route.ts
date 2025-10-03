@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
 
 // Query validation schema
@@ -200,164 +199,152 @@ const generateMockBrokerageOpportunities = () => [
  *       500:
  *         description: Server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const rlKey = `${getClientIP(request)}:GET:/api/relations/brokerage`;
-    if (isRateLimited(rlKey, 15 * 60 * 1000, 30)) { // Lower limit due to computational complexity
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
+async function handleGet(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!
+
+  const { searchParams } = new URL(request.url)
+
+  // Parse and validate query parameters
+  const queryResult = BrokerageQuerySchema.safeParse(Object.fromEntries(searchParams))
+  if (!queryResult.success) {
+    return NextResponse.json({ error: 'Invalid query parameters', details: queryResult.error.errors }, { status: 400 })
+  }
+
+  const query = queryResult.data
+
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    const mockOpportunities = generateMockBrokerageOpportunities()
+    const mockSummary = {
+      total_opportunities: mockOpportunities.length,
+      high_potential: mockOpportunities.filter(o => o.strength_score >= 80).length,
+      average_strength_score: 80
     }
 
-    const { searchParams } = new URL(request.url);
+    return NextResponse.json({
+      opportunities: mockOpportunities.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10)),
+      summary: mockSummary
+    })
+  }
 
-    // Parse and validate query parameters
-    const queryResult = BrokerageQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
-    }
+  // Complex query to find brokerage opportunities
+  // This identifies pairs of people who:
+  // 1. Are both connected to the user
+  // 2. Are not already connected to each other (or introduction not recently attempted)
+  // 3. Have complementary profiles that suggest mutual benefit
 
-    const query = queryResult.data;
+  // First, get all active relationship profiles for the user
+  const { data: profiles, error: profilesError } = await supabaseServer!
+    .from('relationship_profiles')
+    .select(`
+      id,
+      person_id,
+      tier,
+      health_score,
+      relationship_context,
+      person:people(
+        id,
+        name,
+        email,
+        company,
+        job_title,
+        location,
+        avatar_url
+      )
+    `)
+    .eq('user_id', userId)
+    .eq('is_dormant', false)
+    .gte('health_score', 50) // Only suggest introductions for healthy relationships
 
-    // If Supabase is not configured, return mock data
-    if (!supabaseServer) {
-      const mockOpportunities = generateMockBrokerageOpportunities();
+  if (profilesError) {
+    console.error('Database error fetching profiles:', profilesError)
+    if (process.env.NODE_ENV !== 'production') {
+      const mockOpportunities = generateMockBrokerageOpportunities()
       const mockSummary = {
         total_opportunities: mockOpportunities.length,
-        high_potential: mockOpportunities.filter(o => o.strength_score >= 80).length,
+        high_potential: 2,
         average_strength_score: 80
-      };
-
-      return jsonWithCors(request, {
+      }
+      return NextResponse.json({
         opportunities: mockOpportunities.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10)),
         summary: mockSummary
-      });
+      })
     }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Complex query to find brokerage opportunities
-    // This identifies pairs of people who:
-    // 1. Are both connected to the user
-    // 2. Are not already connected to each other (or introduction not recently attempted)
-    // 3. Have complementary profiles that suggest mutual benefit
-
-    // First, get all active relationship profiles for the user
-    const { data: profiles, error: profilesError } = await supabaseServer
-      .from('relationship_profiles')
-      .select(`
-        id,
-        person_id,
-        tier,
-        health_score,
-        relationship_context,
-        person:people(
-          id,
-          name,
-          email,
-          company,
-          job_title,
-          location,
-          avatar_url
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('is_dormant', false)
-      .gte('health_score', 50); // Only suggest introductions for healthy relationships
-
-    if (profilesError) {
-      console.error('Database error fetching profiles:', profilesError);
-      if (process.env.NODE_ENV !== 'production') {
-        const mockOpportunities = generateMockBrokerageOpportunities();
-        const mockSummary = {
-          total_opportunities: mockOpportunities.length,
-          high_potential: 2,
-          average_strength_score: 80
-        };
-        return jsonWithCors(request, {
-          opportunities: mockOpportunities.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10)),
-          summary: mockSummary
-        });
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch brokerage opportunities' }, 500);
-    }
-
-    // Get recent introductions to exclude
-    const recentCutoff = new Date();
-    recentCutoff.setDate(recentCutoff.getDate() - (query.exclude_recent_days || 90));
-
-    const { data: recentIntros } = await supabaseServer
-      .from('relationship_introductions')
-      .select('person_a_id, person_b_id')
-      .eq('user_id', userId)
-      .gte('created_at', recentCutoff.toISOString());
-
-    const recentIntroSet = new Set(
-      (recentIntros || []).map(intro => `${intro.person_a_id}-${intro.person_b_id}`)
-    );
-
-    // Generate brokerage opportunities
-    const opportunities = [];
-    const processedPairs = new Set();
-
-    for (let i = 0; i < (profiles || []).length; i++) {
-      for (let j = i + 1; j < (profiles || []).length; j++) {
-        const personA = profiles![i];
-        const personB = profiles![j];
-
-        // Skip if introduction was recently attempted
-        const pairKey1 = `${personA.person_id}-${personB.person_id}`;
-        const pairKey2 = `${personB.person_id}-${personA.person_id}`;
-
-        if (recentIntroSet.has(pairKey1) || recentIntroSet.has(pairKey2) || processedPairs.has(pairKey1)) {
-          continue;
-        }
-        processedPairs.add(pairKey1);
-        processedPairs.add(pairKey2);
-
-        // Calculate brokerage opportunity scores
-        const opportunity = calculateBrokerageOpportunity(personA, personB);
-
-        if (opportunity && opportunity.strength_score >= (query.min_strength_score || 60)) {
-          opportunities.push(opportunity);
-        }
-      }
-    }
-
-    // Sort opportunities
-    opportunities.sort((a, b) => {
-      const sortField = query.sort_by || 'strength_score';
-      const sortOrder = query.sort_order === 'asc' ? 1 : -1;
-      const aValue = Number(a[sortField as keyof typeof a] || 0);
-      const bValue = Number(b[sortField as keyof typeof b] || 0);
-      return sortOrder * (bValue - aValue);
-    });
-
-    // Apply pagination
-    const paginatedOpportunities = opportunities.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10));
-
-    // Calculate summary
-    const summary = {
-      total_opportunities: opportunities.length,
-      high_potential: opportunities.filter(o => o.strength_score >= 80).length,
-      average_strength_score: opportunities.length > 0
-        ? Math.round(opportunities.reduce((sum, o) => sum + o.strength_score, 0) / opportunities.length)
-        : 0
-    };
-
-    return jsonWithCors(request, {
-      opportunities: paginatedOpportunities,
-      summary
-    });
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json({ error: 'Failed to fetch brokerage opportunities' }, { status: 500 })
   }
+
+  // Get recent introductions to exclude
+  const recentCutoff = new Date()
+  recentCutoff.setDate(recentCutoff.getDate() - (query.exclude_recent_days || 90))
+
+  const { data: recentIntros } = await supabaseServer!
+    .from('relationship_introductions')
+    .select('person_a_id, person_b_id')
+    .eq('user_id', userId)
+    .gte('created_at', recentCutoff.toISOString())
+
+  const recentIntroSet = new Set(
+    (recentIntros || []).map(intro => `${intro.person_a_id}-${intro.person_b_id}`)
+  )
+
+  // Generate brokerage opportunities
+  const opportunities = []
+  const processedPairs = new Set()
+
+  for (let i = 0; i < (profiles || []).length; i++) {
+    for (let j = i + 1; j < (profiles || []).length; j++) {
+      const personA = profiles![i]
+      const personB = profiles![j]
+
+      // Skip if introduction was recently attempted
+      const pairKey1 = `${personA.person_id}-${personB.person_id}`
+      const pairKey2 = `${personB.person_id}-${personA.person_id}`
+
+      if (recentIntroSet.has(pairKey1) || recentIntroSet.has(pairKey2) || processedPairs.has(pairKey1)) {
+        continue
+      }
+      processedPairs.add(pairKey1)
+      processedPairs.add(pairKey2)
+
+      // Calculate brokerage opportunity scores
+      const opportunity = calculateBrokerageOpportunity(personA, personB)
+
+      if (opportunity && opportunity.strength_score >= (query.min_strength_score || 60)) {
+        opportunities.push(opportunity)
+      }
+    }
+  }
+
+  // Sort opportunities
+  opportunities.sort((a, b) => {
+    const sortField = query.sort_by || 'strength_score'
+    const sortOrder = query.sort_order === 'asc' ? 1 : -1
+    const aValue = Number(a[sortField as keyof typeof a] || 0)
+    const bValue = Number(b[sortField as keyof typeof b] || 0)
+    return sortOrder * (bValue - aValue)
+  })
+
+  // Apply pagination
+  const paginatedOpportunities = opportunities.slice(query.offset || 0, (query.offset || 0) + (query.limit || 10))
+
+  // Calculate summary
+  const summary = {
+    total_opportunities: opportunities.length,
+    high_potential: opportunities.filter(o => o.strength_score >= 80).length,
+    average_strength_score: opportunities.length > 0
+      ? Math.round(opportunities.reduce((sum, o) => sum + o.strength_score, 0) / opportunities.length)
+      : 0
+  }
+
+  return NextResponse.json({
+    opportunities: paginatedOpportunities,
+    summary
+  })
 }
+
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 30 }
+})
 
 // Helper function to calculate brokerage opportunity strength
 function calculateBrokerageOpportunity(personA: any, personB: any) {
@@ -543,6 +530,6 @@ function generateTags(personA: any, personB: any): string[] {
   return tags;
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const OPTIONS = withStandardMiddleware(async () => new NextResponse(null, { status: 200 }), {
+  auth: false
+})

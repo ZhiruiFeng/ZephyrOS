@@ -50,14 +50,14 @@ export const InitiativeCard = React.memo(function InitiativeCard({
   const StatusIcon = status.icon
 
   // Priority badge styling
-  const priorityConfig = {
+  const priorityConfig: Record<string, { color: string; label: string }> = {
     urgent: { color: 'bg-red-500', label: 'Urgent' },
     high: { color: 'bg-orange-500', label: 'High' },
     medium: { color: 'bg-blue-500', label: 'Medium' },
     low: { color: 'bg-gray-400', label: 'Low' }
   }
 
-  const priority = initiative.priority ? priorityConfig[initiative.priority] : null
+  const priority = initiative.priority && priorityConfig[initiative.priority] ? priorityConfig[initiative.priority] : null
 
   // Due date status
   const isDueSoon = initiative.due_date && new Date(initiative.due_date).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000

@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/lib/middleware';
 import { supabaseServer } from '@/lib/supabase-server';
-import { getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
 import { z } from 'zod';
 import { nowUTC } from '@/lib/time-utils';
 
@@ -14,11 +13,11 @@ const TouchpointCreateSchema = z.object({
   sentiment: z.number().int().min(-2).max(2).optional().default(0),
   duration_minutes: z.number().int().min(0).optional(),
   is_give: z.boolean().optional().default(false),
-  give_ask_type: z.enum(['advice', 'referral', 'support', 'favor', 'information', 'other']).optional(),
-  context: z.enum(['work', 'personal', 'social', 'professional_development', 'other']).optional(),
+  give_ask_type: z.string().transform(val => val === '' ? undefined : val).pipe(z.enum(['advice', 'referral', 'support', 'favor', 'information', 'other'])).optional(),
+  context: z.string().transform(val => val === '' ? undefined : val).pipe(z.enum(['work', 'personal', 'social', 'professional_development', 'other'])).optional(),
   tags: z.array(z.string()).optional(),
   needs_followup: z.boolean().optional().default(false),
-  followup_date: z.string().datetime().optional(),
+  followup_date: z.string().transform(val => val === '' ? undefined : val).pipe(z.string().datetime()).optional(),
   followup_notes: z.string().optional(),
 });
 
@@ -178,119 +177,102 @@ const generateMockTouchpoints = () => [
  *       500:
  *         description: Server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const rlKey = `${getClientIP(request)}:GET:/api/relations/touchpoints`;
-    if (isRateLimited(rlKey, 15 * 60 * 1000, 200)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGet(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
+  // Parse and validate query parameters
+  const queryResult = TouchpointQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json({ error: 'Invalid query parameters', details: queryResult.error.errors }, { status: 400 });
+  }
 
-    // Parse and validate query parameters
-    const queryResult = TouchpointQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return jsonWithCors(request, { error: 'Invalid query parameters', details: queryResult.error.errors }, 400);
-    }
+  const query = queryResult.data;
 
-    const query = queryResult.data;
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    let touchpoints = generateMockTouchpoints();
 
-    // If Supabase is not configured, return mock data
-    if (!supabaseServer) {
-      let touchpoints = generateMockTouchpoints();
-
-      // Apply basic filters to mock data
-      if (query.person_id) {
-        touchpoints = touchpoints.filter(t => t.person_id === query.person_id);
-      }
-      if (query.channel) {
-        touchpoints = touchpoints.filter(t => t.channel === query.channel);
-      }
-      if (query.direction) {
-        touchpoints = touchpoints.filter(t => t.direction === query.direction);
-      }
-
-      return jsonWithCors(request, touchpoints.slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Build Supabase query with person data
-    let dbQuery = supabaseServer
-      .from('relationship_touchpoints')
-      .select(`
-        *,
-        person:people(
-          id,
-          name,
-          email,
-          company,
-          job_title,
-          avatar_url
-        )
-      `)
-      .eq('user_id', userId);
-
-    // Apply filters
+    // Apply basic filters to mock data
     if (query.person_id) {
-      dbQuery = dbQuery.eq('person_id', query.person_id);
+      touchpoints = touchpoints.filter(t => t.person_id === query.person_id);
     }
     if (query.channel) {
-      dbQuery = dbQuery.eq('channel', query.channel);
+      touchpoints = touchpoints.filter(t => t.channel === query.channel);
     }
     if (query.direction) {
-      dbQuery = dbQuery.eq('direction', query.direction);
-    }
-    if (query.sentiment_min !== undefined) {
-      dbQuery = dbQuery.gte('sentiment', query.sentiment_min);
-    }
-    if (query.sentiment_max !== undefined) {
-      dbQuery = dbQuery.lte('sentiment', query.sentiment_max);
-    }
-    if (query.is_give !== undefined) {
-      dbQuery = dbQuery.eq('is_give', query.is_give);
-    }
-    if (query.context) {
-      dbQuery = dbQuery.eq('context', query.context);
-    }
-    if (query.from_date) {
-      dbQuery = dbQuery.gte('created_at', query.from_date);
-    }
-    if (query.to_date) {
-      dbQuery = dbQuery.lte('created_at', query.to_date);
-    }
-    if (query.needs_followup !== undefined) {
-      dbQuery = dbQuery.eq('needs_followup', query.needs_followup);
+      touchpoints = touchpoints.filter(t => t.direction === query.direction);
     }
 
-    // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    dbQuery = dbQuery.order(query.sort_by, { ascending });
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
-
-    const { data, error } = await dbQuery;
-
-    if (error) {
-      console.error('Database error:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockTouchpoints().slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
-      }
-      return jsonWithCors(request, { error: 'Failed to fetch touchpoints' }, 500);
-    }
-
-    return jsonWithCors(request, data || []);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(touchpoints.slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
   }
+
+  // Build Supabase query with person data
+  let dbQuery = supabaseServer
+    .from('relationship_touchpoints')
+    .select(`
+      *,
+      person:people(
+        id,
+        name,
+        email,
+        company,
+        job_title,
+        avatar_url
+      )
+    `)
+    .eq('user_id', userId);
+
+  // Apply filters
+  if (query.person_id) {
+    dbQuery = dbQuery.eq('person_id', query.person_id);
+  }
+  if (query.channel) {
+    dbQuery = dbQuery.eq('channel', query.channel);
+  }
+  if (query.direction) {
+    dbQuery = dbQuery.eq('direction', query.direction);
+  }
+  if (query.sentiment_min !== undefined) {
+    dbQuery = dbQuery.gte('sentiment', query.sentiment_min);
+  }
+  if (query.sentiment_max !== undefined) {
+    dbQuery = dbQuery.lte('sentiment', query.sentiment_max);
+  }
+  if (query.is_give !== undefined) {
+    dbQuery = dbQuery.eq('is_give', query.is_give);
+  }
+  if (query.context) {
+    dbQuery = dbQuery.eq('context', query.context);
+  }
+  if (query.from_date) {
+    dbQuery = dbQuery.gte('created_at', query.from_date);
+  }
+  if (query.to_date) {
+    dbQuery = dbQuery.lte('created_at', query.to_date);
+  }
+  if (query.needs_followup !== undefined) {
+    dbQuery = dbQuery.eq('needs_followup', query.needs_followup);
+  }
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  dbQuery = dbQuery.order(query.sort_by, { ascending });
+
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset || 0, (query.offset || 0) + (query.limit || 50) - 1);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json(generateMockTouchpoints().slice(query.offset || 0, (query.offset || 0) + (query.limit || 50)));
+    }
+    return NextResponse.json({ error: 'Failed to fetch touchpoints' }, { status: 500 });
+  }
+
+  return NextResponse.json(data || []);
 }
 
 /**
@@ -381,102 +363,91 @@ export async function GET(request: NextRequest) {
  *       500:
  *         description: Server error
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const postKey = `${getClientIP(request)}:POST:/api/relations/touchpoints`;
-    if (isRateLimited(postKey, 15 * 60 * 1000, 100)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handlePost(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
 
-    const body = await request.json();
+  // Validate request body
+  const validationResult = TouchpointCreateSchema.safeParse(request.validatedBody);
+  if (!validationResult.success) {
+    return NextResponse.json({ error: 'Invalid touchpoint data', details: validationResult.error.errors }, { status: 400 });
+  }
 
-    // Validate request body
-    const validationResult = TouchpointCreateSchema.safeParse(body);
-    if (!validationResult.success) {
-      return jsonWithCors(request, { error: 'Invalid touchpoint data', details: validationResult.error.errors }, 400);
-    }
+  const touchpointData = validationResult.data;
+  const now = nowUTC();
 
-    const touchpointData = validationResult.data;
-    const now = nowUTC();
-
-    // If Supabase is not configured, return mock response
-    if (!supabaseServer) {
-      const mockTouchpoint = {
-        id: Date.now().toString(),
-        user_id: 'mock-user',
-        ...touchpointData,
-        created_at: now
-      };
-      return jsonWithCors(request, mockTouchpoint, 201);
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    // Start a transaction to create touchpoint and update relationship profile
-    const touchpointPayload = {
+  // If Supabase is not configured, return mock response
+  if (!supabaseServer) {
+    const mockTouchpoint = {
+      id: Date.now().toString(),
+      user_id: 'mock-user',
       ...touchpointData,
       created_at: now
     };
-
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(touchpointPayload, userId, request);
-
-    const { data: touchpointResult, error: touchpointError } = await supabaseServer
-      .from('relationship_touchpoints')
-      .insert(touchpointPayload)
-      .select(`
-        *,
-        person:people(
-          id,
-          name,
-          email,
-          company,
-          job_title,
-          avatar_url
-        )
-      `)
-      .single();
-
-    if (touchpointError) {
-      console.error('Database error creating touchpoint:', touchpointError);
-      return jsonWithCors(request, { error: 'Failed to log touchpoint' }, 500);
-    }
-
-    // Update the relationship profile's last_contact_at and potentially health score
-    // This would normally be done via database trigger or function for better performance
-    const { error: profileUpdateError } = await supabaseServer
-      .from('relationship_profiles')
-      .update({
-        last_contact_at: now,
-        updated_at: now,
-        // Reset dormancy if this was a dormant relationship
-        is_dormant: false,
-        dormant_since: null
-      })
-      .eq('person_id', touchpointData.person_id)
-      .eq('user_id', userId);
-
-    if (profileUpdateError) {
-      console.warn('Warning: Could not update relationship profile last_contact_at:', profileUpdateError);
-      // Don't fail the request since the touchpoint was successfully created
-    }
-
-    // TODO: Implement health score recalculation here or via background job
-    // This would analyze recent touchpoints, sentiment, reciprocity balance, etc.
-
-    return jsonWithCors(request, touchpointResult, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(mockTouchpoint, { status: 201 });
   }
+
+  // Start a transaction to create touchpoint and update relationship profile
+  const touchpointPayload = {
+    user_id: userId,
+    ...touchpointData,
+    created_at: now
+  };
+
+  const { data: touchpointResult, error: touchpointError } = await supabaseServer
+    .from('relationship_touchpoints')
+    .insert(touchpointPayload)
+    .select(`
+      *,
+      person:people(
+        id,
+        name,
+        email,
+        company,
+        job_title,
+        avatar_url
+      )
+    `)
+    .single();
+
+  if (touchpointError) {
+    console.error('Database error creating touchpoint:', touchpointError);
+    return NextResponse.json({ error: 'Failed to log touchpoint' }, { status: 500 });
+  }
+
+  // Update the relationship profile's last_contact_at and potentially health score
+  // This would normally be done via database trigger or function for better performance
+  const { error: profileUpdateError } = await supabaseServer
+    .from('relationship_profiles')
+    .update({
+      last_contact_at: now,
+      updated_at: now,
+      // Reset dormancy if this was a dormant relationship
+      is_dormant: false,
+      dormant_since: null
+    })
+    .eq('person_id', touchpointData.person_id)
+    .eq('user_id', userId);
+
+  if (profileUpdateError) {
+    console.warn('Warning: Could not update relationship profile last_contact_at:', profileUpdateError);
+    // Don't fail the request since the touchpoint was successfully created
+  }
+
+  // TODO: Implement health score recalculation here or via background job
+  // This would analyze recent touchpoints, sentiment, reciprocity balance, etc.
+
+  return NextResponse.json(touchpointResult, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 200 }
+});
+
+export const POST = withStandardMiddleware(handlePost, {
+  validation: { bodySchema: TouchpointCreateSchema },
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 100 }
+});
+
+export const OPTIONS = withStandardMiddleware(async () => new NextResponse(null, { status: 200 }), {
+  auth: false
+});

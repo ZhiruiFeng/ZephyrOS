@@ -7,6 +7,10 @@ import type { UseInitiativesReturn, Initiative, CreateInitiativeForm } from '@/s
 // =====================================================
 
 function adaptApiInitiativeToFrontend(apiInitiative: ApiInitiative): Initiative {
+  // Convert API priority to frontend priority
+  const priority: 'low' | 'medium' | 'high' | 'urgent' =
+    apiInitiative.priority === 'critical' ? 'urgent' : apiInitiative.priority as 'low' | 'medium' | 'high'
+
   return {
     id: apiInitiative.id,
     seasonId: apiInitiative.season_id || '',
@@ -14,7 +18,7 @@ function adaptApiInitiativeToFrontend(apiInitiative: ApiInitiative): Initiative 
     description: apiInitiative.description || undefined,
     progress: apiInitiative.progress,
     category: apiInitiative.category?.name,
-    priority: apiInitiative.priority === 'critical' ? 'urgent' : apiInitiative.priority,
+    priority: priority,
     status: apiInitiative.status === 'paused' ? 'on_hold' :
             apiInitiative.status === 'active' ? 'in_progress' :
             apiInitiative.status === 'planning' ? 'pending' : apiInitiative.status,

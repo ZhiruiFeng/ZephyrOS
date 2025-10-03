@@ -1,22 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest, addUserIdIfNeeded } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { 
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/lib/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
+import {
   AssetCreateSchema,
   AssetsQuerySchema,
   type AssetCreateBody,
   type AssetsQuery
 } from '@/validation';
 import { nowUTC } from '@/lib/time-utils';
-
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
 
 // Mock data for development/testing
 const generateMockAssets = () => [
@@ -107,110 +98,88 @@ const generateMockAssets = () => [
  *       200:
  *         description: List of assets
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handleGet(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
+  const { searchParams } = new URL(request.url);
 
-    const { searchParams } = new URL(request.url);
-    
-    // Parse and validate query parameters
-    const queryResult = AssetsQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!queryResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid query parameters', details: queryResult.error.errors },
-        { status: 400 }
-      );
-    }
+  // Parse and validate query parameters
+  const queryResult = AssetsQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!queryResult.success) {
+    return NextResponse.json(
+      { error: 'Invalid query parameters', details: queryResult.error.errors },
+      { status: 400 }
+    );
+  }
 
-    const query = queryResult.data;
+  const query = queryResult.data;
 
-    // If Supabase is not configured, return filtered mock data
-    if (!supabase) {
-      let assets = generateMockAssets();
-      
-      // Apply filters to mock data
-      if (query.kind) {
-        assets = assets.filter(a => a.kind === query.kind);
-      }
-      if (query.mime_type) {
-        assets = assets.filter(a => a.mime_type === query.mime_type);
-      }
-      
-      // Apply sorting
-      assets.sort((a, b) => {
-        let comparison = 0;
-        switch (query.sort_by) {
-          case 'file_size_bytes':
-            comparison = (a.file_size_bytes || 0) - (b.file_size_bytes || 0);
-            break;
-          case 'kind':
-            comparison = a.kind.localeCompare(b.kind);
-            break;
-          case 'created_at':
-          default:
-            comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        }
-        return query.sort_order === 'asc' ? comparison : -comparison;
-      });
-      
-      return jsonWithCors(request, assets.slice(query.offset, query.offset + query.limit));
-    }
+  // If Supabase is not configured, return filtered mock data
+  if (!supabaseServer) {
+    let assets = generateMockAssets();
 
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockAssets().slice(query.offset, query.offset + query.limit));
-      }
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Build query
-    let dbQuery = client
-      .from('assets')
-      .select('*')
-      .eq('user_id', userId);
-
-    // Apply filters
+    // Apply filters to mock data
     if (query.kind) {
-      dbQuery = dbQuery.eq('kind', query.kind);
+      assets = assets.filter(a => a.kind === query.kind);
     }
     if (query.mime_type) {
-      dbQuery = dbQuery.eq('mime_type', query.mime_type);
+      assets = assets.filter(a => a.mime_type === query.mime_type);
     }
 
     // Apply sorting
-    const ascending = query.sort_order === 'asc';
-    dbQuery = dbQuery.order(query.sort_by, { ascending });
-
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
-
-    const { data, error } = await dbQuery;
-    
-    if (error) {
-      console.error('Database error:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockAssets().slice(query.offset, query.offset + query.limit));
+    assets.sort((a, b) => {
+      let comparison = 0;
+      switch (query.sort_by) {
+        case 'file_size_bytes':
+          comparison = (a.file_size_bytes || 0) - (b.file_size_bytes || 0);
+          break;
+        case 'kind':
+          comparison = a.kind.localeCompare(b.kind);
+          break;
+        case 'created_at':
+        default:
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       }
-      return NextResponse.json(
-        { error: 'Failed to fetch assets' },
-        { status: 500 }
-      );
-    }
+      return query.sort_order === 'asc' ? comparison : -comparison;
+    });
 
-    return jsonWithCors(request, data || []);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    return NextResponse.json(assets.slice(query.offset, query.offset + query.limit));
   }
+
+  // Build query
+  let dbQuery = supabaseServer
+    .from('assets')
+    .select('*')
+    .eq('user_id', userId);
+
+  // Apply filters
+  if (query.kind) {
+    dbQuery = dbQuery.eq('kind', query.kind);
+  }
+  if (query.mime_type) {
+    dbQuery = dbQuery.eq('mime_type', query.mime_type);
+  }
+
+  // Apply sorting
+  const ascending = query.sort_order === 'asc';
+  dbQuery = dbQuery.order(query.sort_by, { ascending });
+
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error('Database error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json(generateMockAssets().slice(query.offset, query.offset + query.limit));
+    }
+    return NextResponse.json(
+      { error: 'Failed to fetch assets' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(data || []);
 }
 
 /**
@@ -256,95 +225,76 @@ export async function GET(request: NextRequest) {
  *       409:
  *         description: Asset with same hash already exists
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
+async function handlePost(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!;
 
-    const body = await request.json();
-    
-    
-    // Validate request body
-    const validationResult = AssetCreateSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('CREATE ASSET Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid asset data', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
+  // Validate request body
+  const validationResult = AssetCreateSchema.safeParse(request.validatedBody);
+  if (!validationResult.success) {
+    console.error('CREATE ASSET Validation failed:', validationResult.error.errors);
+    return NextResponse.json(
+      { error: 'Invalid asset data', details: validationResult.error.errors },
+      { status: 400 }
+    );
+  }
 
-    const assetData = validationResult.data;
-    const now = nowUTC();
+  const assetData = validationResult.data;
+  const now = nowUTC();
 
-    // If Supabase is not configured, return mock response
-    if (!supabase) {
-      const mockAsset = {
-        id: Date.now().toString(),
-        ...assetData,
-        user_id: 'mock-user',
-        created_at: now
-      };
-      return jsonWithCors(request, mockAsset, 201);
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // Check for duplicate hash (if provided)
-    if (assetData.hash_sha256) {
-      const { data: existingAsset } = await client
-        .from('assets')
-        .select('id, url')
-        .eq('hash_sha256', assetData.hash_sha256)
-        .eq('user_id', userId)
-        .single();
-
-      if (existingAsset) {
-        return jsonWithCors(request, { 
-          error: 'Asset with same hash already exists',
-          existing_asset: existingAsset
-        }, 409);
-      }
-    }
-
-    // Create asset
-    const insertPayload = {
+  // If Supabase is not configured, return mock response
+  if (!supabaseServer) {
+    const mockAsset = {
+      id: Date.now().toString(),
       ...assetData,
+      user_id: 'mock-user',
       created_at: now
     };
+    return NextResponse.json(mockAsset, { status: 201 });
+  }
 
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(insertPayload, userId, request);
-
-
-    const { data, error } = await client
+  // Check for duplicate hash (if provided)
+  if (assetData.hash_sha256) {
+    const { data: existingAsset } = await supabaseServer
       .from('assets')
-      .insert(insertPayload)
-      .select()
+      .select('id, url')
+      .eq('hash_sha256', assetData.hash_sha256)
+      .eq('user_id', userId)
       .single();
 
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to create asset' }, 500);
+    if (existingAsset) {
+      return NextResponse.json({
+        error: 'Asset with same hash already exists',
+        existing_asset: existingAsset
+      }, { status: 409 });
     }
-
-    return jsonWithCors(request, data, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
   }
+
+  // Create asset
+  const insertPayload = {
+    ...assetData,
+    user_id: userId,
+    created_at: now
+  };
+
+  const { data, error } = await supabaseServer
+    .from('assets')
+    .insert(insertPayload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to create asset' }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 300 }
+});
+
+export const POST = withStandardMiddleware(handlePost, {
+  validation: { bodySchema: AssetCreateSchema },
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
+});

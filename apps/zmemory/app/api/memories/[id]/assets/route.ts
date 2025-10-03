@@ -1,20 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getClientForAuthType, getUserIdFromRequest } from '@/auth';
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security';
-import { 
+import { NextResponse } from 'next/server';
+import { withStandardMiddleware, type EnhancedRequest } from '@/lib/middleware';
+import { supabaseServer } from '@/lib/supabase-server';
+import {
   MemoryAssetCreateSchema,
   type MemoryAssetCreateBody
 } from '@/validation';
 import { nowUTC } from '@/lib/time-utils';
-
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
 
 // Mock data for development/testing
 const generateMockAssets = (memoryId: string) => [
@@ -73,82 +64,61 @@ const generateMockAssets = (memoryId: string) => [
  *       200:
  *         description: List of memory assets with populated asset data
  */
-export async function GET(
-  request: NextRequest,
+async function handleGet(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
+  const userId = request.userId!;
   const { id: memoryId } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
 
-    // If Supabase is not configured, return mock data
-    if (!supabase) {
-      return jsonWithCors(request, generateMockAssets(memoryId));
-    }
-
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockAssets(memoryId));
-      }
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
-
-    const client = await getClientForAuthType(request) || supabase;
-
-    // First verify the memory belongs to the user
-    const { data: memoryCheck, error: memoryError } = await client
-      .from('memories')
-      .select('id')
-      .eq('id', memoryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (memoryError || !memoryCheck) {
-      return jsonWithCors(request, { error: 'Memory not found' }, 404);
-    }
-
-    // Get assets with full asset data
-    const { data, error } = await client
-      .from('memory_assets')
-      .select(`
-        *,
-        asset:assets (
-          id,
-          url,
-          mime_type,
-          kind,
-          duration_seconds,
-          file_size_bytes,
-          hash_sha256,
-          created_at
-        )
-      `)
-      .eq('memory_id', memoryId)
-      .order('order_index');
-
-    if (error) {
-      console.error('Database error:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        return jsonWithCors(request, generateMockAssets(memoryId));
-      }
-      return NextResponse.json(
-        { error: 'Failed to fetch memory assets' },
-        { status: 500 }
-      );
-    }
-
-    return jsonWithCors(request, data || []);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+  // If Supabase is not configured, return mock data
+  if (!supabaseServer) {
+    return NextResponse.json(generateMockAssets(memoryId));
   }
+
+  // First verify the memory belongs to the user
+  const { data: memoryCheck, error: memoryError } = await supabaseServer
+    .from('memories')
+    .select('id')
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memoryError || !memoryCheck) {
+    return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+  }
+
+  // Get assets with full asset data
+  const { data, error } = await supabaseServer
+    .from('memory_assets')
+    .select(`
+      *,
+      asset:assets (
+        id,
+        url,
+        mime_type,
+        kind,
+        duration_seconds,
+        file_size_bytes,
+        hash_sha256,
+        created_at
+      )
+    `)
+    .eq('memory_id', memoryId)
+    .order('order_index');
+
+  if (error) {
+    console.error('Database error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json(generateMockAssets(memoryId));
+    }
+    return NextResponse.json(
+      { error: 'Failed to fetch memory assets' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(data || []);
 }
 
 /**
@@ -190,113 +160,85 @@ export async function GET(
  *       201:
  *         description: Asset attached successfully
  */
-export async function POST(
-  request: NextRequest,
+async function handlePost(
+  request: EnhancedRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
+  const userId = request.userId!;
   const { id: memoryId } = await params;
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request);
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 50)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429);
-    }
 
-    const body = await request.json();
-    
-    
-    // Validate request body
-    const validationResult = MemoryAssetCreateSchema.safeParse(body);
-    if (!validationResult.success) {
-      console.error('ATTACH ASSET Validation failed:', validationResult.error.errors);
-      return NextResponse.json(
-        { error: 'Invalid asset attachment data', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
+  // Validate request body
+  const validationResult = MemoryAssetCreateSchema.safeParse(request.validatedBody);
+  if (!validationResult.success) {
+    console.error('ATTACH ASSET Validation failed:', validationResult.error.errors);
+    return NextResponse.json(
+      { error: 'Invalid asset attachment data', details: validationResult.error.errors },
+      { status: 400 }
+    );
+  }
 
-    const assetData = validationResult.data;
-    const now = nowUTC();
+  const assetData = validationResult.data;
+  const now = nowUTC();
 
-    // If Supabase is not configured, return mock response
-    if (!supabase) {
-      const mockAsset = {
-        memory_id: memoryId,
-        ...assetData,
-        created_at: now
-      };
-      return jsonWithCors(request, mockAsset, 201);
-    }
+  // If Supabase is not configured, return mock response
+  if (!supabaseServer) {
+    const mockAsset = {
+      memory_id: memoryId,
+      ...assetData,
+      created_at: now
+    };
+    return NextResponse.json(mockAsset, { status: 201 });
+  }
 
-    // Enforce authentication
-    const userId = await getUserIdFromRequest(request);
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Unauthorized' }, 401);
-    }
+  // Verify memory belongs to user
+  const { data: memoryCheck, error: memoryError } = await supabaseServer
+    .from('memories')
+    .select('id')
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .single();
 
-    const client = await getClientForAuthType(request) || supabase;
+  if (memoryError || !memoryCheck) {
+    return NextResponse.json({ error: 'Memory not found' }, { status: 404 });
+  }
 
-    // Verify memory belongs to user
-    const { data: memoryCheck, error: memoryError } = await client
-      .from('memories')
-      .select('id')
-      .eq('id', memoryId)
-      .eq('user_id', userId)
-      .single();
+  // Verify asset exists and belongs to user
+  const { data: assetCheck, error: assetError } = await supabaseServer
+    .from('assets')
+    .select('id')
+    .eq('id', assetData.asset_id)
+    .eq('user_id', userId)
+    .single();
 
-    if (memoryError || !memoryCheck) {
-      return jsonWithCors(request, { error: 'Memory not found' }, 404);
-    }
+  if (assetError || !assetCheck) {
+    return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+  }
 
-    // Verify asset exists and belongs to user
-    const { data: assetCheck, error: assetError } = await client
-      .from('assets')
-      .select('id')
-      .eq('id', assetData.asset_id)
-      .eq('user_id', userId)
-      .single();
+  // Check if asset is already attached (prevent duplicates)
+  const { data: existingAttachment } = await supabaseServer
+    .from('memory_assets')
+    .select('memory_id')
+    .eq('memory_id', memoryId)
+    .eq('asset_id', assetData.asset_id)
+    .single();
 
-    if (assetError || !assetCheck) {
-      return jsonWithCors(request, { error: 'Asset not found' }, 404);
-    }
+  if (existingAttachment) {
+    return NextResponse.json({ error: 'Asset already attached to this memory' }, { status: 409 });
+  }
 
-    // Check if asset is already attached (prevent duplicates)
-    const { data: existingAttachment } = await client
+  // If order_index is provided, check for conflicts and adjust
+  let finalOrderIndex = assetData.order_index;
+  if (finalOrderIndex !== undefined) {
+    const { data: conflictCheck } = await supabaseServer
       .from('memory_assets')
-      .select('memory_id')
+      .select('order_index')
       .eq('memory_id', memoryId)
-      .eq('asset_id', assetData.asset_id)
+      .eq('order_index', finalOrderIndex)
       .single();
 
-    if (existingAttachment) {
-      return jsonWithCors(request, { error: 'Asset already attached to this memory' }, 409);
-    }
-
-    // If order_index is provided, check for conflicts and adjust
-    let finalOrderIndex = assetData.order_index;
-    if (finalOrderIndex !== undefined) {
-      const { data: conflictCheck } = await client
-        .from('memory_assets')
-        .select('order_index')
-        .eq('memory_id', memoryId)
-        .eq('order_index', finalOrderIndex)
-        .single();
-
-      if (conflictCheck) {
-        // Find next available index
-        const { data: maxOrder } = await client
-          .from('memory_assets')
-          .select('order_index')
-          .eq('memory_id', memoryId)
-          .order('order_index', { ascending: false })
-          .limit(1)
-          .single();
-
-        finalOrderIndex = (maxOrder?.order_index || 0) + 1;
-      }
-    } else {
-      // Auto-assign next available index
-      const { data: maxOrder } = await client
+    if (conflictCheck) {
+      // Find next available index
+      const { data: maxOrder } = await supabaseServer
         .from('memory_assets')
         .select('order_index')
         .eq('memory_id', memoryId)
@@ -304,50 +246,61 @@ export async function POST(
         .limit(1)
         .single();
 
-      finalOrderIndex = (maxOrder?.order_index || -1) + 1;
+      finalOrderIndex = (maxOrder?.order_index || 0) + 1;
     }
-
-    // Create attachment
-    const insertPayload = {
-      memory_id: memoryId,
-      asset_id: assetData.asset_id,
-      order_index: finalOrderIndex,
-      caption: assetData.caption,
-      created_at: now
-    };
-
-
-    const { data, error } = await client
+  } else {
+    // Auto-assign next available index
+    const { data: maxOrder } = await supabaseServer
       .from('memory_assets')
-      .insert(insertPayload)
-      .select(`
-        *,
-        asset:assets (
-          id,
-          url,
-          mime_type,
-          kind,
-          duration_seconds,
-          file_size_bytes,
-          hash_sha256,
-          created_at
-        )
-      `)
+      .select('order_index')
+      .eq('memory_id', memoryId)
+      .order('order_index', { ascending: false })
+      .limit(1)
       .single();
 
-    if (error) {
-      console.error('Database error:', error);
-      return jsonWithCors(request, { error: 'Failed to attach asset' }, 500);
-    }
-
-    return jsonWithCors(request, data, 201);
-  } catch (error) {
-    console.error('API error:', error);
-    const errorMessage = sanitizeErrorMessage(error);
-    return jsonWithCors(request, { error: errorMessage }, 500);
+    finalOrderIndex = (maxOrder?.order_index || -1) + 1;
   }
+
+  // Create attachment
+  const insertPayload = {
+    memory_id: memoryId,
+    asset_id: assetData.asset_id,
+    order_index: finalOrderIndex,
+    caption: assetData.caption,
+    created_at: now
+  };
+
+  const { data, error } = await supabaseServer
+    .from('memory_assets')
+    .insert(insertPayload)
+    .select(`
+      *,
+      asset:assets (
+        id,
+        url,
+        mime_type,
+        kind,
+        duration_seconds,
+        file_size_bytes,
+        hash_sha256,
+        created_at
+      )
+    `)
+    .single();
+
+  if (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to attach asset' }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }
 
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request);
-}
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 300 }
+});
+
+export const POST = withStandardMiddleware(handlePost, {
+  validation: { bodySchema: MemoryAssetCreateSchema },
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
+});

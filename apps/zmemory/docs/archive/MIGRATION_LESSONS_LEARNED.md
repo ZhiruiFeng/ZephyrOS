@@ -3,8 +3,9 @@
 This document captures critical lessons, patterns, and gotchas discovered during the ZMemory API migration to the new architecture.
 
 **Last Updated**: 2025-10-03
-**Migrations Completed**: 13 routes
-**Infrastructure Built**: 1 route (tasks - deferred)
+**Migrations Completed**: 89 routes
+**Deferred**: 1 route (tasks - infrastructure built)
+**Note**: Lessons now integrated into DEVELOPMENT_GUIDELINES.md
 
 ---
 

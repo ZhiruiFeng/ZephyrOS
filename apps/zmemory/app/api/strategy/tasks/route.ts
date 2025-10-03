@@ -1,16 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getUserIdFromRequest, getClientForAuthType, addUserIdIfNeeded } from '@/auth'
-import { jsonWithCors, createOptionsResponse, sanitizeErrorMessage, isRateLimited, getClientIP } from '@/lib/security'
+import { NextResponse } from 'next/server'
+import { withStandardMiddleware, type EnhancedRequest } from '@/middleware'
+import { supabaseServer } from '@/lib/supabase-server'
 import { z } from 'zod'
-
-// Server-side Supabase client using service role key
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
 
 // =====================================================
 // TYPES & VALIDATION SCHEMAS
@@ -89,13 +80,6 @@ type StrategyTask = {
     started_at?: string
     completed_at?: string
   } | null
-}
-
-// =====================================================
-// OPTIONS handler for CORS
-// =====================================================
-export async function OPTIONS(request: NextRequest) {
-  return createOptionsResponse(request)
 }
 
 // =====================================================
@@ -199,203 +183,187 @@ export async function OPTIONS(request: NextRequest) {
  *       500:
  *         description: Internal server error
  */
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request)
-    if (isRateLimited(clientIP)) {
-      return jsonWithCors(request, { error: 'Too many requests' }, 429)
-    }
+async function handleGet(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!
 
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database connection not available' }, 503)
-    }
+  const { searchParams } = new URL(request.url)
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Authentication required' }, 401)
-    }
+  // Parse and validate query parameters
+  const queryResult = QueryStrategyTaskSchema.safeParse(Object.fromEntries(searchParams))
+  if (!queryResult.success) {
+    return NextResponse.json({
+      error: 'Invalid query parameters',
+      details: queryResult.error.errors
+    }, { status: 400 })
+  }
 
-    const { searchParams } = new URL(request.url)
+  const query = queryResult.data
 
-    // Parse and validate query parameters
-    const queryResult = QueryStrategyTaskSchema.safeParse(Object.fromEntries(searchParams))
-    if (!queryResult.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid query parameters',
-        details: queryResult.error.errors
-      }, 400)
-    }
+  // Build Supabase query with AI delegation info
+  let dbQuery = supabaseServer!
+    .from('core_strategy_tasks')
+    .select(`
+      *,
+      initiative:core_strategy_initiatives(id, title, status),
+      regular_task:tasks(id, title, status)
+    `)
+    .eq('user_id', userId)
 
-    const query = queryResult.data
-    const client = await getClientForAuthType(request) || supabase
+  // Apply filters
+  if (query.initiative_id) {
+    dbQuery = dbQuery.eq('initiative_id', query.initiative_id)
+  }
+  if (query.status) {
+    dbQuery = dbQuery.eq('status', query.status)
+  }
+  if (query.priority) {
+    dbQuery = dbQuery.eq('priority', query.priority)
+  }
+  if (query.assignee) {
+    dbQuery = dbQuery.eq('assignee', query.assignee)
+  }
+  if (query.strategic_importance) {
+    dbQuery = dbQuery.eq('strategic_importance', query.strategic_importance)
+  }
+  if (query.search) {
+    dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`)
+  }
+  if (query.tags) {
+    const filterTags = query.tags.split(',').map(tag => tag.trim())
+    dbQuery = dbQuery.overlaps('tags', filterTags)
+  }
+  if (query.due_before) {
+    dbQuery = dbQuery.lte('due_date', query.due_before)
+  }
+  if (query.due_after) {
+    dbQuery = dbQuery.gte('due_date', query.due_after)
+  }
 
-    // Build Supabase query with AI delegation info
-    let dbQuery = client
-      .from('core_strategy_tasks')
-      .select(`
-        *,
-        initiative:core_strategy_initiatives(id, title, status),
-        regular_task:tasks(id, title, status)
-      `)
-      .eq('user_id', userId)
+  // Apply sorting
+  const ascending = query.sort_order === 'asc'
+  if (query.sort_by === 'title') {
+    dbQuery = dbQuery.order('title', { ascending })
+  } else if (query.sort_by === 'due_date') {
+    dbQuery = dbQuery.order('due_date', { ascending, nullsFirst: false })
+  } else if (query.sort_by === 'priority') {
+    dbQuery = dbQuery.order('priority', { ascending })
+  } else if (query.sort_by === 'strategic_importance') {
+    dbQuery = dbQuery.order('strategic_importance', { ascending })
+  } else {
+    dbQuery = dbQuery.order(query.sort_by, { ascending })
+  }
 
-    // Apply filters
-    if (query.initiative_id) {
-      dbQuery = dbQuery.eq('initiative_id', query.initiative_id)
-    }
-    if (query.status) {
-      dbQuery = dbQuery.eq('status', query.status)
-    }
-    if (query.priority) {
-      dbQuery = dbQuery.eq('priority', query.priority)
-    }
-    if (query.assignee) {
-      dbQuery = dbQuery.eq('assignee', query.assignee)
-    }
-    if (query.strategic_importance) {
-      dbQuery = dbQuery.eq('strategic_importance', query.strategic_importance)
-    }
-    if (query.search) {
-      dbQuery = dbQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`)
-    }
-    if (query.tags) {
-      const filterTags = query.tags.split(',').map(tag => tag.trim())
-      dbQuery = dbQuery.overlaps('tags', filterTags)
-    }
-    if (query.due_before) {
-      dbQuery = dbQuery.lte('due_date', query.due_before)
-    }
-    if (query.due_after) {
-      dbQuery = dbQuery.gte('due_date', query.due_after)
-    }
+  // Apply pagination
+  dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1)
 
-    // Apply sorting
-    const ascending = query.sort_order === 'asc'
-    if (query.sort_by === 'title') {
-      dbQuery = dbQuery.order('title', { ascending })
-    } else if (query.sort_by === 'due_date') {
-      dbQuery = dbQuery.order('due_date', { ascending, nullsFirst: false })
-    } else if (query.sort_by === 'priority') {
-      dbQuery = dbQuery.order('priority', { ascending })
-    } else if (query.sort_by === 'strategic_importance') {
-      dbQuery = dbQuery.order('strategic_importance', { ascending })
-    } else {
-      dbQuery = dbQuery.order(query.sort_by, { ascending })
-    }
+  const { data: tasks, error } = await dbQuery
 
-    // Apply pagination
-    dbQuery = dbQuery.range(query.offset, query.offset + query.limit - 1)
+  if (error) {
+    console.error('Database error:', error)
+    return NextResponse.json({ error: 'Failed to fetch strategic tasks' }, { status: 500 })
+  }
 
-    const { data: tasks, error } = await dbQuery
+  // For tasks with AI delegation, fetch AI task details
+  const tasksWithAI: StrategyTask[] = []
 
-    if (error) {
-      console.error('Database error:', error)
-      return jsonWithCors(request, { error: 'Failed to fetch strategic tasks' }, 500)
-    }
+  for (const task of tasks || []) {
+    let aiDelegation = null
 
-    // For tasks with AI delegation, fetch AI task details
-    const tasksWithAI: StrategyTask[] = []
+    if (task.assignee === 'ai_agent' && task.task_id) {
+      // Fetch AI delegation info from ai_tasks table
+      const { data: aiTaskData } = await supabaseServer!
+        .from('ai_tasks')
+        .select(`
+          id,
+          status,
+          mode,
+          assigned_at,
+          started_at,
+          completed_at,
+          agent_id,
+          vendor_id
+        `)
+        .eq('task_id', task.task_id)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
 
-    for (const task of tasks || []) {
-      let aiDelegation = null
+      if (aiTaskData) {
+        // Fetch agent and vendor info separately to avoid GROUP BY issues
+        let agentName = 'Unknown Agent'
+        let vendorName = 'Unknown Vendor'
 
-      if (task.assignee === 'ai_agent' && task.task_id) {
-        // Fetch AI delegation info from ai_tasks table
-        const { data: aiTaskData } = await client
-          .from('ai_tasks')
-          .select(`
-            id,
-            status,
-            mode,
-            assigned_at,
-            started_at,
-            completed_at,
-            agent_id,
-            vendor_id
-          `)
-          .eq('task_id', task.task_id)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
+        if (aiTaskData.agent_id) {
+          const { data: agentData } = await supabaseServer!
+            .from('ai_agents')
+            .select('name, vendor_id')
+            .eq('id', aiTaskData.agent_id)
+            .single()
 
-        if (aiTaskData) {
-          // Fetch agent and vendor info separately to avoid GROUP BY issues
-          let agentName = 'Unknown Agent'
-          let vendorName = 'Unknown Vendor'
+          if (agentData) {
+            agentName = agentData.name
 
-          if (aiTaskData.agent_id) {
-            const { data: agentData } = await client
-              .from('ai_agents')
-              .select('name, vendor_id')
-              .eq('id', aiTaskData.agent_id)
-              .single()
+            if (agentData.vendor_id) {
+              const { data: vendorData } = await supabaseServer!
+                .from('vendors')
+                .select('name')
+                .eq('id', agentData.vendor_id)
+                .single()
 
-            if (agentData) {
-              agentName = agentData.name
-
-              if (agentData.vendor_id) {
-                const { data: vendorData } = await client
-                  .from('vendors')
-                  .select('name')
-                  .eq('id', agentData.vendor_id)
-                  .single()
-
-                if (vendorData) {
-                  vendorName = vendorData.name
-                }
+              if (vendorData) {
+                vendorName = vendorData.name
               }
             }
           }
+        }
 
-          aiDelegation = {
-            ai_task_id: aiTaskData.id,
-            agent_name: agentName,
-            agent_vendor: vendorName,
-            status: aiTaskData.status,
-            mode: aiTaskData.mode,
-            assigned_at: aiTaskData.assigned_at,
-            started_at: aiTaskData.started_at,
-            completed_at: aiTaskData.completed_at
-          }
+        aiDelegation = {
+          ai_task_id: aiTaskData.id,
+          agent_name: agentName,
+          agent_vendor: vendorName,
+          status: aiTaskData.status,
+          mode: aiTaskData.mode,
+          assigned_at: aiTaskData.assigned_at,
+          started_at: aiTaskData.started_at,
+          completed_at: aiTaskData.completed_at
         }
       }
-
-      tasksWithAI.push({
-        id: task.id,
-        user_id: task.user_id,
-        initiative_id: task.initiative_id,
-        task_id: task.task_id,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        progress: task.progress,
-        estimated_duration: task.estimated_duration,
-        actual_duration: task.actual_duration,
-        assignee: task.assignee,
-        due_date: task.due_date,
-        completion_date: task.completion_date,
-        tags: task.tags || [],
-        strategic_importance: task.strategic_importance,
-        initiative_contribution_weight: task.initiative_contribution_weight,
-        metadata: task.metadata || {},
-        created_at: task.created_at,
-        updated_at: task.updated_at,
-        initiative: task.initiative || null,
-        regular_task: task.regular_task || null,
-        ai_delegation: aiDelegation
-      })
     }
 
-    return jsonWithCors(request, tasksWithAI)
-  } catch (error) {
-    console.error('API error:', error)
-    const errorMessage = sanitizeErrorMessage(error)
-    return jsonWithCors(request, { error: errorMessage }, 500)
+    tasksWithAI.push({
+      id: task.id,
+      user_id: task.user_id,
+      initiative_id: task.initiative_id,
+      task_id: task.task_id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      progress: task.progress,
+      estimated_duration: task.estimated_duration,
+      actual_duration: task.actual_duration,
+      assignee: task.assignee,
+      due_date: task.due_date,
+      completion_date: task.completion_date,
+      tags: task.tags || [],
+      strategic_importance: task.strategic_importance,
+      initiative_contribution_weight: task.initiative_contribution_weight,
+      metadata: task.metadata || {},
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+      initiative: task.initiative || null,
+      regular_task: task.regular_task || null,
+      ai_delegation: aiDelegation
+    })
   }
+
+  return NextResponse.json(tasksWithAI)
 }
+
+export const GET = withStandardMiddleware(handleGet, {
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 300 }
+})
 
 // =====================================================
 // POST /api/strategy/tasks
@@ -489,122 +457,109 @@ export async function GET(request: NextRequest) {
  *       500:
  *         description: Internal server error
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting
-    const clientIP = getClientIP(request)
-    if (isRateLimited(clientIP, 15 * 60 * 1000, 30)) { // Stricter limit for POST
-      return jsonWithCors(request, { error: 'Too many requests' }, 429)
-    }
+async function handlePost(request: EnhancedRequest): Promise<NextResponse> {
+  const userId = request.userId!
 
-    if (!supabase) {
-      return jsonWithCors(request, { error: 'Database connection not available' }, 503)
-    }
+  const body = await request.json()
 
-    const userId = await getUserIdFromRequest(request)
-    if (!userId) {
-      return jsonWithCors(request, { error: 'Authentication required' }, 401)
-    }
-
-    const body = await request.json()
-
-    // Validate request body
-    const validationResult = CreateStrategyTaskSchema.safeParse(body)
-    if (!validationResult.success) {
-      return jsonWithCors(request, {
-        error: 'Invalid strategic task data',
-        details: validationResult.error.errors
-      }, 400)
-    }
-
-    const taskData = validationResult.data
-    const client = await getClientForAuthType(request) || supabase
-
-    // Verify that the initiative exists and belongs to the user
-    const { data: initiative, error: initiativeError } = await client
-      .from('core_strategy_initiatives')
-      .select('id')
-      .eq('id', taskData.initiative_id)
-      .eq('user_id', userId)
-      .single()
-
-    if (initiativeError || !initiative) {
-      return jsonWithCors(request, { error: 'Initiative not found or access denied' }, 404)
-    }
-
-    // Prepare insert payload
-    const insertPayload = {
-      initiative_id: taskData.initiative_id,
-      task_id: taskData.task_id || null,
-      title: taskData.title,
-      description: taskData.description || null,
-      status: taskData.status,
-      priority: taskData.priority,
-      progress: taskData.progress,
-      estimated_duration: taskData.estimated_duration || null,
-      actual_duration: taskData.actual_duration || null,
-      assignee: taskData.assignee || null,
-      due_date: taskData.due_date || null,
-      completion_date: taskData.completion_date || null,
-      tags: taskData.tags,
-      strategic_importance: taskData.strategic_importance,
-      initiative_contribution_weight: taskData.initiative_contribution_weight,
-      metadata: taskData.metadata
-    }
-
-    // If creating with completed status and no explicit completion_date, set it to now
-    if (insertPayload.status === 'completed' && !insertPayload.completion_date) {
-      insertPayload.completion_date = new Date().toISOString()
-    }
-
-    // Add user_id to payload (always needed since we use service role client)
-    await addUserIdIfNeeded(insertPayload, userId, request);
-
-    const { data, error } = await client
-      .from('core_strategy_tasks')
-      .insert(insertPayload)
-      .select(`
-        *,
-        initiative:core_strategy_initiatives(id, title, status),
-        regular_task:tasks(id, title, status)
-      `)
-      .single()
-
-    if (error) {
-      console.error('Database error:', error)
-      return jsonWithCors(request, { error: 'Failed to create strategic task' }, 500)
-    }
-
-    const strategyTask: StrategyTask = {
-      id: data.id,
-      user_id: data.user_id,
-      initiative_id: data.initiative_id,
-      task_id: data.task_id,
-      title: data.title,
-      description: data.description,
-      status: data.status,
-      priority: data.priority,
-      progress: data.progress,
-      estimated_duration: data.estimated_duration,
-      actual_duration: data.actual_duration,
-      assignee: data.assignee,
-      due_date: data.due_date,
-      completion_date: data.completion_date,
-      tags: data.tags || [],
-      strategic_importance: data.strategic_importance,
-      initiative_contribution_weight: data.initiative_contribution_weight,
-      metadata: data.metadata || {},
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      initiative: data.initiative || null,
-      regular_task: data.regular_task || null,
-      ai_delegation: null
-    }
-
-    return jsonWithCors(request, strategyTask, 201)
-  } catch (error) {
-    console.error('API error:', error)
-    const errorMessage = sanitizeErrorMessage(error)
-    return jsonWithCors(request, { error: errorMessage }, 500)
+  // Validate request body
+  const validationResult = CreateStrategyTaskSchema.safeParse(body)
+  if (!validationResult.success) {
+    return NextResponse.json({
+      error: 'Invalid strategic task data',
+      details: validationResult.error.errors
+    }, { status: 400 })
   }
+
+  const taskData = validationResult.data
+
+  // Verify that the initiative exists and belongs to the user
+  const { data: initiative, error: initiativeError } = await supabaseServer!
+    .from('core_strategy_initiatives')
+    .select('id')
+    .eq('id', taskData.initiative_id)
+    .eq('user_id', userId)
+    .single()
+
+  if (initiativeError || !initiative) {
+    return NextResponse.json({ error: 'Initiative not found or access denied' }, { status: 404 })
+  }
+
+  // Prepare insert payload
+  const insertPayload = {
+    user_id: userId,
+    initiative_id: taskData.initiative_id,
+    task_id: taskData.task_id || null,
+    title: taskData.title,
+    description: taskData.description || null,
+    status: taskData.status,
+    priority: taskData.priority,
+    progress: taskData.progress,
+    estimated_duration: taskData.estimated_duration || null,
+    actual_duration: taskData.actual_duration || null,
+    assignee: taskData.assignee || null,
+    due_date: taskData.due_date || null,
+    completion_date: taskData.completion_date || null,
+    tags: taskData.tags,
+    strategic_importance: taskData.strategic_importance,
+    initiative_contribution_weight: taskData.initiative_contribution_weight,
+    metadata: taskData.metadata
+  }
+
+  // If creating with completed status and no explicit completion_date, set it to now
+  if (insertPayload.status === 'completed' && !insertPayload.completion_date) {
+    insertPayload.completion_date = new Date().toISOString()
+  }
+
+  const { data, error } = await supabaseServer!
+    .from('core_strategy_tasks')
+    .insert(insertPayload)
+    .select(`
+      *,
+      initiative:core_strategy_initiatives(id, title, status),
+      regular_task:tasks(id, title, status)
+    `)
+    .single()
+
+  if (error) {
+    console.error('Database error:', error)
+    return NextResponse.json({ error: 'Failed to create strategic task' }, { status: 500 })
+  }
+
+  const strategyTask: StrategyTask = {
+    id: data.id,
+    user_id: data.user_id,
+    initiative_id: data.initiative_id,
+    task_id: data.task_id,
+    title: data.title,
+    description: data.description,
+    status: data.status,
+    priority: data.priority,
+    progress: data.progress,
+    estimated_duration: data.estimated_duration,
+    actual_duration: data.actual_duration,
+    assignee: data.assignee,
+    due_date: data.due_date,
+    completion_date: data.completion_date,
+    tags: data.tags || [],
+    strategic_importance: data.strategic_importance,
+    initiative_contribution_weight: data.initiative_contribution_weight,
+    metadata: data.metadata || {},
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    initiative: data.initiative || null,
+    regular_task: data.regular_task || null,
+    ai_delegation: null
+  }
+
+  return NextResponse.json(strategyTask, { status: 201 })
 }
+
+export const POST = withStandardMiddleware(handlePost, {
+  validation: { bodySchema: CreateStrategyTaskSchema },
+  rateLimit: { windowMs: 15 * 60 * 1000, maxRequests: 50 }
+})
+
+export const OPTIONS = withStandardMiddleware(async () => new NextResponse(null, { status: 200 }), {
+  auth: false
+})
