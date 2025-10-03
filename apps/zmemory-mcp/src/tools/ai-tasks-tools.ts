@@ -34,6 +34,8 @@ export const aiTasksTools: Tool[] = [
           default: 'desc',
           description: 'Sort direction (asc=oldest first, desc=newest first)'
         },
+        is_local_task: { type: 'boolean', description: 'Filter by local task flag (true=local executor tasks, false=cloud tasks)' },
+        executor_workspace_id: { type: 'string', description: 'Filter by executor workspace UUID' },
       },
       required: [],
     },

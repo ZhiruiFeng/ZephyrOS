@@ -397,6 +397,15 @@ export class AITaskServiceImpl extends BaseServiceImpl implements AITaskService 
       payload.history = updates.history;
     }
 
+    // Executor workspace fields
+    if (updates.is_local_task !== undefined) {
+      payload.is_local_task = updates.is_local_task;
+    }
+
+    if (updates.executor_workspace_id !== undefined) {
+      payload.executor_workspace_id = updates.executor_workspace_id;
+    }
+
     Object.keys(payload).forEach((key) => {
       if ((payload as any)[key] === undefined) {
         delete (payload as any)[key];

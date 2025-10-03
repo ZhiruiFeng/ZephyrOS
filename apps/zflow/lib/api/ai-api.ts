@@ -48,6 +48,8 @@ export type AITask = {
   started_at?: string | null
   completed_at?: string | null
   due_at?: string | null
+  is_local_task?: boolean
+  executor_workspace_id?: string | null
 }
 
 export const aiTasksApi = {

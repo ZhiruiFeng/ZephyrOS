@@ -120,6 +120,15 @@ export class AITaskRepositoryImpl extends BaseRepository<AITask> implements AITa
         query = query.lte('estimated_cost_usd', filters.max_cost);
       }
 
+      // Local task and workspace filters
+      if (filters.is_local_task !== undefined) {
+        query = query.eq('is_local_task', filters.is_local_task);
+      }
+
+      if (filters.executor_workspace_id) {
+        query = query.eq('executor_workspace_id', filters.executor_workspace_id);
+      }
+
       // Tag filter via metadata tags array
       const rawTags = filters.tags as unknown;
       if (Array.isArray(rawTags) ? rawTags.length > 0 : typeof rawTags === 'string' && rawTags.length > 0) {

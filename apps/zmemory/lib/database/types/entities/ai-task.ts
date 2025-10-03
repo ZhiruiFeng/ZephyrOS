@@ -24,6 +24,9 @@ export interface AITask extends BaseEntity {
   estimated_duration_min?: number | null;
   actual_duration_min?: number | null;
 
+  is_local_task?: boolean;
+  executor_workspace_id?: string | null;
+
   assigned_at: string;
   started_at?: string | null;
   completed_at?: string | null;
@@ -48,4 +51,6 @@ export interface AITaskFilterParams extends FilterParams {
   deadline_before?: string;
   min_cost?: number;
   max_cost?: number;
+  is_local_task?: boolean;
+  executor_workspace_id?: string;
 }

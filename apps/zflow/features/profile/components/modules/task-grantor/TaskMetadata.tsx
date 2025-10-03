@@ -1,14 +1,15 @@
 import React from 'react'
-import { AlertCircle, User } from 'lucide-react'
+import { AlertCircle, User, Laptop } from 'lucide-react'
 import type { AITask } from '@/lib/api'
 
 interface Props {
   task: AITask
   agents: any[]
   tasks: any[]
+  workspaces?: any[]
 }
 
-export default function TaskMetadata({ task, agents, tasks }: Props) {
+export default function TaskMetadata({ task, agents, tasks, workspaces }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3 text-sm">
       <div className="flex items-center gap-2">
@@ -27,6 +28,15 @@ export default function TaskMetadata({ task, agents, tasks }: Props) {
           {task.status ? task.status.replace(/_/g, ' ') : 'unknown'}
         </span>
       </div>
+      {task.is_local_task && (
+        <div className="flex items-center gap-2">
+          <Laptop className="h-4 w-4 text-purple-500 flex-shrink-0" />
+          <span className="text-slate-500 font-medium">Execution:</span>
+          <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700">
+            Local
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
         <span className="text-slate-500 font-medium">Priority:</span>
@@ -54,6 +64,16 @@ export default function TaskMetadata({ task, agents, tasks }: Props) {
             <span className="h-3 w-3 rounded-full bg-slate-400 flex-shrink-0"></span>
             <span className="text-slate-500 font-medium">Category:</span>
             <span className="text-slate-700 truncate">{linkedTask.content.category}</span>
+          </div>
+        )
+      })()}
+      {task.executor_workspace_id && (() => {
+        const workspace = workspaces?.find(w => w.id === task.executor_workspace_id)
+        return (
+          <div className="flex items-center gap-2">
+            <Laptop className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+            <span className="text-slate-500 font-medium">Workspace:</span>
+            <span className="text-slate-700 truncate">{workspace?.workspace_name || task.executor_workspace_id.slice(0, 8)}</span>
           </div>
         )
       })()}

@@ -70,6 +70,10 @@ export const AITaskCreateSchema = z.object({
   estimated_cost_usd: z.number().positive().optional(),
   estimated_duration_seconds: z.number().int().positive().optional(),
   estimated_duration_min: z.number().int().positive().optional(),
+
+  // Executor workspace association
+  is_local_task: z.boolean().optional(),
+  executor_workspace_id: uuidSchema.nullable().optional(),
 }).passthrough();
 
 // AI task update schema
@@ -116,6 +120,10 @@ export const AITasksQuerySchema = z.object({
   // Cost filters
   min_cost: z.string().optional().transform(v => v ? parseFloat(v) : undefined).pipe(z.number().positive().optional()),
   max_cost: z.string().optional().transform(v => v ? parseFloat(v) : undefined).pipe(z.number().positive().optional()),
+
+  // Executor workspace filters
+  is_local_task: z.string().optional().transform(v => v ? v === 'true' : undefined).pipe(z.boolean().optional()),
+  executor_workspace_id: uuidSchema.optional(),
 
   // Date range filters
   ...dateRangeSchema,

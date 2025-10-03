@@ -13,6 +13,7 @@ interface Props {
   task: AITask
   tasks: any[]
   agents: any[]
+  workspaces?: any[]
   editingField: string | null
   tempValues: any
   onEditField: (field: string, value: any) => void
@@ -27,6 +28,7 @@ export default function TaskInfoView({
   task,
   tasks,
   agents,
+  workspaces,
   editingField,
   tempValues,
   onEditField,
@@ -88,7 +90,7 @@ export default function TaskInfoView({
           </button>
 
           {/* Task Metadata */}
-          <TaskMetadata task={task} agents={agents} tasks={tasks} />
+          <TaskMetadata task={task} agents={agents} tasks={tasks} workspaces={workspaces} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button

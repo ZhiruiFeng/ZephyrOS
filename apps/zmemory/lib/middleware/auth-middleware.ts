@@ -32,8 +32,6 @@ export function withAuth<THandler extends (request: AuthenticatedRequest, ...arg
 
       // Development fallback
       if (!userId && process.env.NODE_ENV !== 'production') {
-        console.log('⚠️  No authentication found, using dev fallback user ID:', devFallbackUserId);
-        console.log('   To fix: Log in to Supabase or provide a Bearer token');
         userId = devFallbackUserId;
       }
 

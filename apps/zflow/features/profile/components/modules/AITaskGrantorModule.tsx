@@ -35,6 +35,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
     acceptance_criteria: string;
   }>>({})
   const [agents, setAgents] = React.useState<any[]>([])
+  const [workspaces, setWorkspaces] = React.useState<any[]>([])
 
   const formatStatus = React.useCallback((status?: string | null) => {
     if (!status) return 'unknown'
@@ -45,10 +46,11 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
     setLoading(true)
     setLoadingHistory(true)
     try {
-      const [allAiTaskItems, taskItems, agentItems] = await Promise.all([
+      const [allAiTaskItems, taskItems, agentItems, workspaceItems] = await Promise.all([
         aiTasksApi.list({ limit: 100, sort_by: 'assigned_at', sort_order: 'desc' }),
         tasksApi.getAll({ limit: 100, sort_by: 'created_at', sort_order: 'desc' }),
-        import('@/lib/api').then(api => api.aiAgentsApi.list({ limit: 100 }))
+        import('@/lib/api').then(api => api.aiAgentsApi.list({ limit: 100 })),
+        fetch('/api/executor/workspaces').then(res => res.ok ? res.json() : { workspaces: [] }).then(data => data.workspaces || []).catch(() => [])
       ])
 
       // Separate pending and completed tasks
@@ -62,6 +64,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
       setAiTasks(pendingTasks)
       setTasks(taskItems)
       setAgents(agentItems)
+      setWorkspaces(workspaceItems)
 
       // Populate run history with completed and failed tasks
       const historyItems = completedTasks.map(task => {
@@ -234,6 +237,7 @@ export default function AITaskGrantorModule({ isFullscreen, onToggleFullscreen }
               task={selectedTask}
               tasks={tasks}
               agents={agents}
+              workspaces={workspaces}
               editingField={editingField}
               tempValues={tempValues}
               onEditField={handleEditField}

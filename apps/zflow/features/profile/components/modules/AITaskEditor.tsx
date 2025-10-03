@@ -20,6 +20,8 @@ export type AITaskForm = {
   guardrails?: { costCapUSD?: number | null; timeCapMin?: number | null; requiresHumanApproval?: boolean; dataScopes?: string[] }
   metadata?: { priority?: 'low' | 'medium' | 'high' | 'urgent'; tags?: string[] }
   status?: 'pending' | 'assigned' | 'in_progress' | 'paused' | 'completed' | 'failed' | 'cancelled'
+  is_local_task?: boolean
+  executor_workspace_id?: string
   isEditing?: boolean
 }
 
@@ -35,6 +37,7 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
   const [saving, setSaving] = React.useState(false)
   const [agents, setAgents] = React.useState<any[]>([])
   const [features, setFeatures] = React.useState<Array<{ id: string; name: string }>>([])
+  const [workspaces, setWorkspaces] = React.useState<any[]>([])
   const [error, setError] = React.useState<string | null>(null)
   const [useGuardrails, setUseGuardrails] = React.useState<boolean>(false)
   const isTaskSelectDisabled = Boolean(initial?.isEditing)
@@ -51,7 +54,9 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
     mode: initial?.mode || 'plan_only',
     guardrails: initial?.guardrails,
     metadata: initial?.metadata || { priority: 'medium', tags: [] },
-    status: initial?.status || 'pending'
+    status: initial?.status || 'pending',
+    is_local_task: initial?.is_local_task || false,
+    executor_workspace_id: initial?.executor_workspace_id,
   })
 
   // Update form when initial data changes (for editing) - only when modal opens or task ID changes
@@ -73,7 +78,9 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         mode: initial.mode || 'plan_only',
         guardrails: initial.guardrails,
         metadata: initial.metadata || { priority: 'medium', tags: [] },
-        status: initial.status || 'pending'
+        status: initial.status || 'pending',
+        is_local_task: initial.is_local_task || false,
+        executor_workspace_id: initial.executor_workspace_id,
       })
       setUseGuardrails(Boolean(initial.guardrails))
     } else {
@@ -90,7 +97,9 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         mode: 'plan_only',
         guardrails: undefined,
         metadata: { priority: 'medium', tags: [] },
-        status: 'pending'
+        status: 'pending',
+        is_local_task: false,
+        executor_workspace_id: undefined,
       })
       setUseGuardrails(false)
     }
@@ -105,13 +114,15 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
     setLoading(true)
     Promise.all([
       aiAgentsApi.list({ limit: 100, sort_by: 'activity_score', sort_order: 'desc' as any }),
-      agentFeaturesApi.list({ is_active: true, limit: 200 })
+      agentFeaturesApi.list({ is_active: true, limit: 200 }),
+      fetch('/api/executor/workspaces').then(res => res.ok ? res.json() : { workspaces: [] }).then(data => data.workspaces || []).catch(() => [])
     ])
-      .then(([ags, fts]) => {
+      .then(([ags, fts, wss]) => {
         if (cancelled) return
 
         setAgents(ags)
         setFeatures(fts)
+        setWorkspaces(wss)
 
         if (initial?.guardrails) {
           setUseGuardrails(true)
@@ -200,8 +211,21 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
         dependencies: form.dependencies,
         mode: form.mode,
         metadata: form.metadata,
-        status: form.status,
       }
+
+      // Only include status if it's changed or creating new task
+      if (!initial?.id || form.status !== initial.status) {
+        payload.status = form.status
+      }
+
+      // Include executor fields if they have values
+      if (form.is_local_task !== undefined) {
+        payload.is_local_task = form.is_local_task
+      }
+      if (form.executor_workspace_id !== undefined && form.executor_workspace_id !== '') {
+        payload.executor_workspace_id = form.executor_workspace_id || null
+      }
+
       if (useGuardrails && form.guardrails) payload.guardrails = form.guardrails
 
       let result
@@ -269,6 +293,42 @@ export default function AITaskEditor({ isOpen, initial, onClose, onSaved }: AITa
                 <option value="execute">Execute (gated)</option>
               </select>
             </div>
+          </div>
+
+          {/* Row 2: Execution Location */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-slate-50">
+              <input
+                type="checkbox"
+                id="is_local_task"
+                checked={form.is_local_task || false}
+                onChange={e => handleChange({ is_local_task: e.target.checked, executor_workspace_id: e.target.checked ? form.executor_workspace_id : undefined })}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              <label htmlFor="is_local_task" className="text-sm text-gray-700 font-medium cursor-pointer">
+                Execute on local executor workspace
+              </label>
+            </div>
+            {form.is_local_task && (
+              <div>
+                <label className="text-sm text-gray-600">Executor Workspace</label>
+                <select
+                  className="mt-1 w-full border rounded px-3 py-2"
+                  value={form.executor_workspace_id || ''}
+                  onChange={e => handleChange({ executor_workspace_id: e.target.value || undefined })}
+                >
+                  <option value="">Select workspace (optional)</option>
+                  {workspaces.map((ws: any) => (
+                    <option key={ws.id} value={ws.id}>
+                      {ws.workspace_name} ({ws.status})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave empty to auto-assign to available workspace
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Task Selector - Using shared component */}

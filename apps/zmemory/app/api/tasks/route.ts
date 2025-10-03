@@ -256,7 +256,6 @@ export async function GET(request: NextRequest) {
     const userId = await getUserIdFromRequest(request)
 
     if (!userId) {
-      console.error('[TASKS] No user ID - authentication failed')
       if (process.env.NODE_ENV !== 'production') {
         // In development, allow UI to work without auth
         let tasks = generateMockTasks()

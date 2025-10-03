@@ -1136,6 +1136,10 @@ CREATE TABLE IF NOT EXISTS ai_tasks (
   actual_cost_usd DECIMAL(10,4),
   estimated_duration_min INTEGER,
   actual_duration_min INTEGER,
+
+  -- Executor workspace association
+  is_local_task BOOLEAN DEFAULT false,
+  executor_workspace_id UUID REFERENCES executor_agent_workspaces(id) ON DELETE SET NULL,
   
   -- Timestamps
   assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -1177,6 +1181,10 @@ CREATE INDEX IF NOT EXISTS idx_ai_tasks_mode ON ai_tasks(mode);
 CREATE INDEX IF NOT EXISTS idx_ai_tasks_metadata_priority ON ai_tasks USING GIN((metadata->'priority'));
 CREATE INDEX IF NOT EXISTS idx_ai_tasks_metadata_tags ON ai_tasks USING GIN((metadata->'tags'));
 CREATE INDEX IF NOT EXISTS idx_ai_tasks_guardrails ON ai_tasks USING GIN(guardrails);
+
+-- Executor workspace association indexes
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_executor_workspace ON ai_tasks(executor_workspace_id) WHERE executor_workspace_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ai_tasks_is_local ON ai_tasks(is_local_task) WHERE is_local_task = true;
 
 -- =====================================================
 -- 13. AI TASKS FUNCTIONS
