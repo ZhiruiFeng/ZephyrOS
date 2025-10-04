@@ -84,6 +84,20 @@ export class TaskRepository extends BaseRepository<Task> {
   }
 
   /**
+   * Override to transform database row to Task structure
+   */
+  async findByUserAndId(userId: string, id: string, select?: string): Promise<RepositoryResult<Task>> {
+    const result = await super.findByUserAndId(userId, id, select);
+
+    // Transform the result
+    if (result.data) {
+      result.data = this.transformDbRowToTask(result.data);
+    }
+
+    return result;
+  }
+
+  /**
    * Create task with automatic hierarchy setup
    */
   async createTask(userId: string, data: Partial<Task>): Promise<RepositoryResult<Task>> {
@@ -100,7 +114,14 @@ export class TaskRepository extends BaseRepository<Task> {
     // Flatten content object to match database schema
     const flattenedData = this.flattenTaskData(taskData);
 
-    return this.create(userId, flattenedData);
+    const result = await this.create(userId, flattenedData);
+
+    // Transform the result back to Task structure
+    if (result.data) {
+      result.data = this.transformDbRowToTask(result.data);
+    }
+
+    return result;
   }
 
   /**
@@ -128,7 +149,14 @@ export class TaskRepository extends BaseRepository<Task> {
     // Flatten content object to match database schema
     const flattenedData = this.flattenTaskData(taskData);
 
-    return this.updateByUserAndId(userId, id, flattenedData);
+    const result = await this.updateByUserAndId(userId, id, flattenedData);
+
+    // Transform the result back to Task structure
+    if (result.data) {
+      result.data = this.transformDbRowToTask(result.data);
+    }
+
+    return result;
   }
 
   /**
@@ -136,14 +164,20 @@ export class TaskRepository extends BaseRepository<Task> {
    * Transforms nested content object to flat columns
    */
   private flattenTaskData(data: Partial<Task>): any {
-    const { content, ...rest } = data;
-
-    if (!content) {
-      return rest;
-    }
+    const { content, metadata, tags, ...rest } = data;
 
     // Map content fields to flat database columns
     const flattened: any = { ...rest };
+
+    // Only include tags if present (tasks table has tags column)
+    if (tags !== undefined) flattened.tags = tags;
+
+    // Note: metadata column doesn't exist in tasks table, so we don't include it
+    // Metadata is stored in the Memory interface but not in the tasks table
+
+    if (!content) {
+      return flattened;
+    }
 
     if (content.title !== undefined) flattened.title = content.title;
     if (content.description !== undefined) flattened.description = content.description;
@@ -162,6 +196,44 @@ export class TaskRepository extends BaseRepository<Task> {
     if (content.completion_date !== undefined) flattened.completion_date = content.completion_date;
 
     return flattened;
+  }
+
+  /**
+   * Transform flat database row to nested Task structure
+   * Reverse of flattenTaskData
+   */
+  private transformDbRowToTask(row: any): Task {
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      type: 'task',
+      content: {
+        title: row.title,
+        description: row.description,
+        status: row.status,
+        priority: row.priority,
+        category_id: row.category_id,
+        due_date: row.due_date,
+        estimated_duration: row.estimated_duration,
+        progress: row.progress ?? 0,
+        assignee: row.assignee,
+        notes: row.notes,
+        completion_behavior: row.completion_behavior || 'manual',
+        progress_calculation: row.progress_calculation || 'manual',
+        parent_task_id: row.parent_task_id,
+        subtask_order: row.subtask_order ?? 0,
+        completion_date: row.completion_date,
+      },
+      tags: row.tags || [],
+      metadata: row.metadata || {},
+      hierarchy_level: row.hierarchy_level ?? 0,
+      hierarchy_path: row.hierarchy_path || '',
+      subtask_count: row.subtask_count ?? 0,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      // Preserve any additional fields from joins (like category)
+      ...(row.category ? { category: row.category } : {}),
+    } as Task;
   }
 
   /**
@@ -237,7 +309,10 @@ export class TaskRepository extends BaseRepository<Task> {
         return { data: null, error: new Error('Failed to find tasks') };
       }
 
-      return { data: data as unknown as Task[], error: null };
+      // Transform flat database rows to nested Task structure
+      const transformedData = data ? data.map(row => this.transformDbRowToTask(row)) : [];
+
+      return { data: transformedData, error: null };
     } catch (error) {
       console.error('Unexpected error finding tasks:', error);
       return { data: null, error: new Error('Failed to find tasks') };

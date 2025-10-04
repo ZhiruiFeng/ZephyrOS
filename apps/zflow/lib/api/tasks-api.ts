@@ -71,7 +71,11 @@ export const tasksApi = {
         tags: taskWithUTC.tags || []
       }),
     })
-    if (!response.ok) throw new Error('Failed to create task')
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Task creation failed:', response.status, errorData)
+      throw new Error(`Failed to create task: ${errorData.error || response.statusText}`)
+    }
     const data = await response.json()
     return data as TaskMemory
   },
