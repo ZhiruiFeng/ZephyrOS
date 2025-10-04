@@ -1,4 +1,6 @@
 import type { MemoryRepository, TaskRepository, ActivityRepository, AITaskRepositoryInterface, CategoryRepository } from '@/database';
+import type { CorePrincipleRepository } from '@/database/repositories/core-principle-repository';
+import type { DailyStrategyRepository } from '@/database/repositories/daily-strategy-repository';
 
 // Service result types
 export interface ServiceResult<T> {
@@ -11,6 +13,7 @@ export interface ServiceListResult<T> {
   data: T[] | null;
   error: Error | null;
   total?: number;
+  count?: number;
   warnings?: string[];
 }
 
@@ -28,6 +31,8 @@ export interface ServiceDependencies {
   activityRepository: ActivityRepository;
   aiTaskRepository: AITaskRepositoryInterface;
   categoryRepository?: CategoryRepository;
+  corePrincipleRepository: CorePrincipleRepository;
+  dailyStrategyRepository?: DailyStrategyRepository;
   // Add other repositories as needed
 }
 

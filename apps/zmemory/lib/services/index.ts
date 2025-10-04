@@ -24,6 +24,8 @@ export { VendorServiceImpl } from './vendor-service';
 export { InteractionTypeServiceImpl } from './interaction-type-service';
 export { EnergyDayServiceImpl } from './energy-day-service';
 export { ExecutorService, createExecutorService } from './executor-service';
+export { CorePrincipleServiceImpl } from './core-principle-service';
+export { DailyStrategyServiceImpl } from './daily-strategy-service';
 
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';
@@ -41,6 +43,8 @@ export type { TaskRelationService } from './task-relation-service';
 export type { VendorService } from './vendor-service';
 export type { InteractionTypeService } from './interaction-type-service';
 export type { EnergyDayService } from './energy-day-service';
+export type { CorePrincipleService } from './core-principle-service';
+export type { DailyStrategyService } from './daily-strategy-service';
 
 // Service factory functions and dependency injection
 import type { ServiceContext, ServiceDependencies } from './types';
@@ -59,6 +63,8 @@ import { TaskRelationServiceImpl } from './task-relation-service';
 import { VendorServiceImpl } from './vendor-service';
 import { InteractionTypeServiceImpl } from './interaction-type-service';
 import { EnergyDayServiceImpl } from './energy-day-service';
+import { CorePrincipleServiceImpl } from './core-principle-service';
+import { DailyStrategyServiceImpl } from './daily-strategy-service';
 import { repositories } from '@/database';
 
 /**
@@ -72,7 +78,9 @@ export function createMemoryAnalysisService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new MemoryAnalysisServiceImpl(context, deps);
 }
@@ -85,7 +93,9 @@ export function createMemoryService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new MemoryServiceImpl(context, deps);
 }
@@ -98,7 +108,9 @@ export function createTaskWorkflowService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new TaskWorkflowServiceImpl(context, deps);
 }
@@ -111,7 +123,9 @@ export function createTaskHierarchyService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new TaskHierarchyServiceImpl(context, deps);
 }
@@ -125,7 +139,9 @@ export function createTaskService(
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
     aiTaskRepository: repositories.getAITaskRepository(),
-    categoryRepository: repositories.getCategoryRepository()
+    categoryRepository: repositories.getCategoryRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new TaskServiceImpl(context, deps);
 }
@@ -138,7 +154,9 @@ export function createActivityService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new ActivityServiceImpl(context, deps);
 }
@@ -151,7 +169,9 @@ export function createActivityAnalyticsService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new ActivityAnalyticsServiceImpl(context, deps);
 }
@@ -164,7 +184,9 @@ export function createHealthService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new HealthServiceImpl(context, deps);
 }
@@ -177,7 +199,9 @@ export function createAgentFeaturesService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new AgentFeaturesServiceImpl(context, deps);
 }
@@ -190,7 +214,9 @@ export function createAITaskService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new AITaskServiceImpl(context, deps);
 }
@@ -203,7 +229,9 @@ export function createCategoryService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new CategoryServiceImpl(context, deps);
 }
@@ -216,7 +244,9 @@ export function createTaskRelationService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new TaskRelationServiceImpl(context, deps);
 }
@@ -229,7 +259,9 @@ export function createVendorService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new VendorServiceImpl(context, deps);
 }
@@ -242,7 +274,9 @@ export function createInteractionTypeService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new InteractionTypeServiceImpl(context, deps);
 }
@@ -255,7 +289,9 @@ export function createConversationService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new ConversationServiceImpl(context, deps);
 }
@@ -268,9 +304,41 @@ export function createEnergyDayService(
     memoryRepository: repositories.getMemoryRepository(),
     taskRepository: repositories.getTaskRepository(),
     activityRepository: repositories.getActivityRepository(),
-    aiTaskRepository: repositories.getAITaskRepository()
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new EnergyDayServiceImpl(context, deps);
+}
+
+export function createCorePrincipleService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): CorePrincipleServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
+  };
+  return new CorePrincipleServiceImpl(context, deps);
+}
+
+export function createDailyStrategyService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): DailyStrategyServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
+  };
+  return new DailyStrategyServiceImpl(context, deps);
 }
 
 /**
@@ -409,7 +477,9 @@ export const ServiceUtils = {
       memoryRepository: repositories.getMemoryRepository(),
       taskRepository: repositories.getTaskRepository(),
       activityRepository: repositories.getActivityRepository(),
-      aiTaskRepository: repositories.getAITaskRepository()
+      aiTaskRepository: repositories.getAITaskRepository(),
+      corePrincipleRepository: repositories.getCorePrincipleRepository(),
+      dailyStrategyRepository: repositories.getDailyStrategyRepository()
     };
   },
 

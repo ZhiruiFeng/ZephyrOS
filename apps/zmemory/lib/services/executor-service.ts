@@ -446,7 +446,9 @@ export function createExecutorService(context: ServiceContext, dependencies?: Se
       memoryRepository: repositories.getMemoryRepository(),
       taskRepository: repositories.getTaskRepository(),
       activityRepository: repositories.getActivityRepository(),
-      aiTaskRepository: repositories.getAITaskRepository()
+      aiTaskRepository: repositories.getAITaskRepository(),
+      corePrincipleRepository: repositories.getCorePrincipleRepository(),
+      dailyStrategyRepository: repositories.getDailyStrategyRepository()
     };
   }
 

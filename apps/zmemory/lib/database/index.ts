@@ -16,6 +16,8 @@ export { AITaskRepositoryImpl as AITaskRepository } from './repositories/ai-task
 export { CategoryRepositoryImpl as CategoryRepository } from './repositories/category-repository';
 export { ConversationRepositoryImpl as ConversationRepository } from './repositories/conversation-repository';
 export { TaskRelationRepositoryImpl as TaskRelationRepository } from './repositories/task-relation-repository';
+export { CorePrincipleRepository } from './repositories/core-principle-repository';
+export { DailyStrategyRepository } from './repositories/daily-strategy-repository';
 
 // Type exports for repositories
 export type { Memory, MemoryFilterParams } from './repositories/memory-repository';
@@ -25,6 +27,8 @@ export type { AITaskRepository as AITaskRepositoryInterface } from './repositori
 export type { CategoryRepository as CategoryRepositoryInterface } from './repositories/category-repository';
 export type { ConversationRepository as ConversationRepositoryInterface } from './repositories/conversation-repository';
 export type { TaskRelationRepository as TaskRelationRepositoryInterface } from './repositories/task-relation-repository';
+export type { CorePrinciple, CorePrincipleFilterParams } from './repositories/core-principle-repository';
+export type { DailyStrategyItem, DailyStrategyFilterParams } from './repositories/daily-strategy-repository';
 
 // Factory function to create repository instances
 import { getDatabaseClient } from './client';
@@ -35,6 +39,8 @@ import { AITaskRepositoryImpl } from './repositories/ai-task-repository';
 import { CategoryRepositoryImpl } from './repositories/category-repository';
 import { ConversationRepositoryImpl } from './repositories/conversation-repository';
 import { TaskRelationRepositoryImpl } from './repositories/task-relation-repository';
+import { CorePrincipleRepository } from './repositories/core-principle-repository';
+import { DailyStrategyRepository } from './repositories/daily-strategy-repository';
 
 export function createMemoryRepository() {
   return new MemoryRepository(getDatabaseClient());
@@ -64,6 +70,14 @@ export function createTaskRelationRepository() {
   return new TaskRelationRepositoryImpl(getDatabaseClient());
 }
 
+export function createCorePrincipleRepository() {
+  return new CorePrincipleRepository(getDatabaseClient());
+}
+
+export function createDailyStrategyRepository() {
+  return new DailyStrategyRepository(getDatabaseClient());
+}
+
 // Repository container for dependency injection
 export class RepositoryContainer {
   private memoryRepo?: MemoryRepository;
@@ -73,6 +87,8 @@ export class RepositoryContainer {
   private categoryRepo?: CategoryRepositoryImpl;
   private conversationRepo?: ConversationRepositoryImpl;
   private taskRelationRepo?: TaskRelationRepositoryImpl;
+  private corePrincipleRepo?: CorePrincipleRepository;
+  private dailyStrategyRepo?: DailyStrategyRepository;
 
   getMemoryRepository(): MemoryRepository {
     if (!this.memoryRepo) {
@@ -121,6 +137,20 @@ export class RepositoryContainer {
       this.taskRelationRepo = createTaskRelationRepository();
     }
     return this.taskRelationRepo;
+  }
+
+  getCorePrincipleRepository(): CorePrincipleRepository {
+    if (!this.corePrincipleRepo) {
+      this.corePrincipleRepo = createCorePrincipleRepository();
+    }
+    return this.corePrincipleRepo;
+  }
+
+  getDailyStrategyRepository(): DailyStrategyRepository {
+    if (!this.dailyStrategyRepo) {
+      this.dailyStrategyRepo = createDailyStrategyRepository();
+    }
+    return this.dailyStrategyRepo;
   }
 }
 

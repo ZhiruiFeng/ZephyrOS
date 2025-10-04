@@ -135,16 +135,16 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
 
   // Add or update priority task
   const savePriority = useCallback(async (
-    index: number, 
-    title: string, 
+    index: number,
+    title: string,
     description: string
   ): Promise<void> => {
     if (!selectedDate) throw new Error('No date selected')
     if (index < 0 || index > 2) throw new Error('Priority index must be 0-2')
-    
+
     try {
       const existingPriority = data.priorities[index]
-      
+
       if (existingPriority) {
         // Update existing priority
         try {
@@ -158,15 +158,9 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
           throw new Error(err instanceof Error ? err.message : 'Failed to update priority task details')
         }
 
-        const updated = await dailyStrategyApi.updateDailyStrategyItem(existingPriority.id, {
+        await dailyStrategyApi.updateDailyStrategyItem(existingPriority.id, {
           title,
           description,
-        })
-
-        setData(prev => {
-          const newPriorities = [...prev.priorities]
-          newPriorities[index] = updated
-          return { ...prev, priorities: newPriorities }
         })
       } else {
         // Create new task and priority
@@ -178,7 +172,7 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
           tags: ['daily-priority'],
         })
 
-        const priority = await dailyStrategyApi.createPriorityTask(
+        await dailyStrategyApi.createPriorityTask(
           task.id,
           title,
           description,
@@ -187,17 +181,14 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
           'high',
           seasonId
         )
-        
-        setData(prev => {
-          const newPriorities = [...prev.priorities]
-          newPriorities[index] = priority
-          return { ...prev, priorities: newPriorities }
-        })
       }
+
+      // Refresh data from server
+      await loadData()
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save priority')
     }
-  }, [selectedDate, seasonId, data.priorities])
+  }, [selectedDate, seasonId, data.priorities, loadData])
 
   // Link existing task to priority
   const linkExistingTaskToPriority = useCallback(async (
@@ -208,7 +199,7 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
     if (index < 0 || index > 2) throw new Error('Priority index must be 0-2')
 
     try {
-      const priority = await dailyStrategyApi.linkExistingTaskToPriority(
+      await dailyStrategyApi.linkExistingTaskToPriority(
         existingTask,
         selectedDate,
         index + 1,
@@ -216,15 +207,12 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
         seasonId
       )
 
-      setData(prev => {
-        const newPriorities = [...prev.priorities]
-        newPriorities[index] = priority
-        return { ...prev, priorities: newPriorities }
-      })
+      // Refresh data from server
+      await loadData()
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to link existing task')
     }
-  }, [selectedDate, seasonId])
+  }, [selectedDate, seasonId, loadData])
 
   // Remove priority task
   const removePriority = useCallback(async (index: number): Promise<void> => {
@@ -293,6 +281,7 @@ export function useDailyStrategy(selectedDate: string, timezone?: string, season
 
     return () => clearTimeout(timeoutId)
   }, [stableKey, loadData])
+
 
   return {
     data,

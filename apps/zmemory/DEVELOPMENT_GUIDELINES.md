@@ -336,8 +336,12 @@ export const GET = withStandardMiddleware(handler, {
 
 #### OPTIONS Handler (CRITICAL)
 
-**Always add explicit OPTIONS handlers**:
+**Always add explicit OPTIONS handlers for ALL routes**:
 ```typescript
+// Option 1: Using middleware helper (recommended)
+export { OPTIONS_HANDLER as OPTIONS } from '@/lib/middleware';
+
+// Option 2: Inline definition
 export const OPTIONS = withStandardMiddleware(async () => {
   return new NextResponse(null, { status: 200 });
 }, {
@@ -345,9 +349,28 @@ export const OPTIONS = withStandardMiddleware(async () => {
 });
 ```
 
-**Why**: Next.js App Router requires explicit method exports for CORS preflight requests to work correctly. Without `export const OPTIONS`, browsers will fail CORS preflight checks even though middleware handles the response.
+**Why**:
+- Browsers send OPTIONS preflight requests before DELETE, PUT, and POST when making cross-origin requests
+- Next.js App Router requires explicit method exports for CORS preflight to work
+- Without `export const OPTIONS`, you'll get CORS errors like:
+  ```
+  Access to fetch at 'http://localhost:3001/api/...' has been blocked by CORS policy:
+  Response to preflight request doesn't pass access control check:
+  No 'Access-Control-Allow-Origin' header is present on the requested resource.
+  ```
+- The middleware handles CORS headers, but Next.js won't invoke it without the OPTIONS export
 
-**Lesson**: This was discovered during conversations migration and is now required for all routes.
+**Common Error Pattern**:
+```
+Failed to fetch at authenticatedFetch (lib/api/api-base.ts:12:10)
+```
+
+**Solution**: Add OPTIONS export to the route file.
+
+**Lessons Learned**:
+- Initially discovered during conversations migration
+- Re-discovered when DELETE operations failed on core-principles/[id] route
+- Now a mandatory requirement for ALL API routes, especially those with [id] parameters
 
 ---
 
