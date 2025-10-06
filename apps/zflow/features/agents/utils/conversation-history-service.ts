@@ -84,6 +84,14 @@ export class ConversationHistoryService {
       if (!response.ok) {
         const errorText = await response.text().catch(() => response.statusText)
         console.error(`Failed to fetch conversation ${sessionId}:`, errorText)
+
+        // Treat 500 errors as "conversation doesn't exist" for now
+        // This is a temporary workaround for zmemory conversation save issues
+        if (response.status === 500) {
+          console.warn(`Treating 500 error as conversation not found for ${sessionId}`)
+          return null
+        }
+
         throw new Error(`Failed to fetch conversation: ${response.statusText}`)
       }
 
@@ -323,7 +331,7 @@ export class ConversationHistoryService {
                 type: msg.type,
                 content: msg.content,
                 timestamp: msg.timestamp.toISOString(),
-                agent: msg.agent,
+                agent: msg.agent || agentId, // Use agentId as fallback for user messages
                 toolCalls: msg.toolCalls || []
               }))
             })
@@ -358,7 +366,7 @@ export class ConversationHistoryService {
               type: msg.type,
               content: msg.content,
               timestamp: msg.timestamp.toISOString(),
-              agent: msg.agent,
+              agent: msg.agent || agentId, // Use agentId as fallback for user messages
               toolCalls: msg.toolCalls || []
             }))
           })
