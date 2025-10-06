@@ -15,7 +15,7 @@ export default function AgentsPage() {
   const { t } = useTranslation()
 
 // State management
-  const [selectedAgent, setSelectedAgent] = useState('gpt-4')
+  const [selectedAgent, setSelectedAgent] = useState('aws-bedrock')
   const [isStreaming, setIsStreaming] = useState(false)
   type AvailableAgent = { id: string; name: string; description: string; status: 'online' | 'offline' | 'busy' }
   const [availableAgents, setAvailableAgents] = useState<AvailableAgent[]>([])

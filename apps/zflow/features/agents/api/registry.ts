@@ -26,6 +26,16 @@ export class AgentRegistry {
   }
 
   private initializeDefaultAgents(): void {
+    // AWS Bedrock Agent (Default)
+    const awsAgent: Agent = {
+      id: 'aws-bedrock',
+      name: 'AWS Agent',
+      description: 'In-house AI agent for task planning and reflection',
+      status: 'online',
+      model: 'bedrock-agent',
+      provider: 'custom'
+    }
+
     // OpenAI GPT-4 Agent
     const gpt4Agent: Agent = {
       id: 'gpt-4',
@@ -56,6 +66,8 @@ export class AgentRegistry {
       provider: 'openai'
     }
 
+    // Add AWS Agent first so it appears first in the list and is the default
+    this.agents.set(awsAgent.id, awsAgent)
     this.agents.set(gpt4Agent.id, gpt4Agent)
     this.agents.set(claudeAgent.id, claudeAgent)
     this.agents.set(gpt35Agent.id, gpt35Agent)

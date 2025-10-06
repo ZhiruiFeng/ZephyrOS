@@ -82,6 +82,8 @@ export class ConversationHistoryService {
       }
 
       if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText)
+        console.error(`Failed to fetch conversation ${sessionId}:`, errorText)
         throw new Error(`Failed to fetch conversation: ${response.statusText}`)
       }
 
@@ -295,6 +297,8 @@ export class ConversationHistoryService {
     title?: string
   ): Promise<ConversationSummary> {
     try {
+      console.log(`Saving conversation for agent: ${agentId}`)
+
       // First, try to get existing conversation
       const existing = await this.getConversation(sessionId, userId)
 
@@ -361,6 +365,8 @@ export class ConversationHistoryService {
         })
 
         if (!response.ok) {
+          const errorText = await response.text().catch(() => response.statusText)
+          console.error(`Failed to create conversation for agent ${agentId}:`, errorText)
           throw new Error(`Failed to create conversation: ${response.statusText}`)
         }
 

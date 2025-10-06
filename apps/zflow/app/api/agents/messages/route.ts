@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sessionManager } from '@/agents/server'
 import { agentRegistry } from '@/agents/server'
 import { StreamingService } from '@/agents/server'
-import { openAIProvider, anthropicProvider, ensureAgentSystemReady } from '@/agents/server'
+import { openAIProvider, anthropicProvider, awsProvider, ensureAgentSystemReady } from '@/agents/server'
 import { AgentMessage } from '@/agents/server'
 
 // 禁用静态生成，因为需要运行时环境变量
@@ -65,6 +65,9 @@ export async function POST(request: NextRequest) {
         break
       case 'anthropic':
         provider = await anthropicProvider()
+        break
+      case 'custom':
+        provider = await awsProvider()
         break
       default:
         return NextResponse.json(

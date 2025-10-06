@@ -67,3 +67,6 @@ export interface ZFlowTool {
   parameters: any
   handler: (params: any, context: ChatContext) => Promise<any>
 }
+
+// AWS Agent types
+export * from '../types/aws-agent'

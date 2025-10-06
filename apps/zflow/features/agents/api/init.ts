@@ -2,10 +2,13 @@ import { initializeMCPBridge } from './mcp-bridge'
 import { agentRegistry } from './registry'
 import { OpenAIProvider } from './openai-client'
 import { AnthropicProvider } from './anthropic-client'
+import { AWSAgentProvider } from './aws-agent-client'
+import { isAWSAgentEnabled } from '../config/aws-agent-config'
 
 let initializationPromise: Promise<void> | null = null
 let openAIProvider: OpenAIProvider | null = null
 let anthropicProvider: AnthropicProvider | null = null
+let awsProvider: AWSAgentProvider | null = null
 
 export async function initializeAgentSystem(): Promise<void> {
   // Ensure we only initialize once, even with concurrent calls
@@ -33,6 +36,10 @@ async function performInitialization(): Promise<void> {
       anthropicProvider = new AnthropicProvider()
     }
 
+    if (!awsProvider && isAWSAgentEnabled()) {
+      awsProvider = new AWSAgentProvider()
+    }
+
     // Initialize MCP bridge and register tools with EXISTING provider instances
     try {
       await initializeMCPBridge([openAIProvider, anthropicProvider])
@@ -44,6 +51,9 @@ async function performInitialization(): Promise<void> {
     // Register providers with registry (now with MCP tools loaded)
     agentRegistry.registerProvider(openAIProvider)
     agentRegistry.registerProvider(anthropicProvider)
+    if (awsProvider) {
+      agentRegistry.registerProvider(awsProvider)
+    }
 
   } catch (error) {
     console.error('❌ Failed to initialize ZFlow Agent System:', error)
@@ -110,4 +120,14 @@ export function getSystemStatus(): {
   }
 }
 
-export { getOpenAIProvider as openAIProvider, getAnthropicProvider as anthropicProvider }
+async function getAWSProvider(): Promise<AWSAgentProvider> {
+  await ensureAgentSystemReady()
+
+  if (!awsProvider) {
+    throw new Error('AWS provider is not available. Check AWS_AGENT_API_URL configuration.')
+  }
+
+  return awsProvider
+}
+
+export { getOpenAIProvider as openAIProvider, getAnthropicProvider as anthropicProvider, getAWSProvider as awsProvider }
