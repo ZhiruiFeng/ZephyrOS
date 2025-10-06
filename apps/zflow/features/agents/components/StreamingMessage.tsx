@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Loader, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { marked } from 'marked'
 import { Message, ToolCall } from '../types/agents'
 import { ToolCallDisplay } from './ToolCallDisplay'
 
@@ -13,6 +14,14 @@ interface StreamingMessageProps {
 export function StreamingMessage({ message, isStreaming = false }: StreamingMessageProps) {
   const [displayedContent, setDisplayedContent] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
+
+  // Configure marked options
+  useEffect(() => {
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    })
+  }, [])
 
   // Simulate streaming effect for agent messages
   useEffect(() => {
@@ -32,6 +41,14 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
       setCurrentIndex(message.content.length)
     }
   }, [message.content, isStreaming, currentIndex, message.type])
+
+  // Parse markdown content
+  const htmlContent = useMemo(() => {
+    if (message.type === 'agent') {
+      return marked.parse(displayedContent) as string
+    }
+    return displayedContent
+  }, [displayedContent, message.type])
 
   const formatTimestamp = (timestamp: Date) => {
     return timestamp.toLocaleTimeString('en-US', { 
@@ -93,12 +110,19 @@ export function StreamingMessage({ message, isStreaming = false }: StreamingMess
           )}
 
           {/* Message content */}
-          <div className="whitespace-pre-wrap break-words leading-relaxed">
-            {displayedContent}
-            {isStreaming && isAgent && currentIndex < message.content.length && (
-              <span className="inline-block w-2 h-5 bg-primary-500 ml-1 animate-pulse"></span>
-            )}
-          </div>
+          {isAgent ? (
+            <div
+              className="prose prose-sm max-w-none leading-relaxed prose-headings:font-semibold prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-300 prose-code:text-primary-600 prose-code:bg-primary-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-[''] prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-primary-500 prose-blockquote:italic prose-strong:font-bold"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          ) : (
+            <div className="whitespace-pre-wrap break-words leading-relaxed">
+              {displayedContent}
+            </div>
+          )}
+          {isStreaming && isAgent && currentIndex < message.content.length && (
+            <span className="inline-block w-2 h-5 bg-primary-500 ml-1 animate-pulse"></span>
+          )}
 
           {/* Tool calls */}
           {message.toolCalls && message.toolCalls.length > 0 && (
