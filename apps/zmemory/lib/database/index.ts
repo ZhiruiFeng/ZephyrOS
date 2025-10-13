@@ -18,6 +18,7 @@ export { ConversationRepositoryImpl as ConversationRepository } from './reposito
 export { TaskRelationRepositoryImpl as TaskRelationRepository } from './repositories/task-relation-repository';
 export { CorePrincipleRepository } from './repositories/core-principle-repository';
 export { DailyStrategyRepository } from './repositories/daily-strategy-repository';
+export { MindflowSTTInteractionRepositoryImpl as MindflowSTTInteractionRepository } from './repositories/mindflow-stt-repository';
 
 // Type exports for repositories
 export type { Memory, MemoryFilterParams } from './repositories/memory-repository';
@@ -29,6 +30,7 @@ export type { ConversationRepository as ConversationRepositoryInterface } from '
 export type { TaskRelationRepository as TaskRelationRepositoryInterface } from './repositories/task-relation-repository';
 export type { CorePrinciple, CorePrincipleFilterParams } from './repositories/core-principle-repository';
 export type { DailyStrategyItem, DailyStrategyFilterParams } from './repositories/daily-strategy-repository';
+export type { MindflowSTTInteractionRepository as MindflowSTTInteractionRepositoryInterface } from './repositories/mindflow-stt-repository';
 
 // Factory function to create repository instances
 import { getDatabaseClient } from './client';
@@ -41,6 +43,7 @@ import { ConversationRepositoryImpl } from './repositories/conversation-reposito
 import { TaskRelationRepositoryImpl } from './repositories/task-relation-repository';
 import { CorePrincipleRepository } from './repositories/core-principle-repository';
 import { DailyStrategyRepository } from './repositories/daily-strategy-repository';
+import { MindflowSTTInteractionRepositoryImpl } from './repositories/mindflow-stt-repository';
 
 export function createMemoryRepository() {
   return new MemoryRepository(getDatabaseClient());
@@ -78,6 +81,10 @@ export function createDailyStrategyRepository() {
   return new DailyStrategyRepository(getDatabaseClient());
 }
 
+export function createMindflowSTTInteractionRepository() {
+  return new MindflowSTTInteractionRepositoryImpl(getDatabaseClient());
+}
+
 // Repository container for dependency injection
 export class RepositoryContainer {
   private memoryRepo?: MemoryRepository;
@@ -89,6 +96,7 @@ export class RepositoryContainer {
   private taskRelationRepo?: TaskRelationRepositoryImpl;
   private corePrincipleRepo?: CorePrincipleRepository;
   private dailyStrategyRepo?: DailyStrategyRepository;
+  private mindflowSTTInteractionRepo?: MindflowSTTInteractionRepositoryImpl;
 
   getMemoryRepository(): MemoryRepository {
     if (!this.memoryRepo) {
@@ -151,6 +159,13 @@ export class RepositoryContainer {
       this.dailyStrategyRepo = createDailyStrategyRepository();
     }
     return this.dailyStrategyRepo;
+  }
+
+  getMindflowSTTInteractionRepository(): MindflowSTTInteractionRepositoryImpl {
+    if (!this.mindflowSTTInteractionRepo) {
+      this.mindflowSTTInteractionRepo = createMindflowSTTInteractionRepository();
+    }
+    return this.mindflowSTTInteractionRepo;
   }
 }
 

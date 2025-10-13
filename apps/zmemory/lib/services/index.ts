@@ -26,6 +26,7 @@ export { EnergyDayServiceImpl } from './energy-day-service';
 export { ExecutorService, createExecutorService } from './executor-service';
 export { CorePrincipleServiceImpl } from './core-principle-service';
 export { DailyStrategyServiceImpl } from './daily-strategy-service';
+export { MindflowSTTInteractionServiceImpl } from './mindflow-stt-service';
 
 // Service interfaces (for dependency injection and testing)
 export type { MemoryAnalysisService } from './memory-analysis-service';
@@ -45,6 +46,7 @@ export type { InteractionTypeService } from './interaction-type-service';
 export type { EnergyDayService } from './energy-day-service';
 export type { CorePrincipleService } from './core-principle-service';
 export type { DailyStrategyService } from './daily-strategy-service';
+export type { MindflowSTTInteractionService } from './mindflow-stt-service';
 
 // Service factory functions and dependency injection
 import type { ServiceContext, ServiceDependencies } from './types';
@@ -65,6 +67,7 @@ import { InteractionTypeServiceImpl } from './interaction-type-service';
 import { EnergyDayServiceImpl } from './energy-day-service';
 import { CorePrincipleServiceImpl } from './core-principle-service';
 import { DailyStrategyServiceImpl } from './daily-strategy-service';
+import { MindflowSTTInteractionServiceImpl } from './mindflow-stt-service';
 import { repositories } from '@/database';
 
 /**
@@ -339,6 +342,21 @@ export function createDailyStrategyService(
     dailyStrategyRepository: repositories.getDailyStrategyRepository()
   };
   return new DailyStrategyServiceImpl(context, deps);
+}
+
+export function createMindflowSTTInteractionService(
+  context: ServiceContext,
+  dependencies?: ServiceDependencies
+): MindflowSTTInteractionServiceImpl {
+  const deps = dependencies || {
+    memoryRepository: repositories.getMemoryRepository(),
+    taskRepository: repositories.getTaskRepository(),
+    activityRepository: repositories.getActivityRepository(),
+    aiTaskRepository: repositories.getAITaskRepository(),
+    corePrincipleRepository: repositories.getCorePrincipleRepository(),
+    dailyStrategyRepository: repositories.getDailyStrategyRepository()
+  };
+  return new MindflowSTTInteractionServiceImpl(context, deps);
 }
 
 /**

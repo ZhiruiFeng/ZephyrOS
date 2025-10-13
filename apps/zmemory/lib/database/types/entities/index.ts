@@ -3,3 +3,4 @@ export * from './ai-task';
 export * from './category';
 export * from './conversation';
 export * from './task-relation';
+export * from './mindflow-stt';
