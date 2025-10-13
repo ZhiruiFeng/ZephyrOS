@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
-import type { STTProvider, STTConfig } from '@/features/profile/components/modules/STTConfigModule'
+import type { STTProvider, STTConfig } from '@/types/stt-config'
 
 // Default configuration with ElevenLabs as default
 const DEFAULT_STT_CONFIG: STTConfig = {

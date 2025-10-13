@@ -11,7 +11,7 @@ import AgentDirectory from '@/features/profile/components/modules/AgentDirectory
 import { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
 import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModule'
 import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
-import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
+import { VoiceModule } from '@/features/profile/components/modules/VoiceModule'
 import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
 import AITaskGrantorModule from '@/features/profile/components/modules/AITaskGrantorModule'
 import { CorePrinciplesModule } from '@/features/profile/components/modules/CorePrinciplesModule'
@@ -156,16 +156,15 @@ export default function ProfileDashboard({ className = '' }: ProfileDashboardPro
             onToggleFullscreen={handleToggleFullscreenForModule}
           />
         )
-      case 'stt-config':
+      case 'voice':
         return (
-          <STTConfigModule
+          <VoiceModule
             key={moduleConfig.id}
             config={moduleConfig}
             onConfigChange={(newConfig) => {
-              console.log('STT config changed:', newConfig)
+              console.log('Voice module config changed:', newConfig)
             }}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreenForModule}
+            fullScreenPath={moduleDefinition.fullScreenPath}
           />
         )
       case 'zrelations':

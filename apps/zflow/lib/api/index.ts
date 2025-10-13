@@ -17,6 +17,7 @@ export * from './narrative-api'
 export * from './zmemory-api-keys-api'
 export * from './executor-api'
 export * from './core-principles-api'
+export * from './mindflow-api'
 
 // Re-export APIs for direct access
 export { categoriesApi } from './categories-api'
@@ -33,6 +34,7 @@ export { seasonApi, episodeApi, narrativeApi, narrativeApiClient, NarrativeAPIEr
 export { zmemoryApiKeysApi, ZMEMORY_SCOPES } from './zmemory-api-keys-api'
 export { executorApi } from './executor-api'
 export { corePrinciplesApi } from './core-principles-api'
+export { mindflowApi, MindflowAPIError } from './mindflow-api'
 
 // Import API modules for legacy compatibility
 import { categoriesApi } from './categories-api'

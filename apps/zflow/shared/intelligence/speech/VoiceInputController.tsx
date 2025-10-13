@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSTTConfig } from '@/contexts/STTConfigContext'
 import { refineTranscript, hasFillerWords } from './transcriptRefinement'
+import { mindflowApi } from '../../../lib/api/mindflow-api'
 
 // Types
 interface RecorderState {
@@ -508,6 +509,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
   const [isMobile, setIsMobile] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null)
 
   const [recorderState, recorderControls] = useRecorder()
 
@@ -708,6 +710,9 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
 
     setIsTranscribing(true)
 
+    // Calculate audio duration
+    const audioDuration = recordingStartTime ? (Date.now() - recordingStartTime) / 1000 : undefined
+
     try {
       let audioBlob: Blob
 
@@ -721,26 +726,31 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
         throw new Error('No audio recording available')
       }
 
-      let text = ''
+      let originalText = ''
+      let sttProvider: 'OpenAI' | 'ElevenLabs' = 'OpenAI'
 
       if (!useRealTranscription) {
-        text = await mockTranscribe(audioBlob)
+        originalText = await mockTranscribe(audioBlob)
       } else {
         // Use STT configuration to determine which service to use
         try {
           if (sttConfig.provider === 'elevenlabs') {
-            text = await elevenLabsTranscribe(audioBlob)
+            originalText = await elevenLabsTranscribe(audioBlob)
+            sttProvider = 'ElevenLabs'
           } else {
-            text = await openaiTranscribe(audioBlob)
+            originalText = await openaiTranscribe(audioBlob)
+            sttProvider = 'OpenAI'
           }
         } catch (error) {
           console.error('Primary transcription failed, trying fallback:', error)
           // Fallback to the other service
           try {
             if (sttConfig.provider === 'elevenlabs') {
-              text = await openaiTranscribe(audioBlob)
+              originalText = await openaiTranscribe(audioBlob)
+              sttProvider = 'OpenAI'
             } else {
-              text = await elevenLabsTranscribe(audioBlob)
+              originalText = await elevenLabsTranscribe(audioBlob)
+              sttProvider = 'ElevenLabs'
             }
           } catch (fallbackError) {
             console.error('Fallback transcription also failed:', fallbackError)
@@ -749,37 +759,83 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
         }
       }
 
+      let refinedText = originalText
+      let teacherExplanation: string | undefined
+
       // Apply transcript refinement if enabled
-      if (sttConfig.useRefinedTranscription && text.trim() && hasFillerWords(text)) {
+      console.log('STT Config:', {
+        useRefinedTranscription: sttConfig.useRefinedTranscription,
+        hasFillerWords: hasFillerWords(originalText),
+        textLength: originalText.trim().length
+      })
+
+      if (sttConfig.useRefinedTranscription && originalText.trim() && hasFillerWords(originalText)) {
+        console.log('Starting transcript refinement...')
         setIsTranscribing(false)
         setIsRefining(true)
 
         try {
-          const refinementResult = await refineTranscript(text, {
+          const refinementResult = await refineTranscript(originalText, {
             removeFillersOnly: true,
-            preserveStyle: true
+            preserveStyle: true,
+            includeTeacherExplanation: true // Always request teacher explanation for storage
           })
-          text = refinementResult.refinedText
+          refinedText = refinementResult.refinedText
+          teacherExplanation = refinementResult.teacherExplanation
+          console.log('Refinement complete:', {
+            originalLength: originalText.length,
+            refinedLength: refinedText.length,
+            hasTeacherNote: !!teacherExplanation
+          })
         } catch (refinementError) {
           console.warn('Transcript refinement failed, using original text:', refinementError)
           // Continue with original text if refinement fails
         }
+      } else {
+        console.log('Refinement skipped:', {
+          enabled: sttConfig.useRefinedTranscription,
+          hasText: !!originalText.trim(),
+          hasFillers: hasFillerWords(originalText)
+        })
       }
 
-      insertTextAtCursor(focusedElement, text)
+      // Save to MindFlow API in the background (don't block UI)
+      if (useRealTranscription) {
+        mindflowApi.create({
+          original_transcription: originalText,
+          transcription_api: sttProvider,
+          transcription_model: sttProvider === 'OpenAI' ? 'whisper-1' : 'scribe_v1',
+          refined_text: refinedText !== originalText ? refinedText : undefined,
+          optimization_model: sttConfig.useRefinedTranscription ? 'gpt-4o-mini' : undefined,
+          teacher_explanation: teacherExplanation,
+          audio_duration: audioDuration
+        }).catch((error) => {
+          console.error('Failed to save MindFlow interaction:', error)
+          // Don't block the user flow if saving fails
+        })
+      }
+
+      insertTextAtCursor(focusedElement, refinedText)
     } catch (error) {
       console.error('Transcription failed:', error)
       alert('Failed to transcribe audio. Please try again.')
     } finally {
       setIsTranscribing(false)
       setIsRefining(false)
+      setRecordingStartTime(null)
       handlePanelClose()
     }
   }
 
   const handleCancel = () => {
     recorderControls.reset()
+    setRecordingStartTime(null)
     handlePanelClose()
+  }
+
+  const handleStartRecording = async () => {
+    setRecordingStartTime(Date.now())
+    await recorderControls.startRecording()
   }
 
   if (!focusedElement || !micPosition) return null
@@ -805,7 +861,7 @@ const VoiceInputController: React.FC<{ useRealTranscription?: boolean }> = ({ us
           isMobile={isMobile}
           position={micPosition}
           recorderState={recorderState}
-          onStart={recorderControls.startRecording}
+          onStart={handleStartRecording}
           onPause={recorderControls.pauseRecording}
           onResume={recorderControls.resumeRecording}
           onComplete={handleComplete}

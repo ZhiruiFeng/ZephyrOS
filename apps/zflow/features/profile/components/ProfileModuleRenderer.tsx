@@ -6,7 +6,7 @@ import AgentDirectory from '@/features/profile/components/modules/AgentDirectory
 import { MemoriesModule } from '@/features/profile/components/modules/MemoriesModule'
 import { ApiKeysModule } from '@/features/profile/components/modules/ApiKeysModule'
 import { ZMemoryApiKeysModule } from '@/features/profile/components/modules/ZMemoryApiKeysModule'
-import { STTConfigModule } from '@/features/profile/components/modules/STTConfigModule'
+import { VoiceModule } from '@/features/profile/components/modules/VoiceModule'
 import { ZRelationsModule } from '@/features/profile/components/modules/ZRelationsModule'
 import { ExecutorMonitor } from '@/features/profile/components/modules/ExecutorMonitor'
 import { CorePrinciplesModule } from '@/features/profile/components/modules/CorePrinciplesModule'
@@ -47,8 +47,8 @@ export function ProfileModuleRenderer({
       return <ApiKeysModule {...sharedProps} />
     case 'zmemory-api-keys':
       return <ZMemoryApiKeysModule {...sharedProps} />
-    case 'stt-config':
-      return <STTConfigModule {...sharedProps} />
+    case 'voice':
+      return <VoiceModule {...sharedProps} />
     case 'zrelations':
       return <ZRelationsModule {...sharedProps} />
     case 'executor-monitor':

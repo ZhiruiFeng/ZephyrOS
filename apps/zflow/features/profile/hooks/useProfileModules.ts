@@ -86,18 +86,22 @@ const AVAILABLE_MODULES: ProfileModule[] = [
     fullScreenPath: '/profile/modules/zmemory-api-keys'
   },
   {
-    id: 'stt-config',
-    name: 'Voice Input Settings',
-    description: 'Configure speech-to-text preferences',
+    id: 'voice',
+    name: 'Voice Features',
+    description: 'Manage voice input settings and recordings',
     icon: 'Mic',
     category: 'tools',
     defaultEnabled: true,
     defaultConfig: {
       provider: 'elevenlabs',
       autoSave: true,
-      showProviderInUI: false
+      showProviderInUI: false,
+      useRefinedTranscription: false,
+      pageSize: 20,
+      showTeacherNotes: true,
+      showMetadata: true
     },
-    fullScreenPath: '/profile/modules/stt-config'
+    fullScreenPath: '/profile/modules/voice'
   },
   {
     id: 'zrelations',
@@ -168,13 +172,17 @@ const DEFAULT_ENABLED_MODULES: ProfileModuleConfig[] = [
     }
   },
   {
-    id: 'stt-config',
+    id: 'voice',
     enabled: true,
     order: 2,
     config: {
       provider: 'elevenlabs',
       autoSave: true,
-      showProviderInUI: false
+      showProviderInUI: false,
+      useRefinedTranscription: false,
+      pageSize: 20,
+      showTeacherNotes: true,
+      showMetadata: true
     }
   }
 ]

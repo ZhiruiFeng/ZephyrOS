@@ -8,15 +8,17 @@
  * - Maintain the original meaning and intent
  */
 
-interface RefinementOptions {
+export interface RefinementOptions {
   removeFillersOnly?: boolean
   preserveStyle?: boolean
   model?: string
+  includeTeacherExplanation?: boolean
 }
 
-interface RefinementResult {
+export interface RefinementResult {
   refinedText: string
   originalText: string
+  teacherExplanation?: string
   changes: {
     fillersRemoved: number
     grammaticalFixes: number
@@ -33,7 +35,8 @@ export async function refineTranscript(
   const {
     removeFillersOnly = false,
     preserveStyle = true,
-    model = 'gpt-4o-mini'
+    model = 'gpt-4o-mini',
+    includeTeacherExplanation = false
   } = options
 
   if (!rawTranscript.trim()) {
@@ -49,8 +52,10 @@ export async function refineTranscript(
     const { getAuthHeader } = await import('../../../lib/supabase')
     const authHeaders = await getAuthHeader()
 
-    const systemPrompt = removeFillersOnly
-      ? `You are a transcript editor. Your job is to remove filler words and unnecessary repetitions while preserving the exact meaning and style.
+    let systemPrompt: string
+
+    if (removeFillersOnly) {
+      systemPrompt = `You are a transcript editor. Your job is to remove filler words and unnecessary repetitions while preserving the exact meaning and style.
 
 Remove these common filler words: um, uh, er, ah, like (when used as filler), you know, so, well (when used as filler), right (when used as confirmation seeking), okay, basically, actually (when overused), literally (when misused).
 
@@ -63,8 +68,21 @@ IMPORTANT RULES:
 - Keep punctuation and capitalization style consistent
 - If unsure whether something is a filler, keep it
 
-Output only the cleaned transcript, nothing else.`
-      : `You are a transcript editor. Your job is to refine speech-to-text output by removing filler words and making minor grammatical improvements while preserving the speaker's intent and style.
+${includeTeacherExplanation ? `Output format (use exactly this structure):
+REFINED_TEXT:
+[Your optimized version here]
+
+TEACHER_NOTE:
+Score: [X/10]
+
+Key improvements (max 3 bullet points):
+• [Specific vocabulary or phrasing improvement with before/after example]
+• [Grammar or structure improvement with explanation]
+• [Additional improvement if applicable]
+
+Focus on specific language improvements, not general comments. Show concrete examples like "Changed 'good' to 'effective' for more precise meaning" or "Restructured 'I think maybe we could' to 'We could' for clearer, more confident expression."` : 'Output only the cleaned transcript, nothing else.'}`
+    } else {
+      systemPrompt = `You are a transcript editor and language teacher. Your job is to refine speech-to-text output by removing filler words and making minor grammatical improvements while preserving the speaker's intent and style.
 
 Tasks:
 1. Remove filler words: um, uh, er, ah, like (when used as filler), you know, so, well (when used as filler), right (when used as confirmation seeking), okay, basically, actually (when overused), literally (when misused)
@@ -80,7 +98,20 @@ IMPORTANT RULES:
 - Maintain appropriate level of formality for the context
 - If unsure about a change, keep the original
 
-Output only the refined transcript, nothing else.`
+${includeTeacherExplanation ? `Output format (use exactly this structure):
+REFINED_TEXT:
+[Your optimized version here]
+
+TEACHER_NOTE:
+Score: [X/10]
+
+Key improvements (max 3 bullet points):
+• [Specific vocabulary or phrasing improvement with before/after example]
+• [Grammar or structure improvement with explanation]
+• [Additional improvement if applicable]
+
+Focus on specific language improvements, not general comments. Show concrete examples like "Changed 'good' to 'effective' for more precise meaning" or "Restructured 'I think maybe we could' to 'We could' for clearer, more confident expression."` : 'Output only the refined transcript, nothing else.'}`
+    }
 
     const response = await fetch('/api/openai/chat', {
       method: 'POST',
@@ -111,7 +142,22 @@ Output only the refined transcript, nothing else.`
     }
 
     const data = await response.json()
-    const refinedText = data.choices?.[0]?.message?.content?.trim() || rawTranscript
+    const fullResponse = data.choices?.[0]?.message?.content?.trim() || rawTranscript
+
+    let refinedText: string
+    let teacherExplanation: string | undefined
+
+    // Parse response if teacher explanation was requested
+    if (includeTeacherExplanation && fullResponse.includes('REFINED_TEXT:') && fullResponse.includes('TEACHER_NOTE:')) {
+      const refinedMatch = fullResponse.match(/REFINED_TEXT:\s*([\s\S]*?)\s*TEACHER_NOTE:/i)
+      const teacherMatch = fullResponse.match(/TEACHER_NOTE:\s*([\s\S]*?)$/i)
+
+      refinedText = refinedMatch?.[1]?.trim() || fullResponse
+      teacherExplanation = teacherMatch?.[1]?.trim() || undefined
+    } else {
+      refinedText = fullResponse
+      teacherExplanation = undefined
+    }
 
     // Calculate approximate changes
     const originalWords = rawTranscript.toLowerCase().split(/\s+/)
@@ -124,6 +170,7 @@ Output only the refined transcript, nothing else.`
     return {
       refinedText,
       originalText: rawTranscript,
+      teacherExplanation,
       changes: {
         fillersRemoved,
         grammaticalFixes

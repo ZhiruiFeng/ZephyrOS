@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Suspense } from 'react'
-import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp, Server, BookMarked } from 'lucide-react'
+import { User, Settings, Plus, BarChart3, BookOpen, Bot, Users, TrendingUp, Server, BookMarked, Mic } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/contexts/LanguageContext'
 import { ModuleSelector } from '@/features/profile/components/ModuleSelector'
@@ -15,7 +15,7 @@ const AgentDirectory = React.lazy(() => import('@/features/profile/components/mo
 const MemoriesModule = React.lazy(() => import('@/features/profile/components/modules/MemoriesModule').then(m => ({ default: m.MemoriesModule })))
 const ApiKeysModule = React.lazy(() => import('@/features/profile/components/modules/ApiKeysModule').then(m => ({ default: m.ApiKeysModule })))
 const ZMemoryApiKeysModule = React.lazy(() => import('@/features/profile/components/modules/ZMemoryApiKeysModule').then(m => ({ default: m.ZMemoryApiKeysModule })))
-const STTConfigModule = React.lazy(() => import('@/features/profile/components/modules/STTConfigModule').then(m => ({ default: m.STTConfigModule })))
+const VoiceModule = React.lazy(() => import('@/features/profile/components/modules/VoiceModule').then(m => ({ default: m.VoiceModule })))
 const ZRelationsModule = React.lazy(() => import('@/features/profile/components/modules/ZRelationsModule').then(m => ({ default: m.ZRelationsModule })))
 const AITaskGrantorModule = React.lazy(() => import('@/features/profile/components/modules/AITaskGrantorModule'))
 const ExecutorMonitor = React.lazy(() => import('@/features/profile/components/modules/ExecutorMonitor').then(m => ({ default: m.ExecutorMonitor })))
@@ -146,16 +146,15 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
             />
           </Suspense>
         )
-      case 'stt-config':
+      case 'voice':
         return (
           <Suspense key={moduleConfig.id} fallback={<ModuleLoader />}>
-            <STTConfigModule 
+            <VoiceModule
               config={moduleConfig}
               onConfigChange={(newConfig) => {
-                console.log('STT config changed:', newConfig)
+                console.log('Voice module config changed:', newConfig)
               }}
-              isFullscreen={isFullscreen}
-              onToggleFullscreen={handleToggleFullscreenForModule}
+              fullScreenPath={moduleDefinition.fullScreenPath}
             />
           </Suspense>
         )
@@ -318,6 +317,7 @@ export function ProfilePage({ className = '' }: ProfilePageProps) {
             fullscreenModule === 'zrelations' ? <Users className="w-6 h-6 text-blue-600" /> :
             fullscreenModule === 'executor-monitor' ? <Server className="w-6 h-6 text-blue-600" /> :
             fullscreenModule === 'core-principles' ? <BookMarked className="w-6 h-6 text-blue-600" /> :
+            fullscreenModule === 'voice' ? <Mic className="w-6 h-6 text-blue-600" /> :
             fullscreenModule === 'stats' ? <TrendingUp className="w-6 h-6 text-green-600" /> :
             <Settings className="w-6 h-6 text-gray-600" />
           }
