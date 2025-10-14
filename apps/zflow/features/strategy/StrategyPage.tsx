@@ -64,6 +64,12 @@ export default function StrategyPage() {
   const planningReload = planningState.loadData
   const reflectionReload = reflectionState.loadData
 
+  // Callback to refresh daily tracking data
+  const handleDailyDataChange = useCallback(() => {
+    planningReload()
+    reflectionReload()
+  }, [planningReload, reflectionReload])
+
   useEffect(() => {
     if (dailyTrackingRefresh > 0) {
       // Debounce the refresh to avoid rapid consecutive calls
@@ -364,6 +370,7 @@ export default function StrategyPage() {
           setDailyTrackingRefresh(prev => prev + 1)
         }}
         seasonId={season?.id}
+        onDataChange={handleDailyDataChange}
       />
     </div>
   )

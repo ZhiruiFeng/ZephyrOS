@@ -30,6 +30,7 @@ interface DailyRhythmModalProps {
   onClose: () => void
   seasonId?: string
   initialView?: 'planning' | 'reflection'
+  onDataChange?: () => void
 }
 
 interface PlanningEditingState {
@@ -46,7 +47,7 @@ interface ReflectionEditingState {
   content: string
 }
 
-export function DailyRhythmModal({ isOpen, onClose, seasonId, initialView = 'planning' }: DailyRhythmModalProps) {
+export function DailyRhythmModal({ isOpen, onClose, seasonId, initialView = 'planning', onDataChange }: DailyRhythmModalProps) {
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toLocaleDateString('en-CA'))
   const [activeView, setActiveView] = useState<'planning' | 'reflection'>(initialView)
 
@@ -68,6 +69,7 @@ export function DailyRhythmModal({ isOpen, onClose, seasonId, initialView = 'pla
     linkExistingTaskToPriority,
     removePriority,
     markCompleted,
+    loadData: loadPlanningData,
   } = useDailyStrategy(selectedDate, timezone, seasonId)
 
   const {
@@ -145,6 +147,12 @@ export function DailyRhythmModal({ isOpen, onClose, seasonId, initialView = 'pla
       }
 
       setPlanningEditing(null)
+
+      // Refresh the planning data in the modal
+      await loadPlanningData()
+
+      // Notify parent component to refresh its data
+      onDataChange?.()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -159,6 +167,12 @@ export function DailyRhythmModal({ isOpen, onClose, seasonId, initialView = 'pla
     try {
       await linkExistingTaskToPriority(showTaskSelector.index, task)
       setShowTaskSelector(null)
+
+      // Refresh the planning data in the modal
+      await loadPlanningData()
+
+      // Notify parent component to refresh its data
+      onDataChange?.()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to link task')
     } finally {
