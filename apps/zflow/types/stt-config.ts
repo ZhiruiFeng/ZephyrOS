@@ -11,4 +11,5 @@ export interface STTConfig {
   autoSave: boolean
   showProviderInUI: boolean
   useRefinedTranscription: boolean
+  autoSyncThreshold: number // Minimum duration in seconds for auto-sync to zmemory (default: 30)
 }

@@ -9,7 +9,8 @@ const DEFAULT_STT_CONFIG: STTConfig = {
   provider: 'elevenlabs',
   autoSave: true,
   showProviderInUI: false,
-  useRefinedTranscription: false
+  useRefinedTranscription: false,
+  autoSyncThreshold: 30 // Default: 30 seconds
 }
 
 interface STTConfigContextType {
