@@ -283,7 +283,35 @@ npm run build
 npm start
 ```
 
-## Recent Improvements (v2.0.0)
+## Recent Improvements (v2.5.0)
+
+### New Features & Capabilities
+
+#### 1. Voice & Speech-to-Text Integration
+- **MindFlow STT**: Speech-to-text interactions for capturing thoughts and tasks
+- **Voice Module**: Record, manage, and analyze voice interactions
+- **Expression Learning**: AI-powered expression analysis and learning from voice input
+- **Location**: `apps/zmemory/lib/services/mindflow-stt-service.ts`, `apps/zflow/features/profile/components/modules/VoiceModule/`
+- **API**: `/api/mindflow-stt-interactions` for managing voice interactions
+
+#### 2. AI Agent System
+- **Agent Chat**: Interactive chat interface with AI agents
+- **AWS Agent Integration**: In-house AWS agent support
+- **Multi-Agent Support**: Framework for multiple specialized agents
+- **Conversation History**: Persistent conversation management across sessions
+- **Markdown Support**: Rich formatted responses in chatbot
+- **Location**: `apps/zflow/features/agents/`, `apps/zflow/app/agents/`
+
+#### 3. MindFlow Data API
+- **Intelligent Data Capture**: API endpoints for capturing MindFlow interactions
+- **Expression Analysis**: Process and analyze thought patterns and expressions
+- **Integration**: Seamless connection between voice input and task/memory management
+- **Location**: `apps/zmemory/app/api/mindflow-stt-interactions/`
+
+#### 4. Enhanced Dashboard
+- **Profile Dashboard**: Comprehensive overview of user activities and stats
+- **Strategy Dashboard**: Strategic planning and progress tracking
+- **Location**: `apps/zflow/features/profile/components/ProfileDashboard.tsx`
 
 ### Code Architecture Enhancements
 
@@ -319,6 +347,18 @@ npm start
 - **Performance**: Optimized data fetching with SWR
 - **Maintainability**: Reduced code duplication by 40%
 - **Documentation**: Updated guides and API documentation
+- **Coding Standards**: Comprehensive regulations for all components (see `spec/coding-regulations/`)
+
+### ⚠️ Publishing Requirements
+
+**IMPORTANT**: Before publishing commits to GitHub, all CI checks must pass:
+
+1. **Secret Scanning**: Gitleaks checks for exposed credentials
+2. **Type Checking**: TypeScript compilation across all workspaces
+3. **Linting**: ESLint validation for code quality
+4. **Build**: Successful build of all applications
+
+Use the `/publish_check` command to verify all checks pass before pushing to GitHub. See [CLAUDE.md](./CLAUDE.md) for detailed workflow instructions.
 
 ## Tech Stack
 

@@ -103,6 +103,25 @@ export function InteractiveComponent() {
 ## Slash Commands
 
 - `/check-regulations` - Review coding standards before starting work
+- `/publish_check` - Run all pre-publish validation checks (type-check, lint, build, secret scan)
+
+## Publishing Requirements
+
+**⚠️ CRITICAL**: Before pushing ANY commits to GitHub, you MUST:
+
+1. Run `/publish_check` to validate all CI checks pass locally
+2. Fix any failures reported by the checks
+3. Only push when all checks show ✅ PASSED
+
+This ensures:
+- No CI failures on GitHub
+- Code quality standards are met
+- No secrets are accidentally committed
+- TypeScript compiles correctly
+- All linting rules are followed
+- Production build succeeds
+
+**Never push code that hasn't passed `/publish_check`.**
 
 ## Enforcement
 
