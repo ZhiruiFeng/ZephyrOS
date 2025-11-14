@@ -283,60 +283,155 @@ npm run build
 npm start
 ```
 
-## Recent Improvements (v2.0.0)
+## Recent Progress & Features
 
-### Code Architecture Enhancements
+### 🤖 AI Agents System (Latest)
+- **Full-featured agent framework** with conversation management
+- **AWS Bedrock integration** for Claude model access
+- **MCP (Model Context Protocol)** integration for AI tool connectivity
+- **Session management** with Redis pub/sub for SSE streaming
+- **Agent registry** for discovering and managing available agents
+- **Real-time streaming** with Server-Sent Events for chat interactions
 
-#### 1. Modularized Constants
-- **Location**: `apps/zflow/app/constants/task.ts`
-- **Impact**: Centralized status, priority, and color definitions
-- **Benefits**: Consistent values across components, easier maintenance
+**Key APIs:**
+- `/api/agents/sessions` - Create and manage agent sessions
+- `/api/agents/stream` - Real-time SSE streaming for conversations
+- `/api/agents/aws/invoke` - AWS Bedrock agent invocation
+- `/api/agents/registry` - Agent discovery and metadata
 
-#### 2. Centralized Error Handling
-- **Location**: `apps/zflow/app/utils/errorHandling.ts`
-- **Impact**: Standardized error messages and user notifications
-- **Benefits**: Consistent user experience, easier debugging
+### 🎙️ Voice & Speech Features
+- **Speech-to-Text (STT)** integration with ElevenLabs
+- **Voice interaction** demos and testing pages
+- **Audio transcription** API endpoint (`/api/transcribe`)
+- **Expression learning** capabilities for natural language understanding
 
-#### 3. Form Validation Utilities
-- **Location**: `apps/zflow/app/utils/validation.ts`
-- **Impact**: Reusable validation logic for all forms
-- **Benefits**: Consistent validation rules, reduced duplication
+### 📝 Personal Productivity Suite
+- **Narrative page** - Document and track personal stories and insights
+- **Strategy page** - Plan and execute strategic goals
+- **Daily strategy APIs** - Structured daily planning and reflection
+- **Core principles** - Define and maintain personal values
+- **Energy tracking** - Monitor energy levels across days
+- **Episode management** - Organize life events and learnings
 
-#### 4. Shared UI Components
-- **Location**: `apps/zflow/app/components/shared/`
-- **Impact**: Reusable components for common patterns
-- **Benefits**: Design consistency, faster development
+### 💾 Enhanced ZMemory APIs
+New data management endpoints:
+- **Activities** - Track and analyze daily activities
+- **Conversations** - Store and retrieve conversation history
+- **AI Interactions** - Log interactions with AI assistants
+- **AI Tasks** - Manage AI-generated task recommendations
+- **Executor** - Task execution tracking and analytics
+- **Documents** - Rich document management with versioning
 
-#### 5. Internationalization Ready
-- **Impact**: All Chinese text translated to English
-- **Benefits**: English-first codebase, i18n preparation
-- **Scope**: UI components, API responses, error messages, documentation
+### 📱 Mobile Experience
+- **ZFlow iOS** - React Native app for iOS
+- **Expo-based** mobile development
+- Shared API integration with web frontend
 
-### Code Quality Improvements
+### 🎨 Rich Text Editing
+- **TipTap editor** integration with full formatting support
+- **Tables, images, links** support
+- **Code blocks** with syntax highlighting (lowlight)
+- **Task lists** with checkbox support
+- **Typography** enhancements
 
-- **Type Safety**: Enhanced TypeScript coverage
+### 🔧 Code Quality & Architecture (v2.0.0)
+
+#### Architecture Enhancements
+1. **Modularized Constants** (`apps/zflow/app/constants/`)
+2. **Centralized Error Handling** (`apps/zflow/app/utils/errorHandling.ts`)
+3. **Form Validation Utilities** (`apps/zflow/app/utils/validation.ts`)
+4. **Shared UI Components** (`apps/zflow/app/components/shared/`)
+5. **Internationalization Ready** - English-first codebase
+
+#### Quality Improvements
+- **Type Safety**: Enhanced TypeScript coverage across all apps
 - **Error Handling**: Consistent error responses across API
 - **Performance**: Optimized data fetching with SWR
-- **Maintainability**: Reduced code duplication by 40%
-- **Documentation**: Updated guides and API documentation
+- **Testing**: Jest tests for ZMemory API
+- **Documentation**: Comprehensive API documentation with Swagger
+- **Security**: Automated secret scanning with GitHub Actions
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React 18, TypeScript, Tailwind CSS, SWR
-- **Backend**: Next.js API Routes, TypeScript, Zod (validation)
-- **AI Integration**: Model Context Protocol (MCP), JSON-RPC 2.0
+### Frontend
+- **Framework**: Next.js 15 with App Router
+- **UI Library**: React 19
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS 3
+- **State Management**: SWR for data fetching
+- **Rich Text**: TipTap editor with extensions
+- **Animation**: Framer Motion
+- **Charts**: Recharts
+
+### Backend
+- **Framework**: Next.js API Routes
+- **Validation**: Zod schemas
+- **Database Client**: Supabase JS
+- **AI SDK**: Anthropic SDK, OpenAI SDK
+- **Authentication**: Supabase Auth with Google OAuth
+
+### AI & Integration
+- **Model Context Protocol**: MCP SDK for AI tool connectivity
+- **AWS Bedrock**: Claude model integration
+- **Streaming**: Server-Sent Events (SSE) with Redis pub/sub
+- **Voice**: ElevenLabs for speech-to-text
+
+### Mobile
+- **Framework**: React Native with Expo
+- **UI**: React Native Paper
+- **Icons**: React Native Vector Icons
+
+### Database & Infrastructure
 - **Database**: Supabase (PostgreSQL)
-- **Deployment**: Vercel
-- **Build Tool**: Turbo
+- **Caching**: Redis (for SSE sessions)
+- **Storage**: Supabase Storage (for assets)
+- **Deployment**: Vercel (serverless functions)
+
+### Development Tools
+- **Monorepo**: Turborepo for build orchestration
+- **Testing**: Jest for unit tests, Newman for API tests
+- **API Docs**: Swagger/OpenAPI with swagger-jsdoc
 - **Code Quality**: ESLint, TypeScript strict mode
+- **Security**: Gitleaks for secret scanning
+- **Package Manager**: npm workspaces
 
 ## Contributing
 
+### Before Publishing to GitHub
+
+**⚠️ IMPORTANT**: Before auto-publishing commits to GitHub, verify all GitHub Actions checks pass.
+
+Use the `/publish-check` command to run all CI checks locally:
+```bash
+/publish-check
+```
+
+This command runs:
+1. ✅ **Linting** (`npm run lint`) - Code style and quality
+2. ✅ **Type Checking** (`npm run type-check`) - TypeScript validation
+3. ✅ **Build** (`npm run build`) - Production build verification
+4. ✅ **Tests** (`npm run test`) - Unit and integration tests
+5. ✅ **Secret Scan** - Ensure no secrets are committed
+
+**All checks must pass before pushing to GitHub.**
+
+### Development Workflow
+
 1. Fork the project
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following coding regulations (see `.claude/instructions.md`)
+4. Run `/publish-check` to verify all checks pass
+5. Fix any errors reported by the checks
+6. Commit changes (`git commit -m 'Add amazing feature'`)
+7. Push to branch (`git push origin feature/amazing-feature`)
+8. Create Pull Request
+
+### Coding Standards
+
+This project follows strict coding regulations:
+- See `.claude/instructions.md` for development guidelines
+- Use `/check-regulations` command before starting work
+- Component-specific standards in `spec/coding-regulations/`
 
 ## 🤝 Support
 
